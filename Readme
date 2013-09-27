@@ -1,0 +1,16 @@
+Generates IR:
+
+	FOR C:
+
+	clang -S -emit-llvm
+
+	FOR FORTRAN:
+
+	You need to create the dynamic lib dragonegg.so:
+		Look at libs/dragonegg-3.3.src/README
+
+	-S -fplugin=/path/to/dragonegg.so -fplugin-arg-dragonegg-emit-ir
+
+Extract loops:
+
+	opt -S -loop-extract your_file.s -o output_file
