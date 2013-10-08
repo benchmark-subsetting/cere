@@ -32,7 +32,7 @@
 #---------------------------------------------------------------------------
 F77 = gfortran
 # This links MPI fortran programs; usually the same as ${MPIF77}
-FLINK	= gfortran
+FLINK	= clang
 
 #---------------------------------------------------------------------------
 # These macros are passed to the linker 
@@ -47,14 +47,14 @@ F_INC =
 #---------------------------------------------------------------------------
 # Global *compile time* flags for Fortran programs
 #---------------------------------------------------------------------------
-FFLAGS	= -S -O3 -fplugin=../../../../libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir
-# FFLAGS = -g
+FFLAGS	=
+# FFLAGS = -g -S -O3 -fplugin=../../../../libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir
 
 #---------------------------------------------------------------------------
 # Global *link time* flags. Flags for increasing maximum executable 
 # size usually go here. 
 #---------------------------------------------------------------------------
-FLINKFLAGS = -O3
+FLINKFLAGS =
 
 
 #---------------------------------------------------------------------------
@@ -79,12 +79,12 @@ FLINKFLAGS = -O3
 #---------------------------------------------------------------------------
 CC = clang
 # This links C programs; usually the same as ${CC}
-CLINK	= clang
+CLINK = clang
 
 #---------------------------------------------------------------------------
 # These macros are passed to the linker 
 #---------------------------------------------------------------------------
-C_LIB  =
+C_LIB =
 
 #---------------------------------------------------------------------------
 # These macros are passed to the compiler 
@@ -94,14 +94,14 @@ C_INC =
 #---------------------------------------------------------------------------
 # Global *compile time* flags for C programs
 #---------------------------------------------------------------------------
-CFLAGS	= -S -O3 -emit-llvm
-# CFLAGS = -g
+CFLAGS =
+# CFLAGS = -g -emit-llvm -S
 
 #---------------------------------------------------------------------------
 # Global *link time* flags. Flags for increasing maximum executable 
 # size usually go here. 
 #---------------------------------------------------------------------------
-CLINKFLAGS = -O3
+CLINKFLAGS =
 
 
 #---------------------------------------------------------------------------

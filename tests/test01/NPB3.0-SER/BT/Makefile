@@ -1,15 +1,16 @@
 SHELL=/bin/sh
 BENCHMARK=bt
 BENCHMARKU=BT
+TOP=../../..
 
 include ../config/make.def
 
-
-OBJS = bt.o  initialize.o exact_solution.o exact_rhs.o \
-       set_constants.o adi.o  rhs.o      \
-       x_solve.o y_solve.o   \
-       z_solve.o add.o error.o verify.o \
-       ${COMMON}/print_results.o ${COMMON}/timers.o ${COMMON}/wtime.o
+OBJS = bt.s initialize.s exact_solution.s exact_rhs.s \
+       set_constants.s adi.s  rhs.s \
+       x_solve.s y_solve.s \
+       z_solve.s add.s error.s verify.s \
+       ${COMMON}/print_results.o ${COMMON}/timers.o ${COMMON}/wtime.o \
+       my_lib.o
 
 include ../sys/make.common
 
@@ -24,26 +25,27 @@ include ../sys/make.common
 # header.h: npbparams.h
 
 ${PROGRAM}: config ${OBJS}
-	${FLINK} ${FLINKFLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB}
+	${FLINK} ${FLINKFLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
 
-.f.o:
+%.o: %.f
 	${FCOMPILE} $<
 
+%.s: %.ll
+	llc -march=x86-64 $< -o $@
 
-bt.o:             bt.f  header.h npbparams.h
-initialize.o:     initialize.f  header.h npbparams.h
-exact_solution.o: exact_solution.f  header.h npbparams.h
-exact_rhs.o:      exact_rhs.f  header.h npbparams.h
-set_constants.o:  set_constants.f  header.h npbparams.h
-adi.o:            adi.f  header.h npbparams.h
-rhs.o:            rhs.f  header.h npbparams.h
-x_solve.o:        x_solve.f  header.h npbparams.h
-y_solve.o:        y_solve.f  header.h npbparams.h
-z_solve.o:        z_solve.f  header.h npbparams.h
-add.o:            add.f  header.h npbparams.h
-error.o:          error.f  header.h npbparams.h
-verify.o:         verify.f  header.h npbparams.h
+%.ll: %.f npbparams.h header.h
+	$(F77) -S -fplugin=$(TOP)/../libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $< -o $@
+	opt -S -loop-extract $@ -o $@
+	opt -S -load $(TOP)/../src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $@ -o $@
+
+bt.ll: bt.f npbparams.h header.h
+	$(F77) -S -fplugin=$(TOP)/../libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $< -o $@
+	opt -S -loop-extract $@ -o $@
+
+my_lib.o:
+	make -C $(TOP)/external_lib_example/
+	cp $(TOP)/external_lib_example/my_lib.o .
 
 clean:
-	- rm -f *.o *~ mputil*
+	- rm -f *.o *.s *.ll *~ mputil*
 	- rm -f  npbparams.h core
