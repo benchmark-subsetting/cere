@@ -4,10 +4,13 @@
 void dump();
 void* load();
 
+double b[5000];
+char c[11] = "hello world";
+
 void initialize(int * a, int n) {
     int i;
     for (i=0; i<n; i++) {
-        a[i] = i;
+        a[i] = -i*i;
     }
 }
 
@@ -27,6 +30,7 @@ int main(int argc, char* argv[]) {
     int n = 1024;
     int* a = (int*) malloc(n*sizeof(int));
 
+
     if (argc != 2) {
         printf("usage: %s 0/1/2 # 0 (normal) 1 (dump) 2 (replay)\n", argv[0]); 
         exit(1);
@@ -39,16 +43,15 @@ int main(int argc, char* argv[]) {
 
     if (mode == 1) {
         // Dump mode
-        void * addresses[] = {(void*) a, (void*) &n};
-        dump(2, addresses);
+        dump(2, a, n);
     } 
 
     if (mode == 2) {
         // Replay mode
-        void * addresses[2];
-        load(2, addresses);
-        a = addresses[0];
-        n = *((int*)addresses[1]);
+        void * args[2];
+        load(2, args);
+        a = args[0];
+        n = args[1];
     }
 
     int sum = codelet(a, n);
