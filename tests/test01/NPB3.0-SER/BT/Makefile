@@ -38,10 +38,6 @@ ${PROGRAM}: config ${OBJS}
 	opt -S -loop-extract $@ -o $@
 	opt -S -load $(TOP)/../src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $@ -o $@
 
-bt.ll: bt.f npbparams.h header.h
-	$(F77) -S -fplugin=$(TOP)/../libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $< -o $@
-	opt -S -loop-extract $@ -o $@
-
 my_lib.o:
 	make -C $(TOP)/external_lib_example/
 	cp $(TOP)/external_lib_example/my_lib.o .
