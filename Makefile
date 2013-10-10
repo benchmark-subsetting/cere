@@ -9,4 +9,6 @@ all:
 	sudo $(MAKE) -C src/llvm-3.3.src/ install
 	$(MAKE) -C libs/dragonegg-3.3.src/
 	cp libs/dragonegg-3.3.src/dragonegg.so libs/dragonegg.so
+	$(MAKE) -C src/LoopExtractorAll/
+	$(MAKE) -C src/LoopInstrumentation/
 
