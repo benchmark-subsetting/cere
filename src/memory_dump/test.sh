@@ -16,6 +16,7 @@ error() {
 
 for TFILE in tests/*.c; 
 do
+   cd $ROOT/
    TNAME=$(basename $TFILE)
    # Copy test file to root dir
    cp $TFILE $ROOT/test.c 
