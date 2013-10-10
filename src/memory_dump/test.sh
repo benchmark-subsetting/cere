@@ -1,12 +1,17 @@
 #!/bin/bash
 
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd $ROOT/
+
+TSTATUS=0
 
 info() {
     echo "$(tput setaf 2)[  OK  ]$(tput sgr0) $TNAME $1"
 }
+
 error() {
     echo "$(tput setaf 3)[ FAIL ]$(tput sgr0) $TNAME $1"
+    TSTATUS=1
 }
 
 for TFILE in tests/*.c; 
@@ -60,3 +65,5 @@ do
    info "passed"
    make clean > /dev/null 2>&1
 done
+
+exit $TSTATUS
