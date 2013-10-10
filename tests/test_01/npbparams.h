@@ -6,7 +6,7 @@ c  It sets the number of processors and the class of the NPB
 c  in this directory. Do not modify it by hand.
 c  
         integer problem_size, niter_default
-        parameter (problem_size=102, niter_default=200)
+        parameter (problem_size=10, niter_default=2)
         double precision dt_default
         parameter (dt_default = 0.0003d0)
         logical  convertdouble
