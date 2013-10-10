@@ -30,9 +30,9 @@
 #---------------------------------------------------------------------------
 # This is the fortran compiler used for MPI programs
 #---------------------------------------------------------------------------
-F77 = f77
+F77 = gfortran
 # This links MPI fortran programs; usually the same as ${MPIF77}
-FLINK	= f77
+FLINK	= clang
 
 #---------------------------------------------------------------------------
 # These macros are passed to the linker 
@@ -47,14 +47,14 @@ F_INC =
 #---------------------------------------------------------------------------
 # Global *compile time* flags for Fortran programs
 #---------------------------------------------------------------------------
-FFLAGS	= -O3
-# FFLAGS = -g
+FFLAGS	=
+# FFLAGS = -g -S -O3 -fplugin=../../../../libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir
 
 #---------------------------------------------------------------------------
 # Global *link time* flags. Flags for increasing maximum executable 
 # size usually go here. 
 #---------------------------------------------------------------------------
-FLINKFLAGS = -O3
+FLINKFLAGS =
 
 
 #---------------------------------------------------------------------------
@@ -77,14 +77,14 @@ FLINKFLAGS = -O3
 #---------------------------------------------------------------------------
 # This is the C compiler used for MPI programs
 #---------------------------------------------------------------------------
-CC = cc
+CC = clang
 # This links C programs; usually the same as ${CC}
-CLINK	= cc
+CLINK = clang
 
 #---------------------------------------------------------------------------
 # These macros are passed to the linker 
 #---------------------------------------------------------------------------
-C_LIB  =
+C_LIB =
 
 #---------------------------------------------------------------------------
 # These macros are passed to the compiler 
@@ -94,14 +94,14 @@ C_INC =
 #---------------------------------------------------------------------------
 # Global *compile time* flags for C programs
 #---------------------------------------------------------------------------
-CFLAGS	= -O3
-# CFLAGS = -g
+CFLAGS =
+# CFLAGS = -g -emit-llvm -S
 
 #---------------------------------------------------------------------------
 # Global *link time* flags. Flags for increasing maximum executable 
 # size usually go here. 
 #---------------------------------------------------------------------------
-CLINKFLAGS = -O3
+CLINKFLAGS =
 
 
 #---------------------------------------------------------------------------
@@ -111,13 +111,13 @@ CLINKFLAGS = -O3
 # this compiler go here also; typically there are few flags required; hence 
 # there are no separate macros provided for such flags.
 #---------------------------------------------------------------------------
-UCC	= cc
+UCC	= icc
 
 
 #---------------------------------------------------------------------------
 # Destination of executables, relative to subdirs of the main directory. . 
 #---------------------------------------------------------------------------
-BINDIR	= ../bin
+BINDIR	= .
 
 
 #---------------------------------------------------------------------------
