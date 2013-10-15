@@ -43,15 +43,15 @@ int main(int argc, char* argv[]) {
 
     if (mode == 1) {
         // Dump mode
-        dump(2, a, n);
+        dump("mainloop", 2, a, &n);
     } 
 
     if (mode == 2) {
         // Replay mode
         void * args[2];
-        load(2, args);
+        load("mainloop", 2, args);
         a = args[0];
-        n = args[1];
+        n = *((int*)args[1]);
     }
 
     int sum = codelet(a, n);

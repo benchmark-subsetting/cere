@@ -26,7 +26,7 @@ int codelet(int *a, int n) {
 int main(int argc, char* argv[]) {
 
     int mode = 0;
-    int n = sizeof(a);
+    int n = sizeof(a)/sizeof(int);
     int sum;
 
     if (argc != 2) {
@@ -40,14 +40,14 @@ int main(int argc, char* argv[]) {
 
     if (mode == 1) {
         // Dump mode
-        dump(2, a, n);
+        dump("mainloop", 2, a, &n);
     } 
 
     if (mode == 2) {
         // Replay mode
         void * args[2];
-        load(2, args);
-        sum = codelet((int*) args[0], (int) args[1]);
+        load("mainloop", 2, args);
+        sum = codelet((int*)args[0], *((int*)args[1]));
     } else {
         sum = codelet(a, n);
     }
