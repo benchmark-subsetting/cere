@@ -29,8 +29,8 @@ ${PROGRAM}: ${OBJS}
 %.ll: %.f npbparams.h header.h
 	$(F77) -S -fplugin=$(PROJECT_ROOT)/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $< -o $@
 	opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $@ -o $@
-	opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $@ -o $@
-	#~ opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-memory-dump.so -loop-memory-dump $@ -o $@
+	#~ opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $@ -o $@
+	opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-memory-dump.so -loop-memory-dump $@ -o $@
 
 my_lib.o:
 	make -C $(PROJECT_ROOT)/tests/external_lib_example/
