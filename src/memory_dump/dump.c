@@ -103,35 +103,25 @@ void dump_mem(pid_t child, int count, void* addresses[]) {
  */
 void dump(char* loop_name, int count, ...) {
 
-    char old_cwd[4096];
+    struct stat sb;
+    char path[256];
     char dump_path[] = "dump";
 
-    /* Backup cwd */
-    getcwd(old_cwd, sizeof(old_cwd));
-
     /* Check that dump exists or try to create it, then enter it */
-    if(chdir(dump_path) != 0) {
+    if(stat(dump_path, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
         if(mkdir(dump_path, 0777) != 0) {
             fprintf(stderr, "Could not create dump directory");
             exit(-1);
         } 
-        if(chdir(dump_path) != 0) {
-            fprintf(stderr, "Cannot chdir into dump directory");
-            exit(-1);
-        }
     }
 
+    snprintf(path, sizeof(path), "%s/%s", dump_path, loop_name);
     /* If dump already exists for this loop_name, skip dump */ 
-    fprintf(stderr, "<%s>\n",loop_name);
-    if(mkdir(loop_name, 0777) != 0) {
+    if(mkdir(path, 0777) != 0) {
         fprintf(stderr, "Skip dump\n");
         return;
     }
-    if(chdir(loop_name) != 0) {
-        fprintf(stderr, "cannot enter loop dump directory");
-        exit(-1);
-    }
-
+    
     void * addresses[count];
     va_list ap;
     int j;
@@ -150,12 +140,14 @@ void dump(char* loop_name, int count, ...) {
     else {
         /* Wait for the child to stop */
         wait(NULL);
+        if(chdir(path) != 0) {
+            fprintf(stderr, "cannot enter loop dump directory");
+            exit(-1);
+        }
         dump_mem(child, count, addresses);
         ptrace(PTRACE_CONT, child, NULL, NULL);
         exit(0);
     }
-
-    chdir(old_cwd);
 }
 
 /**********************************************************************
