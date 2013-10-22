@@ -11,5 +11,5 @@ all:
 	cp libs/dragonegg-3.3.src/dragonegg.so libs/dragonegg.so
 	$(MAKE) -C src/LoopExtractorAll/
 	$(MAKE) -C src/LoopInstrumentation/
-	$(MAKE) -C  src/LoopMemoryDump/
+	$(MAKE) -C  src/LoopManager/
 
