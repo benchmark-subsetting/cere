@@ -4,10 +4,7 @@ int checksum(int *a, int size)
 {
     int check=0, i;
     for (i = 0; i < size; i++)
-    {
-        fprintf(stderr, "Size = %d\n", size);
         check += a[i];
-    }
     return check;
 }
 
