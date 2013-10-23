@@ -30,7 +30,7 @@ else
         exit -1
     fi
 
-    DUMP_ARGS="-Wl,--section-start=.init_array=0x800000"
+    DUMP_ARGS="-Wl,--section-start=.init_array=0x8000000"
     # First compile the memory dump objects
     rm -f dump/objs.S
     for m in dump/$REPLAY_LOOP/*.memdump; do
