@@ -12,18 +12,19 @@ test_dump: dump.o test.c
 	../../src/lec/lec --dump test.c
 	../../src/lel/lel --dump test.o dump.o -o test_dump
 
-LOOP=__extracted__checksum_for.cond
+LOOP=__extracted__test_checksum_7_7
 
-test_replay: dump.o test.c
+test_replay: dump.o mymain.c test.c
+	../../src/lec/lec mymain.c
 	../../src/lec/lec --replay=$(LOOP) test.c
-	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o -lc
+	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o mymain.o -lc
 
 dump.o: dump.c
 	clang $(FLAGS) -c dump.c
 
 clean:
-	- rm -f test test_* test.o test.s test.ll
+	- rm -f *.o *.s *.ll
 
 veryclean: clean
 	- rm -rf dump
-	- rm -f dump.o
+	- rm -f *.o test test_*

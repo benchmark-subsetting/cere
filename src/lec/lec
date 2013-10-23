@@ -28,9 +28,9 @@ BASE=${SOURCE%.*}
 
 # Detect source language (fortran or C/C++ for the moment)
 if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]]; then
-    gcc $ARGS -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $SOURCE -o $BASE.ll 
+    gcc $ARGS -g -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $SOURCE -o $BASE.ll 
 else
-    clang $ARGS -S -emit-llvm $SOURCE -o $BASE.ll
+    clang $ARGS -g -S -emit-llvm $SOURCE -o $BASE.ll
 fi 
 
 if [ "$?" != "0" ]; then
@@ -46,7 +46,7 @@ elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
-	sed -i "/call.*run__extracted__init_for.cond/d" $BASE.ll
+	#~ sed -i "/call.*run__extracted__init_for.cond/d" $BASE.ll
 fi
 
 # In all cases
