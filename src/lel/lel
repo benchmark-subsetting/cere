@@ -13,6 +13,11 @@ if [[ $1 == --replay=* ]]; then
     shift
 fi 
 
+if [[ $1 == --dump ]]; then
+    # lel ignores dump mode (nothing special to do)
+    shift
+fi
+
 ARGS=$*
 
 if [[ -z "$REPLAY_LOOP" ]]; then
