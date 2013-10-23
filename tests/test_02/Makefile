@@ -5,33 +5,30 @@ PROJECT_ROOT=../../
 
 include make.def
 
+CC=../../src/lec/lec
+CLINK=../../src/lel/lel
 
 PROGRAM=IS
 
-OBJS = is.s \
+OBJS = is.o \
        c_print_results.o \
        c_timers.o \
        wtime.o \
-       my_lib.o
+	   dump.o \
+	   mymain.o
 
 
 ${PROGRAM}: ${OBJS}
-	${CLINK} ${CLINKFLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
+	${CLINK} ${MODE} ${CLINKFLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 .c.o:
-	${CC} -c $<
+	${CC} ${MODE} $<
+
+dump.o:
+	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
+	clang -c dump.c
 
 is.o: is.c npbparams.h
-
-is.s: npbparams.h
-	$(CC) -S -emit-llvm is.c -o is.ll
-	opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all is.ll -o is.ll
-	opt -S -load $(PROJECT_ROOT)/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation is.ll -o is.ll
-	llc -march=x86-64 is.ll -o is.s
-
-my_lib.o:
-	make -C $(PROJECT_ROOT)/tests/external_lib_example/
-	cp $(PROJECT_ROOT)/tests/external_lib_example/my_lib.o .
 
 clean:
 	- rm -f *.o *.s *.ll *~ mputil*
