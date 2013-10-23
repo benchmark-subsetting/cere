@@ -47,3 +47,4 @@ fi
 
 # In all cases
 llc -march=x86-64 $BASE.ll -o $BASE.s
+clang -c $BASE.s -o $BASE.o
