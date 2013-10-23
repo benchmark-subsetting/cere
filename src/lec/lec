@@ -1,0 +1,49 @@
+#!/bin/bash
+# Loop Extractor Compiler
+# (C) 2013 University of Versailles
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$ROOT/../../"
+
+# parse arguments
+if [[ $1 == --replay=* ]]; then
+    SPLIT=(${1//=/ })
+    REPLAY_LOOP=${SPLIT[1]}
+    echo "Compiling replay mode" > /dev/stderr
+    shift
+fi 
+
+if [[ $1 == --dump ]]; then
+    DUMP_MODE=1
+    echo "Compiling dump mode" > /dev/stderr
+    shift
+fi
+
+SOURCE=$1
+shift
+ARGS=$*
+BASE=${SOURCE%.*}
+
+
+
+# Detect source language (fortran or C/C++ for the moment)
+if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]]; then
+    gcc $ARGS -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $SOURCE -o $BASE.ll 
+else
+    clang $ARGS -S -emit-llvm $SOURCE -o $BASE.ll
+fi 
+
+if [[ ! -z "$DUMP_MODE" ]]; then
+    # In dump mode
+	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
+	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-dump $BASE.ll -o $BASE.ll
+
+elif [[ ! -z "$REPLAY_LOOP" ]]; then
+    # In replay mode 
+	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
+	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
+	sed -i "/call.*run__extracted__init_for.cond/d" $BASE.ll
+fi
+
+# In all cases
+llc -march=x86-64 $BASE.ll -o $BASE.s
