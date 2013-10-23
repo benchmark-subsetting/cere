@@ -33,6 +33,10 @@ else
     clang $ARGS -S -emit-llvm $SOURCE -o $BASE.ll
 fi 
 
+if [ "$?" != "0" ]; then
+    exit 1
+fi
+
 if [[ ! -z "$DUMP_MODE" ]]; then
     # In dump mode
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
