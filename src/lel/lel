@@ -1,0 +1,40 @@
+#!/bin/bash
+# Loop Extractor Linker
+# (C) 2013 University of Versailles
+
+LD=gcc
+
+# parse arguments
+
+if [[ $1 == --replay=* ]]; then
+    SPLIT=(${1//=/ })
+    REPLAY_LOOP=${SPLIT[1]}
+    echo "Linking with <$REPLAY_LOOP> memory dump" > /dev/stderr
+    shift
+fi 
+
+ARGS=$*
+
+if [[ -z "$REPLAY_LOOP" ]]; then
+    # In normal mode, just call the linked
+    $LD $ARGS
+else
+    # Check that dumps exists
+    if [ ! -d "dump/$REPLAY_LOOP" ]; then
+        echo "No dump for $REPLAY_LOOP" > /dev/stderr
+        exit -1
+    fi
+
+    DUMP_ARGS="-Wl,--section-start=.init_array=0x800000"
+    # First compile the memory dump objects
+    rm -f dump/objs.S
+    for m in dump/$REPLAY_LOOP/*.memdump; do
+        n=`basename $m .memdump`
+        echo ".section s$n, \"aw\"" >> dump/objs.S
+        echo ".incbin \"$m\"" >> dump/objs.S
+        DUMP_ARGS="$DUMP_ARGS -Wl,--section-start=s$n=0x$n"
+    done
+    gcc -c dump/objs.S 
+
+    $LD $DUMP_ARGS $ARGS objs.o
+fi
