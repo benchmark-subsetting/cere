@@ -17,8 +17,6 @@ test_dump: dump.o test.c
 
 
 LOOP=__extracted__checksum_for.cond
-DUMP_FILES=$(wildcard dump/$(LOOP)/*.memdump)
-SEGMENTS=$(DUMP_FILES:%.memdump=%)
 
 test_replay: dump.o test.c
 	clang $(FLAGS) -S -emit-llvm test.c -o test.ll
@@ -26,11 +24,7 @@ test_replay: dump.o test.c
 	opt -S -load ../../src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay test.ll -o test.ll
 	sed -i "/call.*run__extracted__init_for.cond/d" test.ll
 	llc -march=x86-64 test.ll -o test.s
-	echo ./generate_dump_objects.sh $(SEGMENTS)
-	$(eval LDARGS := $(shell ./generate_dump_objects.sh $(SEGMENTS)))
-	gcc -c dump/$(LOOP)/*.S
-	gcc $(FLAGS) -o test_replay $(LDARGS) -Wl,--section-start=.init_array=0x800000 *.o test.s -lc
-
+	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.s dump.o -lc
 dump.o: dump.c
 	clang $(FLAGS) -c dump.c
 
