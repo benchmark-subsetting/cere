@@ -46,7 +46,6 @@ elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
-	#~ sed -i "/call.*run__extracted__init_for.cond/d" $BASE.ll
 fi
 
 # In all cases
