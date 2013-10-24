@@ -1,6 +1,7 @@
 #!/bin/sh
 make veryclean > /dev/null 2>&1 && make test_dump  > /dev/null 2>&1
 ./test_dump 2> /tmp/test.dump.out
+
 make test_replay > /dev/null 2>&1
 ./test_replay 2> /tmp/test.replay.out
 

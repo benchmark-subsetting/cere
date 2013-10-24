@@ -14,10 +14,9 @@ test_dump: dump.o test.c
 
 LOOP=__extracted__test_checksum_7_7
 
-test_replay: dump.o mymain.c test.c
-	../../src/lec/lec mymain.c
+test_replay: dump.o  test.c
 	../../src/lec/lec --replay=$(LOOP) test.c
-	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o mymain.o -lc
+	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o -lc
 
 dump.o: dump.c
 	clang $(FLAGS) -c dump.c
