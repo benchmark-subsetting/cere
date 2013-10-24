@@ -88,14 +88,12 @@ def parse_elf(binary):
 
 dumps = parse_dumps(loop)
 
-
 os.system("objcopy --rename-section .bss=.bss,alloc,load {0} {0}".format(topatch))
 
 original_map = parse_sym(original, parse_elf(original))
 topatch_map = parse_sym(topatch, parse_elf(topatch))
-print "ELF MAP (original) : ", original_map 
-print "ELF MAP (topatch) : ", topatch_map
-
+#print "ELF MAP (original) : ", original_map 
+#print "ELF MAP (topatch) : ", topatch_map
 
 with open(topatch, 'r+b') as topatch_file: 
     for s in original_map:
@@ -111,13 +109,4 @@ with open(topatch, 'r+b') as topatch_file:
             topatch_file.seek(topatch_map[s]['offset'], 0)
 
             buf = dump_file.read(original_map[s]['size'])
-            if s == 'key_array':
-                print len(buf)
-                #x = map(ord, buf)
-                import struct
-                print original_map[s]['size']
-                b = struct.unpack('5I', buf[:20])
-                print b
             topatch_file.write(buf)
-
-
