@@ -14,7 +14,7 @@ OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
        x_solve.o y_solve.o \
        z_solve.o add.o error.o verify.o \
        print_results.o timers.o wtime.o \
-       dump.o mymain.o
+       dump.o 
 
 PROGRAM=BT
 
