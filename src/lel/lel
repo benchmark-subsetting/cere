@@ -2,6 +2,9 @@
 # Loop Extractor Linker
 # (C) 2013 University of Versailles
 
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$ROOT/../../"
+
 LD=gcc
 
 # parse arguments
@@ -14,6 +17,7 @@ if [[ $1 == --replay=* ]]; then
 fi 
 
 if [[ $1 == --dump ]]; then
+    DUMP_MODE=1
     # lel ignores dump mode (nothing special to do)
     shift
 fi
@@ -21,7 +25,7 @@ fi
 ARGS=$*
 
 if [[ -z "$REPLAY_LOOP" ]]; then
-    # In normal mode, just call the linked
+    # In normal mode, just call the linker
     $LD $ARGS
 else
     # Check that dumps exists
@@ -30,7 +34,14 @@ else
         exit -1
     fi
 
-    DUMP_ARGS="-Wl,--section-start=.init_array=0x8000000"
+    # Create user main
+    echo "#include <stdlib.h>" > realmain.c
+    echo "void real_main() { run$REPLAY_LOOP(); exit(0); }" >> realmain.c
+    gcc -c realmain.c
+
+
+    # 0x48141000 is chosen to allocate at least 1GB for the heap
+    DUMP_ARGS="-Wl,--section-start=.init_array=0x48141000"
     # First compile the memory dump objects
     rm -f dump/objs.S
     for m in dump/$REPLAY_LOOP/*.memdump; do
@@ -41,5 +52,5 @@ else
     done
     gcc -c dump/objs.S 
 
-    $LD $DUMP_ARGS $ARGS objs.o
+    $LD $DUMP_ARGS $ARGS objs.o realmain.o
 fi
