@@ -34,9 +34,11 @@ else
         exit -1
     fi
 
-    # Create user main
-    echo "#include <stdlib.h>" > realmain.c
-    echo "void real_main() { run$REPLAY_LOOP(); exit(0); }" >> realmain.c
+    # Create user main, if it does not exist
+    if [ ! -f realmain.c ]; then
+        echo "#include <stdlib.h>" > realmain.c
+        echo "void real_main() { run$REPLAY_LOOP(); exit(0); }" >> realmain.c
+    fi
     gcc -c realmain.c
 
 
