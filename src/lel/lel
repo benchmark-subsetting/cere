@@ -8,7 +8,6 @@ PROJECT_ROOT="$ROOT/../../"
 LD=gcc
 
 # parse arguments
-
 if [[ $1 == --replay=* ]]; then
     SPLIT=(${1//=/ })
     REPLAY_LOOP=${SPLIT[1]}
@@ -16,7 +15,7 @@ if [[ $1 == --replay=* ]]; then
     shift
 fi 
 
-if [[ $1 == --dump ]]; then
+if [[ $1 == --dump ]]; then #
     DUMP_MODE=1
     # lel ignores dump mode (nothing special to do)
     shift
@@ -25,8 +24,13 @@ fi
 ARGS=$*
 
 if [[ -z "$REPLAY_LOOP" ]]; then
+    while [ ! "$1" = "-o" ]
+    do
+        shift
+    done
     # In normal mode, just call the linker
     $LD $ARGS
+    cp "$2" lel_bin #Copy the original binary
 else
     # Check that dumps exists
     if [ ! -d "dump/$REPLAY_LOOP" ]; then
@@ -53,4 +57,9 @@ else
     gcc -c dump/objs.S 
 
     $LD $DUMP_ARGS $ARGS objs.o realmain.o
+    while [ ! "$1" = "-o" ]
+    do
+        shift
+    done
+    $ROOT/staticpatcher.py lel_bin "$2" $REPLAY_LOOP
 fi

@@ -26,4 +26,4 @@ clean:
 
 veryclean: clean
 	- rm -rf dump
-	- rm -f *.o test test_*
+	- rm -f *.o test test_* lel_bin realmain.c

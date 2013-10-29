@@ -14,7 +14,7 @@ OBJS = is.o \
        c_print_results.o \
        c_timers.o \
        wtime.o \
-	   dump.o 
+       dump.o 
 
 
 ${PROGRAM}: ${OBJS}
@@ -32,5 +32,7 @@ is.o: is.c npbparams.h
 clean:
 	- rm -f *.o *.s *.ll *~ mputil*
 	- rm -f IS core
+
 veryclean: clean
-	- rm -rf dump
+	- rm -rf dump/
+	- rm -f lel_bin realmain.c
