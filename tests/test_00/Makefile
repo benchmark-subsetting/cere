@@ -1,3 +1,5 @@
+PROJECT_ROOT=../../
+
 all: test
 dump: test_dump
 replay: test_replay
@@ -19,6 +21,7 @@ test_replay: dump.o  test.c
 	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o -lc
 
 dump.o: dump.c
+	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
 	clang $(FLAGS) -c dump.c
 
 clean:

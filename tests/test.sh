@@ -16,16 +16,7 @@ error() {
 
 for TDIR in test_*; 
 do
-   cd $ROOT/
-   cd $TDIR
-
-   make clean > /dev/null 2>&1 
-   make > /dev/null 2>&1 
-   GOTSTATUS="$?"
-   if [ "$GOTSTATUS" != "0" ] ; then
-       error "$TDIR failed (could not build test)"
-       continue
-   fi
+   cd $ROOT/$TDIR
 
    ./test.sh
    GOTSTATUS="$?"

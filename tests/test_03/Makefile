@@ -1,3 +1,5 @@
+PROJECT_ROOT=../../
+
 all: test
 dump: test_dump
 replay: test_replay
@@ -19,11 +21,12 @@ test_replay: dump.o  test.c
 	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o -lc
 
 dump.o: dump.c
+	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
 	clang $(FLAGS) -c dump.c
 
 clean:
 	- rm -f *.o *.s *.ll
 
 veryclean: clean
-	- rm -rf dump
-	- rm -f *.o test test_*
+	- rm -rf dump/
+	- rm -f test test_* lel_bin realmain.c
