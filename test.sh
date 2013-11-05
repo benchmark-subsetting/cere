@@ -12,7 +12,7 @@ if [ "$GOTSTATUS" != "0" ] ; then
     TSTATUS=1
 fi
 
-echo "Run loop instrumentation tests"
+echo "Run memory dumps and loads tests"
 # memory dump and load tests
 $ROOT/tests/test.sh
 GOTSTATUS="$?"

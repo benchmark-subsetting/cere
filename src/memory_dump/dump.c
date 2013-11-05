@@ -105,7 +105,15 @@ void dump(char* loop_name, int count, ...) {
 
     struct stat sb;
     char path[256];
+    char cwd[256];
     char dump_path[] = "dump";
+
+    /* Keep the current working directory */
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        fprintf(stderr, "Could not get current working direcory");
+        exit(-1);
+    }
 
     /* Check that dump exists or try to create it, then enter it */
     if(stat(dump_path, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
@@ -132,10 +140,12 @@ void dump(char* loop_name, int count, ...) {
 
     pid_t child;
     child = fork();
+    /*Execution should continue through the son */
     if(child == 0) {
         /* Trace and freeze the child process */
         ptrace(PTRACE_TRACEME, 0, NULL, NULL);
         raise(SIGTRAP);
+        exit(0);
     }
     else {
         /* Wait for the child to stop */
@@ -146,7 +156,11 @@ void dump(char* loop_name, int count, ...) {
         }
         dump_mem(child, count, addresses);
         ptrace(PTRACE_CONT, child, NULL, NULL);
-        exit(0);
+        /* Come back to original working directory */
+        if(chdir(cwd) != 0) {
+            fprintf(stderr, "cannot come back to original working directory");
+            exit(-1);
+        }
     }
 }
 

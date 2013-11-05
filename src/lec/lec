@@ -44,8 +44,10 @@ if [[ ! -z "$DUMP_MODE" ]]; then
 
 elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
-	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
+	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
+	#Instruments loops
+	#~ opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $BASE.ll -o $BASE.ll
 fi
 
 # In all cases

@@ -8,7 +8,6 @@ PROJECT_ROOT="$ROOT/../../"
 LD=gcc
 
 # parse arguments
-
 if [[ $1 == --replay=* ]]; then
     SPLIT=(${1//=/ })
     REPLAY_LOOP=${SPLIT[1]}
@@ -25,8 +24,13 @@ fi
 ARGS=$*
 
 if [[ -z "$REPLAY_LOOP" ]]; then
+    while [ ! "$1" = "-o" ]
+    do
+        shift
+    done
     # In normal mode, just call the linker
     $LD $ARGS
+    cp "$2" lel_bin #Copy the original binary
 else
     # Check that dumps exists
     if [ ! -d "dump/$REPLAY_LOOP" ]; then
@@ -36,8 +40,13 @@ else
 
     # Create user main, if it does not exist
     if [ ! -f realmain.c ]; then
-        echo "#include <stdlib.h>" > realmain.c
-        echo "void real_main() { run$REPLAY_LOOP(); exit(0); }" >> realmain.c
+    echo "#include <stdlib.h>" > realmain.c
+    echo "void real_main() {
+      //likwid_markerInit();
+      run$REPLAY_LOOP();
+      //likwid_markerClose();
+      exit(0);
+      }" >> realmain.c
     fi
     gcc -c realmain.c
 

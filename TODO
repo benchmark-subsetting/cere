@@ -1,0 +1,6 @@
+*Execution should continue through the son while dumping
+the memory.
+
+*Instrumentation must be doable on none isolated loops.
+
+*Sould be possible to instrument/dump/replay a particular loop
