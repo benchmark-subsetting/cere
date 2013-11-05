@@ -14,13 +14,13 @@ test_dump: dump.o test.c
 	../../src/lec/lec --dump test.c
 	../../src/lel/lel --dump test.o dump.o -o test_dump
 
-LOOP=__extracted__test_checksum_7_7
+LOOP=__extracted__test_checksum_7
 
 test_replay: dump.o  test.c
 	../../src/lec/lec --replay=$(LOOP) test.c
 	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o -lc
 
-dump.o: dump.c
+dump.o:
 	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
 	clang $(FLAGS) -c dump.c
 
@@ -28,5 +28,5 @@ clean:
 	- rm -f *.o *.s *.ll
 
 veryclean: clean
-	- rm -rf dump
-	- rm -f *.o test test_* lel_bin realmain.c
+	- rm -rf dump/
+	- rm -f *.o test test_* lel_bin realmain.c dump.c

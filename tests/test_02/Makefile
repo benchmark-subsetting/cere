@@ -35,4 +35,4 @@ clean:
 
 veryclean: clean
 	- rm -rf dump/
-	- rm -f lel_bin realmain.c
+	- rm -f lel_bin realmain.c dump.c
