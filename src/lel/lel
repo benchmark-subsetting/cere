@@ -64,4 +64,9 @@ else
     gcc -c dump/objs.S 
 
     $LD $DUMP_ARGS $ARGS objs.o realmain.o
+    while [ ! "$1" = "-o" ]
+    do
+        shift
+    done
+    $ROOT/staticpatcher.py lel_bin "$2" $REPLAY_LOOP
 fi
