@@ -40,7 +40,12 @@ else
 
     # Create user main
     echo "#include <stdlib.h>" > realmain.c
-    echo "void real_main() { run$REPLAY_LOOP(); exit(0); }" >> realmain.c
+    echo "void real_main() {
+      //likwid_markerInit();
+      run$REPLAY_LOOP();
+      //likwid_markerClose();
+      exit(0);
+      }" >> realmain.c
     gcc -c realmain.c
 
 
