@@ -140,6 +140,7 @@ void dump(char* loop_name, int count, ...) {
 
     pid_t child;
     child = fork();
+    /*Execution should continue through the son */
     if(child == 0) {
         /* Trace and freeze the child process */
         ptrace(PTRACE_TRACEME, 0, NULL, NULL);
