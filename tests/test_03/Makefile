@@ -1,32 +1,43 @@
+SHELL=/bin/sh
+BENCHMARK=bt
+BENCHMARKU=BT
 PROJECT_ROOT=../../
+include make.def
+CC=../../src/lec/lec
+F77=../../src/lec/lec
+FLINK=../../src/lel/lel
 
-all: test
-dump: test_dump
-replay: test_replay
+ifdef INSTRU
+    F_LIB+=~/nfs/experiment_setup/rdtsc/rdtsc.a
+endif
 
-FLAGS=-g -fPIC
+OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
+       set_constants.o adi.o  rhs.o \
+       x_solve.o y_solve.o \
+       z_solve.o add.o error.o verify.o \
+       print_results.o timers.o wtime.o \
+       dump.o 
 
-test: dump.o test.c
-	../../src/lec/lec test.c
-	../../src/lel/lel test.o dump.o -o test
+PROGRAM=BT
 
-test_dump: dump.o test.c
-	../../src/lec/lec --dump test.c $(FLAGS)
-	../../src/lel/lel --dump$(FLAGS) test.o dump.o -o test_dump 
+${PROGRAM}: ${OBJS}
+	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
 
-LOOP=__extracted__test_checksum_9_9
+%.o: %.c
+	${CC} ${MODE} ${INSTRU} $<
 
-test_replay: dump.o  test.c
-	../../src/lec/lec --replay=$(LOOP) test.c $(FLAGS)
-	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o dump.o -lc
+%.o: %.f
+	${F77} ${MODE} ${INSTRU} $<
 
-dump.o: dump.c
+dump.o:
 	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
-	clang $(FLAGS) -c dump.c
+	clang -c dump.c
 
 clean:
-	- rm -f *.o *.s *.ll
+	- rm -f *.o *.s *.ll *~ mputil*
+	- rm -f core BT
+	- rm -f dump.c
 
 veryclean: clean
 	- rm -rf dump/
-	- rm -f test test_* lel_bin realmain.c
+	- rm -f lel_bin realmain.c dump.c

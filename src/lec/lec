@@ -19,11 +19,16 @@ if [[ $1 == --dump ]]; then
     shift
 fi
 
+if [[ $1 == --instrument ]]; then
+    INSTRUMENT=1
+    echo "Instrumentation mode" > /dev/stderr
+    shift
+fi
+
 SOURCE=$1
 shift
 ARGS=$*
 BASE=${SOURCE%.*}
-
 
 
 # Detect source language (fortran or C/C++ for the moment)
@@ -46,8 +51,10 @@ elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
 	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
-	#Instruments loops
-	#~ opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $BASE.ll -o $BASE.ll
+fi
+
+if [[ ! -z "$INSTRUMENT" ]]; then
+    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $BASE.ll -o $BASE.ll
 fi
 
 # In all cases
