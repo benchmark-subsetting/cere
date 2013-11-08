@@ -8,7 +8,7 @@ F77=../../src/lec/lec
 FLINK=../../src/lel/lel
 
 ifdef INSTRU
-    F_LIB+=~/nfs/experiment_setup/rdtsc/rdtsc.a
+    F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a
 endif
 
 OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
