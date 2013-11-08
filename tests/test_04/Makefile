@@ -1,22 +1,20 @@
 PROJECT_ROOT=../../
+FLAGS+=-g
 CC=../../src/lec/lec
-FLINK=../../src/lel/lel
+CLINK=../../src/lel/lel
 
 ifdef INSTRU
-    F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a
+    C_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a
 endif
 
 OBJS = blocksort.o  bzip2.o  bzlib.o  compress.o  crctable.o  decompress.o  huffman.o  randtable.o  spec.o dump.o 
 PROGRAM=bzip2
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
+	${CLINK} ${MODE}  ${INSTRU} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 %.o: %.c
-	${CC} ${MODE} ${INSTRU} $<
-
-%.o: %.f
-	${F77} ${MODE} ${INSTRU} $<
+	${CC} ${MODE} ${INSTRU} ${FLAGS} $<
 
 dump.o:
 	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
