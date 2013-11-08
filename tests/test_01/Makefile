@@ -7,7 +7,7 @@ CC=../../src/lec/lec
 F77=../../src/lec/lec
 FLINK=../../src/lel/lel
 
-
+FLAGS=-g
 
 OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
        set_constants.o adi.o  rhs.o \
@@ -19,13 +19,13 @@ OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
 PROGRAM=BT
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${FLINKFLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
+	${FLINK} ${MODE} ${FLINKFLAGS} ${FLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
 
 %.o: %.c
-	${CC} ${MODE} $<
+	${CC} ${MODE} ${FLAGS} $<
 
 %.o: %.f
-	${F77} ${MODE} $<
+	${F77} ${MODE} ${FLAGS} $<
 
 dump.o:
 	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .

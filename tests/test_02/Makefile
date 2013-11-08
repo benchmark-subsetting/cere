@@ -8,6 +8,8 @@ include make.def
 CC=../../src/lec/lec
 CLINK=../../src/lel/lel
 
+FLAGS=-g
+
 PROGRAM=IS
 
 OBJS = is.o \
@@ -18,10 +20,10 @@ OBJS = is.o \
 
 
 ${PROGRAM}: ${OBJS}
-	${CLINK} ${MODE} ${CLINKFLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
+	${CLINK} ${MODE} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 .c.o:
-	${CC} ${MODE} $<
+	${CC} ${MODE} ${FLAGS} $<
 
 dump.o:
 	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .

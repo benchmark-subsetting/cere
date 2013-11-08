@@ -91,7 +91,6 @@ void rdtsc_markerStopRegion(char *regionName) {
 		fprintf(stderr, "Unable to find the markerStart for region >%s<\n", regionName);
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "[%s] Iteration = %llu\n", regionName, (stop-r->start));
 	r->counter += stop - r->start;
 }
 
