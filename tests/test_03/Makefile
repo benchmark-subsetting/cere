@@ -6,6 +6,7 @@ include make.def
 CC=../../src/lec/lec
 F77=../../src/lec/lec
 FLINK=../../src/lel/lel
+FLAGS=-g
 
 ifdef INSTRU
     F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a
@@ -21,13 +22,13 @@ OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
 PROGRAM=BT
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
+	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
 
 %.o: %.c
-	${CC} ${MODE} ${INSTRU} $<
+	${CC} ${MODE} ${INSTRU} ${FLAGS} $<
 
 %.o: %.f
-	${F77} ${MODE} ${INSTRU} $<
+	${F77} ${MODE} ${INSTRU} ${FLAGS} $<
 
 dump.o:
 	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .

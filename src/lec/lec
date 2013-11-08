@@ -25,17 +25,22 @@ if [[ $1 == --instrument ]]; then
     shift
 fi
 
-SOURCE=$1
-shift
+if [[ ! -z "$DUMP_MODE" && ! -z "$INSTRUMENT" ]]; then
+    INSTRUMENT=0
+    echo "--instrument ignored, can't instrument in dump mode"
+fi
+
+SOURCE=${!#}
+#~ shift
 ARGS=$*
 BASE=${SOURCE%.*}
 
 
 # Detect source language (fortran or C/C++ for the moment)
 if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]]; then
-    gcc $ARGS -g -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir $SOURCE -o $BASE.ll 
+    gcc $ARGS -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
 else
-    clang $ARGS -g -S -emit-llvm $SOURCE -o $BASE.ll
+    clang $ARGS -S -emit-llvm -o $BASE.ll
 fi 
 
 if [ "$?" != "0" ]; then
