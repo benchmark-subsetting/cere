@@ -34,13 +34,13 @@ SOURCE=${!#}
 #~ shift
 ARGS=$*
 BASE=${SOURCE%.*}
-
+OPTS=${@:1:$(($#-1))}
 
 # Detect source language (fortran or C/C++ for the moment)
 if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]]; then
-    gcc $ARGS -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
+    gcc -g -c $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
 else
-    clang $ARGS -S -emit-llvm -o $BASE.ll
+    clang -g -c $SOURCE -S -emit-llvm -o $BASE.ll
 fi 
 
 if [ "$?" != "0" ]; then
@@ -62,6 +62,8 @@ if [[ ! -z "$INSTRUMENT" ]]; then
     opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $BASE.ll -o $BASE.ll
 fi
 
+
 # In all cases
-llc -march=x86-64 $BASE.ll -o $BASE.s
-clang -c $BASE.s -o $BASE.o
+clang -c $OPTS $BASE.ll -o $BASE.o
+#llc -march=x86-64 $BASE.ll -o $BASE.s
+#clang -c $BASE.s -o $BASE.o
