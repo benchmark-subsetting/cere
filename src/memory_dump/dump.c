@@ -126,7 +126,7 @@ void dump(char* loop_name, int count, ...) {
     snprintf(path, sizeof(path), "%s/%s", dump_path, loop_name);
     /* If dump already exists for this loop_name, skip dump */ 
     if(mkdir(path, 0777) != 0) {
-        fprintf(stderr, "Skip dump\n");
+        //~ fprintf(stderr, "Skip dump\n");
         return;
     }
     
