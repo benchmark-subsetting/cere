@@ -65,7 +65,7 @@ void rdtsc_markerStartRegion(char *regionName) {
 			fprintf(stderr, "Unable to allocate new region %s\n", regionName);
 			exit(EXIT_FAILURE);
 		}
-		if ((r->name = malloc(strlen(regionName)*sizeof(char))) == NULL)
+		if ((r->name = malloc((strlen(regionName)+1)*sizeof(char))) == NULL)
 		{
 			fprintf(stderr, "Unable to allocate new region %s\n", regionName);
 			exit(EXIT_FAILURE);
@@ -87,11 +87,8 @@ void rdtsc_markerStopRegion(char *regionName) {
 	unsigned long long int stop = rdtsc();
 	region *r=NULL;
 	if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
-	{
 		fprintf(stderr, "Unable to find the markerStart for region >%s<\n", regionName);
-		exit(EXIT_FAILURE);
-	}
-	r->counter += stop - r->start;
+	else r->counter += stop - r->start;
 }
 
 //For fortran code
