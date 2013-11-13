@@ -1,6 +1,7 @@
-*Execution should continue through the son while dumping
-the memory.
+* Execution should continue through the son while dumping the memory.
 
-*Instrumentation must be doable on none isolated loops.
+* Instrumentation must be doable on none isolated loops.
 
-*Sould be possible to instrument/dump/replay a particular loop
+* Sould be possible to instrument/dump/replay a particular loop
+
+* Revisit strange patch in src/llvm-3.3.src/lib/IR/Verifier.cpp
