@@ -44,10 +44,13 @@ void rdtsc_markerStartRegion(char *reg) {
 			std::cerr << "Unable to allocate new region >" << regionName << "<" << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		//strcpy(r->name, regionName);
 		r->counter = 0;
 		r->call_count = 0;
 		htable[regionName] = r;
+	}
+	if(loopsName.empty()) loopsName.push(regionName); //stack empty, we are not in nested loops
+	else {
+		loopsName.push(loopsName.top()+"#"+regionName);
 	}
 	htable[regionName]->call_count += 1;
 	htable[regionName]->start = rdtsc();
@@ -62,7 +65,14 @@ void rdtsc_markerStopRegion(char *reg) {
 	unsigned long long int stop = rdtsc();
 	if ((htable.find(regionName)) == htable.end())
 		std::cerr << "Unable to find the markerStart for region >" << regionName << "<" << std::endl;
-	else htable[regionName]->counter += stop - htable[regionName]->start;
+	else {
+		if(loopsName.top() != *(htable[regionName]->name)) {
+			delete htable[regionName]->name;
+			htable[regionName]->name = new std::string(loopsName.top());
+		}
+		loopsName.pop();
+		htable[regionName]->counter += stop - htable[regionName]->start;
+	}
 }
 
 //For fortran code
