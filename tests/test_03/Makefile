@@ -9,7 +9,7 @@ FLINK=../../src/lel/lel
 FLAGS=-g
 
 ifdef INSTRU
-    F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a
+    F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a -lstdc++
 endif
 
 OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \

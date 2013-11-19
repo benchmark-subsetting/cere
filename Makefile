@@ -14,3 +14,12 @@ all:
 	$(MAKE) -C src/LoopManager/
 	$(MAKE) -C src/rdtsc/
 
+clean:
+	$(MAKE) -C src/LoopExtractorAll/ clean
+	$(MAKE) -C src/LoopInstrumentation/ clean
+	$(MAKE) -C src/LoopManager/ clean
+	$(MAKE) -C src/rdtsc/ distclean
+	$(MAKE) -C tests/test_00/ veryclean
+	$(MAKE) -C tests/test_01/ veryclean
+	$(MAKE) -C tests/test_02/ veryclean
+	$(MAKE) -C tests/test_03/ veryclean
