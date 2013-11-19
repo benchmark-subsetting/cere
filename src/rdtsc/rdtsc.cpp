@@ -44,7 +44,7 @@ void rdtsc_markerStartRegion(char *reg) {
 			std::cerr << "Unable to allocate new region >" << regionName << "<" << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		//~ strcpy(r->name, regionName);
+		//strcpy(r->name, regionName);
 		r->counter = 0;
 		r->call_count = 0;
 		htable[regionName] = r;

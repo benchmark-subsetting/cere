@@ -49,18 +49,18 @@ fi
 
 if [[ ! -z "$DUMP_MODE" ]]; then
     # In dump mode
-	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
-	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-dump $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-dump $BASE.ll -o $BASE.ll
 
 elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
-	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
-	opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-replay $BASE.ll -o $BASE.ll
 fi
 
 if [[ ! -z "$INSTRUMENT" ]]; then
     if [[ ! -z "$REPLAY_LOOP" ]]; then
-	INSTRU_OPTS="-instrument-loop=${REPLAY_LOOP}"
+        INSTRU_OPTS="-instrument-loop=${REPLAY_LOOP}"
     fi
     opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $INSTRU_OPTS $BASE.ll -o $BASE.ll
 fi
