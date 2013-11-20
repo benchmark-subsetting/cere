@@ -15,6 +15,7 @@ all:
 	$(MAKE) -C src/rdtsc/
 
 clean:
+	$(MAKE) -C src/llvm-3.3.src clean
 	$(MAKE) -C src/LoopExtractorAll/ clean
 	$(MAKE) -C src/LoopInstrumentation/ clean
 	$(MAKE) -C src/LoopManager/ clean

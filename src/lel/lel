@@ -57,11 +57,11 @@ else
       if [[ !( $? == 0 ) ]]; then #if not present
         echo "#include <stdlib.h>" > realmain.c
         echo "void real_main() {
-        //int i;
+        int i;
         likwid_markerInit();
-        //for(i=0; i<2; i++) {
+        for(i=0; i<10; i++) {
           run$REPLAY_LOOP();
-        //}
+        }
         likwid_markerClose();
         exit(0);
         }" >> realmain.c
