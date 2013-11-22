@@ -62,6 +62,7 @@ if [[ ! -z "$INSTRUMENT" ]]; then
     if [[ ! -z "$REPLAY_LOOP" ]]; then
         INSTRU_OPTS="-instrument-loop=${REPLAY_LOOP}"
     fi
+    opt -S -loop-simplify $BASE.ll -o $BASE.ll
     opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -loop-instrumentation $INSTRU_OPTS $BASE.ll -o $BASE.ll
 fi
 
