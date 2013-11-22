@@ -36,7 +36,9 @@ if [[ -z "$REPLAY_LOOP" ]]; then
     done
     # In normal mode, just call the linker
     $LD $ARGS
-    cp "$2" lel_bin #Copy the original binary
+    if [[ ! -z "$DUMP_MODE" ]]; then #Copy the original binary
+        cp "$2" lel_bin
+    fi
 else
     # Check that dumps exists
     if [ ! -d "dump/$REPLAY_LOOP" ]; then
