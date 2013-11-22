@@ -1,7 +1,9 @@
 * Execution should continue through the son while dumping the memory.
 
-* Instrumentation must be doable on none isolated loops.
+* Instrumentation must be doable on none isolated loops. [DONE]
 
-* Sould be possible to instrument/dump/replay a particular loop
+* Sould be possible to instrument/dump/replay a particular loop [DONE]
 
 * Revisit strange patch in src/llvm-3.3.src/lib/IR/Verifier.cpp
+
+* Patcher crashes for FT while replaying a loop in CLASS=B. (See test_05)
