@@ -61,8 +61,8 @@ void rdtsc_markerStartRegion(char *reg) {
  * else increment counter by t1-t0
 */
 void rdtsc_markerStopRegion(char *reg) {
-	std::string regionName(reg);
 	unsigned long long int stop = rdtsc();
+	std::string regionName(reg);
 	if ((htable.find(regionName)) == htable.end())
 		std::cerr << "Unable to find the markerStart for region >" << regionName << "<" << std::endl;
 	else {
