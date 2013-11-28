@@ -36,7 +36,9 @@ if [[ -z "$REPLAY_LOOP" ]]; then
     done
     # In normal mode, just call the linker
     $LD $ARGS
-    cp "$2" lel_bin #Copy the original binary
+    if [[ ! -z "$DUMP_MODE" ]]; then #Copy the original binary
+        cp "$2" lel_bin
+    fi
 else
     # Check that dumps exists
     if [ ! -d "dump/$REPLAY_LOOP" ]; then
@@ -57,8 +59,11 @@ else
       if [[ !( $? == 0 ) ]]; then #if not present
         echo "#include <stdlib.h>" > realmain.c
         echo "void real_main() {
+        int i;
         likwid_markerInit();
-        run$REPLAY_LOOP();
+        for(i=0; i<10; i++) {
+          run$REPLAY_LOOP();
+        }
         likwid_markerClose();
         exit(0);
         }" >> realmain.c
