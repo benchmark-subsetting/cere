@@ -2,13 +2,14 @@
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
+BIN=$1
+shift
 COMPILE_CMD=$*
-BIN=./BT #Can we find it?
 
 #1) Measure application cycles
 CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="--instrument-loop=bench"
 ${CMD}
-${BIN}
+./${BIN}
 if [[ ! -f rdtsc_result.csv ]]; then
         echo "Measuring application failed, no result files"
         exit
@@ -20,7 +21,7 @@ rm rdtsc_result.csv
 make clean
 CMD=${COMPILE_CMD}" "INSTRU=--instrument
 ${CMD}
-${BIN}
+./${BIN}
 if [[ ! -f rdtsc_result.csv ]]; then
     echo "Measuring in-vivo loops failed, no result files"
     exit
@@ -36,7 +37,7 @@ do
     make clean
     CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="-loops-file=${level}"
     ${CMD}
-    ${BIN}
+    ./${BIN}
     if [[ ! -f rdtsc_result.csv ]]; then
         echo "Measuring in-vivo loops failed for ${level}, no result files"
         exit
