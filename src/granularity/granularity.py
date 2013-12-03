@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-import csv
 import argparse
-from pulp import LpInteger, LpMinimize, LpProblem, LpVariable
+import csv
+import sys
+from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable
 
 class Codelet:
     def __init__(self, name, callcount, totalcycles):
@@ -55,6 +56,9 @@ def solve(codelets, appli_cycles, min_cycles=10**6, min_coverage=0.8):
             prob += codelet_vars[dad] + codelet_vars[son] <= 1
 
     prob.solve()
+    if (LpStatus[prob.status] != 'Optimal'):
+	print >>sys.stderr, "No optimal solution found (please relax min_cycles or min_coverage constraints)"	
+	sys.exit(1)
     for v in prob.variables():
         if v.varValue == 1.0:
             for c in codelets:
