@@ -93,7 +93,7 @@ else
     done
     gcc -c dump/objs.S 
 
-    $LD $DUMP_ARGS $ARGS objs.o realmain.o
+    $LD $DUMP_ARGS objs.o realmain.o $ARGS 
     while [ ! "$1" = "-o" ]
     do
         shift
