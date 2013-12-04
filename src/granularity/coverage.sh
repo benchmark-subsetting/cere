@@ -4,7 +4,7 @@ PROJECT_ROOT="$ROOT/../../"
 
 # Check number of arguments
 if [ $# -lt 3 ] ; then
-    echo "usage: $0 BENCH_DIR BINARY_NAME BINARY_ARGUMENTS"
+    echo "usage: $0 BENCH_DIR BINARY_CMD COMPILE_CMD"
     exit 1
 fi
 
