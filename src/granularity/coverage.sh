@@ -2,6 +2,12 @@
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
+# Check number of arguments
+if [ $# -ne 2 ] ; then
+    echo "usage: $0 BENCH_DIR BINARY_NAME"
+    exit 1
+fi
+
 BENCH_DIR=$1
 shift
 BIN=$1
@@ -9,7 +15,13 @@ shift
 COMPILE_CMD=$*
 
 #1) Measure application cycles
-cd $BENCH_DIR
+cd $BENCH_DIR 2> /dev/null
+if [ "$?" != "0" ] ; then
+    echo "Could not change directory to $BENCH_DIR" > /dev/stderr
+    exit 1
+fi
+
+exit 1
 make clean
 CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="--instrument-loop=bench"
 ${CMD}
