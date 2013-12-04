@@ -106,6 +106,7 @@ then
     echo -e $error
 else
     #7) Now find codelets to keep
+    CYCLES=`cat $BENCH_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
     ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > $BENCH_DIR/loop_to_keep
 
     #8) Plot coverage and matching
