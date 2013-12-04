@@ -3,14 +3,16 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
 # Check number of arguments
-if [ $# -ne 2 ] ; then
-    echo "usage: $0 BENCH_DIR BINARY_NAME"
+if [ $# -le 3 ] ; then
+    echo "usage: $0 BENCH_DIR BINARY_NAME BINARY_ARGUMENTS"
     exit 1
 fi
 
-BENCH_DIR=$1
+BENCH_DIR=$(readlink -f $1) # convert BENCH_DIR to absolute path
 shift
 BIN=$1
+shift
+BIN_ARGS=$1
 shift
 COMPILE_CMD=$*
 
@@ -21,31 +23,28 @@ if [ "$?" != "0" ] ; then
     exit 1
 fi
 
-exit 1
 make clean
 CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="--instrument-loop=bench"
 ${CMD}
-./${BIN}
+./${BIN} ${BIN_ARGS} > out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="Measuring application failed!\n"
 else
     mv rdtsc_result.csv app_cycles.csv
     CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 fi
-cd ..
 
 #2) We need to instrument all in-vivo loops
 cd $BENCH_DIR
 make clean
 CMD=${COMPILE_CMD}" "INSTRU=--instrument
 ${CMD}
-./${BIN}
+./${BIN} ${BIN_ARGS} > out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="$error Measuring in-vivo loops failed!\n"
 else
     mv rdtsc_result.csv all_loops.csv
 fi
-cd ..
 
 if [[ -f $BENCH_DIR/all_loops.csv ]]
 then
@@ -59,7 +58,7 @@ then
         make clean
         CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="-loops-file=${level}"
         ${CMD}
-        ./${BIN}
+        ./${BIN} ${BIN_ARGS} > out
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="Measuring in-vivo loops failed for ${level}!\n"
         else
@@ -67,15 +66,13 @@ then
             mv rdtsc_result.csv ${level}.csv
         fi
     done
-    cd ..
 fi
 
 #5) dump loops
 cd $BENCH_DIR
 make clean
 make MODE=--dump CLASS=B
-./${BIN}
-cd ..
+./${BIN} ${BIN_ARGS} > out
 
 #6) Measure in-vitro loops
 cd $BENCH_DIR
@@ -93,7 +90,7 @@ do
     rm -f ${bench,,}.B
     rm -f realmain.c
     make MODE=--replay=$loops INSTRU=--instrument CLASS=B
-    ./${BIN}
+    ./${BIN} ${BIN_ARGS} > out
     if [[ -f rdtsc_result.csv ]]; then
         mv rdtsc_result.csv results/${loops}.csv
         cat results/${loops}.csv | tail -n 1 >> results/invitro_results.csv
@@ -108,7 +105,6 @@ then
 fi
 make clean
 rm -f ${bench,,}.B
-cd ..
 
 if [[ ! -z $warning ]]
 then
