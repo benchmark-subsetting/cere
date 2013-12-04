@@ -4,7 +4,7 @@ CC=../../src/lec/lec
 CLINK=../../src/lel/lel
 
 ifdef INSTRU
-    C_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a
+    C_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a -lstdc++
 endif
 
 OBJS = blocksort.o  bzip2.o  bzlib.o  compress.o  crctable.o  decompress.o  huffman.o  randtable.o  spec.o dump.o 

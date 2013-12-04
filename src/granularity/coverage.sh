@@ -10,9 +10,7 @@ fi
 
 BENCH_DIR=$(readlink -f $1) # convert BENCH_DIR to absolute path
 shift
-BIN=$1
-shift
-BIN_ARGS=$1
+BIN_CMD=$1
 shift
 COMPILE_CMD=$*
 
@@ -24,9 +22,8 @@ if [ "$?" != "0" ] ; then
 fi
 
 make clean
-CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="--instrument-loop=bench"
-${CMD}
-./${BIN} ${BIN_ARGS} > out
+${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--instrument-loop=bench"
+./${BIN_CMD} > out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="Measuring application failed!\n"
 else
@@ -35,20 +32,17 @@ else
 fi
 
 #2) We need to instrument all in-vivo loops
-cd $BENCH_DIR
 make clean
-CMD=${COMPILE_CMD}" "INSTRU=--instrument
-${CMD}
-./${BIN} ${BIN_ARGS} > out
+${COMPILE_CMD} INSTRU=--instrument
+./${BIN_CMD} > out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="$error Measuring in-vivo loops failed!\n"
 else
     mv rdtsc_result.csv all_loops.csv
 fi
 
-if [[ -f $BENCH_DIR/all_loops.csv ]]
+if [[ -f all_loops.csv ]]
 then
-    cd $BENCH_DIR
     #3) Create level files
     ${ROOT}/find_loop_levels.py all_loops.csv
 
@@ -56,9 +50,8 @@ then
     for level in `ls level_*`
     do
         make clean
-        CMD=${COMPILE_CMD}" "INSTRU=--instrument" "INSTRU_OPTS="-loops-file=${level}"
-        ${CMD}
-        ./${BIN} ${BIN_ARGS} > out
+        ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="-loops-file=${level}"
+        ./${BIN_CMD} > out
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="Measuring in-vivo loops failed for ${level}!\n"
         else
@@ -69,15 +62,13 @@ then
 fi
 
 #5) dump loops
-cd $BENCH_DIR
 make clean
-make MODE=--dump CLASS=B
-./${BIN} ${BIN_ARGS} > out
+${COMPILE_CMD} MODE=--dump
+./${BIN_CMD} > out
 
 #6) Measure in-vitro loops
-cd $BENCH_DIR
-rm -f ${BIN} lel_bin realmain.c
-make MODE=--dump CLASS=B #To create lel_bin
+rm -f lel_bin realmain.c
+${COMPILE_CMD} MODE=--dump #To create lel_bin
 
 if [[ !( -d results ) ]]
 then
@@ -87,10 +78,9 @@ echo "Codelet Name, Call Count, CPU_CLK_UNHALTED_CORE" > results/invitro_results
 for loops in `ls dump`
 do
     make clean
-    rm -f ${bench,,}.B
     rm -f realmain.c
-    make MODE=--replay=$loops INSTRU=--instrument CLASS=B
-    ./${BIN} ${BIN_ARGS} > out
+    ${COMPILE_CMD} MODE=--replay=$loops INSTRU=--instrument
+    ./${BIN_CMD} > out
     if [[ -f rdtsc_result.csv ]]; then
         mv rdtsc_result.csv results/${loops}.csv
         cat results/${loops}.csv | tail -n 1 >> results/invitro_results.csv
@@ -104,7 +94,6 @@ then
     error="$error No invitro measure!\n"
 fi
 make clean
-rm -f ${bench,,}.B
 
 if [[ ! -z $warning ]]
 then
@@ -117,7 +106,6 @@ then
     echo -e $error
 else
     #7) Now find codelets to keep
-    CYCLES=`cat $BENCH_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
     ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > $BENCH_DIR/loop_to_keep
 
     #8) Plot coverage and matching
