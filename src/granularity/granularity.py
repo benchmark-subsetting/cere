@@ -24,7 +24,23 @@ def parse(csvfile):
         yield Codelet(row[0], int(row[1]), int(row[2]))
     csvfile.close()
 
-def solve(codelets, appli_cycles, min_cycles=10**6, min_coverage=0.8):
+class Unsolvable(Exception):
+    pass
+
+def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05, max_coverage=0.95):
+    coverage = max_coverage
+    while(coverage > 0):
+        try:
+            s = list(solve_under_coverage(codelets, appli_cycles, min_cycles, coverage))
+            print("Solved with coverage >= %s" % coverage)
+            return s
+        except Unsolvable:
+            coverage = coverage - step
+
+    print >>sys.stderr, "Solution impossible"
+    sys.exit(1)
+
+def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6, min_coverage=0.80):
     prob = LpProblem("granularity selection", LpMinimize)
     codelet_vars = LpVariable.dicts("codelet", 
                                     codelets, 
@@ -57,8 +73,7 @@ def solve(codelets, appli_cycles, min_cycles=10**6, min_coverage=0.8):
 
     prob.solve()
     if (LpStatus[prob.status] != 'Optimal'):
-	print >>sys.stderr, "No optimal solution found (please relax min_cycles or min_coverage constraints)"	
-	sys.exit(1)
+	raise Unsolvable()
     for v in prob.variables():
         if v.varValue == 1.0:
             for c in codelets:
@@ -71,15 +86,13 @@ if __name__ == "__main__":
     parser.add_argument('profile_file', type=file) 
     parser.add_argument('application_cycles', type=int)
     parser.add_argument('--min_cycles', type=int, default=10**6)
-    parser.add_argument('--min_coverage', type=float, default=0.8)
 
     args = parser.parse_args()
 
     codelets = list(parse(args.profile_file))
-    chosen = list(solve(codelets, 
+    chosen = solve(codelets, 
         appli_cycles=args.application_cycles,
-        min_cycles=args.min_cycles,
-        min_coverage=args.min_coverage))
+        min_cycles=args.min_cycles)
 
     for c in chosen:
         print c.name
