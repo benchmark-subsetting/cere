@@ -38,9 +38,9 @@ OPTS=${@:1:$(($#-1))}
 
 # Detect source language (fortran or C/C++ for the moment)
 if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]]; then
-    gcc -g -c $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
+    gcc -O0 -g -c $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
 else
-    clang -g -c $SOURCE -S -emit-llvm -o $BASE.ll
+    clang -O0 -g -c $SOURCE -S -emit-llvm -o $BASE.ll
 fi 
 
 if [ "$?" != "0" ]; then
