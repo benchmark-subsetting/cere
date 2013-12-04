@@ -67,8 +67,8 @@ ${COMPILE_CMD} MODE=--dump
 ./${BIN_CMD} > out
 
 #6) Measure in-vitro loops
-rm -f lel_bin realmain.c
-${COMPILE_CMD} MODE=--dump #To create lel_bin
+#rm -f lel_bin realmain.c
+#${COMPILE_CMD} MODE=--dump #To create lel_bin
 
 if [[ !( -d results ) ]]
 then
