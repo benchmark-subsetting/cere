@@ -14,9 +14,10 @@ void likwid_markerClose()
 	std::ofstream result("rdtsc_result.csv", std::ios::out);
 	if(result) {
 		result << "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE" << std::endl;
+		//We substract one to call count as we removed the first execution measure
 		for (it = htable.begin(); it != htable.end(); ++it)
 		{
-			result << *(it->second->name) << "," << it->second->call_count << "," << it->second->counter << std::endl;
+			result << *(it->second->name) << "," << it->second->call_count-1 << "," << it->second->counter << std::endl;
 		}
 		result.close();
 	}
@@ -71,6 +72,8 @@ void rdtsc_markerStopRegion(char *reg) {
 		}
 		loopsName.pop();
 		htable[regionName]->counter += stop - htable[regionName]->start;
+		//REmove the first measure of a region
+		if(htable[regionName]->call_count == 1) htable[regionName]->counter = 0;
 	}
 }
 
