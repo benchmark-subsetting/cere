@@ -6,7 +6,7 @@ include make.def
 CC=../../src/lec/lec
 F77=../../src/lec/lec
 FLINK=../../src/lel/lel
-FLAGS=-g
+FLAGS=-g -mcmodel=large
 
 ifdef INSTRU
     F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a -lstdc++

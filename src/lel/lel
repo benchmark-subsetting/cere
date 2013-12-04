@@ -81,8 +81,12 @@ else
     gcc -c realmain.c
 
 
-    # 0x48141000 is chosen to allocate at least 1GB for the heap
-    DUMP_ARGS="-Wl,--section-start=.init_array=0x48141000"
+    # 0x60000000 is chosen to allocate at least 1.5GB for the heap
+    # If a dump file is larger than 1.5GB we cannot support it
+    #
+    # Sometimes (NAS BT for instance) this requires compiling the code with
+    # -mcmodel=large to allow relocation longer than 2GB
+    DUMP_ARGS="-Wl,--section-start=.init_array=0x60000000"
     # First compile the memory dump objects
     rm -f dump/objs.S
     for m in dump/$REPLAY_LOOP/*.memdump; do
