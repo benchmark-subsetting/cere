@@ -3,7 +3,7 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
 # Check number of arguments
-if [ $# -le 3 ] ; then
+if [ $# -lg 3 ] ; then
     echo "usage: $0 BENCH_DIR BINARY_NAME BINARY_ARGUMENTS"
     exit 1
 fi
