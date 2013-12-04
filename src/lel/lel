@@ -61,7 +61,7 @@ else
         echo "void real_main() {
         int i;
         likwid_markerInit();
-        for(i=0; i<10; i++) {
+        for(i=0; i<11; i++) {
           run$REPLAY_LOOP();
         }
         likwid_markerClose();
