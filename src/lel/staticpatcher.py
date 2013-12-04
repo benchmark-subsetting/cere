@@ -32,7 +32,6 @@ def find_section_offset(addr, elfmap):
         start = elfmap[s]["addr"] 
         end = elfmap[s]["size"] + start
         if addr >= start and addr < end:
-            print start,end,addr
             return elfmap[s]["offset"]+(addr-elfmap[s]["addr"])
 
 def parse_sym(binary, elfmap):
@@ -92,13 +91,10 @@ os.system("objcopy --rename-section .bss=.bss,alloc,load {0} {0}".format(topatch
 
 original_map = parse_sym(original, parse_elf(original))
 topatch_map = parse_sym(topatch, parse_elf(topatch))
-#print "ELF MAP (original) : ", original_map 
-#print "ELF MAP (topatch) : ", topatch_map
 
 with open(topatch, 'r+b') as topatch_file: 
     for s in original_map:
         if s not in topatch_map: continue
-        #print(s)
         assert(topatch_map[s]['size'] == original_map[s]['size']) 
 
         dump = find_dump(original_map[s]['addr'], dumps)
