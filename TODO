@@ -5,5 +5,3 @@
 * Sould be possible to instrument/dump/replay a particular loop [DONE]
 
 * Revisit strange patch in src/llvm-3.3.src/lib/IR/Verifier.cpp
-
-* Patcher crashes for FT while replaying a loop in CLASS=B. (See test_05)
