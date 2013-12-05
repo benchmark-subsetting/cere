@@ -111,11 +111,12 @@ then
     echo "Error, can't compute coverage and/or matching because:"
     echo -e $error
 else
-    #7) Now find codelets to keep
-    CYCLES=`cat $BENCH_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-    ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > $BENCH_DIR/loop_to_keep
-
-    #8) Plot coverage and matching
+    #7) Find matching codelets
     ${ROOT}/compute_coverage_matching.R $BENCH_DIR
+
+    #8) Now find codelets to keep
+    #~ ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > $BENCH_DIR/loop_to_keep
+
+    
 fi
 

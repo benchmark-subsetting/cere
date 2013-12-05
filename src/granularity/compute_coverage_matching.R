@@ -28,6 +28,10 @@ remove_prefix <- function(toChange, prefix) {
     return(toChange)
 }
 
+dump_to_file <- function(matchingCodelet) {
+    write.table(matchingCodelet$CodeletName, "matching_codelets", sep="", quote = F, row.names = F, col.names = F)
+}
+
 aggregateData <- function(allLoops, invitroRes) {
     aggregatedResults = merge(allLoops, invitroRes, by="Codelet.Name", suffixes=c("_invivo",
                                                                                   "_invitro"))
@@ -69,33 +73,18 @@ if (length(args)!=1) {
     q()
 }
 
-benchName = args[1]
-
-loopsToKeep = read.table(paste(benchName, "/loop_to_keep", sep=""),
-               comment.char = "",
-               col.names=c("CodeletName"),
-               strip.white=TRUE)
+benchDir = args[1]
 
 #Open in-vivo measure
-allLoops = load_csv(paste(benchName, "/all_loops.csv", sep=""))
-allLoops = allLoops[allLoops$Codelet.Name %in% loopsToKeep$CodeletName, ] #keep only loop to keep
+allLoops = load_csv(paste(benchDir, "/all_loops.csv", sep=""))
 allLoops = remove_prefix(allLoops, "__invivo__") #remove the prefix
-allLoops <- allLoops[sort(allLoops$Codelet.Name),]
 
 #Open invitro measures
-invitroRes = load_csv(paste(benchName, "/results/invitro_results.csv", sep=""))
+invitroRes = load_csv(paste(benchDir, "/results/invitro_results.csv", sep=""))
 invitroRes = remove_prefix(invitroRes, "__extracted__") #remove prefix
-invitroRes = invitroRes[invitroRes$Codelet.Name %in% allLoops$Codelet.Name, ] ##keep only loop to keep
 aggregatedResults = aggregateData(allLoops, invitroRes) #merge invivo and invitro
 
-appCycles = load_csv(paste(benchName, "/app_cycles.csv", sep=""))
-results = data.frame(BenchName = benchName)
+results = data.frame(BenchName = benchDir)
 matchingCodelet = compute_matching(aggregatedResults)
-results$matching = nrow(matchingCodelet)/nrow(aggregatedResults)
-results$PerrAppMatching = sum(allLoops[allLoops$Codelet.Name %in% matchingCodelet$CodeletName, ]$CPU_CLK_UNHALTED_CORE)/as.numeric(appCycles$CPU_CLK_UNHALTED_CORE)
-results$coverage = sum(allLoops$CPU_CLK_UNHALTED_CORE)/as.numeric(appCycles$CPU_CLK_UNHALTED_CORE)
+dump_to_file(matchingCodelet)
 
-print(paste("Bench: ", results$BenchName, sep=""))
-print(paste("Coverage = ", results$coverage*100, "%", sep=""))
-print(paste("Nb codelets Matching = ", results$matching*100, "%", sep=""))
-print(paste("Perr app Matching = ", results$PerrAppMatching*100, "%", sep=""))
