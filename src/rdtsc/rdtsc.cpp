@@ -17,7 +17,8 @@ void likwid_markerClose()
 		//We substract one to call count as we removed the first execution measure
 		for (it = htable.begin(); it != htable.end(); ++it)
 		{
-			result << *(it->second->name) << "," << it->second->call_count-1 << "," << it->second->counter << std::endl;
+			if(it->second->call_count > 1) it->second->call_count -= 1;
+			result << *(it->second->name) << "," << it->second->call_count << "," << it->second->counter << std::endl;
 		}
 		result.close();
 	}
