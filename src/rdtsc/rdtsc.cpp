@@ -17,7 +17,8 @@ void likwid_markerClose()
 		//We substract one to call count as we removed the first execution measure
 		for (it = htable.begin(); it != htable.end(); ++it)
 		{
-			result << *(it->second->name) << "," << it->second->call_count-1 << "," << it->second->counter << std::endl;
+			if(it->second->call_count > 1) it->second->call_count -= 1;
+			result << *(it->second->name) << "," << it->second->call_count << "," << it->second->counter << std::endl;
 		}
 		result.close();
 	}
@@ -52,6 +53,8 @@ void rdtsc_markerStartRegion(char *reg) {
 	else {
 		loopsName.push(loopsName.top()+"#"+regionName);
 	}
+	//Remove the first measure of a region
+	if(htable[regionName]->call_count == 1) htable[regionName]->counter = 0;
 	htable[regionName]->call_count += 1;
 	htable[regionName]->start = rdtsc();
 }
@@ -72,8 +75,6 @@ void rdtsc_markerStopRegion(char *reg) {
 		}
 		loopsName.pop();
 		htable[regionName]->counter += stop - htable[regionName]->start;
-		//REmove the first measure of a region
-		if(htable[regionName]->call_count == 1) htable[regionName]->counter = 0;
 	}
 }
 
