@@ -52,6 +52,8 @@ void rdtsc_markerStartRegion(char *reg) {
 	else {
 		loopsName.push(loopsName.top()+"#"+regionName);
 	}
+	//Remove the first measure of a region
+	if(htable[regionName]->call_count == 1) htable[regionName]->counter = 0;
 	htable[regionName]->call_count += 1;
 	htable[regionName]->start = rdtsc();
 }
@@ -72,8 +74,6 @@ void rdtsc_markerStopRegion(char *reg) {
 		}
 		loopsName.pop();
 		htable[regionName]->counter += stop - htable[regionName]->start;
-		//REmove the first measure of a region
-		if(htable[regionName]->call_count == 1) htable[regionName]->counter = 0;
 	}
 }
 
