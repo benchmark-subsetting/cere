@@ -12,4 +12,3 @@ if [ -f rdtsc_result.csv ]; then
 else
     exit 1
 fi
-#exit $?
