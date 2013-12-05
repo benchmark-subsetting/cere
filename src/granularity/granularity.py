@@ -10,6 +10,7 @@ class Codelet:
         self.callcount = callcount
         # we store cycles per iteration
         self.cycles = float(totalcycles)/callcount
+        self.matching = True
 
     def __repr__(self):
         return self.name
@@ -27,11 +28,22 @@ def parse(csvfile):
 class Unsolvable(Exception):
     pass
 
-def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05, max_coverage=0.95):
+def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05,
+        max_coverage=0.95, matching_file=None):
+
+    if matching_file:
+        matching_loops = [line[:-1] for line in matching_file.readlines()]
+
+        # By default, codelets are considered matching
+        for c in codelets:
+            if not matches(matching_loops, c):
+                c.matching = False
+
     coverage = max_coverage
     while(coverage > 0):
         try:
-            s = list(solve_under_coverage(codelets, appli_cycles, min_cycles, coverage))
+            s = list(solve_under_coverage(codelets, appli_cycles, min_cycles,
+                                          coverage))
             print >>sys.stderr, "Solved with coverage >= %s" % coverage
             return s
         except Unsolvable:
@@ -40,7 +52,14 @@ def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05, max_coverage=0.95
     print >>sys.stderr, "Solution impossible"
     sys.exit(1)
 
-def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6, min_coverage=0.80):
+def matches(matching, c):
+    for m in matching:
+        if c.name.endswith(m): return True
+    return False
+
+def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6,
+        min_coverage=0.80):
+
     prob = LpProblem("granularity selection", LpMinimize)
     codelet_vars = LpVariable.dicts("codelet", 
                                     codelets, 
@@ -60,6 +79,11 @@ def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6, min_coverage=
     # and with good coverage
     prob += (sum([codelet_vars[c]*c.cycles*c.callcount for c in codelets]) 
                 >= min_coverage * appli_cycles)
+
+    # selected codelets should match
+    for c in codelets:
+        if not c.matching:
+            prob += codelet_vars[c] == 0
 
     # Finally we should never include both the children and the parents
     for dad in codelets: 
@@ -86,14 +110,15 @@ if __name__ == "__main__":
     parser.add_argument('profile_file', type=file) 
     parser.add_argument('application_cycles', type=int)
     parser.add_argument('--min_cycles', type=int, default=10**6)
+    parser.add_argument('--matching', type=file, default=None)
 
     args = parser.parse_args()
 
     codelets = list(parse(args.profile_file))
     chosen = solve(codelets, 
         appli_cycles=args.application_cycles,
-        min_cycles=args.min_cycles)
+        min_cycles=args.min_cycles,
+        matching_file=args.matching)
 
     for c in chosen:
         print c.name
-
