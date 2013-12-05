@@ -46,17 +46,9 @@ else
         exit -1
     fi
 
-    # Create user main, if it does not exist
-    if [ ! -f realmain.c ]; then
-      echo "#include <stdlib.h>" > realmain.c
-      echo "void real_main() {
-      run$REPLAY_LOOP();
-      exit(0);
-      }" >> realmain.c
-    fi
+    # Create user main
+    rm -f realmain.c
     if [[ ! -z "$INSTRUMENT" ]]; then #We want to instrument
-      grep likwid_* realmain.c #Check for markers 
-      if [[ !( $? == 0 ) ]]; then #if not present
         echo "#include <stdlib.h>" > realmain.c
         echo "void real_main() {
         int i;
@@ -67,16 +59,12 @@ else
         likwid_markerClose();
         exit(0);
         }" >> realmain.c
-      fi
     else #We don't want to instrument
-      grep likwid_* realmain.c #Check for markers 
-      if [[ ( $? == 0 ) ]]; then #but markers present
         echo "#include <stdlib.h>" > realmain.c
         echo "void real_main() {
         run$REPLAY_LOOP();
         exit(0);
         }" >> realmain.c
-      fi
     fi
     gcc -c realmain.c
 
