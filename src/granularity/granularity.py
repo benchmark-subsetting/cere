@@ -32,7 +32,7 @@ def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05, max_coverage=0.95
     while(coverage > 0):
         try:
             s = list(solve_under_coverage(codelets, appli_cycles, min_cycles, coverage))
-            #~ print("Solved with coverage >= %s" % coverage)
+            print >>sys.stderr, "Solved with coverage >= %s" % coverage
             return s
         except Unsolvable:
             coverage = coverage - step
