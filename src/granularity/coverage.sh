@@ -14,13 +14,13 @@ BIN_CMD=$1
 shift
 COMPILE_CMD=$*
 
-#1) Measure application cycles
 cd $BENCH_DIR 2> /dev/null
 if [ "$?" != "0" ] ; then
     echo "Could not change directory to $BENCH_DIR" > /dev/stderr
     exit 1
 fi
 
+#1) Measure application cycles
 make clean
 ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--instrument-loop=bench"
 ./${BIN_CMD} > out
@@ -83,17 +83,23 @@ do
     ./${BIN_CMD} > out
     if [[ -f rdtsc_result.csv ]]; then
         mv rdtsc_result.csv results/${loops}.csv
-        cat results/${loops}.csv | tail -n 1 >> results/invitro_results.csv
+        rdtsclines=`wc -l results/${loops}.csv | cut -d' ' -f1`
+        if [[ "$rdtsclines" > 1 ]]
+        then
+            cat results/${loops}.csv | tail -n 1 >> results/invitro_results.csv
+        else
+            warning="$warning Measuring in-vitro cycles for $loops failed\n"
+        fi
     else
-        warning="$warning Measuring in-vitro cycles for $loops failed$\n"
+        warning="$warning Measuring in-vitro cycles for $loops failed\n"
     fi
 done
+make clean
 lines=`wc -l results/invitro_results.csv | cut -d' ' -f1`
 if [[ ! "$lines" > 1 ]]
 then
     error="$error No invitro measure!\n"
 fi
-make clean
 
 if [[ ! -z $warning ]]
 then
