@@ -19,4 +19,4 @@ clean:
 
 veryclean: clean
 	- rm -rf dump/ results/
-	- rm -f lel_bin realmain.c dump.c
+	- rm -f lel_bin realmain.c dump.c level_* loop_to_keep matching_codelets out *.csv dryer.jpg.bz2
