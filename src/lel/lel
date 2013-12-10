@@ -28,6 +28,15 @@ if [[ $1 == --instrument ]]; then
 fi
 
 ARGS=$*
+#If we want to instrument, link with rdtsc lib
+if [[ ! -z "$INSTRUMENT" ]]; then
+    ARGS="$ARGS $PROJECT_ROOT/src/rdtsc/rdtsc.a -lstdc++"
+fi
+if [[ ! -z "$DUMP_MODE" ]] || [[ ! -z "$REPLAY_LOOP" ]]; then
+    cp $PROJECT_ROOT/src/memory_dump/dump.c .
+    clang -c dump.c
+    ARGS="$ARGS dump.o"
+fi
 
 if [[ -z "$REPLAY_LOOP" ]]; then
     while [ ! "$1" = "-o" ]
@@ -84,7 +93,6 @@ else
         DUMP_ARGS="$DUMP_ARGS -Wl,--section-start=s$n=0x$n"
     done
     gcc -c dump/objs.S 
-
     $LD $DUMP_ARGS objs.o realmain.o $ARGS 
     while [ ! "$1" = "-o" ]
     do
