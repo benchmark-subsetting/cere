@@ -15,8 +15,7 @@ PROGRAM=IS
 OBJS = is.o \
        c_print_results.o \
        c_timers.o \
-       wtime.o \
-       dump.o 
+       wtime.o
 
 
 ${PROGRAM}: ${OBJS}
@@ -24,10 +23,6 @@ ${PROGRAM}: ${OBJS}
 
 .c.o:
 	${CC} ${MODE} ${FLAGS} $<
-
-dump.o:
-	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
-	clang -c dump.c
 
 is.o: is.c npbparams.h
 

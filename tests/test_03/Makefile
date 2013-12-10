@@ -8,16 +8,11 @@ F77=../../src/lec/lec
 FLINK=../../src/lel/lel
 FLAGS=-g
 
-ifdef INSTRU
-    F_LIB+=$(PROJECT_ROOT)/src/rdtsc/rdtsc.a -lstdc++
-endif
-
 OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
        set_constants.o adi.o  rhs.o \
        x_solve.o y_solve.o \
        z_solve.o add.o error.o verify.o \
-       print_results.o timers.o wtime.o \
-       dump.o 
+       print_results.o timers.o wtime.o
 
 PROGRAM=BT
 
@@ -29,10 +24,6 @@ ${PROGRAM}: ${OBJS}
 
 %.o: %.f
 	${F77} ${MODE} ${INSTRU} ${FLAGS} $<
-
-dump.o:
-	cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
-	clang -c dump.c
 
 clean:
 	- rm -f *.o *.s *.ll *~ mputil*
