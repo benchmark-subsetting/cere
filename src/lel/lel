@@ -54,15 +54,31 @@ else
         echo "No dump for $REPLAY_LOOP" > /dev/stderr
         exit -1
     fi
-
+    #we need to know the number of cycles
+    #this loop takes in vivo
+    CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} results/all_loops.csv | cut -d ',' -f 3`
+    echo "CYCLES = $CYCLES"
+    if [[ -z "$CYCLES" ]]; then
+        CYCLES=60 #1min is probably enough
+    fi
+    #How can we convert those cycles in seconds?
     # Create user main
     rm -f realmain.c
     if [[ ! -z "$INSTRUMENT" ]]; then #We want to instrument
         echo "#include <stdlib.h>" > realmain.c
+        echo "#include <stdio.h>" >> realmain.c
+        echo "#include <signal.h>" >> realmain.c
+        echo "void sigcatch(int signal) {
+        fprintf(stderr, \"Timeout...\n\");
+        exit(EXIT_FAILURE);
+        }" >> realmain.c
         echo "void real_main() {
-        int i;
+        int i, max_cycles;
+        signal(SIGALRM, sigcatch);
         likwid_markerInit();
         for(i=0; i<11; i++) {
+          max_cycles = (10*$CYCLES)/1e9;
+          alarm(max_cycles);
           run$REPLAY_LOOP();
         }
         likwid_markerClose();
