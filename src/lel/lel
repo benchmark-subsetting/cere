@@ -73,11 +73,10 @@ else
         exit(EXIT_FAILURE);
         }" >> realmain.c
         echo "void real_main() {
-        int i, max_cycles;
+        int i, max_cycles=(10*$CYCLES)/1e9;
         signal(SIGALRM, sigcatch);
         likwid_markerInit();
         for(i=0; i<11; i++) {
-          max_cycles = (10*$CYCLES)/1e9;
           alarm(max_cycles);
           run$REPLAY_LOOP();
         }
