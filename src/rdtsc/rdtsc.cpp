@@ -32,8 +32,19 @@ void likwid_markerClose()
  * else record start counter
 */
 void rdtsc_markerStartRegion(char *reg) {
-	std::string regionName(reg);
+	std::string baseName(reg);
 	region *r=NULL;
+
+	std::string regionName;
+
+	if(loopsName.empty()) {
+	    regionName = baseName;
+	} else {
+            regionName = loopsName.top()+"#"+baseName;
+        }
+
+	loopsName.push(regionName);
+
 	if ((htable.find(regionName)) == htable.end())
 	{
 		if ((r = new region) == NULL)
@@ -50,10 +61,6 @@ void rdtsc_markerStartRegion(char *reg) {
 		r->call_count = 0;
 		htable[regionName] = r;
 	}
-	if(loopsName.empty()) loopsName.push(regionName); //stack empty, we are not in nested loops
-	else {
-		loopsName.push(loopsName.top()+"#"+regionName);
-	}
 	//In in-vitro mode, remove the first measure of a region
 	if(htable[regionName]->call_count == 1 && (htable[regionName]->name->find("extracted") != std::string::npos))
 		htable[regionName]->counter = 0;
@@ -67,14 +74,13 @@ void rdtsc_markerStartRegion(char *reg) {
 */
 void rdtsc_markerStopRegion(char *reg) {
 	unsigned long long int stop = rdtsc();
-	std::string regionName(reg);
+	std::string baseName(reg);
+	std::string regionName = loopsName.top();
+	/* XXX we should check that baseName is a suffix of regionName */
+
 	if ((htable.find(regionName)) == htable.end())
 		std::cerr << "Unable to find the markerStart for region >" << regionName << "<" << std::endl;
 	else {
-		if(loopsName.top() != *(htable[regionName]->name)) {
-			delete htable[regionName]->name;
-			htable[regionName]->name = new std::string(loopsName.top());
-		}
 		loopsName.pop();
 		htable[regionName]->counter += stop - htable[regionName]->start;
 	}
