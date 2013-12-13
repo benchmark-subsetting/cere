@@ -20,17 +20,25 @@ if __name__ == "__main__":
     if not os.path.isfile(sys.argv[1]):
         print("Cannot open file {0}\n".format(sys.argv[1]))
         sys.exit(1)
-    levels = {}
     rdtscCSV = open(sys.argv[1], "rb")
     rdtscReader = csv.reader(rdtscCSV, delimiter=',')
     rdtscReader.next() #skip header
-    for row in rdtscReader:
-        level = row[0].count("#")
-        for x in range(level+1):
-            if x not in levels:
-                levels[x] = []
-            codeletName = row[0].split("#")[x]
-            if codeletName not in levels[x]:
-                levels[x].append(codeletName)
-    dump_to_files(levels)
+    	
+    max_level = {}
+    levels = {}
 
+    for row in rdtscReader:
+	regionName = row[0]
+	baseName = regionName.split("#")[-1]
+        level = regionName.count("#")
+
+	if baseName in max_level:
+	    max_level[baseName] = max(max_level[baseName], level)
+	else:
+	    max_level[baseName] = level
+
+    for name, level in max_level.iteritems():
+	if level not in levels: levels[level] = []
+        levels[level].append(name)
+
+    dump_to_files(levels)

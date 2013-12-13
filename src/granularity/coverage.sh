@@ -50,7 +50,7 @@ then
     for level in `ls level_*`
     do
         make clean
-        ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="-loops-file=${level}"
+        ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--loops-file=${level}"
         ./${BIN_CMD} > out
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="Measuring in-vivo loops failed for ${level}!\n"
@@ -67,14 +67,12 @@ ${COMPILE_CMD} MODE=--dump
 ./${BIN_CMD} > out
 
 #6) Measure in-vitro loops
-#rm -f lel_bin realmain.c
-#${COMPILE_CMD} MODE=--dump #To create lel_bin
 
 if [[ !( -d results ) ]]
 then
     mkdir results/
 fi
-echo "Codelet Name, Call Count, CPU_CLK_UNHALTED_CORE" > results/invitro_results.csv
+echo "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE" > results/invitro_results.csv
 for loops in `ls dump`
 do
     make clean

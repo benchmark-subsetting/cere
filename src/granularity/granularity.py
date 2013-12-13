@@ -6,23 +6,39 @@ from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable
 
 class Codelet:
     def __init__(self, name, callcount, totalcycles):
-        self.name = name
+        self.fullName = name
+	self.name = name.split("#")[-1]
+	self.depth = self.name.count("#")
         self.callcount = callcount
         # we store cycles per iteration
         self.cycles = float(totalcycles)/callcount
         self.matching = True
+        self.parents = set()
+	self.add_parents(self.fullName)
 
     def __repr__(self):
         return self.name
 
+    def add_parents(self, fullName):
+	for parent in fullName.split("#")[:-1]:
+	    self.parents.add(parent)
+
     def is_children_of(self, other):
-        return self.name != other.name and self.name.startswith(other.name)
+        return other.name in self.parents
 
 def parse(csvfile):
     csvreader = csv.reader(csvfile, delimiter=',')
     csvreader.next() # skip header
+    codelets = {}
     for row in csvreader:
-        yield Codelet(row[0], int(row[1]), int(row[2]))
+        c = Codelet(row[0], int(row[1]), int(row[2]))
+        if c.name not in codelets:
+	    codelets[c.name] = c
+	else:
+	    codelets[c.name].add_parents(c.fullName)
+    
+    for i in codelets.itervalues():
+	yield i
     csvfile.close()
 
 class Unsolvable(Exception):
@@ -104,7 +120,7 @@ def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6,
                 if "codelet_"+c.name == v.name: 
                     yield c
 
-
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Find optimal codelet granularity")
     parser.add_argument('profile_file', type=file) 
@@ -114,7 +130,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    codelets = list(parse(args.profile_file))
+    codelets = list(parse(args.profile_file)) 
+    for c in codelets:
+       print "{}\t\t\t\t{}".format(c.name, round(c.cycles*c.callcount/args.application_cycles*100))
     chosen = solve(codelets, 
         appli_cycles=args.application_cycles,
         min_cycles=args.min_cycles,
