@@ -33,16 +33,10 @@ void likwid_markerClose()
 */
 void rdtsc_markerStartRegion(char *reg) {
 	std::string baseName(reg);
-	region *r=NULL;
-
 	std::string regionName;
-
-	if(loopsName.empty()) {
-	    regionName = baseName;
-	} else {
-            regionName = loopsName.top()+"#"+baseName;
-        }
-
+	region *r=NULL;
+	if(loopsName.empty()) regionName = baseName;
+	else regionName = loopsName.top()+"#"+baseName;
 	loopsName.push(regionName);
 
 	if ((htable.find(regionName)) == htable.end())
