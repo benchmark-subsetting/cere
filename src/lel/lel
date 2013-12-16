@@ -56,10 +56,9 @@ else
     fi
     #we need to know the number of cycles
     #this loop takes in vivo
-    CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} results/all_loops.csv | cut -d ',' -f 3`
-    echo "CYCLES = $CYCLES"
+    CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
     if [[ -z "$CYCLES" ]]; then
-        CYCLES=60 #1min is probably enough
+        CYCLES=6000000000 #1min is probably enough
     fi
     #How can we convert those cycles in seconds?
     # Create user main
