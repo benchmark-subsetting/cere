@@ -56,7 +56,7 @@ else
     fi
     #we need to know the number of cycles
     #this loop takes in vivo
-    CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
+    #~ CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
     if [[ -z "$CYCLES" ]]; then
         CYCLES=6000000000 #1min is probably enough
     fi
@@ -77,7 +77,7 @@ else
         likwid_markerInit();
         for(i=0; i<11; i++) {
           alarm(max_cycles);
-          run$REPLAY_LOOP();
+          run${REPLAY_LOOP/-/_}();
         }
         likwid_markerClose();
         exit(0);
@@ -85,7 +85,7 @@ else
     else #We don't want to instrument
         echo "#include <stdlib.h>" > realmain.c
         echo "void real_main() {
-        run$REPLAY_LOOP();
+        run${REPLAY_LOOP/-/_}();
         exit(0);
         }" >> realmain.c
     fi
