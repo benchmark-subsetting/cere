@@ -65,9 +65,13 @@ fi
 make clean
 ${COMPILE_CMD} MODE=--dump
 ./${BIN_CMD} > out
+#Create a file with all dumped loops name
+for files in `ls dump`
+do
+    echo "${files}" >> dump/extracted_loops
+done
 
 #6) Measure in-vitro loops
-
 if [[ !( -d results ) ]]
 then
     mkdir results/
@@ -110,7 +114,7 @@ then
     echo -e $error
 else
     #7) Find matching codelets
-    ${ROOT}/compute_coverage_matching.R $BENCH_DIR
+    ${ROOT}/compute_matching.R $BENCH_DIR
 
     #8) Now find codelets to keep
     ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/matching_codelets ${CYCLES}
