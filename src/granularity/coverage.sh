@@ -68,7 +68,7 @@ ${COMPILE_CMD} MODE=--dump
 #Create a file with all dumped loops name
 for files in `ls dump`
 do
-    echo "${files}" >> dump/extracted_loops
+    echo "${files/__extracted__/}" >> dump/extracted_loops
 done
 
 #6) Measure in-vitro loops
