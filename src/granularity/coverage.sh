@@ -23,7 +23,7 @@ fi
 #1) Measure application cycles
 make clean
 ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--instrument-loop=bench"
-./${BIN_CMD} > out
+eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="Measuring application failed!\n"
 else
@@ -34,7 +34,7 @@ fi
 #2) We need to instrument all in-vivo loops
 make clean
 ${COMPILE_CMD} INSTRU=--instrument
-./${BIN_CMD} > out
+eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="$error Measuring in-vivo loops failed!\n"
 else
@@ -51,7 +51,7 @@ then
     do
         make clean
         ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--loops-file=${level}"
-        ./${BIN_CMD} > out
+        eval ${BIN_CMD} #> out
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="Measuring in-vivo loops failed for ${level}!\n"
         else
@@ -64,7 +64,7 @@ fi
 #5) dump loops
 make clean
 ${COMPILE_CMD} MODE=--dump
-./${BIN_CMD} > out
+eval ${BIN_CMD} #> out
 #Create a file with all dumped loops name
 for files in `ls dump`
 do
@@ -82,7 +82,7 @@ do
     make clean
     rm -f realmain.c
     ${COMPILE_CMD} MODE=--replay=$loops INSTRU=--instrument
-    ./${BIN_CMD} > out
+    eval ${BIN_CMD} #> out
     if [[ -f rdtsc_result.csv ]]; then
         mv rdtsc_result.csv results/${loops}.csv
         rdtsclines=`wc -l results/${loops}.csv | cut -d' ' -f1`
@@ -107,11 +107,13 @@ if [[ ! -z $warning ]]
 then
     echo "Warning, you may have wrong results because:"
     echo -e $warning
+    echo -e $warning > warning
 fi
 if [[ ! -z $error ]]
 then
     echo "Error, can't compute coverage and/or matching because:"
     echo -e $error
+    echo -e $error > error
 else
     #7) Find matching codelets
     ${ROOT}/compute_matching.R $BENCH_DIR
