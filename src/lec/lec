@@ -34,16 +34,24 @@ if [[ ! -z "$DUMP_MODE" && ! -z "$INSTRUMENT" ]]; then
     echo "--instrument ignored, can't instrument in dump mode"
 fi
 
-SOURCE=${!#}
-ARGS=$*
+SOURCE=${!#} #last parameter
 BASE=${SOURCE%.*}
-OPTS=${@:1:$(($#-1))}
+#includes (-I) and defines (-D) must be detected here
+#for compilation from source to IR
+for var in "${@:1:$(($#-1))}"
+do
+    if [[ $var == -I*  || $var == -D* ]]; then
+        INCLUDES="$INCLUDES $var"
+    else
+        OPTS="$OPTS $var"
+    fi
+done
 
 # Detect source language (fortran or C/C++ for the moment)
 if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]] || [[ $SOURCE == *.F90 ]] || [[ $SOURCE == *.F ]]; then
-    gcc -O0 -g -c $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
+    gcc -O0 -g -c $INCLUDES $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
 else
-    clang -O0 -g -c $SOURCE -S -emit-llvm -o $BASE.ll
+    clang -O0 -g -c $INCLUDES $SOURCE -S -emit-llvm -o $BASE.ll
 fi 
 
 if [ "$?" != "0" ]; then
