@@ -54,11 +54,23 @@ else
         echo "No dump for $REPLAY_LOOP" > /dev/stderr
         exit -1
     fi
-    #we need to know the number of cycles
-    #this loop takes in vivo
-    #~ CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
+    #Find in-vivo call count to adapt the in-vitro one
+    #and we need to know the number of cycles this loop takes in vivo
+    if [[ -f all_loops.csv ]]; then
+        INVIVO_CALL_COUNT=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 2 | sort -n | head -n1`
+        #~ CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
+    fi
+    echo $INVIVO_CALL_COUNT
     if [[ -z "$CYCLES" ]]; then
         CYCLES=60000000000 #1min is probably enough
+    fi
+    if [[ -z "$INVIVO_CALL_COUNT" ]]; then
+        INVIVO_CALL_COUNT=11 #11 meta repets
+    fi
+    if [[ "$INVIVO_CALL_COUNT" > 10 ]]; then
+        INVITRO_CALL_COUNT=11
+    else
+        INVITRO_CALL_COUNT=$INVIVO_CALL_COUNT
     fi
     #How can we convert those cycles in seconds?
     # Create user main
@@ -76,7 +88,7 @@ else
         long long int max_cycles=(10*$CYCLES)/1e9;
         signal(SIGALRM, sigcatch);
         likwid_markerInit();
-        for(i=0; i<11; i++) {
+        for(i=0; i<$INVITRO_CALL_COUNT; i++) {
           alarm(max_cycles);
           run${REPLAY_LOOP/-/_}();
         }
