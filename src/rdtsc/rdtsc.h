@@ -8,6 +8,8 @@ typedef struct
 	unsigned long long int start;
 	unsigned long long int counter;
 	unsigned int call_count;
+	bool traced;
+	std::vector<unsigned long long int> cycles;
 } region;
 
 __inline__ unsigned long long int rdtsc() {
@@ -24,13 +26,13 @@ extern "C" {
 #endif
 void likwid_markerInit();
 void likwid_markerClose();
-void rdtsc_markerStartRegion(char *);
-void rdtsc_markerStopRegion(char *);
+void rdtsc_markerStartRegion(const char *, bool);
+void rdtsc_markerStopRegion(const char *, bool trace=false);
 
 void likwid_markerinit_();
 void likwid_markerclose_();
-void rdtsc_markerstartregion_(char *, int);
-void rdtsc_markerstopregion_(char *, int);
+void rdtsc_markerstartregion_(const char *, int, bool);
+void rdtsc_markerstopregion_(const char *, int, bool trace=false);
 #ifdef __cplusplus
 } //extern "C"
 #endif
