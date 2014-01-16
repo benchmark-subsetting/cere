@@ -19,15 +19,21 @@ if [[ $1 == --dump ]]; then
     shift
 fi
 
-if [[ $1 == --instrument ]]; then
+if [[ $1 =~ --instrument ]]; then
     INSTRUMENT=1
-    echo "Instrumentation mode" > /dev/stderr
     shift
-    if [[ $1 = --instrument-loop=* ]] || [[ $1 == --loops-file=* ]]; then
+    echo "Instrumentation mode" > /dev/stderr
+    if [[ $1 =~ --instrument-loop=* ]] || [[ $1 =~ --loops-file=* ]]; then
         INSTRU_OPTS=$1
         shift
     fi
+    if [[ $1 =~ --instrumentation-mode=* ]]; then
+        INSTRU_OPTS="$INSTRU_OPTS $1"
+        shift
+    fi
 fi
+    
+    
 
 if [[ ! -z "$DUMP_MODE" && ! -z "$INSTRUMENT" ]]; then
     INSTRUMENT=0
@@ -81,5 +87,3 @@ fi
 
 # In all cases
 clang -c $OPTS $BASE.ll -o $BASE.o
-#llc -march=x86-64 $BASE.ll -o $BASE.s
-#clang -c $BASE.s -o $BASE.o
