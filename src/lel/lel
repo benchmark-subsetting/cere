@@ -25,6 +25,14 @@ if [[ $1 == --instrument ]]; then
     INSTRUMENT=1
     echo "Instrumentation mode" > /dev/stderr
     shift
+    if [[ $1 =~ --instrument-loop=* ]] || [[ $1 =~ --loops-file=* ]]; then
+        #The linker ignores instrumentation options 
+        shift
+    fi
+    if [[ $1 =~ --instrumentation-mode=* ]]; then
+        #The linker ignores instrumentation options 
+        shift
+    fi
 fi
 
 ARGS=$*
