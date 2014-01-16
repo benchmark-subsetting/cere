@@ -75,7 +75,7 @@ else
     if [[ -z "$INVIVO_CALL_COUNT" ]]; then
         INVIVO_CALL_COUNT=11 #11 meta repets
     fi
-    if [[ "$INVIVO_CALL_COUNT" > 10 ]]; then
+    if [[ "$INVIVO_CALL_COUNT" > 9 ]]; then
         INVITRO_CALL_COUNT=11
     else
         INVITRO_CALL_COUNT=$INVIVO_CALL_COUNT
@@ -100,7 +100,6 @@ else
           alarm(max_cycles);
           run${REPLAY_LOOP/-/_}();
         }
-        likwid_markerClose();
         exit(0);
         }" >> realmain.c
     else #We don't want to instrument
