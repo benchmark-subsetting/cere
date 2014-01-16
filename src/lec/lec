@@ -28,6 +28,7 @@ if [[ $1 =~ --instrument ]]; then
         shift
     fi
     if [[ $1 =~ --instrumentation-mode=* ]]; then
+        echo "Trace mode" > /dev/stderr
         INSTRU_OPTS="$INSTRU_OPTS $1"
         shift
     fi
@@ -78,7 +79,7 @@ fi
 if [[ ! -z "$INSTRUMENT" ]]; then
     opt -S -loop-simplify $BASE.ll -o $BASE.ll
     if [[ ! -z "$REPLAY_LOOP" ]]; then
-        opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -vitro-loop-instrumentation -instrument-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
+        opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -vitro-loop-instrumentation -instrument-loop=${REPLAY_LOOP} ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
     else
         opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-instrumentation.so -vivo-loop-instrumentation ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
     fi
