@@ -19,6 +19,9 @@ if [[ $1 == --dump ]]; then
     DUMP_MODE=1
     # lel ignores dump mode (nothing special to do)
     shift
+    if [[ $1 =~ --loop-to-dump==* ]]; then
+        shift
+    fi
 fi
 
 if [[ $1 == --instrument ]]; then
