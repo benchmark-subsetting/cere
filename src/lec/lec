@@ -17,6 +17,10 @@ if [[ $1 == --dump ]]; then
     DUMP_MODE=1
     echo "Compiling dump mode" > /dev/stderr
     shift
+    if [[ $1 =~ --loop-to-dump==* ]]; then
+        DUMP_OPTS=$1
+        shift
+    fi
 fi
 
 if [[ $1 =~ --instrument ]]; then
@@ -68,7 +72,7 @@ fi
 if [[ ! -z "$DUMP_MODE" ]]; then
     # In dump mode
     opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-extractor-all.so -loop-extract-all $BASE.ll -o $BASE.ll
-    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-dump $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/llvm-3.3.src/Release+Asserts/lib/LLVMLoop-manager.so -loop-dump $DUMP_OPTS $BASE.ll -o $BASE.ll
 
 elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
