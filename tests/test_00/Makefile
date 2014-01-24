@@ -20,10 +20,6 @@ test_replay: test.c
 	../../src/lec/lec --replay=$(LOOP) $(FLAGS) test.c
 	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o -lc
 
-#~ dump.o:
-	#~ cp $(PROJECT_ROOT)/src/memory_dump/dump.c .
-	#~ clang $(FLAGS) -c dump.c
-
 clean:
 	- rm -f *.o *.s *.ll
 
