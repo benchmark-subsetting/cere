@@ -28,8 +28,8 @@ remove_prefix <- function(toChange, prefix) {
     return(toChange)
 }
 
-dump_to_file <- function(matchingCodelet) {
-    write.table(matchingCodelet$CodeletName, "matching_codelets", sep="", quote = F, row.names = F, col.names = F)
+dump_to_file <- function(matchingCodelet, filename) {
+    write.table(matchingCodelet$CodeletName, filename, sep="", quote = F, row.names = F, col.names = F)
 }
 
 aggregateData <- function(allLoops, invitroRes) {
@@ -40,13 +40,12 @@ aggregateData <- function(allLoops, invitroRes) {
 
 #count the number of loops with less then 15% difference
 #between invivo and invitro sycles measure
-compute_matching <- function(aggregatedResults) {
+compute_matching <- function(aggregatedResults, tol) {
     res <- ddply(aggregatedResults, c("Codelet.Name"), function(x) {
             data.frame(Diff = abs(x$CPU_CLK_UNHALTED_CORE_invivo/x$CallCount_invivo - x$CPU_CLK_UNHALTED_CORE_invitro/x$CallCount_invitro)/pmax(x$CPU_CLK_UNHALTED_CORE_invivo/x$CallCount_invivo, x$CPU_CLK_UNHALTED_CORE_invitro/x$CallCount_invitro))
     }
     )
-    print(res)
-    return(data.frame(CodeletName = res[res$Diff < TOLERANCE, ]$Codelet.Name))
+    return(data.frame(CodeletName = res[res$Diff < tol, ]$Codelet.Name))
 }
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -68,6 +67,8 @@ invitroRes = load_csv(paste(benchDir, "/results/invitro_results.csv", sep=""))
 invitroRes = remove_prefix(invitroRes, "__extracted__") #remove prefix
 aggregatedResults = aggregateData(allLoops, invitroRes) #merge invivo and invitro
 
-matchingCodelet = compute_matching(aggregatedResults)
-dump_to_file(matchingCodelet)
+matchingCodelet = compute_matching(aggregatedResults, TOLERANCE)
+replayedCodelet = compute_matching(aggregatedResults, 1) #Get all invivo loop we were able to replay invitro
+dump_to_file(matchingCodelet, "matching_codelets")
+dump_to_file(replayedCodelet, "replayedCodelet")
 
