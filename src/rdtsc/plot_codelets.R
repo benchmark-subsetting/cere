@@ -25,7 +25,6 @@ if ((length(args) != 1) && (length(args) != 2)) {
 load_csv <- function(file) {
     return (tryCatch(
                 read.csv(file, header=F, fill=T, sep=",", col.names=c("Codelet Name", "Call Count", "CPU_CLK_UNHALTED_CORE", paste("V", seq_len(max(count.fields(file, sep=",", comment.char=""))-3)))),
-#~                 fread(file, sep=",", header=F, verbose=T, colClasses=c("Codelet Name", "Call Count", "CPU_CLK_UNHALTED_CORE", paste("V", seq_len(max(count.fields(file, sep=",", comment.char=""))-3)))),
                 error = function(e) {
                         print(paste("Could not open file", file))
                         q()
@@ -39,13 +38,11 @@ if(length(args) == 2) {
 }
 
 #Open in-vivo measure
-#~ allLoops <- fread(rdtsc_file, header=F, verbose=T, autostart=100L)
 allLoops = load_csv(rdtsc_file)
-#~ print(head(allLoops))
+
 allLoops=allLoops[-1,] #Remove header
 if(length(args) == 2) {
     allLoops=allLoops[allLoops$Codelet.Name==CodeletName, ]
 }
-#~ mysample<-allLoops[sample(1:nrow(allLoops), 50, replace=FALSE),]
 plot_by_Codelets(allLoops)
 
