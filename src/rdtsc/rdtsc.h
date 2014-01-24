@@ -4,7 +4,7 @@
 
 typedef struct
 {
-	std::string *name;
+	//~ std::string *name;
 	unsigned long long int start;
 	unsigned long long int counter;
 	unsigned int call_count;

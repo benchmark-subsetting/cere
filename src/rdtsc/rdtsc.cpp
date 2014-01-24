@@ -24,9 +24,9 @@ void likwid_markerClose()
 		//We substract one to call count as we removed the first execution measure
 		for (it = htable.begin(); it != htable.end(); ++it)
 		{
-			if(it->second->call_count > 1 && (it->second->name->find("extracted") != std::string::npos))
+			if(it->second->call_count > 1 && (it->first.find("extracted") != std::string::npos))
 				it->second->call_count -= 1;
-			result << *(it->second->name) << "," << it->second->call_count << "," << it->second->counter;
+			result << it->first << "," << it->second->call_count << "," << it->second->counter;
 			for(std::vector<unsigned long long int>::iterator j=it->second->cycles.begin(); j!=it->second->cycles.end(); j++) {
 				result << "," << *j;
 			}
@@ -57,18 +57,13 @@ void rdtsc_markerStartRegion(const char *reg, bool trace) {
 			std::cerr << "Unable to allocate new region >" << regionName << "<" << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		if ((r->name = new std::string(regionName)) == NULL)
-		{
-			std::cerr << "Unable to allocate new region >" << regionName << "<" << std::endl;
-			exit(EXIT_FAILURE);
-		}
 		r->counter = 0;
 		r->call_count = 0;
 		r->traced = trace;
 		htable[regionName] = r;
 	}
 	//In in-vitro mode, remove the first measure of a region
-	if(htable[regionName]->call_count == 1 && (htable[regionName]->name->find("extracted") != std::string::npos)) {
+	if(htable[regionName]->call_count == 1 && (regionName.find("extracted") != std::string::npos)) {
 		if (htable[regionName]->traced) htable[regionName]->cycles.pop_back();
 		htable[regionName]->counter = 0;
 	}
