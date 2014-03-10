@@ -13,13 +13,24 @@ if [[ $1 == --replay=* ]]; then
     REPLAY_LOOP=${SPLIT[1]}
     echo "Linking with <$REPLAY_LOOP> memory dump" > /dev/stderr
     shift
+    if [[ $1 =~ --invocation=* ]]; then
+        REPLAY_OPTS=(${1//=/ })
+        INVOCATION=${REPLAY_OPTS[1]}
+        shift
+    else
+        INVOCATION=1
+    fi
+    echo "Invocation <$INVOCATION>" > /dev/stderr
 fi 
 
 if [[ $1 == --dump ]]; then
     DUMP_MODE=1
     # lel ignores dump mode (nothing special to do)
     shift
-    if [[ $1 =~ --loop-to-dump==* ]]; then
+    if [[ $1 =~ --loop-to-dump=* ]] || [[ $1 =~ --loops-file=* ]]; then
+        shift
+    fi
+    if [[ $1 =~ --invocation=* ]]; then
         shift
     fi
 fi
@@ -32,7 +43,7 @@ if [[ $1 == --instrument ]]; then
         #The linker ignores instrumentation options 
         shift
     fi
-    if [[ $1 =~ --instrumentation-mode=* ]]; then
+    if [[ $1 =~ --loop-to-trace=* ]]; then
         #The linker ignores instrumentation options 
         shift
     fi
@@ -45,7 +56,7 @@ if [[ ! -z "$INSTRUMENT" ]]; then
 fi
 if [[ ! -z "$DUMP_MODE" ]] || [[ ! -z "$REPLAY_LOOP" ]]; then
     cp $PROJECT_ROOT/src/memory_dump/dump.c .
-    clang -c dump.c
+    clang -c -g dump.c
     ARGS="$ARGS dump.o"
 fi
 
@@ -67,22 +78,23 @@ else
     fi
     #Find in-vivo call count to adapt the in-vitro one
     #and we need to know the number of cycles this loop takes in vivo
-    if [[ -f all_loops.csv ]]; then
-        INVIVO_CALL_COUNT=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 2 | sort -n | head -n1`
+    #~ if [[ -f all_loops.csv ]]; then
+        #~ INVIVO_CALL_COUNT=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 2 | sort -n | head -n1`
         #~ CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
-    fi
-    echo $INVIVO_CALL_COUNT
+    #~ fi
+    #~ echo $INVIVO_CALL_COUNT
     if [[ -z "$CYCLES" ]]; then
         CYCLES=60000000000 #1min is probably enough
     fi
-    if [[ -z "$INVIVO_CALL_COUNT" ]]; then
-        INVIVO_CALL_COUNT=11 #11 meta repets
-    fi
-    if [[ "$INVIVO_CALL_COUNT" > 9 ]]; then
-        INVITRO_CALL_COUNT=11
-    else
-        INVITRO_CALL_COUNT=$INVIVO_CALL_COUNT
-    fi
+    #~ if [[ -z "$INVIVO_CALL_COUNT" ]]; then
+        #~ INVIVO_CALL_COUNT=11 #11 meta repets
+    #~ fi
+    #~ if [[ "$INVIVO_CALL_COUNT" > 9 ]]; then
+        #~ INVITRO_CALL_COUNT=11
+    #~ else
+        #~ INVITRO_CALL_COUNT=$INVIVO_CALL_COUNT
+    #~ fi
+    INVITRO_CALL_COUNT=11
     #How can we convert those cycles in seconds?
     # Create user main
     rm -f realmain.c
@@ -123,7 +135,7 @@ else
     DUMP_ARGS="-Wl,--section-start=.init_array=0x60000000"
     # First compile the memory dump objects
     rm -f dump/objs.S
-    for m in dump/$REPLAY_LOOP/*.memdump; do
+    for m in dump/$REPLAY_LOOP"_"$INVOCATION/*.memdump; do
         n=`basename $m .memdump`
         echo ".section s$n, \"aw\"" >> dump/objs.S
         echo ".incbin \"$m\"" >> dump/objs.S
@@ -135,5 +147,5 @@ else
     do
         shift
     done
-    $ROOT/staticpatcher.py lel_bin "$2" $REPLAY_LOOP
+    $ROOT/staticpatcher.py lel_bin "$2" $REPLAY_LOOP"_"$INVOCATION
 fi
