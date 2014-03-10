@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <string>
+#include <string.h>
 #include "rdtsc.h"
 
 void likwid_markerInit()
@@ -21,14 +21,29 @@ void likwid_markerClose()
 	std::ofstream result("rdtsc_result.csv", std::ios::out);
 	if(result) {
 		result << "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE" << std::endl;
-		//We substract one to call count as we removed the first execution measure
 		for (it = htable.begin(); it != htable.end(); ++it)
 		{
-			if(it->second->call_count > 1 && (it->first.find("extracted") != std::string::npos))
-				it->second->call_count -= 1;
+			//~ //We substract one to call count as we removed the first execution measure
+			//~ if(it->second->call_count > 1 && (it->first.find("extracted") != std::string::npos))
+				//~ it->second->call_count -= 1;
 			result << it->first << "," << it->second->call_count << "," << it->second->counter;
-			for(std::vector<unsigned long long int>::iterator j=it->second->cycles.begin(); j!=it->second->cycles.end(); j++) {
-				result << "," << *j;
+			//If in trace mode, dump results in binary format
+			if(it->second->traced) {
+				std::string fileName(it->first+".bin");
+				std::ofstream binResults(fileName.c_str(), std::ios::out | std::ios::binary);
+				if(binResults) {
+					//~ binResults.write(it->first.c_str(), it->first.size()+1);
+					//~ for(std::vector<unsigned long long int>::iterator j=it->second->cycles.begin(); j!=it->second->cycles.end(); j++) {
+						//~ binResults.write(reinterpret_cast<const char*>(&(*j)), sizeof(int));
+					//~ }
+					for(int j=0; j!=it->second->cycles.size(); j++) {
+						binResults.write(reinterpret_cast<const char*>(&(it->second->cycles[j])), sizeof(int));
+						binResults.write(reinterpret_cast<const char*>(&(it->second->global_call_count[j])), sizeof(int));
+					}
+					binResults.close();
+				}
+				else
+					std::cerr << "Unable to open binary result file for loop >" << it->first << "<!" << std::endl;
 			}
 			result << std::endl;
 		}
@@ -57,15 +72,24 @@ void rdtsc_markerStartRegion(const char *reg, bool trace) {
 			std::cerr << "Unable to allocate new region >" << regionName << "<" << std::endl;
 			exit(EXIT_FAILURE);
 		}
+		if(call_count_reminder.find(baseName) == call_count_reminder.end())
+			call_count_reminder[baseName] = 0;
 		r->counter = 0;
 		r->call_count = 0;
 		r->traced = trace;
 		htable[regionName] = r;
 	}
-	//In in-vitro mode, remove the first measure of a region
-	if(htable[regionName]->call_count == 1 && (regionName.find("extracted") != std::string::npos)) {
-		if (htable[regionName]->traced) htable[regionName]->cycles.pop_back();
-		htable[regionName]->counter = 0;
+	//~ //In in-vitro mode, remove the first measure of a region
+	//~ if(htable[regionName]->call_count == 1 && (regionName.find("extracted") != std::string::npos)) {
+		//~ if (htable[regionName]->traced) {
+			//~ htable[regionName]->cycles.pop_back();
+			//~ htable[regionName]->global_call_count.pop_back();
+		//~ }
+		//~ htable[regionName]->counter = 0;
+	//~ }
+	if (htable[regionName]->traced) {
+		call_count_reminder[baseName] += 1;
+		htable[regionName]->global_call_count.push_back(call_count_reminder[baseName]);
 	}
 	htable[regionName]->call_count += 1;
 	htable[regionName]->start = rdtsc();
@@ -88,6 +112,12 @@ void rdtsc_markerStopRegion(const char *reg, bool trace) {
 		if (htable[regionName]->traced) htable[regionName]->cycles.push_back(stop - htable[regionName]->start);
 		htable[regionName]->counter += stop - htable[regionName]->start;
 	}
+}
+
+std::string get_baseName( const std::string &regionName ) {
+    size_t lastdot = regionName.find_last_of("#");
+    if (lastdot == std::string::npos) return regionName;
+    return regionName.substr(lastdot+1, regionName.size());
 }
 
 //For fortran code

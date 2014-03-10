@@ -4,12 +4,12 @@
 
 typedef struct
 {
-	//~ std::string *name;
 	unsigned long long int start;
 	unsigned long long int counter;
 	unsigned int call_count;
 	bool traced;
 	std::vector<unsigned long long int> cycles;
+	std::vector<unsigned int> global_call_count;
 } region;
 
 __inline__ unsigned long long int rdtsc() {
@@ -19,7 +19,10 @@ __inline__ unsigned long long int rdtsc() {
 }
 
 static std::map<std::string, region*> htable;
+static std::map<std::string, int> call_count_reminder;
 static std::stack<std::string> loopsName;
+
+std::string get_baseName( const std::string &);
 
 #ifdef __cplusplus
 extern "C" {
