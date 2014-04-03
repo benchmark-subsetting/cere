@@ -29,7 +29,7 @@ remove_prefix <- function(toChange, prefix) {
 }
 
 dump_to_file <- function(matchingCodelet, filename) {
-    write.table(matchingCodelet$CodeletName, filename, sep="", quote = F, row.names = F, col.names = F)
+    write.table(matchingCodelet, filename, sep="", quote = F, row.names = F, col.names = F)
 }
 
 aggregateData <- function(allLoops, invitroRes) {
@@ -68,7 +68,9 @@ invitroRes = remove_prefix(invitroRes, "__extracted__") #remove prefix
 aggregatedResults = aggregateData(allLoops, invitroRes) #merge invivo and invitro
 
 matchingCodelet = compute_matching(aggregatedResults, TOLERANCE)
+matchingCodelet = matchingCodelet[!duplicated(matchingCodelet$CodeletName),]
 replayedCodelet = compute_matching(aggregatedResults, 1) #Get all invivo loop we were able to replay invitro
+replayedCodelet = replayedCodelet[!duplicated(replayedCodelet$CodeletName),]
 dump_to_file(matchingCodelet, "matching_codelets")
 dump_to_file(replayedCodelet, "replayedCodelet")
 
