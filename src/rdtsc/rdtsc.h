@@ -1,15 +1,28 @@
-#include <stack>
-#include <map>
-#include <string>
+#include "htable/htable/htable.h"
+#define CALL_STACK_SIZE 4096
+#define TRACE_SIZE 10000
+
+static char call_stack[CALL_STACK_SIZE];
+
+static struct htable regionHtab;
+static struct htable call_count_reminder;
 
 typedef struct
 {
+	char *name;
+	int val;
+}global_region_call_count;
+
+typedef struct
+{
+	char* name;
+	int traced;
+	int invivo;
 	unsigned long long int start;
 	unsigned long long int counter;
 	unsigned int call_count;
-	bool traced;
-	std::vector<unsigned long long int> cycles;
-	std::vector<unsigned int> global_call_count;
+	unsigned long long int trace_counter[TRACE_SIZE];
+	unsigned int global_call_count[TRACE_SIZE];
 } region;
 
 __inline__ unsigned long long int rdtsc() {
@@ -18,24 +31,16 @@ __inline__ unsigned long long int rdtsc() {
 	return (d<<32) | a;
 }
 
-static std::map<std::string, region*> htable;
-static std::map<std::string, int> call_count_reminder;
-static std::stack<std::string> loopsName;
+static uint32_t hash_string(const char*);
 
-std::string get_baseName( const std::string &);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+static bool streq(const void*, void*);
+static size_t rehash(const void*, void*);
 void likwid_markerInit();
 void likwid_markerClose();
-void rdtsc_markerStartRegion(const char *, bool);
-void rdtsc_markerStopRegion(const char *, bool trace=false);
+void rdtsc_markerStartRegion(char*, int);
+void rdtsc_markerStopRegion(char*, int);
 
 void likwid_markerinit_();
 void likwid_markerclose_();
-void rdtsc_markerstartregion_(const char *, int, bool);
-void rdtsc_markerstopregion_(const char *, int, bool trace=false);
-#ifdef __cplusplus
-} //extern "C"
-#endif
+void rdtsc_markerstartregion_(char*, int, int);
+void rdtsc_markerstopregion_(char*, int, int);
