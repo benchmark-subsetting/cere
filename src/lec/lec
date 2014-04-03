@@ -99,5 +99,5 @@ fi
 
 clang -c $OPTS $BASE.ll -o $BASE.o
 if [ "$?" != "0" ]; then
-    clang -c $OPTS $SOURCE -o $BASE.o
+    clang -c $OPTS $INCLUDES $SOURCE -o $BASE.o
 fi
