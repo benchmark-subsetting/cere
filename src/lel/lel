@@ -52,7 +52,7 @@ fi
 ARGS=$*
 #If we want to instrument, link with rdtsc lib
 if [[ ! -z "$INSTRUMENT" ]]; then
-    ARGS="$ARGS $PROJECT_ROOT/src/rdtsc/rdtsc.a -lstdc++"
+    ARGS="$ARGS $PROJECT_ROOT/src/rdtsc/rdtsc.a"
 fi
 if [[ ! -z "$DUMP_MODE" ]] || [[ ! -z "$REPLAY_LOOP" ]]; then
     cp $PROJECT_ROOT/src/memory_dump/dump.c .
@@ -72,8 +72,8 @@ if [[ -z "$REPLAY_LOOP" ]]; then
     fi
 else
     # Check that dumps exists
-    if [ ! -d "dump/$REPLAY_LOOP" ]; then
-        echo "No dump for $REPLAY_LOOP" > /dev/stderr
+    if [ ! -d "dump/${REPLAY_LOOP}_${INVOCATION}" ]; then
+        echo "No dump for ${REPLAY_LOOP}_${INVOCATION}" > /dev/stderr
         exit -1
     fi
     #Find in-vivo call count to adapt the in-vitro one
@@ -147,5 +147,5 @@ else
     do
         shift
     done
-    $ROOT/staticpatcher.py lel_bin "$2" $REPLAY_LOOP"_"$INVOCATION
+    $ROOT/staticpatcher.py lel_bin "$2" ${REPLAY_LOOP}"_"${INVOCATION}
 fi
