@@ -151,8 +151,8 @@ void dump(char* loop_name, int to_dump, int count, ...) {
     char dump_path[] = "dump";
 
     //If we want to dump a particular invocation
-    //~ CURR_INV++;
-    //~ if(CURR_INV != to_dump) return;
+    CURR_INV++;
+    if(CURR_INV != to_dump) return;
 
     /* Keep the current working directory */
     if (getcwd(cwd, sizeof(cwd)) == NULL)
@@ -173,8 +173,8 @@ void dump(char* loop_name, int to_dump, int count, ...) {
 
     /* If dump already exists for this loop_name, skip dump */ 
     if(mkdir(path, 0777) != 0) {
-        //~ fprintf(stderr, "Skip dump\n");
-        //~ return;
+        fprintf(stderr, "Skip dump\n");
+        return;
     }
 
     void * addresses[count];
@@ -182,39 +182,39 @@ void dump(char* loop_name, int to_dump, int count, ...) {
     va_list ap;
     int j;
     va_start(ap, count); 
-    for(j=0; j<count/3; j++) {
+    for(j=0; j<count; j++) {
         addresses[j] = va_arg(ap, void*);
-        type = va_arg(ap, char*); //retrieve the type
-        name = va_arg(ap, char*); //retrieve the name
+        //~ type = va_arg(ap, char*); //retrieve the type
+        //~ name = va_arg(ap, char*); //retrieve the name
 
-        write_bin_file(path, name, type, addresses[j]);
+        //~ write_bin_file(path, name, type, addresses[j]);
     }
     va_end(ap);
 
-    //~ pid_t child;
-    //~ child = fork();
-    //~ /*Execution should continue through the son */
-    //~ if(child == 0) {
-        //~ /* Trace and freeze the child process */
-        //~ ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-        //~ raise(SIGTRAP);
-        //~ exit(0);
-    //~ }
-    //~ else {
-        //~ /* Wait for the child to stop */
-        //~ wait(NULL);
-        //~ if(chdir(path) != 0) {
-            //~ fprintf(stderr, "cannot enter loop dump directory");
-            //~ exit(-1);
-        //~ }
-        //~ dump_mem(child, count, addresses);
-        //~ ptrace(PTRACE_CONT, child, NULL, NULL);
-        //~ /* Come back to original working directory */
-        //~ if(chdir(cwd) != 0) {
-            //~ fprintf(stderr, "cannot come back to original working directory");
-            //~ exit(-1);
-        //~ }
-    //~ }
+    pid_t child;
+    child = fork();
+    /*Execution should continue through the son */
+    if(child == 0) {
+        /* Trace and freeze the child process */
+        ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+        raise(SIGTRAP);
+        exit(0);
+    }
+    else {
+        /* Wait for the child to stop */
+        wait(NULL);
+        if(chdir(path) != 0) {
+            fprintf(stderr, "cannot enter loop dump directory");
+            exit(-1);
+        }
+        dump_mem(child, count, addresses);
+        ptrace(PTRACE_CONT, child, NULL, NULL);
+        /* Come back to original working directory */
+        if(chdir(cwd) != 0) {
+            fprintf(stderr, "cannot come back to original working directory");
+            exit(-1);
+        }
+    }
 }
 
 /**********************************************************************
