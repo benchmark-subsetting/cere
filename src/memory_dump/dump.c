@@ -150,9 +150,9 @@ void dump(char* loop_name, int to_dump, int count, ...) {
     char cwd[256];
     char dump_path[] = "dump";
 
-    //If we want to dump a particular invocation
-    CURR_INV++;
-    if(CURR_INV != to_dump) return;
+    //~ //If we want to dump a particular invocation
+    //~ CURR_INV++;
+    //~ if(CURR_INV != to_dump) return;
 
     /* Keep the current working directory */
     if (getcwd(cwd, sizeof(cwd)) == NULL)
@@ -173,7 +173,7 @@ void dump(char* loop_name, int to_dump, int count, ...) {
 
     /* If dump already exists for this loop_name, skip dump */ 
     if(mkdir(path, 0777) != 0) {
-        fprintf(stderr, "Skip dump\n");
+        //~ fprintf(stderr, "Skip dump\n");
         return;
     }
 

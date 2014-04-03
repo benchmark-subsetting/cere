@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 
     if (mode == 1) {
         // Dump mode
-        dump("mainloop", 2, a, &n);
+        dump("mainloop", 1, 2, a, &n);
     } 
 
     if (mode == 2) {
