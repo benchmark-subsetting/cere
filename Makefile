@@ -7,7 +7,7 @@ all:
 	@read PAUSE
 	$(MAKE) -j4 -C src/llvm-3.3.src/
 	sudo $(MAKE) -C src/llvm-3.3.src/ install
-	$(MAKE) -C libs/dragonegg-3.3.src/
+	CC=gcc-4.7 $(MAKE) -C libs/dragonegg-3.3.src/
 	cp libs/dragonegg-3.3.src/dragonegg.so libs/dragonegg.so
 	$(MAKE) -C src/LoopExtractorAll/
 	$(MAKE) -C src/LoopInstrumentation/
