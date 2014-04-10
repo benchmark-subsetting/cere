@@ -21,18 +21,17 @@ if [ "$?" != "0" ] ; then
 fi
 
 #1) Measure application cycles
-make clean
+make clean && rm *.ll
 ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--instrument-loop=bench"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="Measuring application failed!\n"
 else
     mv rdtsc_result.csv app_cycles.csv
-    CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 fi
 
 #2) We need to instrument all in-vivo loops
-make clean
+make clean && rm *.ll
 ${COMPILE_CMD} INSTRU=--instrument
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
@@ -49,7 +48,7 @@ then
     #4) For each level, measure in-vivo loops
     for level in `ls level_*`
     do
-        make clean
+        make clean && rm *.ll
         ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--loops-file=${level}"
         eval ${BIN_CMD} #> out
         if [[ ! -f rdtsc_result.csv ]]; then
@@ -62,14 +61,17 @@ then
 fi
 
 #5) dump loops
-make clean
+make clean && rm *.ll
 ${COMPILE_CMD} MODE=--dump
-eval ${BIN_CMD} #> out
-#Create a file with all dumped loops name
-for files in `ls dump`
-do
-    echo "${files/__extracted__/}" >> dump/extracted_loops
-done
+#~ eval ${BIN_CMD} #> out
+#~ #Create a file with all dumped loops name
+#~ touch dump/extracted_loops
+#~ for files in `ls dump`
+#~ do
+    #~ if [[ ( -d "dump/$files" ) && ! ( `grep -F ${files%_*} dump/extracted_loops` ) ]]; then
+        #~ echo "${files%_*}" >> dump/extracted_loops
+    #~ fi
+#~ done
 
 #6) Measure in-vitro loops
 if [[ !( -d results ) ]]
@@ -77,9 +79,9 @@ then
     mkdir results/
 fi
 echo "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE" > results/invitro_results.csv
-for loops in `ls dump`
+while read loops
 do
-    make clean
+    make clean && rm *.ll
     rm -f realmain.c
     ${COMPILE_CMD} MODE=--replay=$loops INSTRU=--instrument
     eval ${BIN_CMD} #> out
@@ -95,8 +97,9 @@ do
     else
         warning="$warning Measuring in-vitro cycles for $loops failed\n"
     fi
-done
-make clean
+done < dump/extracted_loops
+
+make clean && rm *.ll
 lines=`wc -l results/invitro_results.csv | cut -d' ' -f1`
 if [[ ! "$lines" > 1 ]]
 then
@@ -119,6 +122,6 @@ else
     ${ROOT}/compute_matching.R $BENCH_DIR
 
     #8) Now find codelets to keep
+    CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
     ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/matching_codelets ${CYCLES}
 fi
-
