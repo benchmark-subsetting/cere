@@ -1,6 +1,6 @@
 #include "htable/htable/htable.h"
 #define CALL_STACK_SIZE 4096
-#define TRACE_SIZE 10000
+#define TRACE_SIZE 100000
 
 static char call_stack[CALL_STACK_SIZE];
 
@@ -10,7 +10,7 @@ static struct htable call_count_reminder;
 typedef struct
 {
 	char *name;
-	int val;
+	unsigned int val;
 }global_region_call_count;
 
 typedef struct
@@ -23,7 +23,12 @@ typedef struct
 	unsigned int call_count;
 	unsigned long long int trace_counter[TRACE_SIZE];
 	unsigned int global_call_count[TRACE_SIZE];
+	FILE *trace_results;
 } region;
+
+__inline__ void serialize() {
+	__asm__ volatile ("cpuid");
+}
 
 __inline__ unsigned long long int rdtsc() {
 	unsigned long long int a, d;
