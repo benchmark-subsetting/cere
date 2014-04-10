@@ -74,21 +74,15 @@ void pop(char* call_stack)
 
 void dump_trace(region *r, int nbEltToDump)
 {
-	char *fileName = malloc((strlen(r->name)+5)*sizeof(char));
-	strcpy(fileName, r->name);
-	strcat(fileName, ".bin");
-	FILE *binRes = fopen(fileName, "ab");
-	if(binRes == NULL) {
-		fprintf(stderr, "Cannot open Binary File!\n");
-	}
-	else {
+	if(r->trace_results != NULL)
+	{
 		int i,j;
 		if(r->invivo) j=0;
 		else j=1;
 		for (i = j; i < nbEltToDump; i++)
 		{
-			fwrite((const void*)(&r->trace_counter[i]), sizeof(unsigned long long int), 1, binRes);
-			fwrite((const void*)(&r->global_call_count[i]), sizeof(unsigned int), 1, binRes);
+			fwrite((const void*)(&r->trace_counter[i]), sizeof(unsigned int), 1, r->trace_results);
+			fwrite((const void*)(&r->global_call_count[i]), sizeof(unsigned int), 1, r->trace_results);
 		}
 	}
 }
@@ -115,7 +109,7 @@ void likwid_markerClose()
 		exit(EXIT_FAILURE);
 	}
 	else {
-		fprintf(result, "Codelet Name,call count,CPU_CLK_UNHALTED_CORE\n");
+		fprintf(result, "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE\n");
 		for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
 		{
 			//Remove 1 to call count in invitro mode
@@ -123,6 +117,7 @@ void likwid_markerClose()
 			fprintf(result, "%s,%u,%llu\n", p->name, p->call_count, p->counter);
 			if(p->traced) {
 				dump_trace(p, p->call_count%TRACE_SIZE);
+				fclose(p->trace_results);
 			}
 		}
 		fclose(result);
@@ -152,11 +147,14 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 		}
 		strcpy(r->name, regionName);
 		if(strstr(regionName, "__extracted__") != NULL) r->invivo = 0;
+		else r->invivo = 1;
 		r->traced = trace;
 		r->counter = 0;
 		r->call_count = 0;
+		r->trace_results=NULL;
 		htable_add(&regionHtab, hash_string(r->name), r);
 	}
+
 	r->call_count += 1;
 	if(r->traced) {
 		global_region_call_count *t=NULL;
@@ -175,9 +173,19 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 			t->val = 0;
 			htable_add(&call_count_reminder, hash_string(reg), t);
 		}
+		//Open binary trace file
+		if(r->call_count==1) {
+			char *fileName = malloc((strlen(r->name)+5)*sizeof(char));
+			strcpy(fileName, r->name);
+			strcat(fileName, ".bin");
+			r->trace_results = fopen(fileName, "ab");
+			if(r->trace_results == NULL)
+				fprintf(stderr, "Cannot open Binary File!\n");
+		}
 		t->val += 1;
 		r->global_call_count[(r->call_count-1)%TRACE_SIZE] = t->val;
 	}
+	serialize();
 	r->start = rdtsc();
 }
 
@@ -190,9 +198,10 @@ void rdtsc_markerStopRegion(char *reg, int trace) {
 		fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", regionName);
 	else {
 		pop(call_stack);
+		r->counter += stop - r->start;
 		//If invitro, remove first measure
 		if(!r->invivo && r->call_count==1)
-			r->counter += stop - r->start;
+			r->counter = 0;
 		if(r->traced) {
 			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = stop - r->start;
 			if(r->call_count%TRACE_SIZE == 0) {
