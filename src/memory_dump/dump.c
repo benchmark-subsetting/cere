@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <string.h>
 #include "dump.h"
+#include "snoop.h"
+
+#define LOG_SIZE 8
 
 // Comparison function.
 static bool streq(const void *e, void *string)
@@ -32,6 +35,7 @@ static size_t rehash(const void *e, void *unused)
 void dump_init()
 {
     htable_init(&regionHtab, rehash, NULL);
+    page_log_on(LOG_SIZE);
     atexit(dump_close);
 }
 
@@ -222,6 +226,8 @@ void dump(char* loop_name, int to_dump, int count, ...) {
         return;
     }
 
+
+
     void * addresses[count];
     char *type, *name;
     va_list ap;
@@ -252,6 +258,8 @@ void dump(char* loop_name, int to_dump, int count, ...) {
             fprintf(stderr, "cannot enter loop dump directory");
             exit(-1);
         }
+        page_log_off();
+        page_log_dump("hotpages.map");
         dump_mem(child, count, addresses);
         ptrace(PTRACE_CONT, child, NULL, NULL);
         /* Come back to original working directory */
@@ -259,6 +267,7 @@ void dump(char* loop_name, int to_dump, int count, ...) {
             fprintf(stderr, "cannot come back to original working directory");
             exit(-1);
         }
+        page_log_on(LOG_SIZE);
     }
 }
 
