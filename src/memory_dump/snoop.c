@@ -15,29 +15,25 @@
 #include <sys/stat.h>
 #include "snoop.h"
 
+#define PAGESIZE 4096
+
 #define handle_error(msg) \
   do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-struct sigaction sa1;
-
-bool page_log_active;
-
 struct page_cache {
-    int last_page __attribute__ ((aligned (4096)));
+    struct sigaction sa1;
+    bool page_log_active;
+    int last_page __attribute__ ((aligned (PAGESIZE)));
     int log_size;
-    char * pages_cache[4096-2*sizeof(int)] ;
+    char * pages_cache[256];
 } __attribute__ ((packed));
 
-char hs[4096];
+
+char hs[PAGESIZE] __attribute__ ((aligned (PAGESIZE)));
 
 struct page_cache pc;
 
-inline static char * round_to_page(char * addr)
-{
-  int pagesize = sysconf(_SC_PAGE_SIZE);
-  char * start_of_page = (char *)(((off64_t) addr) & ~(pagesize-1));
-  return start_of_page;
-}
+#define round_to_page(addr) ((char *)(((off64_t)(addr)) & ~(PAGESIZE-1))) 
 
 static void
 install_handler(int sig, siginfo_t *si, void *unused)
@@ -45,10 +41,8 @@ install_handler(int sig, siginfo_t *si, void *unused)
   char * touched_addr = si->si_addr;
   char * start_of_page = round_to_page(touched_addr);
 
-  int pagesize = sysconf(_SC_PAGE_SIZE);
-
   /* Unprotect Page */
-  int result = mprotect((void*)start_of_page, pagesize, PROT_READ|PROT_WRITE);
+  int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE);
   assert(result != -1);
 }
 
@@ -64,10 +58,9 @@ log_handler(int sig, siginfo_t *si, void *unused)
          touched_addr, start_of_page);
 #endif
 
-  int pagesize = sysconf(_SC_PAGE_SIZE);
 
   /* Unprotect Page */
-  int result = mprotect((void*)start_of_page, pagesize, PROT_READ|PROT_WRITE);
+  int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
   assert(result != -1);
 
   /* Add page to page cache */
@@ -77,7 +70,7 @@ log_handler(int sig, siginfo_t *si, void *unused)
 #ifdef _DEBUG
       printf("Reprotecting page %p\n", pc.pages_cache[pc.last_page]);
 #endif
-      int result = mprotect((void*)pc.pages_cache[pc.last_page], pagesize, PROT_EXEC);
+      int result = mprotect((void*)pc.pages_cache[pc.last_page], PAGESIZE, PROT_EXEC);
       assert(result != -1);
   } 
 
@@ -97,9 +90,8 @@ log_handler(int sig, siginfo_t *si, void *unused)
 void
 page_log_on(int log_size)
 {
-  assert(page_log_active == false);
+  assert(pc.page_log_active == false);
   char *p;
-  int pagesize = sysconf(_SC_PAGE_SIZE);
   pc.last_page = 0;
   pc.log_size = log_size;
 
@@ -114,11 +106,11 @@ page_log_on(int log_size)
   if (sigaltstack(&ss, NULL) == -1)
     handle_error("sigaltstack");
 
-  sa1.sa_flags = SA_SIGINFO | SA_ONSTACK;
-  sigemptyset(&sa1.sa_mask);
-  sa1.sa_sigaction = install_handler;
+  pc.sa1.sa_flags = SA_SIGINFO | SA_ONSTACK;
+  sigemptyset(&pc.sa1.sa_mask);
+  pc.sa1.sa_sigaction = install_handler;
 
-  if (sigaction(SIGSEGV, &sa1, NULL) == -1)
+  if (sigaction(SIGSEGV, &pc.sa1, NULL) == -1)
     handle_error("sigaction");
 
   pid_t my_pid = getpid();
@@ -135,7 +127,7 @@ page_log_on(int log_size)
   int counter = 0;
   char *start_of_stack, *end_of_stack;
 
-  char* addresses[4096];
+  char* addresses[1000];
   int count = 0;
 
   while(fgets(buf, BUFSIZ, maps)) {
@@ -173,6 +165,7 @@ page_log_on(int log_size)
   }
   fclose(maps);
 
+
   while(count > 0) {
       char * end = addresses[--count];
       char * start = addresses[--count];
@@ -181,20 +174,18 @@ page_log_on(int log_size)
   }
 
   /* Unprotect page_cache */
-  int result = mprotect(&pc, pagesize, PROT_READ | PROT_WRITE);
+  int result = mprotect(&pc, sizeof(pc), PROT_READ | PROT_WRITE);
   assert(result != -1);
 
   /* Unprotect handler stacl */
-  result = mprotect(hs, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC);
+  result = mprotect(hs, sizeof(hs), PROT_READ | PROT_WRITE | PROT_EXEC);
   assert(result != -1);
-
-  page_log_active = true;
 
 #ifdef _DEBUG
   printf("protection activated\n");
 #endif
-  sa1.sa_sigaction = log_handler;
-  if (sigaction(SIGSEGV, &sa1, NULL) == -1)
+  pc.sa1.sa_sigaction = log_handler;
+  if (sigaction(SIGSEGV, &pc.sa1, NULL) == -1)
     handle_error("sigaction");
 
   // Now protect the stack, and pray !
@@ -202,22 +193,24 @@ page_log_on(int log_size)
   printf("protecting stack %p-%p\n", start_of_stack, end_of_stack);
 #endif
   mprotect(start_of_stack, end_of_stack-start_of_stack, PROT_EXEC);
+
+  pc.page_log_active = true;
 }
 
 void
 page_log_off(void)
 {
-  assert(page_log_active == true);
-  sa1.sa_sigaction = install_handler;
-  if (sigaction(SIGSEGV, &sa1, NULL) == -1)
+  assert(pc.page_log_active == true);
+  pc.sa1.sa_sigaction = install_handler;
+  if (sigaction(SIGSEGV, &pc.sa1, NULL) == -1)
     handle_error("sigaction");
-  page_log_active = false;
+  pc.page_log_active = false;
 }
 
 void
 page_log_dump(char * filename)
 {
-  assert(page_log_active == false);
+  assert(pc.page_log_active == false);
   FILE * f = fopen(filename, "w");
   for (int i = 0; i <pc.log_size; i++) {
       int c = (i + pc.last_page) % pc.log_size;

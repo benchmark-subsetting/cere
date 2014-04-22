@@ -41,7 +41,8 @@ void dump_init()
 
 void dump_close()
 {
-    htable_clear(&regionHtab);
+  page_log_off();
+  htable_clear(&regionHtab);
 }
 
 /* dump_region: dumps to a file "<start>.memdump"
@@ -261,13 +262,13 @@ void dump(char* loop_name, int to_dump, int count, ...) {
         page_log_off();
         page_log_dump("hotpages.map");
         dump_mem(child, count, addresses);
-        ptrace(PTRACE_CONT, child, NULL, NULL);
         /* Come back to original working directory */
         if(chdir(cwd) != 0) {
             fprintf(stderr, "cannot come back to original working directory");
             exit(-1);
         }
         page_log_on(LOG_SIZE);
+        ptrace(PTRACE_CONT, child, NULL, NULL);
     }
 }
 
