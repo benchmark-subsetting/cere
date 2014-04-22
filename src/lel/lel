@@ -57,7 +57,7 @@ fi
 if [[ ! -z "$DUMP_MODE" ]] || [[ ! -z "$REPLAY_LOOP" ]]; then
     #~ make -C $PROJECT_ROOT/src/memory_dump/
     #~ cp $PROJECT_ROOT/src/memory_dump/dump.a .
-    ARGS="$ARGS $PROJECT_ROOT/src/memory_dump/dump.a -L $PROJECT_ROOT/src/memory_dump -lmallochook"
+    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump -ldump"
 fi
 
 if [[ -z "$REPLAY_LOOP" ]]; then
