@@ -6,6 +6,9 @@
 #include <malloc.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <stdbool.h>
+
+bool mtrace_active = false;
 
 static void* (*real_malloc)(size_t)=NULL;
 static void* (*real_calloc)(size_t nmemb, size_t size)=NULL;
@@ -17,6 +20,11 @@ inline static char * round_to_page(char * addr)
   int pagesize = sysconf(_SC_PAGE_SIZE);
   char * start_of_page = (char *)(((off64_t) addr) & ~(pagesize-1));
   return start_of_page;
+}
+
+void mtrace_activate(void)
+{
+  mtrace_active = true;
 }
 
 void 
@@ -47,8 +55,10 @@ malloc(size_t size)
 
     void *p = NULL;
     p = real_malloc(size);
-    int result = mprotect(round_to_page(p), size, PROT_NONE);
-    assert(result != -1);
+    if (mtrace_active) {
+      int result = mprotect(round_to_page(p), size, PROT_NONE);
+      assert(result != -1);
+    }
     return p;
 }
 
@@ -58,8 +68,10 @@ void *calloc(size_t nmemb, size_t size)
 
     void *p = NULL;
     p = real_calloc(nmemb, size);
-    int result = mprotect(round_to_page(p), nmemb*size, PROT_NONE);
-    assert(result != -1);
+    if (mtrace_active) {
+      int result = mprotect(round_to_page(p), nmemb*size, PROT_NONE);
+      assert(result != -1);
+    }
     return p;
 }
 
@@ -69,8 +81,10 @@ void *realloc(void *ptr, size_t size)
 
     void *p = NULL;
     p = real_realloc(ptr, size);
-    int result = mprotect(round_to_page(p), size, PROT_NONE);
-    assert(result != -1);
+    if (mtrace_active) {
+      int result = mprotect(round_to_page(p), size, PROT_NONE);
+      assert(result != -1);
+    }
     return p;
 }
 
@@ -80,7 +94,9 @@ void *memalign(size_t alignment, size_t size)
 
     void *p = NULL;
     p = real_memalign(alignment, size);
-    int result = mprotect(round_to_page(p), size, PROT_NONE);
-    assert(result != -1);
+    if (mtrace_active) {
+      int result = mprotect(round_to_page(p), size, PROT_NONE);
+      assert(result != -1);
+    }
     return p;
 }

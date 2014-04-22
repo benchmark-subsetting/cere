@@ -170,8 +170,27 @@ void dump_mem(pid_t child, int count, void* addresses[]) {
  * count: number of arguments
  * args: the arguments to dump 
  */
-void dump(char* loop_name, int to_dump, int count, ...) {
+static void _dump(char* loop_name, int to_dump, int count, void * addresses[]);
+void dump(char* loop_name, int to_dump, int count, ...)
+{
+  void * addresses[count];
+  char *type, *name;
+  va_list ap;
+  int j;
+  va_start(ap, count); 
+  for(j=0; j<count; j++) {
+      addresses[j] = va_arg(ap, void*);
+      /*Only to dump scalars. Will be removed*/
+      //~ type = va_arg(ap, char*); //retrieve the type
+      //~ name = va_arg(ap, char*); //retrieve the name
+      //~ write_bin_file(path, name, type, addresses[j]);
+  }
+  va_end(ap);
 
+  _dump(loop_name, to_dump, count, addresses);
+}
+
+static void _dump(char* loop_name, int to_dump, int count, void* addresses[]) {
     struct stat sb;
     char path[256];
     char cwd[256];
@@ -196,7 +215,7 @@ void dump(char* loop_name, int to_dump, int count, ...) {
         htable_add(&regionHtab, hash_string(r->name), r);
     }
     //Test if it's the good invocation to dump
-    if(++r->call_count != to_dump) return;
+    if(++r->call_count != to_dump) return; 
 
     /* Keep the current working directory */
     if (getcwd(cwd, sizeof(cwd)) == NULL)
@@ -227,25 +246,10 @@ void dump(char* loop_name, int to_dump, int count, ...) {
         return;
     }
 
-
-
-    void * addresses[count];
-    char *type, *name;
-    va_list ap;
-    int j;
-    va_start(ap, count); 
-    for(j=0; j<count; j++) {
-        addresses[j] = va_arg(ap, void*);
-        /*Only to dump scalars. Will be removed*/
-        //~ type = va_arg(ap, char*); //retrieve the type
-        //~ name = va_arg(ap, char*); //retrieve the name
-        //~ write_bin_file(path, name, type, addresses[j]);
-    }
-    va_end(ap);
-
     pid_t child;
     child = fork();
     /*Execution should continue through the son */
+
     if(child == 0) {
         /* Trace and freeze the child process */
         ptrace(PTRACE_TRACEME, 0, NULL, NULL);
@@ -253,23 +257,24 @@ void dump(char* loop_name, int to_dump, int count, ...) {
         exit(0);
     }
     else {
+        page_log_off();
         /* Wait for the child to stop */
         wait(NULL);
         if(chdir(path) != 0) {
             fprintf(stderr, "cannot enter loop dump directory");
             exit(-1);
         }
-        page_log_off();
         page_log_dump("hotpages.map");
         dump_mem(child, count, addresses);
+        ptrace(PTRACE_CONT, child, NULL, NULL);
         /* Come back to original working directory */
         if(chdir(cwd) != 0) {
             fprintf(stderr, "cannot come back to original working directory");
             exit(-1);
         }
         page_log_on(LOG_SIZE);
-        ptrace(PTRACE_CONT, child, NULL, NULL);
     }
+
 }
 
 /**********************************************************************

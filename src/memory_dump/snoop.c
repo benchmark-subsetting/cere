@@ -33,6 +33,8 @@ char hs[PAGESIZE] __attribute__ ((aligned (PAGESIZE)));
 
 struct page_cache pc;
 
+extern void mtrace_init(void);
+
 #define round_to_page(addr) ((char *)(((off64_t)(addr)) & ~(PAGESIZE-1))) 
 
 static void
@@ -91,6 +93,10 @@ void
 page_log_on(int log_size)
 {
   assert(pc.page_log_active == false);
+
+  mtrace_init();
+
+
   char *p;
   pc.last_page = 0;
   pc.log_size = log_size;
