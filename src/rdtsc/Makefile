@@ -3,7 +3,7 @@ CFLAGS=-O3 -g
 
 all:
 	$(CC) $(CFLAGS) -c rdtsc.c
-	$(CC) $(CFLAGS) -c htable/htable/htable.c
+	$(CC) $(CFLAGS) -c ../htable/htable/htable.c
 	ar -r rdtsc.a htable.o rdtsc.o 
 
 test: all

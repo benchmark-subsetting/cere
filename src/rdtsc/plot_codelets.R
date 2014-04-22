@@ -4,45 +4,151 @@ args <- commandArgs(trailingOnly = TRUE)
 suppressPackageStartupMessages(require(ggplot2, quietly=TRUE))
 suppressPackageStartupMessages(require(reshape2, quietly=TRUE))
 suppressPackageStartupMessages(require(data.table, quietly=TRUE))
-
-plot_by_Codelets <- function(allLoops) {
-    meltedLoops<-melt(allLoops, id.vars=c("Codelet.Name","Call.Count","CPU_CLK_UNHALTED_CORE"))
-    meltedLoops<-meltedLoops[!(is.na(meltedLoops$value)), ]
-    p <- ggplot(meltedLoops, aes(x=variable, y=value))
-    p <- p + geom_point()
-    p <- p + facet_wrap(~Codelet.Name, scales="free")
-    print(p)
-}
+suppressPackageStartupMessages(require(plyr, quietly=TRUE))
+suppressPackageStartupMessages(require(GMD, quietly=TRUE))
+suppressPackageStartupMessages(require(fpc, quietly=TRUE))
+suppressPackageStartupMessages(require(cluster, quietly=TRUE))
+options(warn=-1)
+options(error=traceback)
+MAX_POINTS=50000
+set.seed(2000)
 
 # Check the arguments 
-if ((length(args) != 1) && (length(args) != 2)) {
-    print("usage: ./plot_codelets.R <rdtsc_file.csv> [<Codelet Name>]")
-    print("    Optional value: Codelet Name")
+if ((length(args) < 3)) {
+    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <binary files list>")
+    print("If called without specifying the number of cluster, the scrpit will try to find the best number")
     q()
 }
 
+plot_by_Codelets <- function(tracedLoop, CodeletName) {
+    p <- ggplot(tracedLoop, aes(y=values, x=invocation))
+    p <- p + geom_point()
+    p <- p + ggtitle(CodeletName)
+    ggsave(file="test.png", plot=p, dpi=300)
+}
+
 # load_csv: reads a csv file
-load_csv <- function(file) {
+load_csv <- function(csvFile) {
     return (tryCatch(
-                read.csv(file, header=F, fill=T, sep=",", col.names=c("Codelet Name", "Call Count", "CPU_CLK_UNHALTED_CORE", paste("V", seq_len(max(count.fields(file, sep=",", comment.char=""))-3)))),
+                read.table(csvFile, header=T, comment.char = "", sep=","),
                 error = function(e) {
-                        print(paste("Could not open file", file))
+                        print(paste("Could not open file", csvFile))
                         q()
                     }
                 ))
 }
 
-rdtsc_file = args[1]
-if(length(args) == 2) {
-    CodeletName=args[2]
+dump_to_file <- function(todump, filename) {
+    write.table(todump, filename, sep=" ", quote = F, row.names = F, col.names = F)
 }
 
-#Open in-vivo measure
-allLoops = load_csv(rdtsc_file)
-
-allLoops=allLoops[-1,] #Remove header
-if(length(args) == 2) {
-    allLoops=allLoops[allLoops$Codelet.Name==CodeletName, ]
+plot_withinss <- function(cycles) {
+    wss <- numeric(15)
+    for (i in 1:15) wss[i] <- sum(kmeans(cycles$values,
+                                       centers=i)$withinss)
+    return(wss)
 }
-plot_by_Codelets(allLoops)
 
+clust.centroid = function(i, dat, clusters) {
+  ind = (clusters == i)
+  return(median(dat[ind, drop=FALSE]))
+}
+
+clust.sum = function(i, dat, clusters) {
+  ind = (clusters == i)
+  return(sum(as.numeric(dat[ind, drop=FALSE])))
+}
+
+clust.length = function(i, dat, clusters) {
+  ind = (clusters == i)
+  return(length(dat[ind, drop=FALSE]))
+}
+
+cluster <- function (cycles) {
+#~     plot(cycles)
+#~     hist(cycles$values)
+    if(nrow(cycles) <= 5)
+    {
+        nb_clust=nrow(cycles)
+        print(paste("Nb Clusters = ", nb_clust, sep=""))
+        return(seq(1:nb_clust))
+    } else {
+        pamk.best <- pamk(cycles$values, usepam=FALSE, scaling=TRUE, diss=FALSE)
+        nb_clust=pamk.best$nc
+        print(paste("Nb Clusters = ", nb_clust, sep=""))
+        clusters = clara(cycles$values, nb_clust, metric = "ch", samples=50)
+        return(clusters$clustering)
+    }
+}
+
+CodeletName = args[1]
+nbLoopFiles = as.integer(args[2])
+print(CodeletName)
+allLoops = load_csv(paste("results/", CodeletName, ".csv", sep=""))
+
+nbValues=allLoops[allLoops$Codelet.Name==CodeletName, ]$Call.Count
+allValues <- matrix(ncol=nbLoopFiles, nrow=nbValues)
+for(i in 1:nbLoopFiles) {
+    binFile=args[2+i]
+    to.read=file(binFile, "rb")
+    tracedLoop=readBin(to.read, integer(), n=nbValues*2, endian = "little")
+    allValues[,i] <- tracedLoop[seq(1,nbValues*2, 2)]
+}
+
+allValues <- data.frame(allValues)
+names(allValues) <- paste("repetition_", seq(1:nbLoopFiles), sep='')
+allValues$invocation=seq(1,nbValues)
+total_invocation = nrow(allValues)
+total_cycles = sum(as.numeric(allValues[,paste("repetition_", nbLoopFiles, sep='')]), na.rm=T)
+print(paste("Trace Cycles =", total_cycles))
+print(paste("Invocations=", total_invocation))
+if (total_cycles != allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE)
+{
+    print(paste("Sanity check failed: Trace cycles =", total_cycles, "& cycles =", allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE))
+    q()
+}
+
+POINTS_TO_KEEP=min(MAX_POINTS, total_invocation)
+allValues=allValues[sample(nrow(allValues), POINTS_TO_KEEP, replace=F), ]
+if (nbLoopFiles > 1)
+{
+    cycles=data.frame(values=apply(allValues[,c(paste("repetition_", seq(1:nbLoopFiles), sep=''))],1,median), invocation=allValues$invocation)
+} else {
+    cycles=data.frame(values=allValues$repetition_1, invocation=allValues$invocation)
+}
+
+#Clusterize data
+clusters = cluster(cycles)
+cycles = cbind(cycles, Cluster=clusters)
+
+#Compute centroids of each cluster
+Centroids <- sapply(sort(unique(cycles$Cluster)), clust.centroid, cycles$values, cycles$Cluster)
+#Compute for each cluster its size
+Sums <- sapply(sort(unique(cycles$Cluster)), clust.sum, cycles$values, cycles$Cluster)
+
+#Compute for each invocation, the distance to its cluster centroid.
+#And elect as representative invocation, the closest to the centroid.
+cycles$is.representative=F
+for (clust in unique(cycles$Cluster)) {
+    tmp = cycles[cycles$Cluster==clust, ]
+    tmp$Cluster <- NULL
+    center = Centroids[[clust]]
+
+    tmp$DistToCentroid = abs(tmp$values - center)
+    tmp <- tmp[order(tmp$DistToCentroid), ] #order first by distance to centroid
+    #We select as representative the closest invocation to the centroid
+    cycles[cycles$Cluster==clust, ]$is.representative =
+      ifelse(cycles[cycles$Cluster==clust, ]$invocation == tmp[1, ]$invocation, T, F)
+}
+
+res <- cycles[cycles$is.representative==T, ]
+res <- res[order(res$Cluster), ]
+#The part of each cluster time in the total loop time.
+res$part = Sums/res$values/POINTS_TO_KEEP
+best=sum(res$values*res$part)*total_invocation
+best_error=abs(best-total_cycles)/pmax(best, total_cycles)
+print(res)
+#print(allValues[match(res$invocation, allValues$invocation),])
+print(paste("Best error is", best_error))
+todump=data.frame(res$invocation, res$part, res$values)
+dump_to_file(todump, paste(CodeletName, ".invocations", sep=""))

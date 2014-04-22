@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     int mode = 0;
     int n = 1024;
     int* a = (int*) malloc(n*sizeof(int));
-
+    dump_init();
 
     if (argc != 2) {
         printf("usage: %s 0/1/2 # 0 (normal) 1 (dump) 2 (replay)\n", argv[0]); 
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     if (mode == 2) {
         // Replay mode
         void * args[2];
-        load("mainloop", 2, args);
+        load("mainloop", 1, 2, args);
         a = args[0];
         n = *((int*)args[1]);
     }

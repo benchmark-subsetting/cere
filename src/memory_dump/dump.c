@@ -8,10 +8,37 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include "dump.h"
 
-//Ok global variable is bad, but we must keep
-//track of the current invocation of the loop
-static int CURR_INV=0;
+// Comparison function.
+static bool streq(const void *e, void *string)
+{
+    return strcmp(((region *)e)->name, string) == 0;
+}
+
+static uint32_t hash_string(const char *string)
+{
+    uint32_t ret;
+    for (ret = 0; *string; string++)
+        ret = (ret << 5) - ret + *string;
+    return ret;
+}
+
+static size_t rehash(const void *e, void *unused)
+{
+    return hash_string(((region *)e)->name);
+}
+
+void dump_init()
+{
+    htable_init(&regionHtab, rehash, NULL);
+    atexit(dump_close);
+}
+
+void dump_close()
+{
+    htable_clear(&regionHtab);
+}
 
 /* dump_region: dumps to a file "<start>.memdump"
  * the memory segment starting at address <start>
@@ -100,42 +127,37 @@ void dump_mem(pid_t child, int count, void* addresses[]) {
     fclose(maps);
 }
 
-/*Only dumping int scalar*/
-void write_bin_file(char *path, char* name, char *type, void *adrr) {
-    char scalar_path[256];
-    char scalar_file[256];
-    if(!strcmp(type, "i32*")) {
-        snprintf(scalar_path, sizeof(scalar_path), "%s/%s", path, "integers");
-        snprintf(scalar_file, sizeof(scalar_file), "%s/%s", scalar_path, name);
-        mkdir(scalar_path, 0777);
-
-        FILE *scalar = fopen(strcat(scalar_file, ".bin"), "a");
-        if (!scalar) {
-            fprintf(stderr, "Could not create scalar file");
-            exit(-1);
-        }
-        fwrite((const void*)(adrr), sizeof(int), 1, scalar);
-        fclose(scalar);
-        //~ fprintf(stderr, "%s = %d\n", name, *(int*)(adrr));
-        //~ snprintf(tmp_value, sizeof(tmp_value), "%d", *(int*)(adrr));
-    }
-    //~ else if(!strcmp(type, "i64*")) {
-        //~ fwrite((const void*)(adrr), sizeof(float), 1, scalar);
+//~ /*Only dumping int and double scalar*/
+//~ void write_bin_file(char *path, char* name, char *type, void *adrr) {
+    //~ char scalar_path[256];
+    //~ char scalar_file[256];
+    //~ if(!strcmp(type, "i32*")) {
+        //~ snprintf(scalar_path, sizeof(scalar_path), "%s/%s", path, "integers");
+        //~ snprintf(scalar_file, sizeof(scalar_file), "%s/%s", scalar_path, name);
+        //~ mkdir(scalar_path, 0777);
+//~ 
+        //~ FILE *scalar = fopen(strcat(scalar_file, ".bin"), "a");
+        //~ if (!scalar) {
+            //~ fprintf(stderr, "Could not create scalar file");
+            //~ exit(-1);
+        //~ }
+        //~ fwrite((const void*)(adrr), sizeof(int), 1, scalar);
+        //~ fclose(scalar);
     //~ }
-    else if(!strcmp(type, "double*")) {
-        snprintf(scalar_path, sizeof(scalar_path), "%s/%s", path, "doubles");
-        snprintf(scalar_file, sizeof(scalar_file), "%s/%s", scalar_path, name);
-        mkdir(scalar_path, 0777);
-
-        FILE *scalar = fopen(strcat(scalar_file, ".bin"), "a");
-        if (!scalar) {
-            fprintf(stderr, "Could not create scalar file");
-            exit(-1);
-        }
-        fwrite((const void*)(adrr), sizeof(double), 1, scalar);
-        fclose(scalar);
-    }
-}
+    //~ else if(!strcmp(type, "double*")) {
+        //~ snprintf(scalar_path, sizeof(scalar_path), "%s/%s", path, "doubles");
+        //~ snprintf(scalar_file, sizeof(scalar_file), "%s/%s", scalar_path, name);
+        //~ mkdir(scalar_path, 0777);
+//~ 
+        //~ FILE *scalar = fopen(strcat(scalar_file, ".bin"), "a");
+        //~ if (!scalar) {
+            //~ fprintf(stderr, "Could not create scalar file");
+            //~ exit(-1);
+        //~ }
+        //~ fwrite((const void*)(adrr), sizeof(double), 1, scalar);
+        //~ fclose(scalar);
+    //~ }
+//~ }
 
 /* dump: dumps memory
  * loop_name: name of dumped loop
@@ -148,11 +170,28 @@ void dump(char* loop_name, int to_dump, int count, ...) {
     struct stat sb;
     char path[256];
     char cwd[256];
+    char invocation[256];
     char dump_path[] = "dump";
+    region *r=NULL;
 
-    //~ //If we want to dump a particular invocation
-    //~ CURR_INV++;
-    //~ if(CURR_INV != to_dump) return;
+    if ((r = htable_get(&regionHtab, hash_string(loop_name), streq, loop_name)) == NULL)
+    {
+        if ((r = malloc(sizeof(region))) == NULL)
+        {
+            fprintf(stderr, "DUMP: Unable to allocate new region %s\n", loop_name);
+            exit(EXIT_FAILURE);
+        }
+        if ((r->name = malloc((strlen(loop_name)+1)*sizeof(char))) == NULL)
+        {
+            fprintf(stderr, "DUMP: Unable to allocate new region name %s\n", loop_name);
+            exit(EXIT_FAILURE);
+        }
+        strcpy(r->name, loop_name);
+        r->call_count = 0;
+        htable_add(&regionHtab, hash_string(r->name), r);
+    }
+    //Test if it's the good invocation to dump
+    if(++r->call_count != to_dump) return;
 
     /* Keep the current working directory */
     if (getcwd(cwd, sizeof(cwd)) == NULL)
@@ -168,12 +207,18 @@ void dump(char* loop_name, int to_dump, int count, ...) {
             exit(-1);
         } 
     }
-
-    snprintf(path, sizeof(path), "%s/%s", dump_path, loop_name);
+    snprintf(path, sizeof(path), "%s/%s/", dump_path, r->name);
 
     /* If dump already exists for this loop_name, skip dump */ 
-    if(mkdir(path, 0777) != 0) {
-        //~ fprintf(stderr, "Skip dump\n");
+    if(mkdir(path, 0777) == 0) {
+        sprintf(invocation, "%d", to_dump);
+        if(mkdir(strcat(path, invocation), 0777) != 0) {
+            fprintf(stderr, "Skip dump\n");
+            return;
+        }
+    }
+    else {
+        fprintf(stderr, "Skip dump\n");
         return;
     }
 
@@ -184,9 +229,9 @@ void dump(char* loop_name, int to_dump, int count, ...) {
     va_start(ap, count); 
     for(j=0; j<count; j++) {
         addresses[j] = va_arg(ap, void*);
+        /*Only to dump scalars. Will be removed*/
         //~ type = va_arg(ap, char*); //retrieve the type
         //~ name = va_arg(ap, char*); //retrieve the name
-
         //~ write_bin_file(path, name, type, addresses[j]);
     }
     va_end(ap);
@@ -226,9 +271,9 @@ void dump(char* loop_name, int to_dump, int count, ...) {
  * count: number of args
  * addresses: an array of <count> addresses
  */
-void load(char* loop_name, int count, void* addresses[count]) {
+void load(char* loop_name, int to_load, int count, void* addresses[count]) {
     char path[256];
-    snprintf(path, sizeof(path), "dump/%s/core.map", loop_name);
+    snprintf(path, sizeof(path), "dump/%s/%d/core.map", loop_name, to_load);
     FILE* core_map = fopen(path, "r");
     if (!core_map) {
         fprintf(stderr, "Could not open %s", path);
