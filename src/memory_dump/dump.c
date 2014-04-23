@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 #include "dump.h"
 #include "snoop.h"
 
@@ -41,8 +42,7 @@ void dump_init()
 
 void dump_close()
 {
-  page_log_off();
-  htable_clear(&regionHtab);
+    htable_clear(&regionHtab);
 }
 
 /* dump_region: dumps to a file "<start>.memdump"
@@ -170,27 +170,8 @@ void dump_mem(pid_t child, int count, void* addresses[]) {
  * count: number of arguments
  * args: the arguments to dump 
  */
-static void _dump(char* loop_name, int to_dump, int count, void * addresses[]);
-void dump(char* loop_name, int to_dump, int count, ...)
-{
-  void * addresses[count];
-  char *type, *name;
-  va_list ap;
-  int j;
-  va_start(ap, count); 
-  for(j=0; j<count; j++) {
-      addresses[j] = va_arg(ap, void*);
-      /*Only to dump scalars. Will be removed*/
-      //~ type = va_arg(ap, char*); //retrieve the type
-      //~ name = va_arg(ap, char*); //retrieve the name
-      //~ write_bin_file(path, name, type, addresses[j]);
-  }
-  va_end(ap);
+void dump(char* loop_name, int to_dump, int count, ...) {
 
-  _dump(loop_name, to_dump, count, addresses);
-}
-
-static void _dump(char* loop_name, int to_dump, int count, void* addresses[]) {
     struct stat sb;
     char path[256];
     char cwd[256];
@@ -215,19 +196,19 @@ static void _dump(char* loop_name, int to_dump, int count, void* addresses[]) {
         htable_add(&regionHtab, hash_string(r->name), r);
     }
     //Test if it's the good invocation to dump
-    if(++r->call_count != to_dump) return; 
+    if(++r->call_count != to_dump) return;
 
     /* Keep the current working directory */
     if (getcwd(cwd, sizeof(cwd)) == NULL)
     {
-        fprintf(stderr, "Could not get current working direcory");
+        fprintf(stderr, "Could not get current working direcory >%s<\n", strerror(errno));
         exit(-1);
     }
 
     /* Check that dump exists or try to create it, then enter it */
     if(stat(dump_path, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
         if(mkdir(dump_path, 0777) != 0) {
-            fprintf(stderr, "Could not create dump directory");
+            fprintf(stderr, "Could not create dump directory\n");
             exit(-1);
         } 
     }
@@ -246,10 +227,25 @@ static void _dump(char* loop_name, int to_dump, int count, void* addresses[]) {
         return;
     }
 
+
+
+    void * addresses[count];
+    //~ char *type, *name;
+    va_list ap;
+    int j;
+    va_start(ap, count); 
+    for(j=0; j<count; j++) {
+        addresses[j] = va_arg(ap, void*);
+        /*Only to dump scalars. Will be removed*/
+        //~ type = va_arg(ap, char*); //retrieve the type
+        //~ name = va_arg(ap, char*); //retrieve the name
+        //~ write_bin_file(path, name, type, addresses[j]);
+    }
+    va_end(ap);
+
     pid_t child;
     child = fork();
     /*Execution should continue through the son */
-
     if(child == 0) {
         /* Trace and freeze the child process */
         ptrace(PTRACE_TRACEME, 0, NULL, NULL);
@@ -257,24 +253,23 @@ static void _dump(char* loop_name, int to_dump, int count, void* addresses[]) {
         exit(0);
     }
     else {
-        page_log_off();
         /* Wait for the child to stop */
         wait(NULL);
         if(chdir(path) != 0) {
-            fprintf(stderr, "cannot enter loop dump directory");
+            fprintf(stderr, "cannot enter loop dump directory\n");
             exit(-1);
         }
+        page_log_off();
         page_log_dump("hotpages.map");
         dump_mem(child, count, addresses);
         ptrace(PTRACE_CONT, child, NULL, NULL);
         /* Come back to original working directory */
         if(chdir(cwd) != 0) {
-            fprintf(stderr, "cannot come back to original working directory");
+            fprintf(stderr, "cannot come back to original working directory\n");
             exit(-1);
         }
         page_log_on(LOG_SIZE);
     }
-
 }
 
 /**********************************************************************
@@ -287,11 +282,17 @@ static void _dump(char* loop_name, int to_dump, int count, void* addresses[]) {
  * addresses: an array of <count> addresses
  */
 void load(char* loop_name, int to_load, int count, void* addresses[count]) {
-    char path[256];
-    snprintf(path, sizeof(path), "dump/%s/%d/core.map", loop_name, to_load);
-    FILE* core_map = fopen(path, "r");
+    char core_path[256];
+    char hotpages_path[256];
+    char* line=NULL;
+    size_t len = 0;
+    snprintf(core_path, sizeof(core_path), "dump/%s/%d/core.map", loop_name, to_load);
+    snprintf(hotpages_path, sizeof(hotpages_path), "dump/%s/%d/hotpages.map", loop_name, to_load);
+
+    //Read loops parameters adresses
+    FILE* core_map = fopen(core_path, "r");
     if (!core_map) {
-        fprintf(stderr, "Could not open %s", path);
+        fprintf(stderr, "Could not open %s", core_path);
         exit(-1);
     }
     
@@ -304,4 +305,19 @@ void load(char* loop_name, int to_load, int count, void* addresses[count]) {
     }
 
     fclose(core_map);
+
+    //Load hotpages
+    FILE* hotpages = fopen(hotpages_path, "r");
+    if(!hotpages) {
+        fprintf(stderr, "LOAD: Could not open %s (Cache may not be warmed-up)\n", hotpages_path);
+        return;
+    }
+    int i;
+    void* tmp;
+    while(fgets(buf, BUFSIZ, hotpages)) {
+        off64_t address;
+        sscanf(buf, "%lx", &address);
+        if(address == 0) continue;
+        for (i = 0; i < 4096; i++) tmp = (char*)(address+i);
+    }
 }
