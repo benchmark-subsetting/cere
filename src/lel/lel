@@ -5,7 +5,7 @@
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
-LD=gcc
+LD=gcc-4.7
 
 # parse arguments
 if [[ $1 == --replay=* ]]; then
@@ -21,7 +21,7 @@ if [[ $1 == --replay=* ]]; then
         INVOCATION=1
     fi
     echo "Invocation <$INVOCATION>" > /dev/stderr
-fi 
+fi
 
 if [[ $1 == --dump ]]; then
     DUMP_MODE=1
@@ -40,11 +40,11 @@ if [[ $1 == --instrument ]]; then
     echo "Instrumentation mode" > /dev/stderr
     shift
     if [[ $1 =~ --instrument-loop=* ]] || [[ $1 =~ --loops-file=* ]]; then
-        #The linker ignores instrumentation options 
+        #The linker ignores instrumentation options
         shift
     fi
     if [[ $1 =~ --loop-to-trace=* ]]; then
-        #The linker ignores instrumentation options 
+        #The linker ignores instrumentation options
         shift
     fi
 fi
@@ -57,7 +57,7 @@ fi
 if [[ ! -z "$DUMP_MODE" ]] || [[ ! -z "$REPLAY_LOOP" ]]; then
     #~ make -C $PROJECT_ROOT/src/memory_dump/
     #~ cp $PROJECT_ROOT/src/memory_dump/dump.a .
-    ARGS="$ARGS $PROJECT_ROOT/src/memory_dump/dump.a"
+    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump -ldump"
 fi
 
 if [[ -z "$REPLAY_LOOP" ]]; then
@@ -126,7 +126,7 @@ else
         exit(0);
         }" >> realmain.c
     fi
-    gcc -c realmain.c
+    gcc-4.7 -c realmain.c
 
 
     # 0x60000000 is chosen to allocate at least 1.5GB for the heap
@@ -143,8 +143,8 @@ else
         echo ".incbin \"$m\"" >> dump/objs.S
         DUMP_ARGS="$DUMP_ARGS -Wl,--section-start=s$n=0x$n"
     done
-    gcc -c dump/objs.S 
-    $LD $DUMP_ARGS objs.o realmain.o $ARGS 
+    gcc-4.7 -c dump/objs.S
+    $LD $DUMP_ARGS objs.o realmain.o $ARGS
     while [ ! "$1" = "-o" ]
     do
         shift
