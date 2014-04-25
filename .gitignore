@@ -2,3 +2,4 @@ libs/dragonegg.so
 **/*.o
 **/*.a
 **/*.so
+**/.*
