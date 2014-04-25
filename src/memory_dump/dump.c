@@ -1,94 +1,494 @@
 #define _LARGEFILE64_SOURCE
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <malloc.h>
+#include <errno.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
+#include <sys/mman.h>
+
 #include "dump.h"
-#include "snoop.h"
+#include "counters.h"
+#include "err.h"
+#include "mallochook.h"
 
-#define LOG_SIZE 8
+#define _DEBUG 1
+#undef _DEBUG
 
-// Comparison function.
-static bool streq(const void *e, void *string)
+static const char dump_prefix[] = "dump";
+static const char pagelog_suffix[] = "hotpages.map";
+static const char core_suffix[] = "core.map";
+
+struct dump_state state __attribute__ ((aligned (PAGESIZE)));
+static void
+mru_handler(int sig, siginfo_t *si, void *unused)
 {
-    return strcmp(((region *)e)->name, string) == 0;
+  char * touched_addr = si->si_addr;
+  char * start_of_page = round_to_page(touched_addr);
+
+#ifdef _DEBUG
+  printf("Detected access at: %p -- Start of Page: %p\n",
+         touched_addr, start_of_page);
+#endif
+
+  /* Unprotect Page */
+  int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
+  assert(result != -1);
+
+
+  /* Add page to page cache */
+  /* we need to evict one of the pages, reprotect it ! */
+  if (state.pages_cache[state.last_page] != 0) {
+#ifdef _DEBUG
+      printf("Reprotecting page %p\n", state.pages_cache[state.last_page]);
+#endif
+      int result = mprotect((void*)state.pages_cache[state.last_page], PAGESIZE, PROT_NONE);
+      assert(result != -1);
+  }
+
+  state.pages_cache[state.last_page] = start_of_page;
+  state.last_page = (state.last_page + 1)%state.log_size;
+
+#ifdef _DEBUG
+  printf("page cache [ ");
+  for (int i = 0; i <state.log_size; i++) {
+      int c = (i + state.last_page) % state.log_size;
+      printf("%p ", state.pages_cache[c]);
+  }
+  printf(" ]\n");
+#endif
 }
 
-static uint32_t hash_string(const char *string)
+static char
+hex(char value)
 {
-    uint32_t ret;
-    for (ret = 0; *string; string++)
-        ret = (ret << 5) - ret + *string;
-    return ret;
+  switch(value) {
+    case 0: return '0';
+    case 1: return '1';
+    case 2: return '2';
+    case 3: return '3';
+    case 4: return '4';
+    case 5: return '5';
+    case 6: return '6';
+    case 7: return '7';
+    case 8: return '8';
+    case 9: return '9';
+    case 10: return 'a';
+    case 11: return 'b';
+    case 12: return 'c';
+    case 13: return 'd';
+    case 14: return 'e';
+    case 15: return 'f';
+  }
+  assert(0);
 }
 
-static size_t rehash(const void *e, void *unused)
+static
+void fill_dump_name(char buf[], int stack_pos, off64_t addr)
 {
-    return hash_string(((region *)e)->name);
-}
+    //snprintf(buf, sizeof(buf), "%s/%lx.memdump", state.dump_path, start);
+    const char suffix[] = ".memdump";
+    int digits = MAX_DIGITS;
 
-void dump_init()
-{
-    htable_init(&regionHtab, rehash, NULL);
-    page_log_on(LOG_SIZE);
-    atexit(dump_close);
-}
+    size_t i, j;
+    for (i = 0; state.dump_path[stack_pos][i] != '\0'; i++)
+      buf[i] = state.dump_path[stack_pos][i];
+    buf[i++] = '/';
 
-void dump_close()
-{
-    htable_clear(&regionHtab);
+    while(digits--) {
+        buf[i+digits] = hex(addr % 16);
+        addr = addr / 16;
+    }
+    i += MAX_DIGITS;
+
+    for (j = 0; suffix[j] != '\0'; j++)
+      buf[i++] = suffix[j];
+
+    buf[i++] = '\0';
 }
 
 /* dump_region: dumps to a file "<start>.memdump"
  * the memory segment starting at address <start>
  * and ending at address <end>
  */
-void dump_region(int mem, 
-                 off64_t start, 
-                 off64_t end)
+static
+bool write_pages(char path[], off64_t start, off64_t stop)
 {
-    char buf[4096];
-    char path[256];
+    char buf[PAGESIZE];
+    int out = open(path, O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
 
-    snprintf(path, sizeof(path), "%lx.memdump", start);
-    int out = open(path, O_WRONLY|O_CREAT,S_IRWXU);
-
-    if (out == -1) {
-        fprintf(stderr, "Could not open dump file: %s", path); 
-        return;
+    if (out <= 0) {
+        /* region already dumped */
+        return false;
+        //Should check errno but it is protected
+        //if (errno == EEXIST) {
+          //fprintf(stderr, "already exists %s\n", path);
+        //  return false;
+        //}
+        //else
+        //errx(EXIT_FAILURE, "could not dump %s\n", path);
     }
- 
-    lseek64(mem, start, SEEK_SET);
-    while(start < end) {
-        int rd;
-        rd = read(mem, buf, 4096);
-        write(out, buf, rd);
-        start += 4096;
+
+    lseek64(state.mem_fd, start, SEEK_SET);
+
+    while(start < stop) {
+        int rd = read(state.mem_fd, buf, PAGESIZE);
+        int wr = write(out, buf, rd);
+        assert(wr == PAGESIZE && rd == PAGESIZE);
+        start += PAGESIZE;
     }
 
     close(out);
+    return true;
+}
+
+static
+void dump_pages(off64_t start, off64_t stop)
+{
+  /* Dump Page */
+  char current_path[MAX_PATH];
+  fill_dump_name(current_path, state.stack_pos, start);
+  if (write_pages(current_path, start, stop)) {
+      /* Link in parent's dumps */
+      for (int i=0; i < state.stack_pos; i++) {
+          char parent_path[MAX_PATH];
+          fill_dump_name(parent_path, i, start);
+          link(current_path, parent_path);
+      }
+  }
+}
+
+static void
+dump_handler(int sig, siginfo_t *si, void *unused)
+{
+
+  mtrace_deactivate();
+  char * touched_addr = si->si_addr;
+  char * start_of_page = round_to_page(touched_addr);
+
+  /* Unprotect Page */
+   int result = mprotect((char*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
+   assert(result != -1);
+
+#ifdef _DEBUG
+  printf("DUMP Detected access at: %p -- Start of Page: %p\n",
+         touched_addr, start_of_page);
+#endif
+
+  /* Dump page */
+  dump_pages((off64_t)start_of_page, (off64_t)start_of_page+PAGESIZE);
+
+  /* Do the mru logging */
+  //mru_handler(sig, si, unused);
+  mtrace_activate();
+}
+
+static void
+ignore_handler(int sig, siginfo_t *si, void *unused)
+{
+  char * touched_addr = si->si_addr;
+  char * start_of_page = round_to_page(touched_addr);
+
+  /* Unprotect Page */
+  int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
+  assert(result != -1);
+
+#ifdef _DEBUG
+  printf("IGN Detected access at: %p -- Start of Page: %p\n",
+         touched_addr, start_of_page);
+#endif
 }
 
 
-/* dump_mem: dumps the memory of a PTRACED process
- * child: the pid of the process to dump
- * count: the number of addresses
- * addresses: the addresses that we want to preserve
- */
-void dump_mem(pid_t child, int count, void* addresses[]) {
-    char path[256];
+static void
+page_log_dump(void)
+{
+  char path[MAX_PATH];
+  snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], pagelog_suffix);
+  FILE * f = fopen(path, "w");
+  for (int i = 0; i <state.log_size; i++) {
+      int c = (i + state.last_page) % state.log_size;
+      fprintf(f, "%lx\n", (off64_t)state.pages_cache[c]);
+  }
+  fclose(f);
+}
+
+static void
+set_ignore(void)
+{
+#ifdef _DEBUG
+  printf("set_ignore()\n");
+#endif
+  state.dump_sa = IGNORE_SA;
+  state.sa.sa_sigaction = ignore_handler;
+  int res = sigaction(SIGSEGV, &state.sa, NULL);
+  assert(res != -1);
+}
+
+static void
+set_dump(void)
+{
+#ifdef _DEBUG
+  printf("set_dump()\n");
+#endif
+  state.dump_sa = DUMP_SA;
+  state.sa.sa_sigaction = dump_handler;
+  int res = sigaction(SIGSEGV, &state.sa, NULL);
+  assert(res != -1);
+}
+
+static void
+set_mru(void)
+{
+#ifdef _DEBUG
+  printf("set_mru()\n");
+#endif
+  state.dump_sa = MRU_SA;
+  state.sa.sa_sigaction = mru_handler;
+  int res = sigaction(SIGSEGV, &state.sa, NULL);
+  assert(res != -1);
+}
+
+static void
+open_mem_fd(void)
+{
+  char path[MAX_PATH];
+  pid_t pid = getpid();
+  snprintf(path, sizeof(path), "/proc/%d/mem", pid);
+  state.mem_fd = open(path, O_RDONLY);
+  if(!state.mem_fd == -1)
+      errx(EXIT_FAILURE, "Error opening /proc/%d/mem interface", pid);
+}
+
+static
+void configure_sigaction(void)
+{
+  /* Configure an alternative stack for
+     the signal handler */
+  stack_t ss;
+  ss.ss_sp = state.hs;
+  ss.ss_size = sizeof(state.hs);
+  ss.ss_flags = 0;
+  int res = sigaltstack(&ss, NULL);
+  assert(res != -1);
+
+  /* Configure the ignore signal handler */
+  state.sa.sa_flags = SA_SIGINFO | SA_ONSTACK; // | SA_NODEFER;
+  sigemptyset(&state.sa.sa_mask);
+  set_ignore();
+}
+
+
+static void
+unlock_mem(void)
+{
+  char *p;
+  char path[MAX_PATH];
+
+  pid_t my_pid = getpid();
+  snprintf(path, sizeof(path), "/proc/%d/maps", my_pid);
+  FILE * maps = fopen(path, "r");
+
+  if(!maps)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+
+  char buf[BUFSIZ + 1];
+  size_t start, end;
+  int counter = 0;
+  char *start_of_stack, *end_of_stack;
+
+  while(fgets(buf, BUFSIZ, maps)) {
+      off64_t start, end;
+
+      sscanf(buf, "%lx-%lx", &start, &end);
+
+      /* Whitelist protected pages */
+      if (strstr(buf, "---p") == NULL)
+         continue;
+
+      char * page_start = round_to_page((char*)start);
+      mprotect(page_start, end, PROT_READ | PROT_WRITE | PROT_EXEC);
+  }
+  fclose(maps);
+}
+
+
+static void
+relock_mem(void)
+{
+
+#ifdef _DEBUG
+      printf("relock_mem()\n");
+#endif
+  char *p;
+  char path[MAX_PATH];
+
+  pid_t my_pid = getpid();
+  snprintf(path, sizeof(path), "/proc/%d/maps", my_pid);
+  FILE * maps = fopen(path, "r");
+
+  if(!maps)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+
+  char buf[BUFSIZ + 1];
+  size_t start, end;
+  int counter = 0;
+  char *start_of_stack, *end_of_stack;
+
+  while(fgets(buf, BUFSIZ, maps)) {
+      off64_t start, end;
+
+      sscanf(buf, "%lx-%lx", &start, &end);
+
+      /* Stack is special, it should be protected last
+         because we are using it */
+      if (strstr(buf, "stack") != NULL) {
+         end_of_stack = (char *) end;
+         start_of_stack = (char *) start;
+         continue;
+      }
+
+
+      /* Whitelist deprotected pages */
+      if (strstr(buf, "rwxp") == NULL)
+         continue;
+
+      char * page_start = round_to_page((char*)start);
+      int result = mprotect(page_start, end, PROT_NONE);
+      assert(result != -1);
+  }
+  fclose(maps);
+
+  /* Unprotect dump state */
+  int result = mprotect(&state, sizeof(state), PROT_READ | PROT_WRITE);
+  assert(result != -1);
+
+  mprotect(start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
+}
+
+static void
+lock_mem(void)
+{
+
+
+#ifdef _DEBUG
+      printf("lock_mem()\n");
+#endif
+  char *p;
+  char path[MAX_PATH];
+
+  pid_t my_pid = getpid();
+  snprintf(path, sizeof(path), "/proc/%d/maps", my_pid);
+  FILE * maps = fopen(path, "r");
+
+  if(!maps)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+
+  char buf[BUFSIZ + 1];
+  size_t start, end;
+  int counter = 0;
+  char *start_of_stack, *end_of_stack;
+
+  char* addresses[256];
+  int count = 0;
+
+  while(fgets(buf, BUFSIZ, maps)) {
+      off64_t start, end;
+
+      sscanf(buf, "%lx-%lx", &start, &end);
+
+      /* Stack is special, it should be protected last
+         because we are using it */
+      if (strstr(buf, "stack") != NULL) {
+         end_of_stack = (char *) end;
+         start_of_stack = (char *) start;
+         continue;
+      }
+
+      /* Ignore libc pages */
+      if (strstr(buf, "linux-gnu") != NULL)
+         continue;
+      /* Ignore libc special mem zones */
+      if (strstr(buf, "r-xp") != NULL)
+         continue;
+      /* Ignore vsyscall special mem zones */
+      if (strstr(buf, "vsyscall") != NULL)
+         continue;
+
+      /* Ignore libdump mem zones */
+      if (strstr(buf, "libdump.so") != NULL)
+         continue;
+
+      /* Ignore libdump vdso zones */
+      if (strstr(buf, "vdso") != NULL)
+         continue;
+
+      /* Ignore alreay protected pages */
+      if (strstr(buf, "---p") != NULL)
+         continue;
+
+      /* Ignore prog and system segments */
+      if (start < 0x500000 | start >= 0x700000000000) continue;
+
+      /* Ignore all foreign sections */
+      /* if (strstr(buf, "heap") == NULL &&
+          strstr(buf, "test_dump") == NULL)
+        continue;
+      */
+
+      char * page_start = round_to_page((char*)start);
+      assert(count < 255);
+      addresses[count++] = (char*) page_start;
+      addresses[count++] = (char*) end;
+  }
+  fclose(maps);
+
+
+  while(count > 0) {
+      char * end = addresses[--count];
+      char * start = addresses[--count];
+#ifdef _DEBUG
+      printf("protecting region %p-%p\n", (char*)start, (char*)end);
+#endif
+      int result = mprotect(start, end-start, PROT_NONE);
+#ifdef _DEBUG
+      if (result == -1)
+        printf("FAILED protecting region %p-%p\n", (char*)start, (char*)end);
+#endif
+  }
+
+  /* Unprotect dump state */
+  int result = mprotect(&state, sizeof(state), PROT_READ | PROT_WRITE);
+  assert(result != -1);
+
+#ifdef _DEBUG
+  printf("protection activated\n");
+  printf("protecting stack %p-%p\n", start_of_stack, end_of_stack);
+#endif
+
+  mprotect(start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
+
+}
+
+static void
+dump_core(int count, void* addresses[])
+{
     FILE *maps;
-    int mem;
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], core_suffix);
     int i;
 
-    FILE * core_map = fopen("core.map", "w"); 
-        if (!core_map) {
+    FILE * core_map = fopen(path, "w");
+    if (!core_map) {
         fprintf(stderr, "Could not create core.map file");
         exit(-1);
     }
@@ -96,228 +496,178 @@ void dump_mem(pid_t child, int count, void* addresses[]) {
     for (i=0; i<count; i++) {
         fprintf(core_map, "%d %lx\n", i, (off64_t) addresses[i]);
     }
-
     fclose(core_map);
-
-    snprintf(path, sizeof(path), "/proc/%d/maps", child);
-    maps = fopen(path, "r");
-
-    snprintf(path, sizeof(path), "/proc/%d/mem", child);
-    mem = open(path, O_RDONLY);
-
-    //snprintf(path, sizeof(path), "cat /proc/%d/maps", child);
-    //system(path);
-
-    if(!maps || mem == -1) {
-        fprintf(stderr, "Error reading the memory using /proc/ interface");
-        exit(-1);
-    }
-
-    char buf[BUFSIZ + 1];
-    while(fgets(buf, BUFSIZ, maps)) {
-        off64_t start, end;
-        sscanf(buf, "%lx-%lx", &start, &end);
-
-        int i;
-        int dump = 0;
-
-        /* Ignore prog or syscall segments */
-        if (start < 0x500000
-            || start > 0xffffffffff000000) continue;
-        /* dump the region */
-        dump_region(mem, start, end);
-    }
-
-    close(mem);
-    fclose(maps);
 }
 
-//~ /*Only dumping int and double scalar*/
-//~ void write_bin_file(char *path, char* name, char *type, void *adrr) {
-    //~ char scalar_path[256];
-    //~ char scalar_file[256];
-    //~ if(!strcmp(type, "i32*")) {
-        //~ snprintf(scalar_path, sizeof(scalar_path), "%s/%s", path, "integers");
-        //~ snprintf(scalar_file, sizeof(scalar_file), "%s/%s", scalar_path, name);
-        //~ mkdir(scalar_path, 0777);
-//~ 
-        //~ FILE *scalar = fopen(strcat(scalar_file, ".bin"), "a");
-        //~ if (!scalar) {
-            //~ fprintf(stderr, "Could not create scalar file");
-            //~ exit(-1);
-        //~ }
-        //~ fwrite((const void*)(adrr), sizeof(int), 1, scalar);
-        //~ fclose(scalar);
-    //~ }
-    //~ else if(!strcmp(type, "double*")) {
-        //~ snprintf(scalar_path, sizeof(scalar_path), "%s/%s", path, "doubles");
-        //~ snprintf(scalar_file, sizeof(scalar_file), "%s/%s", scalar_path, name);
-        //~ mkdir(scalar_path, 0777);
-//~ 
-        //~ FILE *scalar = fopen(strcat(scalar_file, ".bin"), "a");
-        //~ if (!scalar) {
-            //~ fprintf(stderr, "Could not create scalar file");
-            //~ exit(-1);
-        //~ }
-        //~ fwrite((const void*)(adrr), sizeof(double), 1, scalar);
-        //~ fclose(scalar);
-    //~ }
-//~ }
+static void
+create_dump_dir(void)
+{
+  struct stat sb;
+  /* Check that dump exists or try to create it, then enter it */
+  if(stat(dump_prefix, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
+      if(mkdir(dump_prefix, 0777) != 0)
+        errx(EXIT_FAILURE, "Could not create dump directory");
+  }
+}
 
-/* dump: dumps memory
- * loop_name: name of dumped loop
- * to_dump; the invocation to dump
- * count: number of arguments
- * args: the arguments to dump 
+static
+void
+set_log_size(int log_size)
+{
+  state.log_size = log_size;
+  state.stack_pos = -1;
+}
+
+void dump_init()
+{
+  /* configure atexit */
+  atexit(dump_close);
+
+  /* open mem fd */
+  open_mem_fd();
+
+  /* create dump dir */
+  create_dump_dir();
+
+  /* init counters table */
+  init_counters();
+  state.last_page = 0;
+
+  /* set log size */
+  set_log_size(LOG_SIZE);
+
+  /* configure sigaction */
+  configure_sigaction();
+
+  /* lock memory */
+  lock_mem();
+
+  /* configure mru sa */
+  set_mru();
+
+  /* start protecting malloc and co */
+  mtrace_activate();
+
+#ifdef _DEBUG
+  printf("DUMP_INIT DONE\n");
+#endif
+}
+
+void dump_close()
+{
+  /* deactivate memory tracing */
+  mtrace_deactivate();
+
+  /* install ignore sa */
+  set_ignore();
+
+  /* clear the htable */
+  htable_clear(&state.counters);
+}
+
+/* dumps memory
+ *  loop_name: name of dumped loop
+ *  invocation: the number of the invocation to dump
+ *  count: number of arguments
+ *  ...args...: the arguments to dump
  */
-void dump(char* loop_name, int to_dump, int count, ...) {
+void dump(char* loop_name, int invocation, int count, ...)
+{
 
-    struct stat sb;
-    char path[256];
-    char cwd[256];
-    char invocation[256];
-    char dump_path[] = "dump";
-    region *r=NULL;
+#ifdef _DEBUG
+  printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
+#endif
 
-    if ((r = htable_get(&regionHtab, hash_string(loop_name), streq, loop_name)) == NULL)
-    {
-        if ((r = malloc(sizeof(region))) == NULL)
-        {
-            fprintf(stderr, "DUMP: Unable to allocate new region %s\n", loop_name);
-            exit(EXIT_FAILURE);
-        }
-        if ((r->name = malloc((strlen(loop_name)+1)*sizeof(char))) == NULL)
-        {
-            fprintf(stderr, "DUMP: Unable to allocate new region name %s\n", loop_name);
-            exit(EXIT_FAILURE);
-        }
-        strcpy(r->name, loop_name);
-        r->call_count = 0;
-        htable_add(&regionHtab, hash_string(r->name), r);
-    }
-    //Test if it's the good invocation to dump
-    if(++r->call_count != to_dump) return;
+    /* First stop mru logger */
+    set_ignore();
 
-    /* Keep the current working directory */
-    if (getcwd(cwd, sizeof(cwd)) == NULL)
-    {
-        fprintf(stderr, "Could not get current working direcory >%s<\n", strerror(errno));
-        exit(-1);
-    }
+    /* Then stop malloc protection */
+    mtrace_deactivate();
 
-    /* Check that dump exists or try to create it, then enter it */
-    if(stat(dump_path, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
-        if(mkdir(dump_path, 0777) != 0) {
-            fprintf(stderr, "Could not create dump directory\n");
-            exit(-1);
-        } 
-    }
-    snprintf(path, sizeof(path), "%s/%s/", dump_path, r->name);
+    /* get region */
+    struct region_counter * region = get_region(loop_name);
 
-    /* If dump already exists for this loop_name, skip dump */ 
-    if(mkdir(path, 0777) == 0) {
-        sprintf(invocation, "%d", to_dump);
-        if(mkdir(strcat(path, invocation), 0777) != 0) {
-            fprintf(stderr, "Skip dump\n");
-            return;
-        }
-    }
-    else {
-        fprintf(stderr, "Skip dump\n");
+    /* increment call_count */
+    region->call_count++;
+
+    /* Did we get to the invocation that must be dumped ? */
+    if(region->call_count != invocation)
+      {
+#ifdef _DEBUG
+    printf("not correct invocation DUMP( %s %d count = %d) \n", loop_name, invocation, count);
+        /* reactivate malloc protection */
+#endif
+        mtrace_activate();
+        /* reactivate mru logger */
+        set_mru();
         return;
-    }
+      }
 
+    /* Increment stack pos */
+    state.stack_pos ++;
+    assert(state.stack_pos < MAX_STACK);
+    int sp = state.stack_pos;
 
+    /* Ensure that the dump directory exists */
+    snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]),
+             "%s/%s/", dump_prefix, loop_name);
 
+    mkdir(state.dump_path[sp], 0777);
+
+    snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]),
+             "%s/%s/%d", dump_prefix, loop_name, invocation);
+
+    if (mkdir(state.dump_path[sp], 0777) != 0)
+        errx(EXIT_FAILURE, "dump %s already exists, stop\n", state.dump_path[sp]);
+
+    /* Dump hot pages log */
+    page_log_dump();
+
+    /* Dump addresses */
     void * addresses[count];
-    //~ char *type, *name;
     va_list ap;
     int j;
-    va_start(ap, count); 
+    va_start(ap, count);
     for(j=0; j<count; j++) {
         addresses[j] = va_arg(ap, void*);
-        /*Only to dump scalars. Will be removed*/
-        //~ type = va_arg(ap, char*); //retrieve the type
-        //~ name = va_arg(ap, char*); //retrieve the name
-        //~ write_bin_file(path, name, type, addresses[j]);
+        char * start_of_page = round_to_page(addresses[j]);
+        if (start_of_page != 0) {
+            dump_pages((off64_t)start_of_page, (off64_t)start_of_page+PAGESIZE);
+        }
     }
     va_end(ap);
+    dump_core(count, addresses);
 
-    pid_t child;
-    child = fork();
-    /*Execution should continue through the son */
-    if(child == 0) {
-        /* Trace and freeze the child process */
-        ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-        raise(SIGTRAP);
-        exit(0);
-    }
-    else {
-        /* Wait for the child to stop */
-        wait(NULL);
-        if(chdir(path) != 0) {
-            fprintf(stderr, "cannot enter loop dump directory\n");
-            exit(-1);
-        }
-        page_log_off();
-        page_log_dump("hotpages.map");
-        dump_mem(child, count, addresses);
-        ptrace(PTRACE_CONT, child, NULL, NULL);
-        /* Come back to original working directory */
-        if(chdir(cwd) != 0) {
-            fprintf(stderr, "cannot come back to original working directory\n");
-            exit(-1);
-        }
-        page_log_on(LOG_SIZE);
-    }
+    assert(state.mtrace_active == false);
+    assert(state.dump_sa == IGNORE_SA);
+
+    /* FIXME: If you remove the following usleep everything will stop
+       working. The reason is unclear, but has probably to do with the unlocking
+       of some os memory. OR A RACE CONDITION */
+    //printf("--- LOOP EXTRACTOR: dumping %s invocation = %d\n", loop_name, invocation);
+    usleep(1);
+
+    /* Relock memory */
+    unlock_mem();
+    lock_mem();
+    //relock_mem();
+
+    /* set dump sa */
+    set_dump();
+
+    /* Reactivate mem */
+    mtrace_activate();
 }
 
-/**********************************************************************
- * REPLAY MODE                                                        *
- **********************************************************************/ 
 
-/* load: restores memory before replay
- * loop_name: name of dumped loop
- * count: number of args
- * addresses: an array of <count> addresses
- */
-void load(char* loop_name, int to_load, int count, void* addresses[count]) {
-    char core_path[256];
-    char hotpages_path[256];
-    char* line=NULL;
-    size_t len = 0;
-    snprintf(core_path, sizeof(core_path), "dump/%s/%d/core.map", loop_name, to_load);
-    snprintf(hotpages_path, sizeof(hotpages_path), "dump/%s/%d/hotpages.map", loop_name, to_load);
-
-    //Read loops parameters adresses
-    FILE* core_map = fopen(core_path, "r");
-    if (!core_map) {
-        fprintf(stderr, "Could not open %s", core_path);
-        exit(-1);
-    }
-    
-    char buf[BUFSIZ + 1];
-    while(fgets(buf, BUFSIZ, core_map)) {
-        int pos;
-        off64_t address;
-        sscanf(buf, "%d %lx", &pos, &address);
-        addresses[pos] = (char*)(address); 
-    }
-
-    fclose(core_map);
-
-    //Load hotpages
-    FILE* hotpages = fopen(hotpages_path, "r");
-    if(!hotpages) {
-        fprintf(stderr, "LOAD: Could not open %s (Cache may not be warmed-up)\n", hotpages_path);
-        return;
-    }
-    int i;
-    void* tmp;
-    while(fgets(buf, BUFSIZ, hotpages)) {
-        off64_t address;
-        sscanf(buf, "%lx", &address);
-        if(address == 0) continue;
-        for (i = 0; i < 4096; i++) tmp = (char*)(address+i);
-    }
+void after_dump(void)
+{
+  assert(state.mtrace_active == true);
+  assert(state.dump_sa == MRU_SA || state.dump_sa == DUMP_SA);
+  if (state.dump_sa != MRU_SA) {
+      state.stack_pos--;
+      assert(state.stack_pos >= -1);
+      set_mru();
+  }
 }
+

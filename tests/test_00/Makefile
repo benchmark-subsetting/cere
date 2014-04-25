@@ -4,7 +4,7 @@ all: test
 dump: test_dump
 replay: test_replay
 
-FLAGS=-g
+FLAGS=-g -O0
 
 test: test.c
 	../../src/lec/lec $(FLAGS) test.c

@@ -54,10 +54,11 @@ ARGS=$*
 if [[ ! -z "$INSTRUMENT" ]]; then
     ARGS="$ARGS $PROJECT_ROOT/src/rdtsc/rdtsc.a"
 fi
-if [[ ! -z "$DUMP_MODE" ]] || [[ ! -z "$REPLAY_LOOP" ]]; then
-    #~ make -C $PROJECT_ROOT/src/memory_dump/
-    #~ cp $PROJECT_ROOT/src/memory_dump/dump.a .
-    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump -ldump"
+if [[ ! -z "$DUMP_MODE" ]]; then
+    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump/ -ldump -Wl,--rpath=$PROJECT_ROOT/src/memory_dump/"
+fi
+if [[ ! -z "$REPLAY_LOOP" ]]; then
+    ARGS="$ARGS $PROJECT_ROOT/src/memory_dump/libload.a"
 fi
 
 if [[ -z "$REPLAY_LOOP" ]]; then
@@ -66,6 +67,7 @@ if [[ -z "$REPLAY_LOOP" ]]; then
         shift
     done
     # In normal mode, just call the linker
+    echo $LD $ARGS
     $LD $ARGS
     if [[ ! -z "$DUMP_MODE" ]]; then #Copy the original binary
         cp "$2" lel_bin
@@ -76,6 +78,12 @@ else
         echo "No dump for ${REPLAY_LOOP} invocation ${INVOCATION}" > /dev/stderr
         exit -1
     fi
+
+    # Compress the traces
+    echo $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
+    $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
+
+
     #Find in-vivo call count to adapt the in-vitro one
     #and we need to know the number of cycles this loop takes in vivo
     #~ if [[ -f all_loops.csv ]]; then

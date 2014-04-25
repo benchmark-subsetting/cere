@@ -1,22 +1,43 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <signal.h>
+#include "pages.h"
 #include "../htable/htable/htable.h"
 
-static struct htable regionHtab;
+/* Public Interface */
+void dump_init(void);
+void dump_close(void);
 
-typedef struct
-{
-	char* name;
-	unsigned int call_count;
-} region;
-
-static uint32_t hash_string(const char*); 
-
-static bool streq(const void*, void*);
-static size_t rehash(const void*, void*);
-
-void dump_init();
-void dump_close();
-void dump_region(int, off64_t, off64_t);
-void dump_mem(pid_t, int, void* []);
-//~ void write_bin_file(char*, char*, char*, void*);
 void dump(char*, int, int, ...);
-void load(char*, int, int, void* []);
+void after_dump(void);
+
+#define MAX_LOG_SIZE 1024
+#define LOG_SIZE 1024
+#define MAX_STACK 64
+#define MAX_PATH 256
+#define MAX_DIGITS 12
+
+enum dump_sa {
+    MRU_SA,
+    IGNORE_SA,
+    DUMP_SA
+};
+
+struct dump_state {
+    struct sigaction sa;
+    bool page_log_active;
+    int last_page;
+    int log_size;
+    int mem_fd;
+    enum dump_sa dump_sa;
+    struct htable counters;
+    bool mtrace_active;
+    int stack_pos;
+    char hs[PAGESIZE+BUFSIZ];
+    char dump_path[MAX_STACK][MAX_PATH];
+    char * pages_cache[MAX_LOG_SIZE];
+    char filler __attribute__ ((aligned (PAGESIZE))) ;
+} __attribute__ ((packed));
+
+extern struct dump_state state;
+

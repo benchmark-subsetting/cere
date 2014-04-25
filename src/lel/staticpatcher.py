@@ -25,7 +25,12 @@ def parse_dumps(loop):
 def find_dump(addr, dumps):
     for i, a in enumerate(dumps):
         if addr < a: break
-    return dumps[i-1]
+    candidate = dumps[i-1]
+    if candidate < a: 
+        return candidate
+    else:
+        return None
+
 
 def find_section_offset(addr, elfmap):
     for s in elfmap:
@@ -98,9 +103,13 @@ with open(topatch, 'r+b') as topatch_file:
         assert(topatch_map[s]['size'] == original_map[s]['size']) 
 
         dump = find_dump(original_map[s]['addr'], dumps)
-        with open("dump/{0}/{1}.memdump".format(loop, hex(dump)[2:]), "rb") as dump_file:
+        if not dump: continue
+        with open("dump/{0}/{1:012x}.memdump".format(loop, dump), "rb") as dump_file:
             # Seek in the original file
-            dump_file.seek(original_map[s]['addr']-dump, 0)
+            try:
+                dump_file.seek(original_map[s]['addr']-dump, 0)
+            except:
+                continue
             # Seek in the patched file
             topatch_file.seek(topatch_map[s]['offset'], 0)
 
