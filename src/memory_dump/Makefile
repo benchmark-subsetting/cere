@@ -9,7 +9,7 @@ htable.o: ../htable/htable/htable.c
 libload.a: replay.o
 	ar -r libload.a replay.o
 
-libdump.so: mallochook.o region.o dump.o counters.o htable.o
+libdump.so: mallochook.o dump.o counters.o htable.o
 	clang -shared -ldl -o $@ $^
 
 clean:
