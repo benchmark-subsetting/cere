@@ -603,6 +603,9 @@ void dump(char* loop_name, int invocation, int count, ...)
         return;
       }
 
+    /* Unlock mem */
+    unlock_mem();
+
     /* Increment stack pos */
     state.stack_pos ++;
     assert(state.stack_pos < MAX_STACK);
@@ -648,7 +651,6 @@ void dump(char* loop_name, int invocation, int count, ...)
     usleep(1);
 
     /* Relock memory */
-    unlock_mem();
     lock_mem();
     //relock_mem();
 
