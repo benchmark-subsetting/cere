@@ -11,6 +11,8 @@ void dump_close(void);
 void dump(char*, int, int, ...);
 void after_dump(void);
 
+bool is_mru(void * addr); 
+
 #define MAX_LOG_SIZE 1024
 #define LOG_SIZE 1024
 #define MAX_STACK 64
@@ -24,6 +26,13 @@ enum dump_sa {
 };
 
 struct dump_state {
+    void* (*real_malloc)(size_t);
+    void* (*real_calloc)(size_t nmemb, size_t size);
+    void* (*real_realloc)(void *ptr, size_t size);
+    void* (*real_memalign)(size_t alignment, size_t size);
+    char * dump_prefix;
+    char * pagelog_suffix;
+    char * core_suffix;
     struct sigaction sa;
     bool page_log_active;
     int last_page;
@@ -36,6 +45,7 @@ struct dump_state {
     char hs[PAGESIZE+BUFSIZ];
     char dump_path[MAX_STACK][MAX_PATH];
     char * pages_cache[MAX_LOG_SIZE];
+    char * addresses[256];
     char filler __attribute__ ((aligned (PAGESIZE))) ;
 } __attribute__ ((packed));
 

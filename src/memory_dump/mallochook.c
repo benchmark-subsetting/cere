@@ -8,7 +8,6 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 #include "pages.h"
-#include "mallochook.h"
 #include "dump.h"
 
 static void* (*real_malloc)(size_t)=NULL;
@@ -54,8 +53,8 @@ malloc(size_t size)
 
   void *p = NULL;
   p = real_malloc(size);
-  if (state.mtrace_active) {
-      int result = mprotect(round_to_page(p), size, PROT_NONE);
+  if (state.mtrace_active && !is_mru(p)) {
+      int result = mprotect(round_to_page(p), round_up_page(size), PROT_NONE);
       assert(result != -1);
   }
   return p;
@@ -67,8 +66,8 @@ void *calloc(size_t nmemb, size_t size)
 
   void *p = NULL;
   p = real_calloc(nmemb, size);
-  if (state.mtrace_active) {
-      int result = mprotect(round_to_page(p), nmemb*size, PROT_NONE);
+  if (state.mtrace_active && !is_mru(p)) {
+      int result = mprotect(round_to_page(p), round_up_page(nmemb*size), PROT_NONE);
       assert(result != -1);
   }
   return p;
@@ -80,8 +79,8 @@ void *realloc(void *ptr, size_t size)
 
   void *p = NULL;
   p = real_realloc(ptr, size);
-  if (state.mtrace_active) {
-      int result = mprotect(round_to_page(p), size, PROT_NONE);
+  if (state.mtrace_active && !is_mru(p)) {
+      int result = mprotect(round_to_page(p), round_up_page(size), PROT_NONE);
       assert(result != -1);
   }
   return p;
@@ -93,8 +92,8 @@ void *memalign(size_t alignment, size_t size)
 
   void *p = NULL;
   p = real_memalign(alignment, size);
-  if (state.mtrace_active) {
-      int result = mprotect(round_to_page(p), size, PROT_NONE);
+  if (state.mtrace_active && !is_mru(p)) {
+      int result = mprotect(round_to_page(p), round_up_page(size), PROT_NONE);
       assert(result != -1);
   }
   return p;

@@ -1,4 +1,4 @@
-CFLAGS=-g -fPIC -O2
+CFLAGS=-g -fPIC -O0
 CC=clang
 
 all: libdump.so libload.a 
@@ -6,8 +6,11 @@ all: libdump.so libload.a
 htable.o: ../htable/htable/htable.c
 	$(CC) $(CFLAGS) -c ../htable/htable/htable.c
 
-libload.a: replay.o
-	ar -r libload.a replay.o
+warm.o : warm.c
+	$(CC) -c -g -fPIC -O3 -o $@ $^
+
+libload.a: replay.o warm.o
+	ar -r libload.a $^
 
 libdump.so: mallochook.o dump.o counters.o htable.o
 	clang -shared -ldl -o $@ $^
