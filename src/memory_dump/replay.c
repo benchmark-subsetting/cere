@@ -1,11 +1,16 @@
 #define _LARGEFILE64_SOURCE
+#define MIN(a,b) (((a) < (b))?(a):(b))
+#include <assert.h>
 #include <err.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <errno.h>
 #include "pages.h"
 
@@ -91,54 +96,50 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     DIR *dir;
     struct dirent *ent;
     struct stat st;
-    FILE * fp;
+    int fp;
     char line[PAGESIZE];
-    size_t len;
+    int len;
     char filename[1024];
     int total_readed_bytes=0;
 
     snprintf(path, sizeof(path), "dump/%s/%d/", loop_name, invocation);
-    if ((dir = opendir(path)) != NULL) {
-        while ((ent = readdir (dir)) != NULL) {
-            /* Read *.memdump files */
-            if(strcmp(get_filename_ext(ent->d_name), "memdump") == 0) {
-                snprintf(filename, sizeof(filename), "dump/%s/%d/%s", loop_name, invocation, ent->d_name);
-                if (stat(filename, &st) == 0) {
-                    if ((st.st_size%PAGESIZE) == 0) {
-                        fp = fopen(filename, "r");
-                        if (fp == NULL) {
-                            fprintf(stderr, "Could not open %s\n", filename);
-                            exit(EXIT_FAILURE);
-                        }
-                        off64_t address;
-                        sscanf(get_filename_without_ext(ent->d_name), "%lx", &address);
-                        int readed_bytes=0;
-                        int k=0;
-                        while ((len = fread(line, 1, sizeof(line), fp)) > 0) {
-                            readed_bytes+=len;
-                            total_readed_bytes+=len;
-                            //~ fprintf(stderr, "Writting at %lx\n", (address+(total_readed_bytes/PAGESIZE)-1));
-                            memcpy((char*) (address+(PAGESIZE*k++)), line, PAGESIZE);
-                        }
-                        fclose(fp);
-                        //fprintf(stderr, "%d Page(s) (%d bytes) Needed for %s (size = %ldK)\n", readed_bytes/PAGESIZE, readed_bytes, ent->d_name, st.st_size/1024);
-                    }
-                    else {
-                        fprintf(stderr, "File %s has not a size multiple of %d\n", filename, PAGESIZE);
-                        exit(EXIT_FAILURE);
-                    }
-                } else {
-                    fprintf(stderr, "Could not get size for file %s: %s\n", filename, strerror(errno));
-                    exit(EXIT_FAILURE);
-                }
-            }
-        }
-        closedir(dir);
-    } else {
+    if ((dir = opendir(path)) == NULL) {
         /* could not open directory */
         fprintf(stderr, "REPLAY: Could not open %s", path);
         exit(EXIT_FAILURE);
     }
+
+    while ((ent = readdir (dir)) != NULL) {
+        /* Read *.memdump files */
+        if(strcmp(get_filename_ext(ent->d_name), "memdump") != 0) 
+          continue;
+
+        snprintf(filename, sizeof(filename), "dump/%s/%d/%s", loop_name, invocation, ent->d_name);
+        if (stat(filename, &st) != 0) {
+            fprintf(stderr, "Could not get size for file %s: %s\n", filename, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
+        fp = open(filename, O_RDONLY);
+        if (fp < 0) {
+            fprintf(stderr, "Could not open %s\n", filename);
+            exit(EXIT_FAILURE);
+        }
+
+        off64_t address;
+        sscanf(get_filename_without_ext(ent->d_name), "%lx", &address);
+
+        int read_bytes=0;
+        while ((len = read(fp, (char*)(address+read_bytes), PAGESIZE)) > 0) {
+            read_bytes+=len;
+        }
+        printf("Wrote %d at %lx-%lx\n", read_bytes, address, address+read_bytes);
+
+        close(fp);
+        //fprintf(stderr, "%d Page(s) (%d bytes) Needed for %s (size = %ldK)\n", readed_bytes/PAGESIZE, readed_bytes, ent->d_name, st.st_size/1024);
+    }
+
+    closedir(dir);
 
     /* Randomize initial state */
     for (int i=0; i < PAGESIZE; i++)
