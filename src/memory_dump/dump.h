@@ -42,7 +42,9 @@ struct dump_state {
     struct htable counters;
     bool mtrace_active;
     int stack_pos;
+    int dump_active_pos;
     char hs[PAGESIZE+BUFSIZ];
+    bool dump_active[MAX_STACK];
     char dump_path[MAX_STACK][MAX_PATH];
     char * pages_cache[MAX_LOG_SIZE];
     char * addresses[256];
