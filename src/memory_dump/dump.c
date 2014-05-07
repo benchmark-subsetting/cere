@@ -464,6 +464,7 @@ set_log_size(int log_size)
 {
   state.log_size = log_size;
   state.stack_pos = -1;
+  state.dump_active_pos = -1;
 }
 
 void dump_init()
@@ -536,6 +537,10 @@ void dump(char* loop_name, int invocation, int count, ...)
     /* Stop malloc protection */
     state.mtrace_active = false;
 
+    /* Increment active dump position */
+    assert(state.dump_active_pos < MAX_STACK);
+    state.dump_active_pos++;
+
     /* get region */
     struct region_counter * region = get_region(loop_name);
 
@@ -549,9 +554,13 @@ void dump(char* loop_name, int invocation, int count, ...)
     printf("not correct invocation DUMP( %s %d count = %d) \n", loop_name, invocation, count);
         /* reactivate malloc protection */
 #endif
+        state.dump_active[state.dump_active_pos] = false; 
         state.mtrace_active = true;
         return;
       }
+
+    state.dump_active[state.dump_active_pos] = true; 
+
     /* Increment stack pos */
     state.stack_pos ++;
     assert(state.stack_pos < MAX_STACK);
@@ -603,15 +612,17 @@ void dump(char* loop_name, int invocation, int count, ...)
     state.mtrace_active = true;
 }
 
-
 void after_dump(void)
 {
   assert(state.mtrace_active == true);
   assert(state.dump_sa == MRU_SA || state.dump_sa == DUMP_SA);
-  if (state.dump_sa != MRU_SA) {
+  if (state.dump_active[state.dump_active_pos] == true) { 
       state.stack_pos--;
       assert(state.stack_pos >= -1);
-      set_mru();
+      if (state.stack_pos == -1) {
+          set_mru();
+      }
   }
+  state.dump_active_pos--;
+  assert(state.dump_active_pos >= -1);
 }
-
