@@ -29,7 +29,7 @@ bool is_mru(void * addr)
 {
   char * start_of_page = round_to_page(addr);
   bool present = false;
-  for (int i = 0; i <state.log_size; i++) {
+  for (int i = 0; i < state.log_size; i++) {
       if (state.pages_cache[i] == start_of_page) {
           present = true;
           break;
@@ -52,18 +52,14 @@ mru_handler(int sig, siginfo_t *si, void *unused)
 
 
   bool present = is_mru(start_of_page);
-  assert (present == false);
+  assert(present == false);
 
   /* Unprotect Page */
   int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
   if (result == -1) {
-      //result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ);
-      //if (result == -1) {
-      //    assert(false); 
-      //}
-      assert(false);
-    }
-
+      assert(false); 
+  }
+  assert(present == false);
   /* Add page to page cache */
   /* we need to evict one of the pages, reprotect it ! */
   if (state.pages_cache[state.last_page] != 0) {
@@ -170,10 +166,7 @@ bool write_pages(char path[], off64_t start, off64_t stop)
             return false;
         } 
 
-        /*bool present = is_mru((void*)start);
-        printf("write to %s, from %lx to %lx (%d),  wr: %d rd: %d\n", path, start, stop, present, wr, rd);
         assert(wr == PAGESIZE && rd == PAGESIZE);
-        */
         start += PAGESIZE;
     }
 
@@ -354,7 +347,6 @@ lock_mem(void)
   int counter = 0;
   char *start_of_stack, *end_of_stack;
 
-  //char* addresses[256];
   int count = 0;
 
   while(fgets(buf, BUFSIZ, maps)) {
@@ -512,9 +504,9 @@ void dump_init()
   /* start protecting malloc and co */
   state.mtrace_active = true;
 
-//#ifdef _DEBUG
+#ifdef _DEBUG
   printf("DUMP_INIT DONE\n");
-//#endif
+#endif
 }
 
 void dump_close()
@@ -537,10 +529,8 @@ void dump_close()
  */
 void dump(char* loop_name, int invocation, int count, ...)
 {
-
-  printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
-    //errx(EXIT_FAILURE, "DUMP\n");
 #ifdef _DEBUG
+    printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
 #endif
 
     /* Stop malloc protection */
