@@ -133,7 +133,7 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
         while ((len = read(fp, (char*)(address+read_bytes), PAGESIZE)) > 0) {
             read_bytes+=len;
         }
-        printf("Wrote %d at %lx-%lx\n", read_bytes, address, address+read_bytes);
+        //printf("Wrote %d at %lx-%lx\n", read_bytes, address, address+read_bytes);
 
         close(fp);
         //fprintf(stderr, "%d Page(s) (%d bytes) Needed for %s (size = %ldK)\n", readed_bytes/PAGESIZE, readed_bytes, ent->d_name, st.st_size/1024);
