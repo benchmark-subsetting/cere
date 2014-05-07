@@ -59,7 +59,6 @@ mru_handler(int sig, siginfo_t *si, void *unused)
   if (result == -1) {
       assert(false); 
   }
-  assert(present == false);
   /* Add page to page cache */
   /* we need to evict one of the pages, reprotect it ! */
   if (state.pages_cache[state.last_page] != 0) {
@@ -68,7 +67,7 @@ mru_handler(int sig, siginfo_t *si, void *unused)
 #endif
       int result = mprotect((void*)state.pages_cache[state.last_page], PAGESIZE, PROT_NONE);
       if (result == -1) {
-          assert(false);
+          //assert(false);
       }
   }
 
@@ -610,6 +609,9 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     /* Reactivate mem */
     state.mtrace_active = true;
+    //If invocation > 1 means we are dumping only one single loop
+    //If we have dumped the requested invocation, no need to continue execution
+    if(region->call_count==invocation && invocation > 1) exit(EXIT_SUCCESS);
 }
 
 void after_dump(void)
