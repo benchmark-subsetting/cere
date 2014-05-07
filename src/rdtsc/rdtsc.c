@@ -113,7 +113,7 @@ void likwid_markerClose()
 		for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
 		{
 			//Remove 1 to call count in invitro mode
-			if(!p->invivo) p->call_count -= 1;
+			if(!p->invivo && p->call_count > 1) p->call_count -= 1;
 			fprintf(result, "%s,%u,%llu\n", p->name, p->call_count, p->counter);
 			if(p->traced) {
 				dump_trace(p, p->call_count%TRACE_SIZE);
@@ -190,6 +190,7 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 }
 
 void rdtsc_markerStopRegion(char *reg, int trace) {
+	serialize();
 	unsigned long long int stop = rdtsc();
 	char* regionName = call_stack;
 	/* We must check that reg is base name of regionName */
