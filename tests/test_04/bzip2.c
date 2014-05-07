@@ -1938,10 +1938,10 @@ IntNative main ( IntNative argc, Char *argv[] )
    i = j = 0; /* avoid bogus warning from egcs-1.1.X */
 
    /*-- Set up signal handlers for mem access errors --*/
-   signal (SIGSEGV, mySIGSEGVorSIGBUScatcher);
+//   signal (SIGSEGV, mySIGSEGVorSIGBUScatcher);
 #  if BZ_UNIX
 #  ifndef __DJGPP__
-   signal (SIGBUS,  mySIGSEGVorSIGBUScatcher);
+//   signal (SIGBUS,  mySIGSEGVorSIGBUScatcher);
 #  endif
 #  endif
 
