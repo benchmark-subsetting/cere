@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include "pages.h"
-#include "../htable/htable/htable.h"
+#include "../ccan/ccan/htable/htable.h"
 
 /* Public Interface */
 void dump_init(void);
