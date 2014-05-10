@@ -68,7 +68,7 @@ done
 
 # Detect source language (fortran or C/C++ for the moment)
 if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]] || [[ $SOURCE == *.F90 ]] || [[ $SOURCE == *.F ]]; then
-    gcc-4.7 -O0 -g -c $INCLUDES $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
+    gcc-4.7 -O0 -g -c $INCLUDES $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg-3.3.src/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
 else
     clang -O0 -g -c $INCLUDES $SOURCE -S -emit-llvm -o $BASE.ll
 fi 
@@ -81,21 +81,21 @@ fi
 
 if [[ ! -z "$DUMP_MODE" ]]; then
     # In dump mode
-    opt -S -load $PROJECT_ROOT/src/LoopExtractorAll/libLoopExtractorAll.so -loop-extract-all $BASE.ll -o $BASE.ll
-    opt -S -load $PROJECT_ROOT/src/LoopManager/libLoopManager.so -loop-dump $DUMP_OPTS $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/LoopExtractorAll/.libs/libLoopExtractorAll.so -loop-extract-all $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/LoopManager/.libs/libLoopManager.so -loop-dump $DUMP_OPTS $BASE.ll -o $BASE.ll
 
 elif [[ ! -z "$REPLAY_LOOP" ]]; then
     # In replay mode 
-    opt -S -load $PROJECT_ROOT/src/LoopExtractorAll/libLoopExtractorAll.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
-    opt -S -load $PROJECT_ROOT/src/LoopManager/libLoopManager.so -loop-replay ${REPLAY_OPTS} $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/LoopExtractorAll/.libs/libLoopExtractorAll.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
+    opt -S -load $PROJECT_ROOT/src/LoopManager/.libs/libLoopManager.so -loop-replay ${REPLAY_OPTS} $BASE.ll -o $BASE.ll
 fi
 
 if [[ ! -z "$INSTRUMENT" ]]; then
     opt -S -loop-simplify $BASE.ll -o $BASE.ll
     if [[ ! -z "$REPLAY_LOOP" ]]; then
-        opt -S -load $PROJECT_ROOT/src/LoopInstrumentation/libLoopInstrumentation.so -vitro-loop-instrumentation -instrument-loop=${REPLAY_LOOP} ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
+        opt -S -load $PROJECT_ROOT/src/LoopInstrumentation/.libs/libLoopInstrumentation.so -vitro-loop-instrumentation -instrument-loop=${REPLAY_LOOP} ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
     else
-        opt -S -load $PROJECT_ROOT/src/LoopInstrumentation/libLoopInstrumentation.so -vivo-loop-instrumentation ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
+        opt -S -load $PROJECT_ROOT/src/LoopInstrumentation/.libs/libLoopInstrumentation.so -vivo-loop-instrumentation ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
     fi
 fi
 
