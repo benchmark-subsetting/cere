@@ -55,7 +55,7 @@ if [[ ! -z "$INSTRUMENT" ]]; then
     ARGS="$ARGS $PROJECT_ROOT/src/rdtsc/librdtsc.a"
 fi
 if [[ ! -z "$DUMP_MODE" ]]; then
-    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump/.libs/ -ldump -Wl,--rpath=$PROJECT_ROOT/src/memory_dump/.libs/"
+    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump/.libs/ -ldump -Wl,--rpath=$PROJECT_ROOT/src/memory_dump/.libs/ -ldl"
 fi
 if [[ ! -z "$REPLAY_LOOP" ]]; then
     ARGS="$ARGS $PROJECT_ROOT/src/memory_dump/libload.a"
