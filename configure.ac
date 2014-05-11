@@ -1,7 +1,7 @@
 AC_INIT([llvm-loop-extractor], [0.0.1], [llvm-loop-extractor@prism.uvsq.fr])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
-AC_CONFIG_MACRO_DIR(m4)
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([subdir-objects silent-rules foreign])
 AC_PROG_LIBTOOL  
