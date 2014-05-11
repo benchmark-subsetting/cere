@@ -26,8 +26,9 @@ typedef struct
 	FILE *trace_results;
 } region;
 
-__inline__ void serialize() {
-	__asm__ volatile ("cpuid");
+__inline__ void serialize(void) {
+    __asm__("cpuid"
+            :::"%eax","%ebx","%ecx","%edx");  // clobbered registers
 }
 
 __inline__ unsigned long long int rdtsc() {
