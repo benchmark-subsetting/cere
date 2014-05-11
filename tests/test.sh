@@ -6,11 +6,11 @@ cd $ROOT/
 TSTATUS=0
 
 info() {
-    echo "$(tput setaf 2)[  OK  ]$(tput sgr0) $TNAME $1"
+    echo "[  OK  ] $TNAME $1"
 }
 
 error() {
-    echo "$(tput setaf 3)[ FAIL ]$(tput sgr0) $TNAME $1"
+    echo "[ FAIL ] $TNAME $1"
     TSTATUS=1
 }
 
