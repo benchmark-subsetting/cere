@@ -1,1 +1,1 @@
-SUBDIRS=ccan rdtsc memory_dump LoopExtractorAll LoopInstrumentation LoopManager 
+SUBDIRS=rdtsc memory_dump LoopExtractorAll LoopInstrumentation LoopManager 

@@ -55,7 +55,6 @@ AC_CONFIG_FILES([Makefile
                  src/LoopExtractorAll/Makefile
                  src/LoopInstrumentation/Makefile
                  src/LoopManager/Makefile
-                 src/ccan/Makefile
                  src/rdtsc/Makefile
                  src/memory_dump/Makefile])
 AC_OUTPUT
