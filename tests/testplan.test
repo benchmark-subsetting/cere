@@ -1,0 +1,18 @@
+#!/bin/bash
+tests=$(find . -maxdepth 1 -type d -name 'test_*' | sort)
+count=$(echo $tests | wc -w)
+
+# Print number of tests detected
+echo "1..$count"
+
+test_number=1
+for t in $tests; do
+    echo $t
+    if bash -c -l "cd $t && ./test.sh" ; then
+    echo 
+        echo "ok $test_number $t" 
+    else
+        echo "not ok $test_number $t" 
+    fi 
+    test_number=$[test_number+1]
+done
