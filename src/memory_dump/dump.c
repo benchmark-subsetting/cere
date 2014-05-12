@@ -598,13 +598,6 @@ void dump(char* loop_name, int invocation, int count, ...)
     va_end(ap);
     dump_core(count, addresses);
 
-
-    /* FIXME: If you remove the following usleep everything will stop
-       working. The reason is unclear, but has probably to do with the unlocking
-       of some os memory. OR A RACE CONDITION */
-    //printf("--- LOOP EXTRACTOR: dumping %s invocation = %d\n", loop_name, invocation);
-    usleep(1);
-
     /* set dump sa */
     set_dump();
 
