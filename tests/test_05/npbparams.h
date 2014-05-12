@@ -6,7 +6,7 @@ c  It sets the number of processors and the class of the NPB
 c  in this directory. Do not modify it by hand.
 c  
         integer nx, ny, nz, maxdim, niter_default, ntotal
-        parameter (nx=512, ny=256, nz=256, maxdim=512)
+        parameter (nx=128, ny=64, nz=64, maxdim=128)
         parameter (niter_default=20)
         parameter (ntotal=nx*ny*nz)
         logical  convertdouble

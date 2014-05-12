@@ -142,7 +142,7 @@ else
     #
     # Sometimes (NAS BT for instance) this requires compiling the code with
     # -mcmodel=large to allow relocation longer than 2GB
-    DUMP_ARGS="-Wl,--section-start=.init_array=0x60000000"
+    DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
     # First compile the memory dump objects
     rm -f dump/objs.S
     for m in dump/$REPLAY_LOOP/$INVOCATION/*.memdump; do

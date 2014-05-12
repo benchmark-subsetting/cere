@@ -49,6 +49,7 @@ c---------------------------------------------------------------------
       do while (nn .lt. n)
          nn = nn*2
          lg = lg+1
+         write (*,*), nn, n
       end do
       ilog2 = lg
       return
