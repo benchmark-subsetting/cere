@@ -467,9 +467,10 @@ set_log_size(int log_size)
   state.dump_active_pos = -1;
 }
 
-void dump_init()
+void dump_init(bool global_dump)
 {
   state.mtrace_active = false;
+  state.global_dump = global_dump;
 
   state.dump_prefix = strdup("dump"); 
   state.pagelog_suffix = strdup("hotpages.map"); 
@@ -494,16 +495,21 @@ void dump_init()
   /* configure sigaction */
   configure_sigaction();
 
-  set_ignore();
+  /*If we want to dump all loops
+   * start memory lock and trace at start*/
+  if(state.global_dump) {
+    /* set ignore */
+    set_ignore();
 
-  /* lock memory */
-  lock_mem();
+    /* lock memory */
+    lock_mem();
 
-  /* configure mru sa */
-  set_mru();
+    /* configure mru sa */
+    set_mru();
 
-  /* start protecting malloc and co */
-  state.mtrace_active = true;
+    /* start protecting malloc and co */
+    state.mtrace_active = true;
+  }
 
 #ifdef _DEBUG
   printf("DUMP_INIT DONE\n");
@@ -546,19 +552,29 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     /* increment call_count */
     region->call_count++;
-
+    /* start malloc protection 10 invocations before the one we want to dump */
+    if( !state.global_dump && ( (invocation <= 10 && region->call_count==1) || (region->call_count==invocation-10) ) )
+    {
+      /* set ignore */
+      set_ignore();
+      /* lock memory */
+      lock_mem();
+      /* configure mru sa */
+      set_mru();
+    }
     /* Did we get to the invocation that must be dumped ? */
     if(region->call_count != invocation)
-      {
+    {
 #ifdef _DEBUG
     printf("not correct invocation DUMP( %s %d count = %d) \n", loop_name, invocation, count);
         /* reactivate malloc protection */
 #endif
-        state.dump_active[state.dump_active_pos] = false; 
-        state.mtrace_active = true;
+        state.dump_active[state.dump_active_pos] = false;
+        if(state.global_dump)
+          state.mtrace_active = true;
         return;
-      }
-
+    }
+    printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
     state.dump_active[state.dump_active_pos] = true; 
 
     /* Increment stack pos */
@@ -603,15 +619,18 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     /* Reactivate mem */
     state.mtrace_active = true;
-    //If invocation > 1 means we are dumping only one single loop
-    //If we have dumped the requested invocation, no need to continue execution
-    if(region->call_count==invocation && invocation > 1) exit(EXIT_SUCCESS);
+    /*If we have dumped the requested invocation
+     * and we are not in global dumping mode
+     * no need to continue execution*/
+    if(region->call_count==invocation && !state.global_dump) state.kill_after_dump=true;
 }
 
 void after_dump(void)
 {
-  assert(state.mtrace_active == true);
-  assert(state.dump_sa == MRU_SA || state.dump_sa == DUMP_SA);
+  if(state.global_dump) {
+    assert(state.mtrace_active == true);
+    assert(state.dump_sa == MRU_SA || state.dump_sa == DUMP_SA);
+  }
   if (state.dump_active[state.dump_active_pos] == true) { 
       state.stack_pos--;
       assert(state.stack_pos >= -1);
@@ -621,4 +640,6 @@ void after_dump(void)
   }
   state.dump_active_pos--;
   assert(state.dump_active_pos >= -1);
+
+  if(state.kill_after_dump) exit(EXIT_SUCCESS);
 }

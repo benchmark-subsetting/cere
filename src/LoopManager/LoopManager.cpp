@@ -41,10 +41,13 @@ namespace {
     std::string Loopfile;
     int Nloop;
     bool readFromFile;
+    bool globalDump;
     std::vector<std::string> loopsToDump;
 
     explicit LoopManager(int mode = DUMP, unsigned numLoops = ~0)
     : FunctionPass(ID), Mode(mode), NumLoops(numLoops), DumpLoop(LoopToDump), Loopfile(LoopsFilename), Nloop(Invocation) {
+        if (DumpLoop == "all") globalDump = true;
+        else globalDump = false;
         if (Loopfile.empty()) readFromFile = false;
         else {
             std::string line;
@@ -325,16 +328,21 @@ bool LoopManager::runOnFunction(Function &F)
 
     if (Main) { //We are in the module with the main function
         std::string funcName;
+        ConstantInt* const_int1_11;
         if (Mode == REPLAY) {
             funcName="real_main";
+            const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10)); //false
         }
         else if (Mode == DUMP) {
             funcName="dump_init";
+            if(globalDump) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10)); //true
+            else const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10)); //false
         }
         Function *mainFunction = mod->getFunction(funcName);
         if(!mainFunction) {
-            //Create a void type
+            //Create signature: void func(int)
             std::vector<Type*> FuncTy_8_args;
+            FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
             FunctionType* FuncTy_8 = FunctionType::get(
                                     /*Result=*/Type::getVoidTy(mod->getContext()),
                                     /*Params=*/FuncTy_8_args,
@@ -343,7 +351,9 @@ bool LoopManager::runOnFunction(Function &F)
                             GlobalValue::ExternalLinkage,
                             funcName,
                             mod);
-            CallInst::Create(mainFunction, "", Main->begin()->begin());
+            std::vector<Value*> void_16_params;
+            void_16_params.push_back(const_int1_11);
+            CallInst::Create(mainFunction, void_16_params, "", Main->begin()->begin());
         }
     }
     LoopInfo &LI = getAnalysis<LoopInfo>();

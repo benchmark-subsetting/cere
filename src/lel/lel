@@ -115,7 +115,7 @@ else
         fprintf(stderr, \"Timeout...\n\");
         exit(EXIT_FAILURE);
         }" >> realmain.c
-        echo "void real_main() {
+        echo "void real_main(int empty) {
         int i;
         long long int max_cycles=(10*$CYCLES)/1e9;
         signal(SIGALRM, sigcatch);

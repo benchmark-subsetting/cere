@@ -5,7 +5,7 @@
 #include "../ccan/ccan/htable/htable.h"
 
 /* Public Interface */
-void dump_init(void);
+void dump_init(bool);
 void dump_close(void);
 
 void dump(char*, int, int, ...);
@@ -13,8 +13,8 @@ void after_dump(void);
 
 bool is_mru(void * addr); 
 
-#define MAX_LOG_SIZE 1024
-#define LOG_SIZE 1024
+#define MAX_LOG_SIZE 64
+#define LOG_SIZE 64
 #define MAX_STACK 64
 #define MAX_PATH 256
 #define MAX_DIGITS 12
@@ -35,6 +35,8 @@ struct dump_state {
     char * core_suffix;
     struct sigaction sa;
     bool page_log_active;
+    bool kill_after_dump;
+    bool global_dump;
     int last_page;
     int log_size;
     int mem_fd;
