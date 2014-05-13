@@ -9,11 +9,11 @@ test_number=1
 for t in $tests; do
     echo $t
     if bash -c -l "cd $t && ./test.sh > test.log 2>&1" ; then
-    echo 
-        echo "ok $test_number $t" 
+    echo
+        echo "ok $test_number $t"
     else
-        echo "not ok $test_number $t" 
-        cat test.log
-    fi 
+        echo "not ok $test_number $t"
+        cat $t/test.log
+    fi
     test_number=$[test_number+1]
 done
