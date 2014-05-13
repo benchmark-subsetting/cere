@@ -1,9 +1,3 @@
-* Execution should continue through the son while dumping the memory.
-
-* Instrumentation must be doable on none isolated loops. [DONE]
-
-* Sould be possible to instrument/dump/replay a particular loop [DONE]
-
 * Revisit strange patch in src/llvm-3.3.src/lib/IR/Verifier.cpp
 
 * Add tests for dumping a particular loop and for trace mode (invivo & invitro)
