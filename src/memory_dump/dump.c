@@ -225,21 +225,16 @@ dump_handler(int sig, siginfo_t *si, void *unused)
 static void
 ignore_handler(int sig, siginfo_t *si, void *unused)
 {
-  int esaved = errno;
   char * touched_addr = si->si_addr;
   char * start_of_page = round_to_page(touched_addr);
 
   /* Unprotect Page */
   int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
-  if (result == -1) {
-      int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE);
-  }
-
+  assert( result != -1 );
 #ifdef _DEBUG
 //  printf("IGN Detected access at: %p -- Start of Page: %p\n",
 //         touched_addr, start_of_page);
 #endif
-  errno = esaved;
 }
 
 
@@ -342,6 +337,7 @@ lock_mem(void)
   if(!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
 
+  char *  addresses[255];
   char buf[BUFSIZ + 1];
   size_t start, end;
   int counter = 0;
@@ -385,43 +381,32 @@ lock_mem(void)
       if (strstr(buf, "---p") != NULL)
          continue;
 
-      /* Ignore prog and system segments */
-      if (start < 0x500000 | start >= 0x700000000000) continue;
-
-      /* Ignore all foreign sections */
-      /* if (strstr(buf, "heap") == NULL &&
-          strstr(buf, "test_dump") == NULL)
-        continue;
-      */
-
       char * page_start = round_to_page((char*)start);
       assert(count < 255);
-      state.addresses[count++] = (char*) page_start;
-      state.addresses[count++] = (char*) end;
+      addresses[count++] = (char*) page_start;
+      addresses[count++] = (char*) end;
   }
   fclose(maps);
 
   while(count > 0) {
-      char * end = state.addresses[--count];
-      char * start = state.addresses[--count];
-#ifdef _DEBUG
-      //printf("protecting region %p-%p\n", (char*)start, (char*)end);
-#endif
+      char * end = addresses[--count];
+      char * start = addresses[--count];
       int result = mprotect(start, end-start, PROT_NONE);
-#ifdef _DEBUG
-      if (result == -1)
-        printf("FAILED protecting region %p-%p\n", (char*)start, (char*)end);
-#endif
   }
 
   /* Unprotect dump state */
   int result = mprotect(&state, sizeof(state), PROT_READ | PROT_WRITE);
   assert(result != -1);
 
-#ifdef _DEBUG
-  printf("protection activated\n");
-  //printf("protecting stack %p-%p\n", start_of_stack, end_of_stack);
-#endif
+  // Our SIGSEGV handler will require access to errno and open functions 
+  // memory.
+  // Access them now, while ignore_handler is active, to unlock the
+  // sensible regions and avoid a double SEGFAULT later on.
+
+  errno = 0;
+  int fd = open("/dev/null", O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
+  close(fd);
+
 
   mprotect(start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
 
@@ -470,6 +455,7 @@ set_log_size(int log_size)
 void dump_init(bool global_dump)
 {
   state.mtrace_active = false;
+
   state.global_dump = global_dump;
 
   state.dump_prefix = strdup("dump"); 

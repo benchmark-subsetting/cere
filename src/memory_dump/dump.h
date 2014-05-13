@@ -49,7 +49,6 @@ struct dump_state {
     bool dump_active[MAX_STACK];
     char dump_path[MAX_STACK][MAX_PATH];
     char * pages_cache[MAX_LOG_SIZE];
-    char * addresses[256];
     char filler __attribute__ ((aligned (PAGESIZE))) ;
 } __attribute__ ((packed));
 
