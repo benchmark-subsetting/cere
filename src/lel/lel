@@ -83,8 +83,16 @@ else
     echo $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
     $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
 
-    TIMEOUT_SECONDS=60 #1min is probably enough
-    INVITRO_CALL_COUNT=11
+    # Define by default TIMEOUT_SECONDS to 60
+    if [[ -z "$TIMEOUT_SECONDS" ]]; then
+        TIMEOUT_SECONDS=60 #1min is probably enough
+    fi
+
+    # Define by default CALL_COUNT to 11
+    if [[ -z "$INVITRO_CALL_COUNT" ]]; then
+        INVITRO_CALL_COUNT=11
+    fi
+
     # Create user main
     rm -f realmain.c
     if [[ ! -z "$INSTRUMENT" ]]; then #We want to instrument
@@ -115,7 +123,7 @@ else
 
         void real_main(int empty) {
         int i;
-        //kill programm after 10 minutes
+        //kill program after 10 minutes
         long long int max_seconds=10*$TIMEOUT_SECONDS;
 
         struct sigaction sa;
