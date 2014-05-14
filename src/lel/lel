@@ -83,27 +83,8 @@ else
     echo $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
     $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
 
-
-    #Find in-vivo call count to adapt the in-vitro one
-    #and we need to know the number of cycles this loop takes in vivo
-    #~ if [[ -f all_loops.csv ]]; then
-        #~ INVIVO_CALL_COUNT=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 2 | sort -n | head -n1`
-        #~ CYCLES=`grep ${REPLAY_LOOP/extracted/invivo} all_loops.csv | cut -d ',' -f 3`
-    #~ fi
-    #~ echo $INVIVO_CALL_COUNT
-    if [[ -z "$CYCLES" ]]; then
-        CYCLES=60000000000 #1min is probably enough
-    fi
-    #~ if [[ -z "$INVIVO_CALL_COUNT" ]]; then
-        #~ INVIVO_CALL_COUNT=11 #11 meta repets
-    #~ fi
-    #~ if [[ "$INVIVO_CALL_COUNT" > 9 ]]; then
-        #~ INVITRO_CALL_COUNT=11
-    #~ else
-        #~ INVITRO_CALL_COUNT=$INVIVO_CALL_COUNT
-    #~ fi
+    TIMEOUT_SECONDS=60 #1min is probably enough
     INVITRO_CALL_COUNT=11
-    #How can we convert those cycles in seconds?
     # Create user main
     rm -f realmain.c
     if [[ ! -z "$INSTRUMENT" ]]; then #We want to instrument
@@ -129,12 +110,13 @@ else
           snprintf(cmd, sizeof(cmd), \"cat /proc/%d/maps\", pid);
           system(cmd);
           printf(\"==========================\n\");
-          exit(1);
+          exit(EXIT_FAILURE);
         }
 
         void real_main(int empty) {
         int i;
-        long long int max_cycles=(10*$CYCLES)/1e9;
+        //kill programm after 10 minutes
+        long long int max_seconds=10*$TIMEOUT_SECONDS;
 
         struct sigaction sa;
         sa.sa_flags = SA_SIGINFO;
@@ -146,7 +128,7 @@ else
         signal(SIGALRM, sigcatch);
         likwid_markerInit();
         for(i=0; i<$INVITRO_CALL_COUNT; i++) {
-          alarm(max_cycles);
+          alarm(max_seconds);
           run${REPLAY_LOOP/-/_}();
         }
         exit(0);

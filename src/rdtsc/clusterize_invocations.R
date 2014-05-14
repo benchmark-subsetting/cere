@@ -65,8 +65,6 @@ clust.length = function(i, dat, clusters) {
 }
 
 cluster <- function (cycles) {
-#~     plot(cycles)
-#~     hist(cycles$values)
     if(nrow(cycles) <= 5)
     {
         nb_clust=nrow(cycles)
@@ -148,7 +146,6 @@ res$part = Sums/res$values/POINTS_TO_KEEP
 best=sum(res$values*res$part)*total_invocation
 best_error=abs(best-total_cycles)/pmax(best, total_cycles)
 print(res)
-#print(allValues[match(res$invocation, allValues$invocation),])
 print(paste("Best error is", best_error))
 todump=data.frame(res$invocation, res$part, res$values)
 dump_to_file(todump, paste(CodeletName, ".invocations", sep=""))

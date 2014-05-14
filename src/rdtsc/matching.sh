@@ -1,0 +1,151 @@
+#!/bin/bash
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$ROOT/../../"
+
+# Check number of arguments
+if [ $# -lt 3 ] ; then
+    echo "usage: $0 [--force] codelets-to-dump-file exec_cmd compile_cmd"
+    echo "codelets-to-dump-file must contains loops you want to compute coverage for"
+    echo "Those loops can be obtained by running granularity script on replayed codelets"
+    exit 1
+fi
+
+#this will delete everything
+if [[ $1 == --force ]]; then
+    force=1
+    shift
+fi
+FILE=$1
+BIN_CMD=$2
+COMPIL_CMD=$3
+
+#Check if everything we need is present
+if [[ ! -f all_loops.csv ]] || [[ ! -f app_cycles.csv ]]; then
+    echo "all_loops.csv or app_cycles.csv not found."
+    echo "Please first run $PROJECT_ROOT/src/granularity/coverage.sh $ROOT \"$BIN_CMD\" \"$COMPIL_CMD\""
+    exit 1
+fi
+
+# compute error |x-y|/max(x,y)
+compute_error()
+{
+    local x=$1
+    local y=$2
+    diff=`echo "${x}-${y}" | bc`
+    if [[ $(echo "if (${x} > ${y}) 1 else 0" | bc) -eq 1 ]]; then
+        max=$x
+    else
+        max=$y
+    fi
+    diff=${diff/-/} #absolute value :D
+    error=`echo "scale=3;${diff}/${max}" | bc | awk '{printf "%f", $0}'`
+}
+
+rm -f new_matching_codelets matching_error invocation_error
+touch new_matching_codelets
+#Get application runtime in cycles
+app_cycles=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
+while read codeletName; do
+    echo "$codeletName"
+    make clean &>> out && rm -f *.ll &>> out
+    if [[ ! -f results/$codeletName.csv ]]; then
+        echo "Measuring invivo trace"
+        ${COMPIL_CMD} MODE="--instrument --instrument-loop=$codeletName --loop-to-trace=$codeletName" &> out
+        for i in "1"
+        do
+            eval ${BIN_CMD} &> out
+            mv $codeletName.bin "results/${codeletName}.bin.${i}"
+            mv -f rdtsc_result.csv results/$codeletName.csv
+        done
+    fi
+    if [[ ! ( -f  "results/${codeletName}.csv" ) ]]; then
+        echo "Error for $codeletName: No measure files for invivo trace"
+        continue
+    fi
+    #I have everything to clusterize performance
+    bynaryFiles=`ls results/*$codeletName.bin.*`
+    nbLoopFiles=`ls results/*$codeletName.bin.* | wc -l`
+    echo "Computing clustering info"
+    $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $bynaryFiles
+    if [[ ! ( -f  "${codeletName}.invocations" ) ]]; then
+        echo "Error for $codeletName: No clustering infos"
+        continue
+    fi
+    #We have invocations to dump, so let's dump them!
+    cycles=0
+    result_file="$codeletName"
+    while read params; do
+        invocation=`echo $params | cut -d ' ' -f 1`
+        perc=`echo $params | cut -d ' ' -f 2`
+        invivo=`echo $params | cut -d ' ' -f 3`
+        if [[ ! -z "$force" ]]; then
+            rm -rf dump/${codeletName/__invivo__/__extracted__}/${invocation}
+        fi
+        if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
+            echo "Dumping invocation ${invocation}"
+            make clean &>> out && rm -f *.ll &>> out
+            ${COMPIL_CMD} MODE="--dump --loop-to-dump=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &> out
+            eval LD_BIND_NOW=1 ${BIN_CMD} &> out
+        fi
+        if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
+            echo "No dump for ${codeletName} invocation ${invocation}"
+            err=1
+            continue
+        fi
+        #Run the invitro version
+        if [[ ! -f results/${codeletName/__invivo__/__extracted__}_${invocation}.csv ]]; then
+            echo "Running invitro version"
+            make clean &>> out && rm -f *.ll &>> out
+            ${COMPIL_CMD} MODE="--replay=${codeletName/__invivo__/__extracted__} --invocation=${invocation} --instrument" &> out
+            eval ${BIN_CMD} &>> out
+            mv -f rdtsc_result.csv results/${codeletName/__invivo__/__extracted__}_${invocation}.csv
+        fi
+        if [[ ! -f results/${codeletName/__invivo__/__extracted__}_${invocation}.csv ]]; then
+            echo "No invitro measure for ${codeletName} invocation ${invocation}"
+            err=1
+            continue
+        fi
+        tmp_cycles=`cat results/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 3`
+        tmp_invocation=`cat results/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 2`
+        c=`echo "${tmp_cycles}/${tmp_invocation}" | bc`
+        compute_error ${c} ${invivo}
+        echo "In vitro cycles = $c & in vivo cycles = $invivo (error = ${error})"
+
+        cycles=`echo "${cycles}+${c}*${perc}" | bc`
+        result_file="$result_file ${error}"
+    done < ${codeletName}.invocations
+    if [[ ! ( -z ${err} ) ]]; then
+        unset err
+        rm -f ${codeletName}.invocations
+        rm -f results/${codeletName/__invivo__/__extracted__}_*.csv
+        continue
+    fi
+    echo "$result_file" >> invocation_error
+    cc=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 2`
+    cy=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
+    cycles=`echo "scale=3;${cycles}*${cc}" | bc`
+    codelet_part=`echo "scale=3;${cy}/${app_cycles}" | bc | awk '{printf "%f", $0}'`
+
+    compute_error ${cycles} ${cy}
+
+    if [[ $error > 0.15 ]]; then
+        echo "NOT MATCHING: In vitro = $cycles & invivo = $cy (error = $error, exec = $codelet_part)"
+    else
+        echo "MATCHING: In vitro = $cycles & invivo = $cy (error = $error, exec = $codelet_part)"
+        echo ${codeletName/__invivo__/} >> new_matching_codelets
+    fi
+    echo "$codeletName $error $codelet_part" >> matching_error
+    rm ${codeletName}.invocations
+    rm results/${codeletName/__invivo__/__extracted__}_*.csv
+done < ${FILE}
+
+#Plot for each codelets the error between invivo and invitro
+if [[ ( -f  matching_error ) ]]; then
+    $ROOT/density_error.R matching_error
+fi
+$PROJECT_ROOT/src/granularity/compute_matching.R .
+CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
+echo "Before:"
+$PROJECT_ROOT/src/granularity/granularity.py all_loops.csv --matching=matching_codelets ${CYCLES}
+echo "After:"
+$PROJECT_ROOT/src/granularity/granularity.py all_loops.csv --matching=new_matching_codelets ${CYCLES}
