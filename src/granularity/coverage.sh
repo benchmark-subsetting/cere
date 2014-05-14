@@ -117,6 +117,7 @@ then
     echo "Error, can't compute coverage and/or matching because:"
     echo -e $error
     echo -e $error > error
+    exit 1
 else
     #7) Find matching codelets
     ${ROOT}/compute_matching.R $BENCH_DIR
@@ -124,4 +125,5 @@ else
     #8) Now find codelets to keep
     CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
     ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/matching_codelets ${CYCLES}
+    exit 0
 fi
