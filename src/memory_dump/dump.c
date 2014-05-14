@@ -358,7 +358,6 @@ lock_mem(void)
          start_of_stack = (char *) start;
          continue;
       }
-
       /* Ignore libc pages */
       if (strstr(buf, "linux-gnu") != NULL)
          continue;
@@ -388,6 +387,10 @@ lock_mem(void)
   }
   fclose(maps);
 
+  // On Core2 (tahiti) without this print test_07 segfaults
+  // during the mprotect call.
+  printf("DUMP: locking memory\n");
+
   while(count > 0) {
       char * end = addresses[--count];
       char * start = addresses[--count];
@@ -402,11 +405,9 @@ lock_mem(void)
   // memory.
   // Access them now, while ignore_handler is active, to unlock the
   // sensible regions and avoid a double SEGFAULT later on.
-
   errno = 0;
   int fd = open("/dev/null", O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
   close(fd);
-
 
   mprotect(start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
 

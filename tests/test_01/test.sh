@@ -13,5 +13,5 @@ cat $TMPDIR/test.replay.out
 cat $TMPDIR/test.dump.out | grep "&a" | head -n1 > $TMPDIR/test.a
 cat $TMPDIR/test.replay.out | grep "&a" | head -n1 > $TMPDIR/test.b
 
-rm -rf "$TMPDIR"
-exit 0
+diff $TMPDIR/test.a $TMPDIR/test.b
+exit $?
