@@ -63,15 +63,15 @@ fi
 #5) dump loops
 make clean && rm *.ll
 ${COMPILE_CMD} MODE=--dump
-#~ eval ${BIN_CMD} #> out
-#~ #Create a file with all dumped loops name
-#~ touch dump/extracted_loops
-#~ for files in `ls dump`
-#~ do
-    #~ if [[ ( -d "dump/$files" ) && ! ( `grep -F ${files%_*} dump/extracted_loops` ) ]]; then
-        #~ echo "${files%_*}" >> dump/extracted_loops
-    #~ fi
-#~ done
+eval LD_BIND_NOW=1 ${BIN_CMD} > out
+#Create a file with all dumped loops name
+touch dump/extracted_loops
+for files in `ls dump`
+do
+    if [[ ( -d "dump/$files" ) && ! ( `grep -F ${files} dump/extracted_loops` ) ]]; then
+        echo "${files}" >> dump/extracted_loops
+    fi
+done
 
 #6) Measure in-vitro loops
 if [[ !( -d results ) ]]
