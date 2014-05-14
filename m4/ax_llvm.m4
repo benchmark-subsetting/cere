@@ -59,11 +59,11 @@ AC_DEFUN([AX_LLVM],
     AC_MSG_CHECKING([for LLVM version])
     LLVM_VERSION=`$LLVM_CONFIG --version`
     AC_MSG_RESULT([$LLVM_VERSION])
-    AX_COMPARE_VERSION([$LLVM_VERSION],[ge],[$1],
+    AX_COMPARE_VERSION([$LLVM_VERSION],[eq],[$1],
       [],
       [
         AC_MSG_ERROR(
-          [LLVM version $1 or later is required])
+          [LLVM version $1 is required])
       ])
   fi
 
