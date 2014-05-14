@@ -15,7 +15,7 @@ OBJS = appft.o auxfnct.o fft3d.o mainft.o verify.o \
 PROGRAM=FT
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -lm -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
+	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lm -lgfortran
 
 %.o: %.c
 	${CC} ${MODE} ${INSTRU} ${FLAGS} $<
