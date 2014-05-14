@@ -118,7 +118,7 @@ else
           snprintf(cmd, sizeof(cmd), \"cat /proc/%d/maps\", pid);
           system(cmd);
           printf(\"==========================\n\");
-          exit(EXIT_FAILURE);
+          raise(SIGKILL);
         }
 
         void real_main(int empty) {
