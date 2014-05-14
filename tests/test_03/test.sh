@@ -1,17 +1,17 @@
 #!/bin/bash
 
 TMPDIR=`mktemp -d`
-make veryclean
-make MODE=--dump
-LD_BIND_NOW=1 ./BT
+make veryclean > /dev/null 2>&1
+make MODE=--dump > /dev/null 2>&1
+LD_BIND_NOW=1 ./IS > /dev/null 2>&1
 
-make clean
-make MODE=--replay=__extracted__verify_verify__265 INSTRU=--instrument
-./BT
+make clean > /dev/null 2>&1
+make MODE=--replay=__extracted__is_main_724 > /dev/null 2>&1
+./IS > $TMPDIR/test.replay.out
+
+cat $TMPDIR/test.replay.out | head -10 > $TMPDIR/test.a
+
+diff $TMPDIR/test.a verif
 
 rm -rf "$TMPDIR"
-if [ -f rdtsc_result.csv ]; then
-    exit 0
-else
-    exit 1
-fi
+exit $?

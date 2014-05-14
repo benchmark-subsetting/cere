@@ -1,36 +1,28 @@
-SHELL=/bin/sh
-BENCHMARK=bt
-BENCHMARKU=BT
 PROJECT_ROOT=../../
-include make.def
-CC=../../src/lec/lec
-F77=../../src/lec/lec
-FLINK=../../src/lel/lel
 
-FLAGS=-g
+all: test
+dump: test_dump
+replay: test_replay
 
-OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
-       set_constants.o adi.o  rhs.o \
-       x_solve.o y_solve.o \
-       z_solve.o add.o error.o verify.o \
-       print_results.o timers.o wtime.o
+FLAGS=-g -O0
 
-PROGRAM=BT
+test: test.c
+	../../src/lec/lec $(FLAGS) test.c
+	../../src/lel/lel $(FLAGS) test.o -o test
 
-${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${FLINKFLAGS} ${FLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
+test_dump: test.c
+	../../src/lec/lec --dump $(FLAGS) test.c
+	../../src/lel/lel --dump $(FLAGS) test.o -o test_dump
 
-%.o: %.c
-	${CC} ${MODE} ${FLAGS} $<
+LOOP=__extracted__test_checksum_7
 
-%.o: %.f
-	${F77} ${MODE} ${FLAGS} $<
+test_replay: test.c
+	../../src/lec/lec --replay=$(LOOP) $(FLAGS) test.c
+	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o -lc
 
 clean:
-	- rm -f *.o *.s *.ll *~ mputil*
-	- rm -f core BT
-	- rm -f dump.c
+	- rm -f *.o *.s *.ll
 
 veryclean: clean
 	- rm -rf dump/
-	- rm -f lel_bin realmain.c dump.c
+	- rm -f *.o test test_* lel_bin realmain.c dump.c

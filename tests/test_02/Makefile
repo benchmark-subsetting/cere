@@ -1,34 +1,35 @@
 SHELL=/bin/sh
-BENCHMARK=is
-BENCHMARKU=IS
+BENCHMARK=bt
+BENCHMARKU=BT
 PROJECT_ROOT=../../
-
 include make.def
-
 CC=../../src/lec/lec
-CLINK=../../src/lel/lel
+F77=../../src/lec/lec
+FLINK=../../src/lel/lel
 
 FLAGS=-g
 
-PROGRAM=IS
+OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
+       set_constants.o adi.o  rhs.o \
+       x_solve.o y_solve.o \
+       z_solve.o add.o error.o verify.o \
+       print_results.o timers.o wtime.o
 
-OBJS = is.o \
-       c_print_results.o \
-       c_timers.o \
-       wtime.o
-
+PROGRAM=BT
 
 ${PROGRAM}: ${OBJS}
-	${CLINK} ${MODE} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
+	${FLINK} ${MODE} ${FLINKFLAGS} ${FLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
 
-.c.o:
+%.o: %.c
 	${CC} ${MODE} ${FLAGS} $<
 
-is.o: is.c npbparams.h
+%.o: %.f
+	${F77} ${MODE} ${FLAGS} $<
 
 clean:
 	- rm -f *.o *.s *.ll *~ mputil*
-	- rm -f IS core
+	- rm -f core BT
+	- rm -f dump.c
 
 veryclean: clean
 	- rm -rf dump/

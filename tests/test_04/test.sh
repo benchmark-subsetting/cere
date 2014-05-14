@@ -1,5 +1,17 @@
 #!/bin/bash
 
-make veryclean > /dev/null 2>&1
-../../src/granularity/coverage.sh . "./bzip2 -k -z -f dryer.jpg" make > /dev/null 2>&1
-exit $?
+TMPDIR=`mktemp -d`
+make veryclean
+make MODE=--dump
+LD_BIND_NOW=1 ./BT
+
+make clean
+make MODE=--replay=__extracted__verify_verify__265 INSTRU=--instrument
+./BT
+
+rm -rf "$TMPDIR"
+if [ -f rdtsc_result.csv ]; then
+    exit 0
+else
+    exit 1
+fi

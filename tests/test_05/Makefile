@@ -1,38 +1,22 @@
-SHELL=/bin/sh
-BENCHMARK=ft
-BENCHMARKU=FT
 PROJECT_ROOT=../../
-include make.def
+FLAGS+=-g
 CC=../../src/lec/lec
-F77=../../src/lec/lec
-FLINK=../../src/lel/lel
-FLAGS=-g -mcmodel=large
+CLINK=../../src/lel/lel
 
-OBJS = appft.o auxfnct.o fft3d.o mainft.o verify.o \
-       randi8.o print_results.o \
-       timers.o wtime.o
-
-PROGRAM=FT
+OBJS = blocksort.o  bzip2.o  bzlib.o  compress.o  crctable.o  decompress.o  huffman.o  randtable.o  spec.o
+PROGRAM=bzip2
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lm -lgfortran
+	${CLINK} ${MODE}  ${INSTRU} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 %.o: %.c
 	${CC} ${MODE} ${INSTRU} ${FLAGS} $<
 
-.f.o:
-	${F77} ${MODE} ${INSTRU} ${FLAGS} $<
-
-appft.o:	appft.f  global.h npbparams.h
-auxfnct.o:	auxfnct.f  global.h npbparams.h
-fft3d.o:	fft3d.f  global.h npbparams.h
-mainft.o:	mainft.f  global.h npbparams.h
-verify.o:	verify.f  global.h npbparams.h
-
 clean:
-	- rm -f *.o *~ mputil* *.s *.ll
-	- rm -f ft core
+	- rm -f *.o *.s *.ll *~ mputil*
+	- rm -f $(PROGRAM)
+	- rm -f dump.c
 
 veryclean: clean
-	- rm -rf dump/
-	- rm -f lel_bin realmain.c dump.c
+	- rm -rf dump/ results/
+	- rm -f lel_bin realmain.c dump.c level_* loop_to_keep matching_codelets out *.csv dryer.jpg.bz2
