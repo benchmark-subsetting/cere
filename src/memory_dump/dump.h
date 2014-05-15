@@ -37,6 +37,7 @@ struct dump_state {
     bool page_log_active;
     bool kill_after_dump;
     bool global_dump;
+    bool dump_initialized;
     int last_page;
     int log_size;
     int mem_fd;

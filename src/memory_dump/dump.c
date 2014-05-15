@@ -496,6 +496,7 @@ void dump_init(bool global_dump)
     /* start protecting malloc and co */
     state.mtrace_active = true;
   }
+  state.dump_initialized=true;
 
 #ifdef _DEBUG
   printf("DUMP_INIT DONE\n");
@@ -522,6 +523,9 @@ void dump_close()
  */
 void dump(char* loop_name, int invocation, int count, ...)
 {
+    //Avoid doing something before initializing
+    //the dump.
+    if(!state.dump_initialized) return;
 #ifdef _DEBUG
     printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
 #endif
@@ -613,11 +617,14 @@ void dump(char* loop_name, int invocation, int count, ...)
 
 void after_dump(void)
 {
+  //Avoid doing something before initializing
+  //the dump.
+  if(!state.dump_initialized) return;
   if(state.global_dump) {
     assert(state.mtrace_active == true);
     assert(state.dump_sa == MRU_SA || state.dump_sa == DUMP_SA);
   }
-  if (state.dump_active[state.dump_active_pos] == true) { 
+  if (state.dump_active[state.dump_active_pos] == true) {
       state.stack_pos--;
       assert(state.stack_pos >= -1);
       if (state.stack_pos == -1) {
