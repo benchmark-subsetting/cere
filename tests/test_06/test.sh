@@ -1,9 +1,10 @@
 #!/bin/bash
-make veryclean > /dev/null 2>&1
-make MODE=--dump  > /dev/null 2>&1
-LD_BIND_NOW=1 ./FT > /dev/null 2>&1
+make veryclean
+make -j4 MODE=--dump
+LD_BIND_NOW=1 ./FT
 
-make clean > /dev/null 2>&1
-make MODE=--replay=__extracted__auxfnct_ilog2__48 > /dev/null 2>&1
+make clean
+make MODE=--replay=__extracted__auxfnct_ilog2__48
+./FT | grep '128         128'
 exit $?
 
