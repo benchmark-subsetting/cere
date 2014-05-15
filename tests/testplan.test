@@ -1,5 +1,12 @@
 #!/bin/bash
-tests=$(find . -maxdepth 1 -type d -name 'test_*' | sort)
+
+tests=""
+if [ "$1" == "--long" ]; then
+    tests="$tests $(find . -maxdepth 1 -type d -name 'long_*' | sort)"
+fi
+
+tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' | sort)"
+
 count=$(echo $tests | wc -w)
 
 # Print number of tests detected
