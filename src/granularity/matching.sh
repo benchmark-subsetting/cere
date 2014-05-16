@@ -59,9 +59,11 @@ rm -f new_matching_codelets matching_error invocation_error Rplot.pdf
 touch new_matching_codelets
 #Get application runtime in cycles
 app_cycles=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
+#For each codelet
 while read codeletName; do
     echo "$codeletName"
     make clean &>> out && rm -f *.ll &>> out
+    #If invivo trace not already measured, do it
     if [[ ! -f results/$codeletName.csv ]]; then
         echo "Measuring invivo trace"
         ${COMPIL_CMD} MODE="--instrument --instrument-loop=$codeletName --loop-to-trace=$codeletName" &> out
@@ -76,7 +78,7 @@ while read codeletName; do
         echo "Error for $codeletName: No measure files for invivo trace"
         continue
     fi
-    #I have everything to clusterize performance
+    #We have everything to clusterize performance
     bynaryFiles=`ls results/*$codeletName.bin.*`
     nbLoopFiles=`ls results/*$codeletName.bin.* | wc -l`
     echo "Computing clustering info"
@@ -95,6 +97,7 @@ while read codeletName; do
         if [[ ! -z "$force" ]]; then
             rm -rf dump/${codeletName/__invivo__/__extracted__}/${invocation}
         fi
+        #if this invocation is not dumped, do it
         if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "Dumping invocation ${invocation}"
             make clean &>> out && rm -f *.ll &>> out
@@ -106,7 +109,7 @@ while read codeletName; do
             err=1
             continue
         fi
-        #Run the invitro version
+        #Run the invitro version of this invocation
         if [[ ! -f results/${codeletName/__invivo__/__extracted__}_${invocation}.csv ]]; then
             echo "Running invitro version"
             make clean &>> out && rm -f *.ll &>> out
@@ -119,15 +122,19 @@ while read codeletName; do
             err=1
             continue
         fi
+        #Compute error between invivo and invitro cycles for this invocation
         tmp_cycles=`cat results/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 3`
         tmp_invocation=`cat results/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 2`
         c=`echo "${tmp_cycles}/${tmp_invocation}" | bc`
         compute_error ${c} ${invivo}
         echo "In vitro cycles = $c & in vivo cycles = $invivo (error = ${error})"
 
+        #Aggregate invocations cycles, needed to compute invitro measure for the codelet
         cycles=`echo "${cycles}+${c}*${perc}" | bc`
-        result_file="$result_file ${error}"
+        #And keep track of error for each invocation
+        result_file="$result_file ${invocation} ${error}"
     done < ${codeletName}.invocations
+    #if an error has occured, let's got to the next codelet
     if [[ ! ( -z ${err} ) ]]; then
         unset err
         rm -f ${codeletName}.invocations
@@ -135,6 +142,7 @@ while read codeletName; do
         continue
     fi
     echo "$result_file" >> invocation_error
+    #Compute error between invivo and in vitro
     cc=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 2`
     cy=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
     cycles=`echo "scale=3;${cycles}*${cc}" | bc`
@@ -157,6 +165,7 @@ done < ${FILE}
 if [[ ( -f  matching_error ) ]]; then
     $ROOT/density_error.R matching_error
 fi
+#compute matching and compare old and new method
 $PROJECT_ROOT/src/granularity/compute_matching.R .
 CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 echo "Before:"
