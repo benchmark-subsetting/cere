@@ -156,6 +156,9 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 	}
 
 	r->call_count += 1;
+	//If invitro, remove first measure
+	if(!r->invivo && r->call_count==2)
+		r->counter = 0;
 	if(r->traced) {
 		global_region_call_count *t=NULL;
 		if ((t = htable_get(&call_count_reminder, hash_string(reg), streq2, reg)) == NULL ) {
@@ -200,9 +203,6 @@ void rdtsc_markerStopRegion(char *reg, int trace) {
 	else {
 		pop(call_stack);
 		r->counter += stop - r->start;
-		//If invitro, remove first measure
-		if(!r->invivo && r->call_count==1)
-			r->counter = 0;
 		if(r->traced) {
 			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = stop - r->start;
 			if(r->call_count%TRACE_SIZE == 0) {
