@@ -3,9 +3,9 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
 # Check number of arguments
-if [ $# -lt 3 ] ; then
-    echo "usage: $0 [--force] codelets-to-dump-file exec_cmd compile_cmd"
-    echo "codelets-to-dump-file must contains loops you want to compute coverage for"
+if [ $# -lt 3 ] || [ $# -gt 5 ]; then
+    echo "usage: $0 [--force] [BENCH_DIR] codelets-to-dump-file exec_cmd compile_cmd"
+    echo "codelets-to-dump-file must contains loops you want to compute coverage for."
     echo "Those loops can be obtained by running granularity script on replayed codelets"
     exit 1
 fi
@@ -15,14 +15,28 @@ if [[ $1 == --force ]]; then
     force=1
     shift
 fi
+
+if [ $# -eq 4 ] ; then
+    BENCH_DIR=$(readlink -f $1) # convert BENCH_DIR to absolute path
+    shift
+else
+    BENCH_DIR=${PWD}
+fi
+
 FILE=$1
 BIN_CMD=$2
 COMPIL_CMD=$3
 
+cd $BENCH_DIR 2> /dev/null
+if [ "$?" != "0" ] ; then
+    echo "Could not change directory to $BENCH_DIR" > /dev/stderr
+    exit 1
+fi
+
 #Check if everything we need is present
 if [[ ! -f all_loops.csv ]] || [[ ! -f app_cycles.csv ]]; then
     echo "all_loops.csv or app_cycles.csv not found."
-    echo "Please first run $PROJECT_ROOT/src/granularity/coverage.sh $ROOT \"$BIN_CMD\" \"$COMPIL_CMD\""
+    echo "Please first run $ROOT/coverage.sh $PWD \"$BIN_CMD\" \"$COMPIL_CMD\""
     exit 1
 fi
 
@@ -41,7 +55,7 @@ compute_error()
     error=`echo "scale=3;${diff}/${max}" | bc | awk '{printf "%f", $0}'`
 }
 
-rm -f new_matching_codelets matching_error invocation_error
+rm -f new_matching_codelets matching_error invocation_error Rplot.pdf
 touch new_matching_codelets
 #Get application runtime in cycles
 app_cycles=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`

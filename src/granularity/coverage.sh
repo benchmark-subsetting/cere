@@ -3,16 +3,20 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
 
 # Check number of arguments
-if [ $# -lt 3 ] ; then
-    echo "usage: $0 BENCH_DIR BINARY_CMD COMPILE_CMD"
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "usage: $0 [BENCH_DIR] BINARY_CMD COMPILE_CMD"
+    echo "If [BENCH_DIR] not given, this will test the current working directory"
     exit 1
 fi
 
-BENCH_DIR=$(readlink -f $1) # convert BENCH_DIR to absolute path
-shift
+if [ $# -eq 2 ] ; then
+    BENCH_DIR=${PWD}
+else
+    BENCH_DIR=$(readlink -f $1) # convert BENCH_DIR to absolute path
+    shift
+fi
 BIN_CMD=$1
-shift
-COMPILE_CMD=$*
+COMPILE_CMD=$2
 
 cd $BENCH_DIR 2> /dev/null
 if [ "$?" != "0" ] ; then
@@ -21,21 +25,21 @@ if [ "$?" != "0" ] ; then
 fi
 
 #1) Measure application cycles
-make clean && rm *.ll
+make clean && rm -f *.ll
 ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--instrument-loop=bench"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
-    error="Measuring application failed!\n"
+    error="\tMeasuring application failed!\n"
 else
     mv rdtsc_result.csv app_cycles.csv
 fi
 
 #2) We need to instrument all in-vivo loops
-make clean && rm *.ll
+make clean && rm -f *.ll
 ${COMPILE_CMD} INSTRU=--instrument
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
-    error="$error Measuring in-vivo loops failed!\n"
+    error="$error \tMeasuring in-vivo loops failed!\n"
 else
     mv rdtsc_result.csv all_loops.csv
 fi
@@ -48,11 +52,11 @@ then
     #4) For each level, measure in-vivo loops
     for level in `ls level_*`
     do
-        make clean && rm *.ll
+        make clean && rm -f *.ll
         ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--loops-file=${level}"
         eval ${BIN_CMD} #> out
         if [[ ! -f rdtsc_result.csv ]]; then
-            warning="Measuring in-vivo loops failed for ${level}!\n"
+            warning="\tMeasuring in-vivo loops failed for ${level}!\n"
         else
             ${ROOT}/fusion.py all_loops.csv rdtsc_result.csv
             mv rdtsc_result.csv ${level}.csv
@@ -61,7 +65,7 @@ then
 fi
 
 #5) dump loops
-make clean && rm *.ll
+make clean && rm -f *.ll
 ${COMPILE_CMD} MODE=--dump
 eval LD_BIND_NOW=1 ${BIN_CMD} > out
 #Create a file with all dumped loops name
@@ -81,7 +85,7 @@ fi
 echo "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE" > results/invitro_results.csv
 while read loops
 do
-    make clean && rm *.ll
+    make clean && rm -f *.ll
     rm -f realmain.c
     ${COMPILE_CMD} MODE=--replay=$loops INSTRU=--instrument
     eval ${BIN_CMD} #> out
@@ -92,18 +96,18 @@ do
         then
             cat results/${loops}.csv | tail -n 1 >> results/invitro_results.csv
         else
-            warning="$warning Measuring in-vitro cycles for $loops failed\n"
+            warning="$warning \tMeasuring in-vitro cycles for $loops failed\n"
         fi
     else
-        warning="$warning Measuring in-vitro cycles for $loops failed\n"
+        warning="$warning \tMeasuring in-vitro cycles for $loops failed\n"
     fi
 done < dump/extracted_loops
 
-make clean && rm *.ll
+make clean && rm -f *.ll
 lines=`wc -l results/invitro_results.csv | cut -d' ' -f1`
 if [[ ! "$lines" > 1 ]]
 then
-    error="$error No invitro measure!\n"
+    error="$error \tNo invitro measure!\n"
 fi
 
 if [[ ! -z $warning ]]
@@ -119,11 +123,11 @@ then
     echo -e $error > error
     exit 1
 else
-    #7) Find matching codelets
+    #7) Find matching and replayed codelets
     ${ROOT}/compute_matching.R $BENCH_DIR
 
     #8) Now find codelets to keep
     CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-    ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/matching_codelets ${CYCLES}
+    ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/replayedCodelet ${CYCLES}
     exit 0
 fi

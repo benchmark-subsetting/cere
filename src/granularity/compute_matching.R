@@ -38,8 +38,8 @@ aggregateData <- function(allLoops, invitroRes) {
     return(aggregatedResults)
 }
 
-#count the number of loops with less then 15% difference
-#between invivo and invitro sycles measure
+#count the number of loops with less then tol% difference
+#between invivo and invitro cycles measures
 compute_matching <- function(aggregatedResults, tol) {
     res <- ddply(aggregatedResults, c("Codelet.Name"), function(x) {
             data.frame(Diff = abs(x$CPU_CLK_UNHALTED_CORE_invivo/x$CallCount_invivo - x$CPU_CLK_UNHALTED_CORE_invitro/x$CallCount_invitro)/pmax(x$CPU_CLK_UNHALTED_CORE_invivo/x$CallCount_invivo, x$CPU_CLK_UNHALTED_CORE_invitro/x$CallCount_invitro))
@@ -52,7 +52,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 # Check the format of the script
 if (length(args)!=1) {
-    print("usage: ./plot-coverage-matching.R <Path to bench>")
+    print("usage: ./compute_matching.R <Path to bench>")
     q()
 }
 
