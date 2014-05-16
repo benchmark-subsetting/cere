@@ -128,6 +128,6 @@ else
 
     #8) Now find codelets to keep
     CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-    ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/replayedCodelet ${CYCLES}
+    ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/replayedCodelet ${CYCLES} > loops
     exit 0
 fi
