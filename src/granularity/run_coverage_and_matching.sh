@@ -21,10 +21,9 @@ while read benchInfo; do
         echo "Could not change directory to $BENCH_DIR"
         continue
     fi
-    cd $ORIGIN_PATH 2> /dev/null
     touch coverage_log matching_log
-    $ROOT/coverage.sh $runCommand "make INVITRO_CALL_COUNT=1" > coverage_log 2>&1
-    $ROOT/matching.sh loops $runCommand "make INVITRO_CALL_COUNT=1" > matching_log 2>&1
+    $ROOT/coverage.sh "$runCommand" "make INVITRO_CALL_COUNT=1" > coverage_log 2>&1
+    $ROOT/matching.sh loops "$runCommand" "make INVITRO_CALL_COUNT=1" > matching_log 2>&1
     cd $ORIGIN_DIR 2> /dev/null
     if [ "$?" != "0" ] ; then
         echo "Could not come back to original directory $ORIGIN_DIR"
