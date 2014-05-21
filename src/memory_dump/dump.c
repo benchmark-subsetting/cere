@@ -532,6 +532,7 @@ void dump(char* loop_name, int invocation, int count, ...)
 #endif
 
     /* Stop malloc protection */
+    int old_state = state.mtrace_active;
     state.mtrace_active = false;
 
     /* Increment active dump position */
@@ -552,7 +553,17 @@ void dump(char* loop_name, int invocation, int count, ...)
       lock_mem();
       /* configure mru sa */
       set_mru();
+
+      /* here two possibilities 1) either the user asked to dump the current
+       * invocation, (happens when invocation = 1), in which case we will
+       * activate mtrace just before the dump starts at the end of this
+       * function
+       *
+       * 2) either we are not on the good invocation in which case we have to
+       * start locking mem in the next if block */
+      old_state = true;
     }
+
     /* Did we get to the invocation that must be dumped ? */
     if(region->call_count != invocation)
     {
@@ -561,8 +572,8 @@ void dump(char* loop_name, int invocation, int count, ...)
         /* reactivate malloc protection */
 #endif
         state.dump_active[state.dump_active_pos] = false;
-        if(state.global_dump)
-          state.mtrace_active = true;
+        /* restore mtrace state */
+        state.mtrace_active = old_state;
         return;
     }
     printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
