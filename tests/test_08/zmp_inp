@@ -1,0 +1,21 @@
+ &mpitop ntiles(1)=1,ntiles(2)=1,ntiles(3)=1,periodic=3*.false. /
+ &rescon /
+ &pcon nlim=30, tlim=1.e-1, cpulim= 100000.0, mbatch=1 /
+ &hycon qcon=0.2,courno=0.5 /
+ &iib niis(1)=2 /
+ &oib nois(1)=2 /
+ &ijb nijs(1)=2 /
+ &ojb nojs(1)=2 /
+ &ikb niks(1)=2 /
+ &okb noks(1)=2 /
+ &ggen1 nbl=64,x1min=-1.0,x1max=1.0,igrid=1,x1rat=1.,lgrid=.true.  /
+ &ggen2 nbl=64,x2min=-1.0,x2max=1.0,igrid=1,x2rat=1.,lgrid=.true.  /
+ &ggen3 nbl=64,x3min=-1.0,x3max=1.0,igrid=1,x3rat=1.,lgrid=.true.  /
+ &grvcon /
+ &radcon /
+ &radexp /
+ &eqos gamma=1.6666667 /
+ &pgen r=0.20, x10=0.0, x20=0.0, x30=0.0, d0=1.0, drat=100.0
+      , p0=0.6, prat=1.0e6, b10=140.0, b20=0.0, b30=0.0 /
+ &gcon /
+ &iocon ttsl=0.0, dttsl=1.e-1 /
