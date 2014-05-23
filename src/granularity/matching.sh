@@ -27,6 +27,14 @@ FILE=$1
 BIN_CMD=$2
 COMPIL_CMD=$3
 
+whitespace="[[:space:]]"
+if [[ $BIN_CMD =~ $whitespace ]]
+then
+    BIN_CMD=\"$BIN_CMD\"
+fi
+
+rm -r invocation_error matching_error matching_log new_matching_codelets Rplots.pdf
+
 cd $BENCH_DIR 2> /dev/null
 if [ "$?" != "0" ] ; then
     echo "Could not change directory to $BENCH_DIR" > /dev/stderr

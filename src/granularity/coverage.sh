@@ -18,6 +18,15 @@ fi
 BIN_CMD=$1
 COMPILE_CMD=$2
 
+whitespace="[[:space:]]"
+if [[ $BIN_CMD =~ $whitespace ]]
+then
+    BIN_CMD=\"$BIN_CMD\"
+fi
+
+rm -fr all_loops.csv app_cycles.csv coverage_log dump/ level_* lel_bin loops \
+matching_codelets out realmain.c replayedCodelet results/ warning error
+
 cd $BENCH_DIR 2> /dev/null
 if [ "$?" != "0" ] ; then
     echo "Could not change directory to $BENCH_DIR" > /dev/stderr
