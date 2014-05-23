@@ -53,9 +53,9 @@ def parse_sym(binary, elfmap):
         fields = l.split()
         if not fields: break
         if fields[3] != "OBJECT": continue
-        if fields[4] != "GLOBAL": continue
         if fields[5] != "DEFAULT": continue
         name = fields[-1]
+        if name.startswith('__'): continue
         addr = int(fields[1],16)
         if fields[2].startswith('0x'):
             size = int(fields[2], 16)
