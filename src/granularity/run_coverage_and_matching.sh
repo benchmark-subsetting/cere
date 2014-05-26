@@ -16,10 +16,17 @@ while read benchInfo; do
     runCommand=`echo $benchInfo | grep -Po '".*?"'`
     echo "$benchName: $runCommand"
     BENCH_DIR=$(readlink -f $benchName) # convert BENCH_DIR to absolute path
+
+    whitespace="[[:space:]]"
+    if [[ $runCommand =~ $whitespace ]]
+    then
+        runCommand=\"$runCommand\"
+    fi
+
     echo "$ROOT/coverage.sh $BENCH_DIR $runCommand \"make -j8\" > $BENCH_DIR/coverage_log"
-    $ROOT/coverage.sh $BENCH_DIR "$runCommand" "make -j8" #> $BENCH_DIR/coverage_log 2>&1
+    $ROOT/coverage.sh $BENCH_DIR "$runCommand" "make -j8" > $BENCH_DIR/coverage_log 2>&1
     echo "$ROOT/matching.sh $BENCH_DIR loops $runCommand \"make -j8\" > $BENCH_DIR/matching_log"
-    $ROOT/matching.sh $BENCH_DIR loops "$runCommand" "make -j8" #> $BENCH_DIR/matching_log 2>&1
+    $ROOT/matching.sh $BENCH_DIR loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
     cd $ORIGIN_DIR 2> /dev/null
     if [ "$?" != "0" ] ; then
         echo "Could not come back to original directory $ORIGIN_DIR"

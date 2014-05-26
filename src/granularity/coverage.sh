@@ -18,12 +18,6 @@ fi
 BIN_CMD=$1
 COMPILE_CMD=$2
 
-whitespace="[[:space:]]"
-if [[ $BIN_CMD =~ $whitespace ]]
-then
-    BIN_CMD=\"$BIN_CMD\"
-fi
-
 rm -fr all_loops.csv app_cycles.csv coverage_log dump/ level_* lel_bin loops \
 matching_codelets out realmain.c replayedCodelet results/ warning error
 
@@ -42,6 +36,8 @@ if [[ ! -f rdtsc_result.csv ]]; then
 else
     mv rdtsc_result.csv app_cycles.csv
 fi
+
+exit 0
 
 #2) We need to instrument all in-vivo loops
 make clean && rm -f *.ll
