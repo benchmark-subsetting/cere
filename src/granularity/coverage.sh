@@ -37,8 +37,6 @@ else
     mv rdtsc_result.csv app_cycles.csv
 fi
 
-exit 0
-
 #2) We need to instrument all in-vivo loops
 make clean && rm -f *.ll
 ${COMPILE_CMD} INSTRU=--instrument
