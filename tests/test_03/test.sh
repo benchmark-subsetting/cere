@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TMPDIR=`mktemp -d`
+function do_test()
+{
 make veryclean
 make -j4 MODE="--dump --loop-to-dump=__extracted__is_main_724 --invocation=1"
 LD_BIND_NOW=1 ./IS
@@ -12,7 +13,6 @@ make -j4 INVITRO_CALL_COUNT=1 MODE="--replay=__extracted__is_main_724"
 cat $TMPDIR/test.replay.out | head -10 > $TMPDIR/test.a
 
 diff $TMPDIR/test.a verif
-STATUS=$?
+}
 
-rm -rf "$TMPDIR"
-exit $STATUS
+source ../source.sh

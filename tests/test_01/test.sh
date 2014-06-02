@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TMPDIR=`mktemp -d`
+function do_test()
+{
 make veryclean > /dev/null 2>&1
 make test_dump > /dev/null 2>&1
 LD_BIND_NOW=1 ./test_dump > $TMPDIR/test.dump.out
@@ -14,4 +15,6 @@ cat $TMPDIR/test.dump.out | grep "&a" | head -n1 > $TMPDIR/test.a
 cat $TMPDIR/test.replay.out | grep "&a" | head -n1 > $TMPDIR/test.b
 
 diff $TMPDIR/test.a $TMPDIR/test.b
-exit $?
+}
+
+source ../source.sh

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TMPDIR=`mktemp -d`
+function do_test()
+{
 make veryclean
 make -j4 MODE=--dump
 LD_BIND_NOW=1 ./BT
@@ -14,5 +15,6 @@ cat $TMPDIR/test.replay.out
 cat $TMPDIR/test.replay.out | head -n1 > $TMPDIR/test.a
 
 diff $TMPDIR/test.a verif
+}
 
-exit $?
+source ../source.sh
