@@ -18,7 +18,7 @@ OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
 PROGRAM=BT
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${FLINKFLAGS} ${FLAGS} -lgfortran -o ${PROGRAM} ${OBJS} ${F_LIB}
+	${FLINK} ${MODE} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lgfortran
 
 %.o: %.c
 	${CC} ${MODE} ${FLAGS} $<

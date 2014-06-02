@@ -15,5 +15,4 @@ cat $TMPDIR/test.replay.out | head -n1 > $TMPDIR/test.a
 
 diff $TMPDIR/test.a verif
 
-rm -rf "$TMPDIR"
 exit $?
