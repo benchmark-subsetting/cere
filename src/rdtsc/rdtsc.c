@@ -8,7 +8,7 @@ void print_hash_table()
 	region *p;
 	for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
 	{
-		fprintf(stderr, "%s\n", p->name);
+		fprintf(stderr, "RDTSC: print_hash_table() %s\n", p->name);
 	}
 }
 
@@ -181,9 +181,11 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 			char *fileName = malloc((strlen(r->name)+5)*sizeof(char));
 			strcpy(fileName, r->name);
 			strcat(fileName, ".bin");
-			r->trace_results = fopen(fileName, "ab");
-			if(r->trace_results == NULL)
-				fprintf(stderr, "Cannot open Binary File!\n");
+            r->trace_results = fopen(fileName, "ab");
+            if(r->trace_results == NULL) {
+                perror("RDTSC: Cannot open Binary File!");
+                exit(EXIT_FAILURE);
+            }
 		}
 		t->val += 1;
 		r->global_call_count[(r->call_count-1)%TRACE_SIZE] = t->val;
