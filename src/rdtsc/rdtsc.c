@@ -193,7 +193,6 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 }
 
 void rdtsc_markerStopRegion(char *reg, int trace) {
-	serialize();
 	unsigned long long int stop = rdtsc();
 	char* regionName = call_stack;
 	/* We must check that reg is base name of regionName */
