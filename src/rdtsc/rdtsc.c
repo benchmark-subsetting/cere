@@ -79,11 +79,12 @@ void dump_trace(region *r, int nbEltToDump)
 		int i,j;
 		if(r->invivo) j=0;
 		else j=1;
-		for (i = j; i < nbEltToDump; i++)
-		{
-			fwrite((const void*)(&r->trace_counter[i]), sizeof(unsigned int), 1, r->trace_results);
-			fwrite((const void*)(&r->global_call_count[i]), sizeof(unsigned int), 1, r->trace_results);
-		}
+        for (i = j; i < nbEltToDump; i++) {
+            double counter = (double) r->trace_counter[i];
+            double count = (double) r->global_call_count[i];
+            fwrite((const void*)(&counter), sizeof(double), 1, r->trace_results);
+            fwrite((const void*)(&count), sizeof(double), 1, r->trace_results);
+        }
 	}
 }
 

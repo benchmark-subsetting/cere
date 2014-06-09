@@ -89,8 +89,9 @@ allValues <- matrix(ncol=nbLoopFiles, nrow=nbValues)
 for(i in 1:nbLoopFiles) {
     binFile=args[2+i]
     to.read=file(binFile, "rb")
-    tracedLoop=readBin(to.read, integer(), n=nbValues*2, endian = "little")
-    allValues[,i] <- tracedLoop[seq(1,nbValues*2, 2)]
+    tracedLoop=readBin(to.read, double(), n=nbValues*2)
+    values <- tracedLoop[seq(1,nbValues*2, 2)]
+    allValues[,i] <- values
 }
 
 allValues <- data.frame(allValues)
@@ -100,7 +101,7 @@ total_invocation = nrow(allValues)
 total_cycles = sum(as.numeric(allValues[,paste("repetition_", nbLoopFiles, sep='')]), na.rm=T)
 print(paste("Trace Cycles =", total_cycles))
 print(paste("Invocations=", total_invocation))
-if (total_cycles != allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE)
+if (total_cycles - allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE)
 {
     print(paste("Sanity check failed: Trace cycles =", total_cycles, "& cycles =", allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE))
     q()
