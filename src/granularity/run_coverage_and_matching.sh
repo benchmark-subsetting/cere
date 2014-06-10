@@ -26,7 +26,7 @@ while read benchInfo; do
     echo "$ROOT/coverage.sh $BENCH_DIR $runCommand \"make -j8\" > $BENCH_DIR/coverage_log"
     $ROOT/coverage.sh $BENCH_DIR "$runCommand" "make -j8" > $BENCH_DIR/coverage_log 2>&1
     echo "$ROOT/matching.sh $BENCH_DIR loops $runCommand \"make -j8\" > $BENCH_DIR/matching_log"
-    $ROOT/matching.sh $BENCH_DIR loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
+    $ROOT/matching.sh --force $BENCH_DIR loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
     cd $ORIGIN_DIR 2> /dev/null
     if [ "$?" != "0" ] ; then
         echo "Could not come back to original directory $ORIGIN_DIR"

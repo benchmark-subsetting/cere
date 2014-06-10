@@ -68,9 +68,18 @@ then
 fi
 
 #5) dump loops
-make clean && rm -f *.ll
-${COMPILE_CMD} MODE=--dump
-eval LD_BIND_NOW=1 ${BIN_CMD} > out
+#First get all important loops
+CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
+${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > loops_to_dump
+while read codeletName
+do
+    make clean && rm -f *.ll
+    ${COMPILE_CMD} MODE="--dump --loop-to-dump=${codeletName/__invivo__/__extracted__}"
+    eval LD_BIND_NOW=1 ${BIN_CMD} >> out
+done < loops_to_dump
+#make clean && rm -f *.ll
+#${COMPILE_CMD} MODE=--dump
+#eval LD_BIND_NOW=1 ${BIN_CMD} >> out
 #Create a file with all dumped loops name
 touch dump/extracted_loops
 for files in `ls dump`
@@ -130,7 +139,6 @@ else
     ${ROOT}/compute_matching.R $BENCH_DIR
 
     #8) Now find codelets to keep
-    CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
     ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv --matching=$BENCH_DIR/replayedCodelet ${CYCLES} > loops
     exit 0
 fi
