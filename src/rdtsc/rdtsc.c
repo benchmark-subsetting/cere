@@ -2,6 +2,18 @@
 #include <string.h>
 #include "rdtsc.h"
 
+void calibrate_serialize_overhead()
+{
+    int count = 1000;
+    int i;
+	serialize();
+	unsigned long long start = rdtsc();
+    for (i = 0; i < count; i++)
+      serialize();
+	unsigned long long stop = rdtsc();
+    serialize_overhead = (stop - start) / count;
+}
+
 void print_hash_table()
 {
 	struct htable_iter iter;
@@ -90,6 +102,7 @@ void dump_trace(region *r, int nbEltToDump)
 
 void likwid_markerInit()
 {
+    calibrate_serialize_overhead();
 	htable_init(&regionHtab, rehash, NULL);
 	htable_init(&call_count_reminder, rehash2, NULL);
 	atexit(likwid_markerClose);
@@ -196,6 +209,7 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 }
 
 void rdtsc_markerStopRegion(char *reg, int trace) {
+    serialize();
 	unsigned long long int stop = rdtsc();
 	char* regionName = call_stack;
 	/* We must check that reg is base name of regionName */
@@ -204,7 +218,7 @@ void rdtsc_markerStopRegion(char *reg, int trace) {
 		fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", regionName);
 	else {
 		pop(call_stack);
-		r->counter += stop - r->start;
+		r->counter += stop - r->start - serialize_overhead;
 		if(r->traced) {
 			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = stop - r->start;
 			if(r->call_count%TRACE_SIZE == 0) {

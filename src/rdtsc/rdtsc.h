@@ -3,6 +3,7 @@
 #define TRACE_SIZE 100000
 
 static char call_stack[CALL_STACK_SIZE];
+unsigned long long int serialize_overhead;
 
 static struct htable regionHtab;
 static struct htable call_count_reminder;
@@ -18,6 +19,7 @@ typedef struct
 	char* name;
 	int traced;
 	int invivo;
+    unsigned long long int serialize_overhead;
 	unsigned long long int start;
 	unsigned long long int counter;
 	unsigned int call_count;
