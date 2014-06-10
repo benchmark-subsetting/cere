@@ -4,7 +4,7 @@
 
 void calibrate_serialize_overhead()
 {
-    int count = 1000;
+    int count = 10000;
     int i;
 	serialize();
 	unsigned long long start = rdtsc();
@@ -220,7 +220,7 @@ void rdtsc_markerStopRegion(char *reg, int trace) {
 		pop(call_stack);
 		r->counter += stop - r->start - serialize_overhead;
 		if(r->traced) {
-			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = stop - r->start;
+			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = stop - r->start - serialize_overhead;
 			if(r->call_count%TRACE_SIZE == 0) {
 				dump_trace(r, TRACE_SIZE);
 			}
