@@ -65,7 +65,7 @@ clust.length = function(i, dat, clusters) {
 }
 
 cluster <- function (cycles) {
-    if(nrow(cycles) <= 5)
+    if(nrow(cycles) <= 10)
     {
         nb_clust=nrow(cycles)
         print(paste("Nb Clusters = ", nb_clust, sep=""))
