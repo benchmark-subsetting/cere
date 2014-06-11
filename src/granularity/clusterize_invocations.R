@@ -104,17 +104,25 @@ print(paste("Invocations=", total_invocation))
 if (total_cycles - allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE)
 {
     print(paste("Sanity check failed: Trace cycles =", total_cycles, "& cycles =", allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE))
-    q()
 }
 
 POINTS_TO_KEEP=min(MAX_POINTS, total_invocation)
-allValues=allValues[sample(nrow(allValues), POINTS_TO_KEEP, replace=F), ]
+
+if (total_invocation > MAX_POINTS) {
+    allValues=allValues[sample(nrow(allValues), POINTS_TO_KEEP, replace=F), ]
+} 
+
 if (nbLoopFiles > 1)
 {
     cycles=data.frame(values=apply(allValues[,c(paste("repetition_", seq(1:nbLoopFiles), sep=''))],1,median), invocation=allValues$invocation)
 } else {
     cycles=data.frame(values=allValues$repetition_1, invocation=allValues$invocation)
 }
+
+total_kept_cycles = sum(cycles$values)
+print(total_kept_cycles)
+
+
 
 #Clusterize data
 clusters = cluster(cycles)
@@ -143,10 +151,12 @@ for (clust in unique(cycles$Cluster)) {
 res <- cycles[cycles$is.representative==T, ]
 res <- res[order(res$Cluster), ]
 #The part of each cluster time in the total loop time.
-res$part = Sums/res$values/POINTS_TO_KEEP
-best=sum(res$values*res$part)*total_invocation
-best_error=abs(best-total_cycles)/pmax(best, total_cycles)
 print(res)
-print(paste("Best error is", best_error))
+print(Sums)
+res$part = (Sums/res$values) * total_cycles/total_kept_cycles
+#best=sum(res$values*res$part)*total_invocation
+#best_error=abs(best-total_cycles)/pmax(best, total_cycles)
+print(res)
+#print(paste("Best error is", best_error))
 todump=data.frame(res$invocation, res$part, res$values)
 dump_to_file(todump, paste(CodeletName, ".invocations", sep=""))

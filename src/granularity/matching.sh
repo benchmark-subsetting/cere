@@ -145,9 +145,9 @@ while read codeletName; do
     fi
     echo "$result_file" >> invocation_error
     #Compute error between invivo and in vitro
-    cc=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 2`
+    #cc=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 2`
     cy=`grep -F "${codeletName}," all_loops.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
-    cycles=`echo "scale=3;${cycles}*${cc}" | bc`
+    cycles=`echo "scale=3;${cycles}" | bc`
     codelet_part=`echo "scale=3;${cy}/${app_cycles}" | bc | awk '{printf "%f", $0}'`
 
     compute_error ${cycles} ${cy}
