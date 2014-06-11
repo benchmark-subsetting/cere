@@ -35,10 +35,10 @@ def parse(csvfile):
         c = Codelet(row[0], int(row[1]), int(row[2]))
         if c.name not in codelets:
             codelets[c.name] = c
-    else:
-        assert codelets[c.name].cycles == c.cycles
-        assert codelets[c.name].callcount == c.callcount
-        codelets[c.name].add_parents(c.fullName)
+        else:
+            assert codelets[c.name].cycles == c.cycles
+            assert codelets[c.name].callcount == c.callcount
+            codelets[c.name].add_parents(c.fullName)
 
     for i in codelets.itervalues():
         yield i
