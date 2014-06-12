@@ -55,7 +55,6 @@ def parse_sym(binary, elfmap):
         if fields[3] != "OBJECT": continue
         if fields[5] != "DEFAULT": continue
         name = fields[-1]
-        if name.startswith('__'): continue
         addr = int(fields[1],16)
         if fields[2].startswith('0x'):
             size = int(fields[2], 16)
@@ -103,7 +102,8 @@ with open(topatch, 'r+b') as topatch_file:
         assert(topatch_map[s]['size'] == original_map[s]['size']) 
 
         dump = find_dump(original_map[s]['addr'], dumps)
-        if not dump: continue
+        if not dump:
+            continue
         with open("dump/{0}/{1:012x}.memdump".format(loop, dump), "rb") as dump_file:
             # Seek in the original file
             try:
