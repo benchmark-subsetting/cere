@@ -1,0 +1,40 @@
+c----
+c----prefix   NTHREADS
+     './'     2
+c
+c----imax    jmax    kmax   taumax
+     121      121      15      10.0
+c
+c----irstrt  nend   nprnt   iflprnt  itime  nstat
+     0       100000 0       0        10     0
+c
+c----xlen    ylen      zlen  
+     12.56   12.56     1.57
+c
+c----cfl    uref    tref     pref       pexit
+     0.25   10.0    2.98     1.01325e3  1.012325e4
+c
+c----tstnd  NUREF    ALREF
+     0.00   0.002     1.0
+c
+c----cnuk    ce   cepsk   cprod  ekfac
+     0.0667  1.0  0.916   1.0    0.001
+c
+c----iprint    itpts    jtpts    ktpts
+     0       7        7        7
+c
+c----I-Coords of Trace Data Collection Points
+     1  10  20 30 40 50 60
+c
+c----J-Coords of Trace Data Collection Points
+     1  10  20 30 40 50 60
+c
+c----K-Coords of Trace Data Collection Points
+     1  10  20 30 40 50 60
+c
+c----------------------------------------------------------------
+    CONC0        RMWT        CPK         HFK
+c----------------------------------------------------------------
+    0.50         32.00       916.60      0.0
+    0.50         32.00       916.60      0.0
+c----------------------------------------------------------------
