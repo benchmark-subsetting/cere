@@ -1,6 +1,7 @@
 #!/bin/bash
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
+export LD_BIND_NOW=1
 
 # Check number of arguments
 if [ $# -lt 2 ] || [ $# -gt 3 ]; then
@@ -76,13 +77,13 @@ while read codeletName
 do
     make clean && rm -f *.ll
     ${COMPILE_CMD} MODE="--dump --loop-to-dump=${codeletName/__invivo__/__extracted__}"
-    eval LD_BIND_NOW=1 ${BIN_CMD} >> out
+    eval ${BIN_CMD} >> out
 done < loops_to_dump
 
 #GLOBAL DUMP UNCOMMENT WHEN ISSUE 13 SOLVED
 #make clean && rm -f *.ll
 #${COMPILE_CMD} MODE=--dump
-#eval LD_BIND_NOW=1 ${BIN_CMD} >> out
+#eval ${BIN_CMD} >> out
 
 #Create a file with all dumped loops name
 touch dump/extracted_loops

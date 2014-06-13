@@ -1,6 +1,7 @@
 #!/bin/bash
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
+export LD_BIND_NOW=1
 
 # Check number of arguments
 if [ $# -lt 3 ] || [ $# -gt 5 ]; then
@@ -104,7 +105,7 @@ while read codeletName; do
             echo "Dumping invocation ${invocation}"
             make clean &>> out && rm -f *.ll &>> out
             ${COMPIL_CMD} MODE="--dump --loop-to-dump=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &> out
-            eval LD_BIND_NOW=1 ${BIN_CMD} &> out
+            eval ${BIN_CMD} &> out
         fi
         if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "No dump for ${codeletName} invocation ${invocation}"
