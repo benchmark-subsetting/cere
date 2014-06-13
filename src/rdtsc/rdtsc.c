@@ -211,16 +211,26 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 void rdtsc_markerStopRegion(char *reg, int trace) {
     serialize();
 	unsigned long long int stop = rdtsc();
+	unsigned long long int loop_cycles;
+
 	char* regionName = call_stack;
 	/* We must check that reg is base name of regionName */
 	region *r=NULL;
 	if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
 		fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", regionName);
 	else {
+		loop_cycles = stop - r->start;
+
+		if(loop_cycles > serialize_overhead) {
+			loop_cycles -= serialize_overhead;
+		} else {
+			//fprintf(stderr, "RDTSC: Warning negative cycles for loop >%s<\n", reg);
+			loop_cycles = 0;
+		}
 		pop(call_stack);
-		r->counter += stop - r->start - serialize_overhead;
+		r->counter += loop_cycles;
 		if(r->traced) {
-			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = stop - r->start - serialize_overhead;
+			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = loop_cycles;
 			if(r->call_count%TRACE_SIZE == 0) {
 				dump_trace(r, TRACE_SIZE);
 			}
