@@ -1,28 +1,24 @@
+SHELL=/bin/sh
 PROJECT_ROOT=../../
-
-all: test
-dump: test_dump
-replay: test_replay
+CC=../../src/lec/lec
+FLINK=../../src/lel/lel
 
 FLAGS=-g -O0
 
-test: test.c
-	../../src/lec/lec $(FLAGS) test.c
-	../../src/lel/lel $(FLAGS) test.o -o test
+OBJS = test.o
 
-test_dump: test.c
-	../../src/lec/lec --dump $(FLAGS) test.c
-	../../src/lel/lel --dump $(FLAGS) test.o -o test_dump
+PROGRAM=test
 
-LOOP=__extracted__test_check_10
+${PROGRAM}: ${OBJS}
+	${FLINK} ${MODE} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
 
-test_replay: test.c
-	../../src/lec/lec --replay=$(LOOP) $(FLAGS) test.c
-	../../src/lel/lel --replay=$(LOOP) $(FLAGS) -o test_replay test.o -lc
+%.o: %.c
+	${CC} ${MODE} ${FLAGS} $<
 
 clean:
 	- rm -f *.o *.s *.ll
+	- rm test
 
 veryclean: clean
 	- rm -rf dump/
-	- rm -f *.o test test_* lel_bin realmain.c dump.c
+	- rm -f *.o lel_bin realmain.c dump.c

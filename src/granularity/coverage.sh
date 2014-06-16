@@ -30,7 +30,7 @@ fi
 
 #1) Measure application cycles
 make clean && rm -f *.ll
-${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--instrument-loop=bench"
+${COMPILE_CMD} MODE="original" INSTRU_OPTS="--region=bench"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="\tMeasuring application failed!\n"
@@ -40,7 +40,7 @@ fi
 
 #2) We need to instrument all in-vivo loops
 make clean && rm -f *.ll
-${COMPILE_CMD} INSTRU=--instrument
+${COMPILE_CMD} MODE="original"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="$error \tMeasuring in-vivo loops failed!\n"
@@ -57,7 +57,7 @@ then
     for level in `ls level_*`
     do
         make clean && rm -f *.ll
-        ${COMPILE_CMD} INSTRU=--instrument INSTRU_OPTS="--loops-file=${level}"
+        ${COMPILE_CMD} MODE="original" INSTRU_OPTS="--regions-file=${level}"
         eval ${BIN_CMD} #> out
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="\tMeasuring in-vivo loops failed for ${level}!\n"
@@ -76,13 +76,13 @@ ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > loops_to_dump
 while read codeletName
 do
     make clean && rm -f *.ll
-    ${COMPILE_CMD} MODE="--dump --loop-to-dump=${codeletName/__invivo__/__extracted__}"
+    ${COMPILE_CMD} MODE="dump --region=${codeletName/__invivo__/__extracted__}"
     eval ${BIN_CMD} >> out
 done < loops_to_dump
 
 #GLOBAL DUMP UNCOMMENT WHEN ISSUE 13 SOLVED
 #make clean && rm -f *.ll
-#${COMPILE_CMD} MODE=--dump
+#${COMPILE_CMD} MODE="dump"
 #eval ${BIN_CMD} >> out
 
 #Create a file with all dumped loops name
@@ -104,7 +104,7 @@ while read loops
 do
     make clean && rm -f *.ll
     rm -f realmain.c
-    ${COMPILE_CMD} MODE=--replay=$loops INSTRU=--instrument
+    ${COMPILE_CMD} MODE="replay --region=$loops" INSTRU="--instrument"
     eval ${BIN_CMD} #> out
     if [[ -f rdtsc_result.csv ]]; then
         mv rdtsc_result.csv results/${loops}.csv

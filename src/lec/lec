@@ -1,105 +1,251 @@
-#!/bin/bash
+#!/usr/bin/env python
 # Loop Extractor Compiler
 # (C) 2013 University of Versailles
+import os
+import argparse
 
-ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$ROOT/../../"
 
-# parse arguments
-if [[ $1 == --replay=* ]]; then
-    SPLIT=(${1//=/ })
-    REPLAY_LOOP=${SPLIT[1]}
-    echo "Compiling replay mode" > /dev/stderr
-    shift
-    if [[ $1 =~ --invocation=* ]]; then
-        REPLAY_OPTS=$1
-        shift
-    fi
-fi 
+#to ignore prefix matching
+class MyParser(argparse.ArgumentParser):
+    def _get_option_tuples(self, option_string):
+        return []
 
-if [[ $1 == --dump ]]; then
-    DUMP_MODE=1
-    echo "Compiling dump mode" > /dev/stderr
-    shift
-    if [[ $1 =~ --loop-to-dump=* ]] || [[ $1 =~ --loops-file=* ]]; then
-        DUMP_OPTS=$1
-        shift
-    fi
-    if [[ $1 =~ --invocation=* ]]; then
-        DUMP_OPTS="$DUMP_OPTS $1"
-        shift
-    fi
-fi
+ROOT = os.path.dirname(os.path.realpath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
+LOOP_EXT = "/src/LoopExtractorAll/.libs/libLoopExtractorAll.so"
+LOOP_MANAGE = "/src/LoopManager/.libs/libLoopManager.so"
+LOOP_INSTR = "/src/LoopInstrumentation/.libs/libLoopInstrumentation.so"
+DRAGONEGG = ("/libs/dragonegg-3.3.src/dragonegg.so " +
+             "-fplugin-arg-dragonegg-emit-ir -o")
+VERSION = "0.1"
 
-if [[ $1 =~ --instrument ]]; then
-    INSTRUMENT=1
-    shift
-    echo "Instrumentation mode" > /dev/stderr
-    if [[ $1 =~ --instrument-loop=* ]] || [[ $1 =~ --loops-file=* ]]; then
-        INSTRU_OPTS=$1
-        shift
-    fi
-    if [[ $1 =~ --loop-to-trace=* ]]; then
-        echo "Trace mode" > /dev/stderr
-        INSTRU_OPTS="$INSTRU_OPTS $1"
-        shift
-    fi
-fi
-    
-    
 
-if [[ ! -z "$DUMP_MODE" && ! -z "$INSTRUMENT" ]]; then
-    INSTRUMENT=0
-    echo "--instrument ignored, can't instrument in dump mode"
-fi
+#Allowed options
+option_forbidden = set([("dump", "--trace"),
+                       ("dump", "--instrument"),
+                       ("replay", "--regions-file"),
+                       ("original", "--invocation"),
+	                   ("original", "--instrument")])
 
-SOURCE=${!#} #last parameter
-BASE=${SOURCE%.*}
-#includes (-I) and defines (-D) must be detected here
-#for compilation from source to IR
-for var in "${@:1:$(($#-1))}"
-do
-    if [[ $var == -I*  || $var == -D* ]]; then
-        INCLUDES="$INCLUDES $var"
-    else
-        OPTS="$OPTS $var"
-    fi
-done
 
-# Detect source language (fortran or C/C++ for the moment)
-if [[ $SOURCE == *.f ]] || [[ $SOURCE == *.f90 ]] || [[ $SOURCE == *.F90 ]] || [[ $SOURCE == *.F ]]; then
-    gcc-4.7 -O0 -g -c $INCLUDES $SOURCE -S -fplugin=$PROJECT_ROOT/libs/dragonegg-3.3.src/dragonegg.so -fplugin-arg-dragonegg-emit-ir -o $BASE.ll
-else
-    clang -O0 -g -c $INCLUDES $SOURCE -S -emit-llvm -o $BASE.ll
-fi 
+#Allowed option verification
+class OptAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if (parser.description, option_string) in option_forbidden:
+            exit("Error:can't {option} in {mode} mode".format(
+                 option=option_string, mode=parser.description))
+        else:
+            if (self.const):
+                setattr(namespace, self.dest, self.const)
+            else:
+                setattr(namespace, self.dest, values)
 
-if [ "$?" != "0" ]; then
-    exit 1
-fi
 
-    
+def safe_system(command, EXIT=True):
+    '''
+    Try-catch system call
+    Verify system call and exit with appropriate error message
+    '''
+    if(os.system(command)):
+        if (EXIT):
+            exit("Error {prog} : safe_system -> {cmd}".format(
+                 prog='lec', cmd=command))
+        else:
+            print("Warning Error {prog} : safe_system -> {cmd}".format(
+                  prog='lec', cmd=command))
 
-if [[ ! -z "$DUMP_MODE" ]]; then
-    # In dump mode
-    opt -S -load $PROJECT_ROOT/src/LoopExtractorAll/.libs/libLoopExtractorAll.so -loop-extract-all $BASE.ll -o $BASE.ll
-    opt -S -load $PROJECT_ROOT/src/LoopManager/.libs/libLoopManager.so -loop-dump $DUMP_OPTS $BASE.ll -o $BASE.ll
 
-elif [[ ! -z "$REPLAY_LOOP" ]]; then
-    # In replay mode 
-    opt -S -load $PROJECT_ROOT/src/LoopExtractorAll/.libs/libLoopExtractorAll.so -loop-extract-all -isolate-loop=${REPLAY_LOOP} $BASE.ll -o $BASE.ll
-    opt -S -load $PROJECT_ROOT/src/LoopManager/.libs/libLoopManager.so -loop-replay ${REPLAY_OPTS} $BASE.ll -o $BASE.ll
-fi
+def dump_fun(mode_opt, BASE):
+    '''
+    Dump mode
+    Call LoopExtractor and LoopManager in dump mode on wanted loops
+    by passing options like --invocation
+    '''
+    temp = ""
+    print "Compiling dump mode"
+    if(mode_opt.region):
+        temp = temp+"--loop-to-dump="+mode_opt.region+" "
+        if(mode_opt.regions_file):
+            exit("Error: --regions-file and --region are incompatible")
+    else:
+        if(mode_opt.regions_file):
+            temp = temp+"--loops-file="+regions_file+" "
+    if(mode_opt.invocation):
+        temp = temp+"--invocation="+mode_opt.invocation+" "
+    safe_system(("opt -S -load {Root}{LoopExt} -loop-extract-all " +
+                "{base}.ll -o {base}.ll").format(Root=PROJECT_ROOT,
+                LoopExt=LOOP_EXT, base=BASE), EXIT=False)
+    safe_system(("opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
+                "{base}.ll -o {base}.ll").format(Root=PROJECT_ROOT,
+                LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
 
-if [[ ! -z "$INSTRUMENT" ]]; then
-    opt -S -loop-simplify $BASE.ll -o $BASE.ll
-    if [[ ! -z "$REPLAY_LOOP" ]]; then
-        opt -S -load $PROJECT_ROOT/src/LoopInstrumentation/.libs/libLoopInstrumentation.so -vitro-loop-instrumentation -instrument-loop=${REPLAY_LOOP} ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
-    else
-        opt -S -load $PROJECT_ROOT/src/LoopInstrumentation/.libs/libLoopInstrumentation.so -vivo-loop-instrumentation ${INSTRU_OPTS} $BASE.ll -o $BASE.ll
-    fi
-fi
 
-clang -c $OPTS $BASE.ll -o $BASE.o
-if [ "$?" != "0" ]; then
-    clang -c $OPTS $INCLUDES $SOURCE -o $BASE.o
-fi
+#in replay mode
+def replay_fun(mode_opt, BASE):
+    '''
+    Replay mode
+    Call LoopExtractor and LoopManager in replay mode on wanted loop
+    by passing options like --invocation
+    '''
+    temp = ""
+    if (not (mode_opt.region)):
+        exit("Need --region with replay mode")
+    print "Compiling replay mode"
+    if (mode_opt.invocation):
+        temp = temp + "--invocation=" + mode_opt.invocation + " "
+    safe_system(("opt -S -load {Root}{LoopExt} -loop-extract-all " +
+                "-isolate-loop={loop} {base}.ll -o {base}.ll").format(
+                Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
+                loop=mode_opt.region, base=BASE), EXIT=False)
+    safe_system(("opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
+                "{base}.ll -o {base}.ll").format(Root=PROJECT_ROOT,
+                LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
+    if (mode_opt.instrument):
+        print "Instrumentation mode"
+        temp_instr = "--instrument-loop=" + mode_opt.region + " "
+        if(mode_opt.trace):
+            print "Trace mode"
+            temp_instr = (temp_instr + "--loop-to-trace="
+                          + mode_opt.region + " ")
+        safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                    base=BASE), EXIT=False)
+        safe_system(("opt -S -load {Root}{LoopInstr} " +
+                    "-vivo-loop-instrumentation {opts} {base}.ll " +
+                    "-o {base}.ll").format(Root=PROJECT_ROOT,
+                    LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
+                    EXIT=False)
+        print BASE
+
+
+#in original mode
+def original_fun(mode_opt, BASE):
+    '''
+    Original mode
+    Call LoopInstrumentation on wanted loops
+    by passing options like --invocation
+    '''
+    temp = ""
+    print "Instrumentation mode"
+    if(mode_opt.region):
+        temp = temp + "--instrument-loop=" + mode_opt.region + " "
+        if(mode_opt.regions_file):
+            exit("Error: --regions-file and --region are incompatible")
+        if(mode_opt.trace):
+            print "Trace mode"
+            temp = temp + "--loop-to-trace=" + mode_opt.region + " "
+    else:
+        if(mode_opt.regions_file):
+            temp = temp+"--loops-file="+mode_opt.regions_file+" "
+        if(mode_opt.trace):
+            exit("Error:trace only with --loop ")
+    safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                base=BASE, EXIT=False))
+    safe_system(("opt -S -load {Root}{LoopInstr} " +
+                "-vivo-loop-instrumentation {opts} {base}.ll " +
+                "-o {base}.ll").format(Root=PROJECT_ROOT,
+                LoopInstr=LOOP_INSTR, opts=temp, base=BASE, EXIT=False))
+
+
+#Initialize Includes parser
+class IncludeAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        namespace.Inc = (namespace.Inc + [option_string + values])
+
+
+def init_parser_incl(parser, liste):
+    parser.set_defaults(Inc=[])
+    for j in liste:
+        parser.add_argument(j, action=IncludeAction)
+
+
+# initialize subparsers
+def init_subpars(parser, region_required):
+    parser.add_argument('--region', action=OptAction, required=region_required)
+    parser.add_argument('--regions-file', action=OptAction)
+    parser.add_argument('--invocation', action=OptAction)
+    parser.add_argument('--trace', action=OptAction, nargs=0,
+                        const=True, default=False)
+    parser.add_argument('--instrument', action=OptAction, nargs=0,
+                        const=True, default=False)
+
+
+def init_parser_core(parser):
+    '''
+    initialize main parser
+    Create Subparsers for dump replay and original mode and
+    manage version
+    '''
+    parser.add_argument('--version', '-v', action='version',
+                        version='%(prog)s '+VERSION)
+    subparsers = parser.add_subparsers(help='sub-command help')
+    parser_dump = subparsers.add_parser('dump', description='dump')
+    init_subpars(parser_dump, False)
+    parser_dump.set_defaults(func=dump_fun)
+    parser_replay = subparsers.add_parser('replay', description='replay')
+    init_subpars(parser_replay, True)
+    parser_replay.set_defaults(func=replay_fun)
+    parser_instrument = subparsers.add_parser('original',
+                                              description='original')
+    init_subpars(parser_instrument, False)
+    parser_instrument.set_defaults(func=original_fun)
+
+
+def first_compil(INCLUDES, SOURCE, BASE, ext):
+    '''
+    First Compilation
+    Detect source language (fortran or C/C++ for the moment)
+    and compile SOURCE code
+    '''
+    if ((ext == ".f") or (ext == ".f90") or (ext == ".F") or (ext == ".F90")):
+        safe_system(("gcc-4.7 -O0 -g -c {includes} {source} -S " +
+                    "-fplugin={Root}{dragonegg} {base}.ll").format(
+                    includes=" ".join(INCLUDES), source=SOURCE,
+                    Root=PROJECT_ROOT, dragonegg=DRAGONEGG, base=BASE))
+    else:
+        safe_system(("clang -O0 -g -c {includes} {source} -S -emit-llvm -o " +
+                    "{base}.ll").format(includes=" ".join(INCLUDES),
+                    source=SOURCE, base=BASE))
+
+
+def last_compil(INCLUDES, SOURCE, BASE, COMPIL_OPT):
+    '''
+    Last Compilation
+    Compile BASE.ll
+    If Error compile with INCLUDES
+    '''
+    test = os.system("clang -c {opts} {base}.ll -o {base}.o".format(
+                     opts=" ".join(COMPIL_OPT), base=BASE))
+    if (test):
+        safe_system("clang -c {opts} {includes} {source} -o {base}.o".format(
+                    opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
+                    source=SOURCE, base=BASE))
+
+
+def main():
+    '''
+    Main function
+    '''
+    # Create parsers
+    parser = MyParser()
+    parser2 = argparse.ArgumentParser()
+    init_parser_core(parser)
+    init_parser_incl(parser2, ["-I", "-D"])
+    #Parse args
+    args = parser.parse_known_args()
+    args2 = parser2.parse_known_args(args[1])
+    if (len(args2[1]) == 0):
+        exit("Error:Need source file")
+    INCLUDES = args2[0].Inc
+    COMPIL_OPT = args2[1]
+    SOURCE = COMPIL_OPT[-1]
+    COMPIL_OPT.remove(SOURCE)
+    BASE, ext = os.path.splitext(SOURCE)
+    first_compil(INCLUDES, SOURCE, BASE, ext)
+    # call mode_function
+    args[0].func(args[0], BASE)
+    last_compil(INCLUDES, SOURCE, BASE, COMPIL_OPT)
+
+
+if __name__ == "__main__":
+    main()
+

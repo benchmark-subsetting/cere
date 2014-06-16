@@ -1,176 +1,198 @@
-#!/bin/bash
-# Loop Extractor Linker
+#!/usr/bin/env python
+# Loop Extractor Compiler
 # (C) 2013 University of Versailles
+import os
+import argparse
 
-ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$ROOT/../../"
 
-LD=gcc-4.7
+#to ignore prefix matching
+class MyParser(argparse.ArgumentParser):
+    def _get_option_tuples(self, option_string):
+        return []
 
-# parse arguments
-if [[ $1 == --replay=* ]]; then
-    SPLIT=(${1//=/ })
-    REPLAY_LOOP=${SPLIT[1]}
-    echo "Linking with <$REPLAY_LOOP> memory dump" > /dev/stderr
-    shift
-    if [[ $1 =~ --invocation=* ]]; then
-        REPLAY_OPTS=(${1//=/ })
-        INVOCATION=${REPLAY_OPTS[1]}
-        shift
-    else
-        INVOCATION=1
-    fi
-    echo "Invocation <$INVOCATION>" > /dev/stderr
-fi
+ROOT = os.path.dirname(os.path.realpath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
+RDTSC = "/src/rdtsc/librdtsc.a"
+MEMORYDUMP = "/src/memory_dump/.libs/"
+VERSION = "0.1"
+LD="gcc-4.7"
 
-if [[ $1 == --dump ]]; then
-    DUMP_MODE=1
-    # lel ignores dump mode (nothing special to do)
-    shift
-    if [[ $1 =~ --loop-to-dump=* ]] || [[ $1 =~ --loops-file=* ]]; then
-        shift
-    fi
-    if [[ $1 =~ --invocation=* ]]; then
-        shift
-    fi
-fi
 
-if [[ $1 == --instrument ]]; then
-    INSTRUMENT=1
-    echo "Instrumentation mode" > /dev/stderr
-    shift
-    if [[ $1 =~ --instrument-loop=* ]] || [[ $1 =~ --loops-file=* ]]; then
-        #The linker ignores instrumentation options
-        shift
-    fi
-    if [[ $1 =~ --loop-to-trace=* ]]; then
-        #The linker ignores instrumentation options
-        shift
-    fi
-fi
+#Allowed options
+option_forbidden = set([("dump", "--trace"),
+                       ("dump", "--instrument"),
+                       ("replay", "--regions-file"),
+                       ("original", "--invocation"),
+	                   ("original", "--instrument")])
 
-ARGS=$*
-#If we want to instrument, link with rdtsc lib
-if [[ ! -z "$INSTRUMENT" ]]; then
-    ARGS="$ARGS $PROJECT_ROOT/src/rdtsc/librdtsc.a"
-fi
-if [[ ! -z "$DUMP_MODE" ]]; then
-    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump/.libs/ -ldump -Wl,--rpath=$PROJECT_ROOT/src/memory_dump/.libs/ -ldl"
-fi
-if [[ ! -z "$REPLAY_LOOP" ]]; then
-    ARGS="$ARGS -L $PROJECT_ROOT/src/memory_dump/.libs/ -lload -Wl,--rpath=$PROJECT_ROOT/src/memory_dump/.libs/ -ldl"
-fi
 
-if [[ -z "$REPLAY_LOOP" ]]; then
-    while [ ! "$1" = "-o" ]
-    do
-        shift
-    done
-    # In normal mode, just call the linker
-    echo $LD $ARGS
-    $LD $ARGS
-    if [[ ! -z "$DUMP_MODE" ]]; then #Copy the original binary
-        cp "$2" lel_bin
-    fi
-else
-    # Check that dumps exists
-    if [ ! -d "dump/${REPLAY_LOOP}/${INVOCATION}" ]; then
-        echo "No dump for ${REPLAY_LOOP} invocation ${INVOCATION}" > /dev/stderr
-        exit -1
-    fi
+#Allowed option verification
+class OptAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if (parser.description, option_string) in option_forbidden:
+            exit("Error:can't {option} in {mode} mode".format(
+                 option=option_string, mode=parser.description))
+        else:
+            if (self.const):
+                setattr(namespace, self.dest, self.const)
+            else:
+                setattr(namespace, self.dest, values)
 
-    # Compress the traces
-    echo $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
-    $ROOT/compress.py dump/${REPLAY_LOOP}/${INVOCATION}/
 
+def safe_system(command):
+    '''
+    Try-catch system call
+    Verify system call and exit with appropriate error message
+    '''
+    if(os.system(command)):
+        exit("Error {prog} : safe_system -> {cmd}".format(
+             prog='lel', cmd=command))
+
+
+def user_main(FILE, LOOP, instrument):
     # Define by default TIMEOUT_SECONDS to 60
-    if [[ -z "$TIMEOUT_SECONDS" ]]; then
-        TIMEOUT_SECONDS=60 #1min is probably enough
-    fi
-
+    TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
     # Define by default CALL_COUNT to 11
-    if [[ -z "$INVITRO_CALL_COUNT" ]]; then
-        INVITRO_CALL_COUNT=11
-    fi
-
-    # Create user main
-    rm -f realmain.c
-    if [[ ! -z "$INSTRUMENT" ]]; then #We want to instrument
-        echo "#include <stdlib.h>" > realmain.c
-        echo "#include <stdio.h>" >> realmain.c
-        echo "#include <signal.h>" >> realmain.c
-        echo "#include <assert.h>" >> realmain.c
-        echo "void anti_dead_code_elimination(int n, ...) {}" >> realmain.c
-        echo "void sigcatch(int signal) {
-        fprintf(stderr, \"Timeout...\n\");
-        exit(EXIT_FAILURE);
-        }" >> realmain.c
-        echo "
-        static void
-        sigsegv_handler(int sig, siginfo_t *si, void *unused)
-        {
-          char * touched_addr = si->si_addr;
-          printf(\"Detected segfault at: %p\n\", touched_addr);
-          printf(\"Dumping process memory map\n\");
-          printf(\"==========================\n\");
-          char cmd[255];
-          pid_t pid = getpid();
-          snprintf(cmd, sizeof(cmd), \"cat /proc/%d/maps\", pid);
-          system(cmd);
-          printf(\"==========================\n\");
-          raise(SIGKILL);
-        }
-
-        void real_main(int empty) {
-        int i;
-        //kill program after 10 minutes
-        long long int max_seconds=10*$TIMEOUT_SECONDS;
-
-        struct sigaction sa;
-        sa.sa_flags = SA_SIGINFO;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_sigaction = sigsegv_handler;
-        int res = sigaction(SIGSEGV, &sa, NULL);
-        assert(res != -1);
-
-        signal(SIGALRM, sigcatch);
-        likwid_markerInit();
-        for(i=0; i<$INVITRO_CALL_COUNT; i++) {
-          alarm(max_seconds);
-          run${REPLAY_LOOP/-/_}();
-        }
-        exit(0);
-        }" >> realmain.c
-    else #We don't want to instrument
-        echo "#include <stdlib.h>" > realmain.c
-        echo "void anti_dead_code_elimination(int n, ...) {}" >> realmain.c
-        echo "void real_main() {
-        run${REPLAY_LOOP/-/_}();
-        exit(0);
-        }" >> realmain.c
-    fi
-    gcc-4.7 -c realmain.c
+    INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
+    if (instrument):
+        temp = "likwid_markerInit();\n"
+    else:
+        temp=""
+    TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
+    template = TEMPLATE.read() 
+    TEMPLATE.close()
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS, likwid=temp,
+               in_vitro_call_count=INVITRO_CALL_COUNT,
+               loop=LOOP.replace("-","_")))
 
 
-    # 0x60000000 is chosen to allocate at least 1.5GB for the heap
-    # If a dump file is larger than 1.5GB we cannot support it
-    #
-    # Sometimes (NAS BT for instance) this requires compiling the code with
-    # -mcmodel=large to allow relocation longer than 2GB
+def create_user_main(Instrument,LOOP):
+    safe_system("rm -f realmain.c")
+    MAIN=open('realmain.c','w')
+    user_main(MAIN, LOOP, Instrument)
+    MAIN.close()
+
+
+def compile_memory_dump_objects(DIR):
     DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
-    # First compile the memory dump objects
-    rm -f dump/objs.S
-    for m in dump/$REPLAY_LOOP/$INVOCATION/*.memdump; do
-        n=`basename $m .memdump`
-        echo ".section s$n, \"aw\"" >> dump/objs.S
-        echo ".incbin \"$m\"" >> dump/objs.S
-        DUMP_ARGS="$DUMP_ARGS -Wl,--section-start=s$n=0x$n"
-    done
-    gcc-4.7 -c dump/objs.S
-    $LD $DUMP_ARGS objs.o realmain.o $ARGS
-    while [ ! "$1" = "-o" ]
-    do
-        shift
-    done
-    $ROOT/staticpatcher.py lel_bin "$2" "${REPLAY_LOOP}/${INVOCATION}"
-fi
+    safe_system("rm -f dump/objs.S")
+    OBJ=open("dump/objs.S",'w')
+    for FILE in os.listdir(DIR):
+        BASE, ext = os.path.splitext(FILE)
+        FILE = DIR+"/"+FILE
+        if (ext=='.memdump'):
+            OBJ.write((".section s{n}, \"aw\"\n" +
+                       ".incbin \"{m}\"\n").format(n=BASE,m=FILE))
+            DUMP_ARGS = (DUMP_ARGS +
+                        " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
+    OBJ.close()
+    safe_system("gcc-4.7 -c dump/objs.S")
+    return DUMP_ARGS
+
+
+def dump_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Dump mode
+    Call the linker and copy the original binary
+    '''
+    safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
+                "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
+                opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
+    safe_system("cp {binary} lel_bin".format(binary=BINARY))
+
+
+#in replay mode
+def replay_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Replay mode
+    Create Realmain and call the linker
+    '''
+    LOOP=mode_opt.region
+    INVOCATION=mode_opt.invocation
+    if (mode_opt.instrument):
+        COMPIL_OPT = PROJECT_ROOT + RDTSC + " " + COMPIL_OPT
+    if(not INVOCATION):
+        INVOCATION=1
+    DIR="dump/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
+    # Check that dumps exists
+    if (not os.path.isdir(DIR)):
+        exit("No dump for {loop} invocation {invocation}".format(loop=LOOP,
+             invocation=INVOCATION))
+    # Compress the traces
+    safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
+    create_user_main(mode_opt.instrument,LOOP)
+    safe_system("gcc-4.7 -c realmain.c")
+    OPTS = compile_memory_dump_objects(DIR)
+    safe_system(("{ld} {opts} -o {binary} objs.o realmain.o {args} " +
+                "-L {Root}{libs} -lload -Wl," + 
+                "--rpath={Root}{libs} -ldl").format(
+                ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT,
+                Root=PROJECT_ROOT,libs=MEMORYDUMP))
+    safe_system(("{root}/staticpatcher.py lel_bin {binary} " +
+                "{loop}/{invocation}").format(root=ROOT,
+                binary=BINARY, loop=LOOP, invocation=INVOCATION))
+
+
+#in original mode
+def original_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Original mode
+    Only call the linker
+    '''
+    safe_system(("{ld} {opts} -o {binary} {Root}{libs}").format(ld=LD, 
+                binary=BINARY, opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=RDTSC))
+
+
+# initialize subparsers
+def init_subpars(parser, region_required):
+    parser.add_argument('--region', action=OptAction, required=region_required)
+    parser.add_argument('--regions-file', action=OptAction)
+    parser.add_argument('--invocation', action=OptAction)
+    parser.add_argument('--trace', action=OptAction, nargs=0,
+                        const=True, default=False)
+    parser.add_argument('--instrument', action=OptAction, nargs=0,
+                        const=True, default=False)
+    parser.add_argument('-o')
+
+
+def init_parser_core(parser):
+    '''
+    initialize main parser
+    Create Subparsers for dump replay and original mode and
+    manage version
+    '''
+    parser.add_argument('--version', '-v', action='version',
+                        version='%(prog)s '+VERSION)
+    subparsers = parser.add_subparsers(help='sub-command help')
+    parser_dump = subparsers.add_parser('dump', description='dump')
+    init_subpars(parser_dump, False)
+    parser_dump.set_defaults(func=dump_fun)
+    parser_replay = subparsers.add_parser('replay', description='replay')
+    init_subpars(parser_replay, True)
+    parser_replay.set_defaults(func=replay_fun)
+    parser_instrument = subparsers.add_parser('original',
+                                              description='original')
+    init_subpars(parser_instrument, False)
+    parser_instrument.set_defaults(func=original_fun)
+
+
+def main():
+    '''
+    Main function
+    '''
+    # Create parsers
+    parser = MyParser()
+    init_parser_core(parser)
+    #Parse args
+    args = parser.parse_known_args()
+    if (len(args[1]) == 0):
+        exit("Error:Need source file")
+    COMPIL_OPT = " ".join(args[1])
+    BINARY = args[0].o
+    # call mode_function
+    args[0].func(args[0], BINARY, COMPIL_OPT)
+
+
+if __name__ == "__main__":
+    main()
+
