@@ -21,7 +21,9 @@ LD="gcc-4.7"
 #Allowed options
 option_forbidden = set([("dump", "--trace"),
                        ("dump", "--instrument"),
+                       ("dump", "--nested-regions"),
                        ("replay", "--regions-file"),
+                       ("replay", "--nested-regions"),
                        ("original", "--invocation"),
 	                   ("original", "--instrument")])
 
@@ -152,6 +154,7 @@ def init_subpars(parser, region_required):
                         const=True, default=False)
     parser.add_argument('--instrument', action=OptAction, nargs=0,
                         const=True, default=False)
+    parser.add_argument('--nested-regions', action=OptAction, type=bool)
     parser.add_argument('-o')
 
 

@@ -23,7 +23,9 @@ VERSION = "0.1"
 #Allowed options
 option_forbidden = set([("dump", "--trace"),
                        ("dump", "--instrument"),
+                       ("dump", "--nested-regions"),
                        ("replay", "--regions-file"),
+                       ("replay", "--nested-regions"),
                        ("original", "--invocation"),
 	                   ("original", "--instrument")])
 
@@ -138,6 +140,8 @@ def original_fun(mode_opt, BASE):
             temp = temp+"--loops-file="+mode_opt.regions_file+" "
         if(mode_opt.trace):
             exit("Error:trace only with --loop ")
+    if(mode_opt.nested_regions):
+        temp = temp+"--nested-loops="+mode_opt.nested_regions+" "
     safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                 base=BASE, EXIT=False))
     safe_system(("opt -S -load {Root}{LoopInstr} " +
@@ -167,6 +171,7 @@ def init_subpars(parser, region_required):
                         const=True, default=False)
     parser.add_argument('--instrument', action=OptAction, nargs=0,
                         const=True, default=False)
+    parser.add_argument('--nested-regions', action=OptAction, type=bool)
 
 
 def init_parser_core(parser):
