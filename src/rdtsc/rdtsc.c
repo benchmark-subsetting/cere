@@ -100,12 +100,15 @@ void dump_trace(region *r, int nbEltToDump)
 	}
 }
 
-void likwid_markerInit()
+void likwid_markerInit(bool global)
 {
     calibrate_serialize_overhead();
 	htable_init(&regionHtab, rehash, NULL);
 	htable_init(&call_count_reminder, rehash2, NULL);
 	atexit(likwid_markerClose);
+	LEVEL=0;
+	//Are we in global instrumentation mode?
+	GLOBAL=global;
 }
 
 void likwid_markerClose()
@@ -144,6 +147,10 @@ void likwid_markerClose()
  * else record start counter
 */
 void rdtsc_markerStartRegion(char *reg, int trace) {
+	//Avoid measuring a son loop when we are not in global dump
+	LEVEL+=1;
+	if(!GLOBAL && LEVEL!=1) return;
+
 	push(reg, call_stack);
 	char* regionName=call_stack;
 	region *r=NULL;
@@ -209,6 +216,9 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 }
 
 void rdtsc_markerStopRegion(char *reg, int trace) {
+	LEVEL-=1;
+	if(!GLOBAL && LEVEL!=0) return;
+
     serialize();
 	unsigned long long int stop = rdtsc();
 	unsigned long long int loop_cycles;
@@ -249,9 +259,9 @@ void rdtsc_markerstopregion_(char *regionName, int len, int trace)
 	rdtsc_markerStopRegion( regionName, trace );
 }
 
-void likwid_markerinit_()
+void likwid_markerinit_(bool global)
 {
-	likwid_markerInit();
+	likwid_markerInit(global);
 }
 
 void likwid_markerclose_()

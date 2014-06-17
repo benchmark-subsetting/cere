@@ -55,7 +55,7 @@ def user_main(FILE, LOOP, instrument):
     # Define by default CALL_COUNT to 11
     INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
     if (instrument):
-        temp = "likwid_markerInit();\n"
+        temp = "likwid_markerInit(0);\n"
     else:
         temp=""
     TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")

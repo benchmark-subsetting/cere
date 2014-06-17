@@ -31,6 +31,10 @@ static cl::opt<std::string>
 TraceLoop("loop-to-trace", cl::init(""),
                   cl::value_desc("trace"),
                   cl::desc("instrumentation-mode allow to trace and record all invocations measures for this loop"));
+static cl::opt<bool>
+NestedInstrumentation("nested-loops", cl::init(true),
+                  cl::value_desc("Boolean"),
+                  cl::desc("This options allow/deactivate measures of nested loops"));
 
 std::string removeExtension( const std::string &filename) {
     size_t lastdot = filename.find_last_of(".");
@@ -52,12 +56,13 @@ namespace {
     std::string Loopfile;
     std::string LoopToTrace;
     int Mode;
+    bool nestedIsAllowed;
     bool readFromFile;
     std::vector<std::string> loopsToInstrument;
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation) {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -234,8 +239,9 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
     if(!checkParameters()) return false;
 
     Module* mod = F.getParent();
-    if(Mode == VIVO) { //Not replaying a loop so we have to insert init and close in main function
+    if(Mode == VIVO) { //Not replaying a loop so we have to insert init in main function
         std::vector<Type*>FuncTy_8_args;
+        FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
         FunctionType* FuncTy_8 = FunctionType::get(
                         /*Result=*/Type::getVoidTy(mod->getContext()),
                         /*Params=*/FuncTy_8_args,
@@ -265,7 +271,6 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                     CallInst::Create(func_start, funcParameter, "", &firstBB->front());
                 }
                 if(!stopFunction) {
-                    //~ funcParameter.pop_back(); //Remove the boolean from parameters for the marker stop
                     Function* func_stop = createFunction(FuncTy_0, mod, "rdtsc_markerStopRegion");
                     //We must insert stop probe in all exits blocks
                     for (std::vector<BasicBlock*>::iterator I = ReturningBlocks.begin(), E = ReturningBlocks.end(); I != E; ++I) {
@@ -279,7 +284,13 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                                 GlobalValue::ExternalLinkage,
                                 "likwid_markerInit",
                                 mod);
-                CallInst::Create(initFunction, "", &firstBB->front());
+                //Create parameters for init function
+                std::vector<Value*> initParameter;
+                ConstantInt* const_int;
+                if(nestedIsAllowed) const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
+                else const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
+                initParameter.push_back(const_int);
+                CallInst::Create(initFunction, initParameter, "", &firstBB->front());
                 DEBUG(dbgs() << "Init successfuly inserted in main function\n");
             }
         }
