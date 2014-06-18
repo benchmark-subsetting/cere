@@ -24,8 +24,10 @@ VERSION = "0.1"
 option_forbidden = set([("dump", "--trace"),
                        ("dump", "--instrument"),
                        ("dump", "--nested-regions"),
+                       ("dump", "--no-nested-regions"),
                        ("replay", "--regions-file"),
                        ("replay", "--nested-regions"),
+                       ("replay", "--no-nested-regions"),
                        ("original", "--invocation"),
 	                   ("original", "--instrument")])
 
@@ -112,7 +114,7 @@ def replay_fun(mode_opt, BASE):
         safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     base=BASE), EXIT=False)
         safe_system(("opt -S -load {Root}{LoopInstr} " +
-                    "-vivo-loop-instrumentation {opts} {base}.ll " +
+                    "-vitro-loop-instrumentation {opts} {base}.ll " +
                     "-o {base}.ll").format(Root=PROJECT_ROOT,
                     LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
                     EXIT=False)
@@ -137,11 +139,16 @@ def original_fun(mode_opt, BASE):
             temp = temp + "--loop-to-trace=" + mode_opt.region + " "
     else:
         if(mode_opt.regions_file):
-            temp = temp+"--loops-file="+mode_opt.regions_file+" "
+            temp = temp + "--loops-file=" + mode_opt.regions_file + " "
         if(mode_opt.trace):
             exit("Error:trace only with --loop ")
     if(mode_opt.nested_regions):
-        temp = temp+"--nested-loops="+mode_opt.nested_regions+" "
+        temp = temp+"--nested-loops=true "
+        if(mode_opt.no_nested_regions):
+            exit("Error:can't --nested-regions and --no-nested-regions")
+    else:
+        if(mode_opt.no_nested_regions):
+            temp = temp+"--nested-loops=false "
     safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                 base=BASE, EXIT=False))
     safe_system(("opt -S -load {Root}{LoopInstr} " +
@@ -171,7 +178,10 @@ def init_subpars(parser, region_required):
                         const=True, default=False)
     parser.add_argument('--instrument', action=OptAction, nargs=0,
                         const=True, default=False)
-    parser.add_argument('--nested-regions', action=OptAction, type=bool)
+    parser.add_argument('--nested-regions', action=OptAction, nargs=0,
+                        const=True, default=False)
+    parser.add_argument('--no-nested-regions', action=OptAction, nargs=0,
+                        const=True, default=False)
 
 
 def init_parser_core(parser):

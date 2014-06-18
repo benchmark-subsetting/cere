@@ -12,10 +12,10 @@ function do_test()
     ./test > $TMPDIR/test.replay.out
     cat $TMPDIR/test.replay.out
 
-    cat $TMPDIR/test.dump.out | grep "&a" | head -n1 > $TMPDIR/test.a
-    cat $TMPDIR/test.replay.out | grep "&a" | head -n1 > $TMPDIR/test.b
+    cat $TMPDIR/test.dump.out | grep "value =" | head -n1 > $TMPDIR/test.a
+    cat $TMPDIR/test.replay.out | grep "value =" | head -n1 > $TMPDIR/test.b
     
-    if [ ! -f $TMPDIR/test.a ]; then
+    if [ ! -s $TMPDIR/test.a ]; then
         return 1
     fi
     
