@@ -198,6 +198,10 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
 //Uncomment if you want also loop last
 //line in the isolated function name (does not work very well)
 std::string createFunctionName(Loop *L, Function *oldFunction) {
+  //Get current module
+  Module *mod = oldFunction->getParent();
+  std::string module_name = mod->getModuleIdentifier();
+
   std::string newFunctionName;
   std::ostringstream oss;
   BasicBlock *firstBB = L->getBlocks()[0];
@@ -211,7 +215,7 @@ std::string createFunctionName(Loop *L, Function *oldFunction) {
     //~ oss.clear();
     //~ oss << lastLoc.getLineNumber();
     //~ std::string lastLine = oss.str();
-    std::string File = removeExtension(firstLoc.getFilename().str());
+    std::string File = removeExtension(module_name);
     newFunctionName = "__invivo__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
   }
   else {

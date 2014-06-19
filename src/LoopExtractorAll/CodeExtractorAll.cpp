@@ -304,6 +304,10 @@ std::string removeChar(std::string str, const char toReplace, const char replace
 //Uncomment if you want also loop last
 //line in the isolated function name (does not work very well)
 std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlock *header) {
+  //Get current module
+  Module *mod = oldFunction->getParent();
+  std::string module_name = mod->getModuleIdentifier();
+
   std::string newFunctionName;
   std::ostringstream oss;
   BasicBlock *firstBB = Blocks[0];
@@ -317,7 +321,7 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     //~ oss.clear();
     //~ oss << lastLoc.getLineNumber();
     //~ std::string lastLine = oss.str();
-    std::string File = removeExtension(firstLoc.getFilename().str());
+    std::string File = removeExtension(module_name);
     newFunctionName = "__extracted__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
   }
   else {
