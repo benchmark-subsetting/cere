@@ -28,8 +28,7 @@ option_forbidden = set([("dump", "--trace"),
                        ("replay", "--nested-regions"),
                        ("replay", "--no-nested-regions"),
                        ("replay", "--instrument-app"),
-                       ("original", "--invocation"),
-	                   ("original", "--instrument")])
+                       ("original", "--invocation")])
 
 
 
@@ -46,14 +45,17 @@ class OptAction(argparse.Action):
                 setattr(namespace, self.dest, values)
 
 
+def fail_lel(error_message):
+    exit("Error {prog} : {cmd}".format(prog='lel', cmd=error_message))
+    
+    
 def safe_system(command):
     '''
     Try-catch system call
     Verify system call and exit with appropriate error message
     '''
     if(os.system(command)):
-        exit("Error {prog} : safe_system -> {cmd}".format(
-             prog='lel', cmd=command))
+        fail_lel("safe_system -> " + command)
 
 
 def user_main(FILE, LOOP, instrument):
@@ -123,8 +125,8 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     DIR="dump/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
-        exit("No dump for {loop} invocation {invocation}".format(loop=LOOP,
-             invocation=INVOCATION))
+        fail_lel("No dump for {loop} invocation {invocation}".format(loop=LOOP,
+                 invocation=INVOCATION))
     # Compress the traces
     safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
     create_user_main(mode_opt.instrument,LOOP)

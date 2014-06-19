@@ -30,8 +30,7 @@ option_forbidden = set([("dump", "--trace"),
                        ("replay", "--nested-regions"),
                        ("replay", "--no-nested-regions"),
                        ("replay", "--instrument-app"),
-                       ("original", "--invocation"),
-	                   ("original", "--instrument")])
+                       ("original", "--invocation")])
 
 
 #Allowed option verification
@@ -47,6 +46,10 @@ class OptAction(argparse.Action):
                 setattr(namespace, self.dest, values)
 
 
+def fail_lec(error_message):
+    exit("Error {prog} : {cmd}".format(prog='lec', cmd=error_message))
+
+
 def safe_system(command, EXIT=True):
     '''
     Try-catch system call
@@ -54,8 +57,7 @@ def safe_system(command, EXIT=True):
     '''
     if(os.system(command)):
         if (EXIT):
-            exit("Error {prog} : safe_system -> {cmd}".format(
-                 prog='lec', cmd=command))
+            fail_lec("safe_system -> " + command)
         else:
             print("Warning Error {prog} : safe_system -> {cmd}".format(
                   prog='lec', cmd=command))
@@ -72,7 +74,7 @@ def dump_fun(mode_opt, BASE):
     if(mode_opt.region):
         temp = temp+"--loop-to-dump="+mode_opt.region+" "
         if(mode_opt.regions_file):
-            exit("Error: --regions-file and --region are incompatible")
+            fail_lec("--regions-file and --region are incompatible")
     else:
         if(mode_opt.regions_file):
             temp = temp+"--loops-file="+regions_file+" "
@@ -95,7 +97,7 @@ def replay_fun(mode_opt, BASE):
     '''
     temp = ""
     if (not (mode_opt.region)):
-        exit("Need --region with replay mode")
+        fail_lec("Need --region with replay mode")
     print "Compiling replay mode"
     if (mode_opt.invocation):
         temp = temp + "--invocation=" + mode_opt.invocation + " "
@@ -120,7 +122,6 @@ def replay_fun(mode_opt, BASE):
                     "-o {base}.ll").format(Root=PROJECT_ROOT,
                     LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
                     EXIT=False)
-        print BASE
 
 
 #in original mode
@@ -135,35 +136,39 @@ def original_fun(mode_opt, BASE):
     if(mode_opt.region):
         temp = temp + "--instrument-loop=" + mode_opt.region + " "
         if(mode_opt.regions_file):
-            exit("Error: --regions-file and --region are incompatible")
+            fail_lec("--regions-file and --region are incompatible")
         if(mode_opt.trace):
             print "Trace mode"
             temp = temp + "--loop-to-trace=" + mode_opt.region + " "
         if(mode_opt.instrument_app):
-            exit("Error: --instrument-app and --region are incompatible")
+            fail_lec("--instrument-app and --region are incompatible")
     else:
         if(mode_opt.regions_file):
             temp = temp + "--loops-file=" + mode_opt.regions_file + " "
             if(mode_opt.instrument_app):
-                exit("Error: --instrument-app and --region-files are incompatible")
+                fail_lec("--instrument-app and --region-files are incompatible")
         else:
             if(mode_opt.instrument_app):
                 temp = temp + "--instrument-app "
         if(mode_opt.trace):
-            exit("Error:trace only with --loop ")
+            fail_lec("trace only with --loop ")
     if(mode_opt.nested_regions):
         temp = temp+"--nested-loops=true "
         if(mode_opt.no_nested_regions):
-            exit("Error:can't --nested-regions and --no-nested-regions")
+            fail_lec("can't --nested-regions and --no-nested-regions")
     else:
         if(mode_opt.no_nested_regions):
             temp = temp+"--nested-loops=false "
-    safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
-                base=BASE, EXIT=False))
-    safe_system(("opt -S -load {Root}{LoopInstr} " +
-                "-vivo-loop-instrumentation {opts} {base}.ll " +
-                "-o {base}.ll").format(Root=PROJECT_ROOT,
-                LoopInstr=LOOP_INSTR, opts=temp, base=BASE, EXIT=False))
+    if(mode_opt.instrument):
+        safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                    base=BASE, EXIT=False))
+        safe_system(("opt -S -load {Root}{LoopInstr} " +
+                    "-vivo-loop-instrumentation {opts} {base}.ll " +
+                    "-o {base}.ll").format(Root=PROJECT_ROOT,
+                    LoopInstr=LOOP_INSTR, opts=temp, base=BASE, EXIT=False))
+    else:
+        if(mode_opt.trace):
+            fail_lec("--trace requires --intrument")
 
 
 #Initialize Includes parser

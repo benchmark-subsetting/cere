@@ -30,7 +30,7 @@ fi
 
 #1) Measure application cycles
 make clean && rm -f *.ll
-${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument-app"
+${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument --instrument-app"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="\tMeasuring application failed!\n"
@@ -40,7 +40,7 @@ fi
 
 #2) We need to instrument all in-vivo loops
 make clean && rm -f *.ll
-${COMPILE_CMD} MODE="original"
+${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="$error \tMeasuring in-vivo loops failed!\n"
@@ -57,7 +57,7 @@ then
     for level in `ls level_*`
     do
         make clean && rm -f *.ll
-        ${COMPILE_CMD} MODE="original" INSTRU_OPTS="--regions-file=${level}"
+        ${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument --regions-file=${level}"
         eval ${BIN_CMD} #> out
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="\tMeasuring in-vivo loops failed for ${level}!\n"
