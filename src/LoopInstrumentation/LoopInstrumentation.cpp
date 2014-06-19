@@ -332,16 +332,6 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
             }
         }
         if(!found) return false;
-        //~ if(!(std::find(loopsToInstrument.begin(), loopsToInstrument.end(), newFunctionName) != loopsToInstrument.end()))
-        //~ return 0;
-    }
-    //This is hardcoded because when instrumenting the stl deque function, we got segfaults.
-    std::size_t found1 = newFunctionName.find("stl");
-    std::size_t found2 = newFunctionName.find("deque");
-    if (found1 != std::string::npos || found2 != std::string::npos)
-    {
-        DEBUG(dbgs() << "Illegal instrumentation :" << newFunctionName << "\n");
-        return 0;
     }
 
     DEBUG(dbgs() << "Loop to instrument " << newFunctionName << "\n");

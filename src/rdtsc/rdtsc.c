@@ -109,6 +109,7 @@ void likwid_markerInit(bool global)
 	LEVEL=0;
 	//Are we in global instrumentation mode?
 	GLOBAL=global;
+	INITIALIZED=true;
 }
 
 void likwid_markerClose()
@@ -147,6 +148,8 @@ void likwid_markerClose()
  * else record start counter
 */
 void rdtsc_markerStartRegion(char *reg, int trace) {
+	if(!INITIALIZED) return;
+
 	//Avoid measuring a son loop when we are not in global dump
 	LEVEL+=1;
 	if(!GLOBAL && LEVEL!=1) return;
@@ -216,6 +219,8 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 }
 
 void rdtsc_markerStopRegion(char *reg, int trace) {
+	if(!INITIALIZED) return;
+
 	LEVEL-=1;
 	if(!GLOBAL && LEVEL!=0) return;
 

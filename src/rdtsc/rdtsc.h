@@ -10,6 +10,7 @@ static struct htable call_count_reminder;
 
 int LEVEL;
 bool GLOBAL;
+bool INITIALIZED=false;
 
 typedef struct
 {
