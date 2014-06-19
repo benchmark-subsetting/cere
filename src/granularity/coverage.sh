@@ -30,7 +30,7 @@ fi
 
 #1) Measure application cycles
 make clean && rm -f *.ll
-${COMPILE_CMD} MODE="original" INSTRU_OPTS="--region=bench"
+${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument-app"
 eval ${BIN_CMD} #> out
 if [[ ! -f rdtsc_result.csv ]]; then
     error="\tMeasuring application failed!\n"

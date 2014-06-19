@@ -35,6 +35,10 @@ static cl::opt<bool>
 NestedInstrumentation("nested-loops", cl::init(true),
                   cl::value_desc("Boolean"),
                   cl::desc("This options allow/deactivate measures of nested loops"));
+static cl::opt<bool>
+AppMeasure("instrument-app", cl::init(false),
+                  cl::value_desc("Boolean"),
+                  cl::desc("if True, application time will be measured"));
 
 std::string removeExtension( const std::string &filename) {
     size_t lastdot = filename.find_last_of(".");
@@ -57,12 +61,13 @@ namespace {
     std::string LoopToTrace;
     int Mode;
     bool nestedIsAllowed;
+    bool measureAppli;
     bool readFromFile;
     std::vector<std::string> loopsToInstrument;
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation), measureAppli(AppMeasure) {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -72,7 +77,6 @@ namespace {
                 while(getline(loopstream, line)) {
                     line = removeChar(line, '#', ' ');
                     loopsToInstrument.push_back(line);
-                    //~ errs() << "line = " << line << "\n";
                 }
                 readFromFile = true;
             }
@@ -84,7 +88,6 @@ namespace {
     }
 
     virtual bool runOnFunction(Function &F);
-    bool checkParameters();
     bool visitLoop(Loop *L, Module *mod);
     std::vector<Value*> createFunctionParameters(Module* mod, std::string newFunctionName);
 
@@ -221,23 +224,8 @@ std::string createFunctionName(Loop *L, Function *oldFunction) {
   return newFunctionName;
 }
 
-bool LoopRDTSCInstrumentation::checkParameters()
-{
-    if(Mode == VITRO && (Loopname == "bench" || Loopname == "all")) {
-        errs() << "Incompatible parameters, Mode = "<< Mode << " and Loopname = " << Loopname << "!\n";
-        return false;
-    }
-    if(Loopname != "all" && readFromFile) {
-        errs() << "Incompatible parameters, can not instrument a particular loop and read from a file!\n";
-        return false;
-    }
-    return true;
-}
-
 bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
 {
-    if(!checkParameters()) return false;
-
     Module* mod = F.getParent();
     if(Mode == VIVO) { //Not replaying a loop so we have to insert init in main function
         std::vector<Type*>FuncTy_8_args;
@@ -261,7 +249,7 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                 if (isa<ReturnInst>(I->getTerminator())) ReturningBlocks.push_back(I);
             }
             
-            if(Loopname == "bench") {
+            if(measureAppli) {
                 FunctionType* FuncTy_0 = createFunctionType(mod);
                 std::vector<Value*> funcParameter = createFunctionParameters(mod, "main");
                 Function *startFunction = mod->getFunction("rdtsc_markerStartRegion");
@@ -295,7 +283,7 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
             }
         }
     }
-    if(Loopname != "bench") {
+    if(!measureAppli) {
         LoopInfo &LI = getAnalysis<LoopInfo>();
         std::vector<Loop*> SubLoops(LI.begin(), LI.end());
         for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
