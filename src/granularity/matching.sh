@@ -69,7 +69,7 @@ while read codeletName; do
     #If invivo trace not already measured, do it
     if [[ ! -f results/$codeletName.csv ]]; then
         echo "Measuring invivo trace"
-        ${COMPIL_CMD} MODE="--instrument --instrument-loop=$codeletName --loop-to-trace=$codeletName" &> out
+        ${COMPIL_CMD} MODE="original --instrument --region=$codeletName --trace" &> out
         for i in "1"
         do
             eval ${BIN_CMD} &> out
@@ -104,7 +104,7 @@ while read codeletName; do
         if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "Dumping invocation ${invocation}"
             make clean &>> out && rm -f *.ll &>> out
-            ${COMPIL_CMD} MODE="--dump --loop-to-dump=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &> out
+            ${COMPIL_CMD} MODE="dump --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &> out
             eval ${BIN_CMD} &> out
         fi
         if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
@@ -116,7 +116,7 @@ while read codeletName; do
         if [[ ! -f results/${codeletName/__invivo__/__extracted__}_${invocation}.csv ]]; then
             echo "Running invitro version"
             make clean &>> out && rm -f *.ll &>> out
-            ${COMPIL_CMD} MODE="--replay=${codeletName/__invivo__/__extracted__} --invocation=${invocation} --instrument" &> out
+            ${COMPIL_CMD} MODE="replay --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation} --instrument" &> out
             eval ${BIN_CMD} &>> out
             mv -f rdtsc_result.csv results/${codeletName/__invivo__/__extracted__}_${invocation}.csv
         fi
