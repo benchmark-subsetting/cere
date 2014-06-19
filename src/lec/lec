@@ -25,9 +25,11 @@ option_forbidden = set([("dump", "--trace"),
                        ("dump", "--instrument"),
                        ("dump", "--nested-regions"),
                        ("dump", "--no-nested-regions"),
+                       ("dump", "--instrument-app"),
                        ("replay", "--regions-file"),
                        ("replay", "--nested-regions"),
                        ("replay", "--no-nested-regions"),
+                       ("replay", "--instrument-app"),
                        ("original", "--invocation"),
 	                   ("original", "--instrument")])
 
@@ -137,9 +139,16 @@ def original_fun(mode_opt, BASE):
         if(mode_opt.trace):
             print "Trace mode"
             temp = temp + "--loop-to-trace=" + mode_opt.region + " "
+        if(mode_opt.instrument_app):
+            exit("Error: --instrument-app and --region are incompatible")
     else:
         if(mode_opt.regions_file):
             temp = temp + "--loops-file=" + mode_opt.regions_file + " "
+            if(mode_opt.instrument_app):
+                exit("Error: --instrument-app and --region-files are incompatible")
+        else:
+            if(mode_opt.instrument_app):
+                temp = temp + "--instrument-app "
         if(mode_opt.trace):
             exit("Error:trace only with --loop ")
     if(mode_opt.nested_regions):
@@ -181,6 +190,8 @@ def init_subpars(parser, region_required):
     parser.add_argument('--nested-regions', action=OptAction, nargs=0,
                         const=True, default=False)
     parser.add_argument('--no-nested-regions', action=OptAction, nargs=0,
+                        const=True, default=False)
+    parser.add_argument('--instrument-app', action=OptAction, nargs=0,
                         const=True, default=False)
 
 
