@@ -1,24 +1,10 @@
-SHELL=/bin/sh
-PROJECT_ROOT=../../
-CC=../../src/lec/lec
-FLINK=../../src/lel/lel
+# Include standard template for this suite
+-include Makefile.defaults
 
-FLAGS=-g -O0
+run:
+	./lbm 20 reference.dat 0 1 100_100_130_ldc.of
 
-OBJS = test.o
-
-PROGRAM=test
-
-${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
-
-%.o: %.c
-	${CC} ${MODE} ${FLAGS} $<
-
-clean:
-	- rm -f *.o *.s *.ll
-	- rm test
-
-veryclean: clean
-	- rm -rf dump/
-	- rm -f *.o lel_bin realmain.c dump.c
+nomakefiles:
+	@echo "*** Whoops!  I didn't find a Makefile.defaults file."
+	@echo "*** Your distribution is probably corrupt."
+	@echo
