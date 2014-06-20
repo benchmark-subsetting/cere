@@ -11,10 +11,10 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <errno.h>
+#include <sys/syscall.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/mman.h>
 
 #include "dump.h"
@@ -26,7 +26,51 @@
 
 struct dump_state state __attribute__ ((aligned (PAGESIZE)));
 
-bool is_mru(void * addr) 
+
+static char
+hex(char value)
+{
+  const char conversion[] = "0123456789abcdef";
+  assert(value >= 0 && value <= 15);
+  return conversion[value];
+}
+
+static
+char * append_addr(char * buf, off64_t addr)
+{
+    int digits = MAX_DIGITS;
+
+    size_t i, j;
+
+    while(digits--) {
+        buf[i+digits] = hex(addr % 16);
+        addr = addr / 16;
+    }
+    i += MAX_DIGITS;
+
+    return buf + i;
+}
+
+static
+void debug(const char msg[])
+{
+  syscall(SYS_write, 2, msg, strlen(msg));
+}
+
+static
+void debug_addr(const char msg[], off64_t addr)
+{
+  char buf[14];
+  char * end = append_addr(buf, addr);
+  *end = '\n';
+  *(end + 1) = '\0';
+
+  debug(msg);
+  debug(buf);
+}
+
+
+bool is_mru(void * addr)
 {
   char * start_of_page = round_to_page(addr);
   bool present = false;
@@ -47,8 +91,7 @@ mru_handler(int sig, siginfo_t *si, void *unused)
   char * start_of_page = round_to_page(touched_addr);
 
 #ifdef _DEBUG
-//  printf("Detected access at: %p -- Start of Page: %p\n",
-//         touched_addr, start_of_page);
+  debug_addr("MRU Detected access at ", (off64_t)touched_addr);
 #endif
 
 
@@ -56,17 +99,17 @@ mru_handler(int sig, siginfo_t *si, void *unused)
   assert(present == false);
 
   /* Unprotect Page */
-  int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
+  int result = syscall(SYS_mprotect, (void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
   if (result == -1) {
-      assert(false); 
+      assert(false);
   }
   /* Add page to page cache */
   /* we need to evict one of the pages, reprotect it ! */
   if (state.pages_cache[state.last_page] != 0) {
 #ifdef _DEBUG
-//      printf("Reprotecting page %p\n", state.pages_cache[state.last_page]);
+      debug_addr("MRU Reprotecting page ", (off64_t)state.pages_cache[state.last_page]);
 #endif
-      int result = mprotect((void*)state.pages_cache[state.last_page], PAGESIZE, PROT_NONE);
+      int result = syscall(SYS_mprotect,(void*)state.pages_cache[state.last_page], PAGESIZE, PROT_NONE);
       if (result == -1) {
           //assert(false);
       }
@@ -76,58 +119,29 @@ mru_handler(int sig, siginfo_t *si, void *unused)
   state.last_page = (state.last_page + 1)%state.log_size;
 
 #ifdef _DEBUG
-  printf("page cache [ ");
+  debug("     >>>> page cache\n");
   for (int i = 0; i <state.log_size; i++) {
       int c = (i + state.last_page) % state.log_size;
-      printf("%p ", state.pages_cache[c]);
+      debug_addr("     >>>> ", (off64_t)state.pages_cache[c]);
   }
-  printf(" ]\n");
 #endif
   errno = esaved;
 }
 
-static char
-hex(char value)
-{
-  switch(value) {
-    case 0: return '0';
-    case 1: return '1';
-    case 2: return '2';
-    case 3: return '3';
-    case 4: return '4';
-    case 5: return '5';
-    case 6: return '6';
-    case 7: return '7';
-    case 8: return '8';
-    case 9: return '9';
-    case 10: return 'a';
-    case 11: return 'b';
-    case 12: return 'c';
-    case 13: return 'd';
-    case 14: return 'e';
-    case 15: return 'f';
-  }
-  assert(0);
-}
 
 static
-void fill_dump_name(char buf[], int stack_pos, off64_t addr)
+void fill_dump_name(char * buf, int stack_pos, off64_t addr)
 {
-    //snprintf(buf, sizeof(buf), "%s/%lx.memdump", state.dump_path, start);
-    const char suffix[] = ".memdump";
-    int digits = MAX_DIGITS;
-
     size_t i, j;
     for (i = 0; state.dump_path[stack_pos][i] != '\0'; i++)
       buf[i] = state.dump_path[stack_pos][i];
     buf[i++] = '/';
 
-    while(digits--) {
-        buf[i+digits] = hex(addr % 16);
-        addr = addr / 16;
-    }
-    i += MAX_DIGITS;
 
+    buf = append_addr(buf + i, addr);
+
+    const char suffix[] = ".memdump";
+    i = 0;
     for (j = 0; suffix[j] != '\0'; j++)
       buf[i++] = suffix[j];
 
@@ -139,54 +153,47 @@ void fill_dump_name(char buf[], int stack_pos, off64_t addr)
  * and ending at address <end>
  */
 static
-bool write_pages(char path[], off64_t start, off64_t stop)
+bool write_page(char path[], off64_t start)
 {
-    char buf[PAGESIZE];
-    int out = open(path, O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
+    int out = syscall(SYS_open, path, O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
 
     if (out <= 0) {
         /* region already dumped */
+        if (errno == EEXIST)
+          return false;
+        else {
+          debug("could not open:");
+          debug(path);
+          debug("\n");
+          exit(EXIT_FAILURE);
+        }
+    }
+
+    int wr = syscall(SYS_write, out, (char*)start, PAGESIZE);
+    if (wr < 0) {
+        syscall(SYS_unlink, path);
+        syscall(SYS_close, out);
         return false;
-        //Should check errno but it is protected
-        //if (errno == EEXIST) {
-          //fprintf(stderr, "already exists %s\n", path);
-        //  return false;
-        //}
-        //else
-        //errx(EXIT_FAILURE, "could not dump %s\n", path);
     }
+    assert(wr == PAGESIZE);
 
-    lseek64(state.mem_fd, start, SEEK_SET);
-
-    while(start < stop) {
-        int rd = read(state.mem_fd, buf, PAGESIZE);
-        int wr = write(out, buf, rd);
-        if (rd < 0 || wr <0) {
-            close(out);
-            return false;
-        } 
-
-        assert(wr == PAGESIZE && rd == PAGESIZE);
-        start += PAGESIZE;
-    }
-
-    close(out);
+    syscall(SYS_close, out);
     return true;
 }
 
 static
-bool dump_pages(off64_t start, off64_t stop)
+bool dump_page(off64_t start)
 {
   /* Dump Page */
   char current_path[MAX_PATH];
   fill_dump_name(current_path, state.stack_pos, start);
-  bool result = write_pages(current_path, start, stop);
+  bool result = write_page(current_path, start);
   if (result) {
       /* Link in parent's dumps */
       for (int i=0; i < state.stack_pos; i++) {
           char parent_path[MAX_PATH];
           fill_dump_name(parent_path, i, start);
-          link(current_path, parent_path);
+          syscall(SYS_link, current_path, parent_path);
       }
   }
   return result;
@@ -202,20 +209,18 @@ dump_handler(int sig, siginfo_t *si, void *unused)
   char * touched_addr = si->si_addr;
   char * start_of_page = round_to_page(touched_addr);
 
-  /* Unprotect Page */
-  int result = mprotect((char*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
-  assert(result != -1);
-
-
 #ifdef _DEBUG
-  printf("DUMP Detected access at: %p -- Start of Page: %p\n",
-         touched_addr, start_of_page);
+  debug_addr("DUMP Detected access at: ", (off64_t)touched_addr);
 #endif
+
+  /* Unprotect Page */
+  int result = syscall(SYS_mprotect,(char*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
+  assert(result != -1);
 
   mru_handler(sig, si, unused);
 
   /* Dump page */
-  dump_pages((off64_t)start_of_page, (off64_t)start_of_page+PAGESIZE);
+  dump_page((off64_t)start_of_page);
 
   /* Do the mru logging */
   state.mtrace_active = old_status;
@@ -229,11 +234,14 @@ ignore_handler(int sig, siginfo_t *si, void *unused)
   char * start_of_page = round_to_page(touched_addr);
 
   /* Unprotect Page */
-  int result = mprotect((void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
+  int result = syscall(SYS_mprotect,(void*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
   assert( result != -1 );
+
+  assert(state.last_ignored < MAX_IGNORE);
+  state.pages_ignored[state.last_ignored++] = start_of_page;
+
 #ifdef _DEBUG
-//  printf("IGN Detected access at: %p -- Start of Page: %p\n",
-//         touched_addr, start_of_page);
+  debug_addr("IGN Detected access at: ", (off64_t)touched_addr);
 #endif
 }
 
@@ -247,10 +255,22 @@ page_log_dump(void)
   for (int i = 0; i <state.log_size; i++) {
       int c = (i + state.last_page) % state.log_size;
       if (state.pages_cache[c] != 0) {
-          bool result = dump_pages((off64_t)state.pages_cache[c], ((off64_t)state.pages_cache[c])+PAGESIZE);
-          if (result) 
+          bool result = dump_page((off64_t)state.pages_cache[c]);
+          if (result)
             fprintf(f, "%lx\n", (off64_t)state.pages_cache[c]);
       }
+  }
+  fclose(f);
+}
+
+static void
+page_ign_dump(void)
+{
+  char path[MAX_PATH];
+  snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], state.pagelog_suffix);
+  FILE * f = fopen(path, "w");
+  for (int i = 0; i <state.last_ignored; i++) {
+      bool result = dump_page((off64_t)state.pages_ignored[i]);
   }
   fclose(f);
 }
@@ -291,17 +311,6 @@ set_mru(void)
   assert(res != -1);
 }
 
-static void
-open_mem_fd(void)
-{
-  char path[MAX_PATH];
-  pid_t pid = getpid();
-  snprintf(path, sizeof(path), "/proc/%d/mem", pid);
-  state.mem_fd = open(path, O_RDONLY);
-  if(!state.mem_fd == -1)
-      errx(EXIT_FAILURE, "Error opening /proc/%d/mem interface", pid);
-}
-
 static
 void configure_sigaction(void)
 {
@@ -325,10 +334,10 @@ lock_mem(void)
 
 #ifdef _DEBUG
       printf("lock_mem()\n");
-      printf("Address of adresses %p\n", state.addresses);
 #endif
   char *p;
   char path[MAX_PATH];
+
 
   pid_t my_pid = getpid();
   snprintf(path, sizeof(path), "/proc/%d/maps", my_pid);
@@ -394,22 +403,22 @@ lock_mem(void)
   while(count > 0) {
       char * end = addresses[--count];
       char * start = addresses[--count];
-      int result = mprotect(start, end-start, PROT_NONE);
+      int result = syscall(SYS_mprotect,start, end-start, PROT_NONE);
   }
 
   /* Unprotect dump state */
-  int result = mprotect(&state, sizeof(state), PROT_READ | PROT_WRITE);
+  int result = syscall(SYS_mprotect,&state, sizeof(state), PROT_READ | PROT_WRITE);
   assert(result != -1);
 
-  // Our SIGSEGV handler will require access to errno and open functions 
+  // Our SIGSEGV handler will require access to errno and open functions
   // memory.
   // Access them now, while ignore_handler is active, to unlock the
   // sensible regions and avoid a double SEGFAULT later on.
   errno = 0;
-  int fd = open("/dev/null", O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
-  close(fd);
+  //int fd = open("/dev/null", O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
+  //close(fd);
 
-  mprotect(start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
+  syscall(SYS_mprotect,start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
 
 }
 
@@ -459,15 +468,12 @@ void dump_init(bool global_dump)
 
   state.global_dump = global_dump;
 
-  state.dump_prefix = strdup("dump"); 
-  state.pagelog_suffix = strdup("hotpages.map"); 
-  state.core_suffix = strdup("core.map"); 
+  state.dump_prefix = strdup("dump");
+  state.pagelog_suffix = strdup("hotpages.map");
+  state.core_suffix = strdup("core.map");
 
   /* configure atexit */
   atexit(dump_close);
-
-  /* open mem fd */
-  open_mem_fd();
 
   /* create dump dir */
   create_dump_dir();
@@ -577,12 +583,11 @@ void dump(char* loop_name, int invocation, int count, ...)
         return;
     }
     printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
-    state.dump_active[state.dump_active_pos] = true; 
+    state.dump_active[state.dump_active_pos] = true;
 
     /* Increment stack pos */
-    state.stack_pos ++;
     assert(state.stack_pos < MAX_STACK);
-    int sp = state.stack_pos;
+    int sp = state.stack_pos + 1;
 
     /* Ensure that the dump directory exists */
     snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]),
@@ -596,10 +601,15 @@ void dump(char* loop_name, int invocation, int count, ...)
     if (mkdir(state.dump_path[sp], 0777) != 0)
         errx(EXIT_FAILURE, "dump %s already exists, stop\n", state.dump_path[sp]);
 
+    state.stack_pos = sp;
+
     assert(state.mtrace_active == false);
 
     /* Dump hot pages log */
     page_log_dump();
+
+    /* Dump ignored pages */
+    page_ign_dump();
 
     /* Dump addresses */
     void * addresses[count];
@@ -609,8 +619,10 @@ void dump(char* loop_name, int invocation, int count, ...)
     for(j=0; j<count; j++) {
         addresses[j] = va_arg(ap, void*);
         char * start_of_page = round_to_page(addresses[j]);
+        // Adresses must be dumped because in run__extracted, we
+        // dereference scalar ones.
         if (start_of_page != 0) {
-            dump_pages((off64_t)start_of_page, ((off64_t)start_of_page)+PAGESIZE);
+            dump_page((off64_t)start_of_page);
         }
     }
     va_end(ap);

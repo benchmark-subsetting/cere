@@ -13,11 +13,12 @@ void after_dump(void);
 
 bool is_mru(void * addr); 
 
+#define MAX_DIGITS 12
 #define MAX_LOG_SIZE 64
 #define LOG_SIZE 64
 #define MAX_STACK 64
 #define MAX_PATH 256
-#define MAX_DIGITS 12
+#define MAX_IGNORE 32
 
 enum dump_sa {
     MRU_SA,
@@ -41,6 +42,7 @@ struct dump_state {
     int last_page;
     int log_size;
     int mem_fd;
+    int last_ignored;
     enum dump_sa dump_sa;
     struct htable counters;
     bool mtrace_active;
@@ -50,6 +52,7 @@ struct dump_state {
     bool dump_active[MAX_STACK];
     char dump_path[MAX_STACK][MAX_PATH];
     char * pages_cache[MAX_LOG_SIZE];
+    char * pages_ignored[MAX_IGNORE];
     char filler __attribute__ ((aligned (PAGESIZE))) ;
 } __attribute__ ((packed));
 

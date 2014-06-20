@@ -14,6 +14,9 @@ static void* (*real_malloc)(size_t)=NULL;
 static void* (*real_calloc)(size_t nmemb, size_t size)=NULL;
 static void* (*real_realloc)(void *ptr, size_t size)=NULL;
 static void* (*real_memalign)(size_t alignment, size_t size)=NULL;
+static FILE* (*real_fopen)(const char * path, const char * mode)=NULL;
+static size_t (*real_fread)(void *ptr, size_t size, size_t nmemb, FILE *stream);
+static size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 void mtrace_activate(void)
 {
@@ -25,8 +28,8 @@ void mtrace_deactivate(void)
   state.mtrace_active = false;
 }
 
-static void 
-mtrace_init(void)
+static void
+hooks_init(void)
 {
   real_malloc = dlsym(RTLD_NEXT, "malloc");
   if (NULL == real_malloc) {
@@ -44,12 +47,24 @@ mtrace_init(void)
   if (NULL == real_malloc) {
       fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
   }
+  real_fopen = dlsym(RTLD_NEXT, "fopen");
+  if (NULL == real_malloc) {
+      fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
+  }
+  real_fread = dlsym(RTLD_NEXT, "fread");
+  if (NULL == real_malloc) {
+      fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
+  }
+  real_fwrite = dlsym(RTLD_NEXT, "fwrite");
+  if (NULL == real_malloc) {
+      fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
+  }
 }
 
 void*
 malloc(size_t size)
 {
-  if(real_malloc==NULL) mtrace_init();
+  if(real_malloc==NULL) hooks_init();
   long unsigned nb_pages_to_allocate = round_up_page(size)/PAGESIZE;
 
   void *p = NULL;
@@ -69,7 +84,7 @@ malloc(size_t size)
 
 void *calloc(size_t nmemb, size_t size)
 {
-  if(real_calloc==NULL) mtrace_init();
+  if(real_calloc==NULL) hooks_init();
   long unsigned nb_pages_to_allocate = round_up_page(nmemb*size)/PAGESIZE;
 
   void *p = NULL;
@@ -90,7 +105,7 @@ void *calloc(size_t nmemb, size_t size)
 
 void *realloc(void *ptr, size_t size)
 {
-  if(real_realloc==NULL) mtrace_init();
+  if(real_realloc==NULL) hooks_init();
   long unsigned nb_pages_to_allocate = round_up_page(size)/PAGESIZE;
 
   void *p = NULL;
@@ -110,7 +125,7 @@ void *realloc(void *ptr, size_t size)
 
 void *memalign(size_t alignment, size_t size)
 {
-  if(real_memalign==NULL) mtrace_init();
+  if(real_memalign==NULL) hooks_init();
   long unsigned nb_pages_to_allocate = round_up_page(size)/PAGESIZE;
 
   void *p = NULL;
@@ -127,3 +142,50 @@ void *memalign(size_t alignment, size_t size)
   }
   return p;
 }
+
+
+static
+void touch_string(const char * str)
+{
+  const char * c;
+  for (c=str; *c != '\0'; c++);
+}
+
+static
+void touch_mem(const void * mem, size_t size, size_t nmemb)
+{
+  size_t i;
+  char * c = (char *) mem;
+  while (nmemb--) {
+      for (i = 0; i < size; i++) {
+          char touched = *c;
+          c++;
+      }
+  }
+}
+
+FILE * fopen(const char *path, const char *mode)
+{
+  if(real_fopen==NULL) hooks_init();
+  touch_string(path);
+  touch_string(mode);
+  real_fopen(path, mode);
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+  if(real_fread==NULL) hooks_init();
+  touch_mem(ptr, size, nmemb);
+  real_fread(ptr, size, nmemb, stream);
+}
+
+size_t fwrite(const void *ptr, size_t size, size_t nmemb,
+              FILE *stream)
+{
+  if(real_fwrite==NULL) hooks_init();
+  touch_mem(ptr, size, nmemb);
+  real_fwrite(ptr, size, nmemb, stream);
+}
+
+
+
