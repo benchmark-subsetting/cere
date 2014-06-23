@@ -55,11 +55,13 @@ AC_DEFUN([AX_LLVM],
       [LLVM is required but program `llvm-config' cannot be found in $with_llvm_path])
   fi
 
+  LLVM_VERSION=`$LLVM_CONFIG --version`
+  AC_DEFINE_UNQUOTED([LLVM_VERSION], ["$LLVM_VERSION"], [The llvm version])
+
   if test -n "$1"; then
     AC_MSG_CHECKING([for LLVM version])
-    LLVM_VERSION=`$LLVM_CONFIG --version`
     AC_MSG_RESULT([$LLVM_VERSION])
-    AX_COMPARE_VERSION([$LLVM_VERSION],[eq],[$1],
+    AX_COMPARE_VERSION([$LLVM_VERSION],[ge],[$1],
       [],
       [
         AC_MSG_ERROR(
