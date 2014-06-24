@@ -77,7 +77,7 @@ def dump_fun(mode_opt, BASE):
             fail_lec("--regions-file and --region are incompatible")
     else:
         if(mode_opt.regions_file):
-            temp = temp+"--loops-file="+regions_file+" "
+            temp = temp+"--loops-file="+mode_opt.regions_file+" "
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
     safe_system(("opt -S -load {Root}{LoopExt} -loop-extract-all " +
