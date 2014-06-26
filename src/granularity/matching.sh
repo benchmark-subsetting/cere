@@ -97,6 +97,11 @@ while read codeletName; do
         invocation=`echo $params | cut -d ' ' -f 1`
         perc=`echo $params | cut -d ' ' -f 2`
         invivo=`echo $params | cut -d ' ' -f 3`
+        if [[ $invivo -eq 0 ]]; then
+            echo "Error invivo cycles=$invivo. Can't measure invitro cycles"
+            err=1
+            continue
+        fi
         if [[ ! -z "$force" ]]; then
             rm -rf dump/${codeletName/__invivo__/__extracted__}/${invocation}
         fi
