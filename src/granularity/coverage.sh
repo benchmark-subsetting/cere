@@ -19,9 +19,6 @@ fi
 BIN_CMD=$1
 COMPILE_CMD=$2
 
-rm -fr all_loops.csv app_cycles.csv coverage_log dump/ level_* lel_bin loops \
-matching_codelets out realmain.c replayedCodelet results/ warning error
-
 cd $BENCH_DIR 2> /dev/null
 if [ "$?" != "0" ] ; then
     echo "Could not change directory to $BENCH_DIR" > /dev/stderr
@@ -31,23 +28,23 @@ fi
 #1) Measure application cycles
 make clean && rm -f *.ll
 ${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument --instrument-app"
-eval ${BIN_CMD} #> out
+eval ${BIN_CMD}
 if [[ ! -f rdtsc_result.csv ]]; then
     error="\tMeasuring application failed!\n"
 else
     mv rdtsc_result.csv app_cycles.csv
 fi
-
+ 
 #2) We need to instrument all in-vivo loops
 make clean && rm -f *.ll
 ${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument"
-eval ${BIN_CMD} #> out
+eval ${BIN_CMD}
 if [[ ! -f rdtsc_result.csv ]]; then
     error="$error \tMeasuring in-vivo loops failed!\n"
 else
     mv rdtsc_result.csv all_loops.csv
 fi
-
+ 
 if [[ -f all_loops.csv ]]
 then
     #3) Create level files
@@ -58,7 +55,7 @@ then
     do
         make clean && rm -f *.ll
         ${COMPILE_CMD} MODE="original" INSTRU_OPTS="--instrument --regions-file=${level}"
-        eval ${BIN_CMD} #> out
+        eval ${BIN_CMD}
         if [[ ! -f rdtsc_result.csv ]]; then
             warning="\tMeasuring in-vivo loops failed for ${level}!\n"
         else
@@ -69,21 +66,14 @@ then
 fi
 
 #5) dump loops
-#SINGLE LOOP DUMP, KEEP WHILE BUG 13 UNSOLVED
 #First get all important loops
 CYCLES=`cat app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 ${ROOT}/granularity.py $BENCH_DIR/all_loops.csv ${CYCLES} > loops_to_dump
-while read codeletName
-do
-    make clean && rm -f *.ll
-    ${COMPILE_CMD} MODE="dump --region=${codeletName/__invivo__/__extracted__}"
-    eval ${BIN_CMD} >> out
-done < loops_to_dump
+sed -i 's/__invivo__/__extracted__/g' loops_to_dump
 
-#GLOBAL DUMP UNCOMMENT WHEN ISSUE 13 SOLVED
-#make clean && rm -f *.ll
-#${COMPILE_CMD} MODE="dump"
-#eval ${BIN_CMD} >> out
+make clean && rm -f *.ll
+${COMPILE_CMD} MODE="dump --regions-file=loops_to_dump"
+eval ${BIN_CMD}
 
 #Create a file with all dumped loops name
 touch dump/extracted_loops
@@ -105,13 +95,14 @@ do
     make clean && rm -f *.ll
     rm -f realmain.c
     ${COMPILE_CMD} MODE="replay --region=$loops" INSTRU="--instrument"
-    eval ${BIN_CMD} #> out
+    eval ${BIN_CMD}
     if [[ -f rdtsc_result.csv ]]; then
         mv rdtsc_result.csv results/${loops}.csv
         rdtsclines=`wc -l results/${loops}.csv | cut -d' ' -f1`
         if [[ "$rdtsclines" > 1 ]]
         then
             cat results/${loops}.csv | tail -n 1 >> results/invitro_results.csv
+            echo "${loops/__extracted__/__invivo__}" >> replayedCodelet
         else
             warning="$warning \tMeasuring in-vitro cycles for $loops failed\n"
         fi
