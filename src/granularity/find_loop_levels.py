@@ -23,22 +23,22 @@ if __name__ == "__main__":
     rdtscCSV = open(sys.argv[1], "rb")
     rdtscReader = csv.reader(rdtscCSV, delimiter=',')
     rdtscReader.next() #skip header
-    	
+
     max_level = {}
     levels = {}
 
     for row in rdtscReader:
-	regionName = row[0]
-	baseName = regionName.split("#")[-1]
+        regionName = row[0]
+        baseName = regionName.split("#")[-1]
         level = regionName.count("#")
 
-	if baseName in max_level:
-	    max_level[baseName] = max(max_level[baseName], level)
-	else:
-	    max_level[baseName] = level
+        if baseName in max_level:
+            max_level[baseName] = max(max_level[baseName], level)
+        else:
+            max_level[baseName] = level
 
     for name, level in max_level.iteritems():
-	if level not in levels: levels[level] = []
+        if level not in levels: levels[level] = []
         levels[level].append(name)
 
     dump_to_files(levels)
