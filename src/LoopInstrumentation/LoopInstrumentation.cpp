@@ -119,8 +119,9 @@ FunctionType* createFunctionType(Module* mod)
     PointerType* PointerTy_4 = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
  
     std::vector<Type*>FuncTy_6_args;
-    FuncTy_6_args.push_back(PointerTy_4);
-    FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1));
+    FuncTy_6_args.push_back(PointerTy_4); //char*
+    FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
+    FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
     FunctionType* tmp = FunctionType::get(
     /*Result=*/Type::getVoidTy(mod->getContext()),
     /*Params=*/FuncTy_6_args,
@@ -176,22 +177,30 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
     /*Initializer=*/0, // has initializer, specified below
     /*Name=*/".str");
     gvar_array__str->setAlignment(1);
-    
+
+    //LoopName
     ConstantInt* const_int32_10 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
     std::vector<Constant*> const_ptr_11_indices;
     const_ptr_11_indices.push_back(const_int32_10);
     const_ptr_11_indices.push_back(const_int32_10);
     Constant* const_ptr_11 = ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_11_indices);
 
+    //Set Trace boolean
     ConstantInt* const_int1_11;
     if(newFunctionName == LoopToTrace) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
     else const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
-    
+
+    //Set global boolean
+    ConstantInt* const_int;
+    if(nestedIsAllowed) const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
+    else const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
+
     // Global Variable Definitions
     gvar_array__str->setInitializer(param_name);
     std::vector<Value*> void_16_params;
-    void_16_params.push_back(const_ptr_11);
-    void_16_params.push_back(const_int1_11);
+    void_16_params.push_back(const_ptr_11); //LoopName
+    void_16_params.push_back(const_int1_11); //Trace boolean
+    void_16_params.push_back(const_int); //Global measure boolean
     return void_16_params;
 }
 
@@ -215,8 +224,12 @@ std::string createFunctionName(Loop *L, Function *oldFunction) {
     //~ oss.clear();
     //~ oss << lastLoc.getLineNumber();
     //~ std::string lastLine = oss.str();
+    std::string Original_location = removeExtension(firstLoc.getFilename().str());
     std::string File = removeExtension(module_name);
-    newFunctionName = "__invivo__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+    if(File == Original_location)
+        newFunctionName = "__invivo__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+    else
+        newFunctionName = "__invivo__" + File + "_" + Original_location + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
   }
   else {
     newFunctionName = "__invivo__" + oldFunction->getName().str();
@@ -233,7 +246,7 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
     Module* mod = F.getParent();
     if(Mode == VIVO) { //Not replaying a loop so we have to insert init in main function
         std::vector<Type*>FuncTy_8_args;
-        FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
+        //~ FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
         FunctionType* FuncTy_8 = FunctionType::get(
                         /*Result=*/Type::getVoidTy(mod->getContext()),
                         /*Params=*/FuncTy_8_args,
@@ -276,13 +289,7 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                                 GlobalValue::ExternalLinkage,
                                 "likwid_markerInit",
                                 mod);
-                //Create parameters for init function
-                std::vector<Value*> initParameter;
-                ConstantInt* const_int;
-                if(nestedIsAllowed) const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
-                else const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
-                initParameter.push_back(const_int);
-                CallInst::Create(initFunction, initParameter, "", &firstBB->front());
+                CallInst::Create(initFunction, "", &firstBB->front());
                 DEBUG(dbgs() << "Init successfuly inserted in main function\n");
             }
         }

@@ -321,8 +321,12 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     //~ oss.clear();
     //~ oss << lastLoc.getLineNumber();
     //~ std::string lastLine = oss.str();
+    std::string Original_location = removeExtension(firstLoc.getFilename().str());
     std::string File = removeExtension(module_name);
-    newFunctionName = "__extracted__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+    if(File == Original_location)
+        newFunctionName = "__extracted__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+    else
+        newFunctionName = "__extracted__" + File + "_" + Original_location + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
   }
   else {
     newFunctionName = "__extracted__" + oldFunction->getName().str() + "_" + header->getName().str();
