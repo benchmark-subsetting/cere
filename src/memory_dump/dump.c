@@ -346,7 +346,7 @@ lock_mem(void)
   if(!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
 
-  char *  addresses[255];
+  char *  addresses[512];
   char buf[BUFSIZ + 1];
   size_t start, end;
   int counter = 0;
@@ -390,7 +390,7 @@ lock_mem(void)
          continue;
 
       char * page_start = round_to_page((char*)start);
-      assert(count < 255);
+      assert(count < 512);
       addresses[count++] = (char*) page_start;
       addresses[count++] = (char*) end;
   }
