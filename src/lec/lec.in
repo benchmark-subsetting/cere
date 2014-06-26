@@ -17,7 +17,8 @@ LOOP_MANAGE = "/src/LoopManager/.libs/libLoopManager.so"
 LOOP_INSTR = "/src/LoopInstrumentation/.libs/libLoopInstrumentation.so"
 DRAGONEGG = ("/libs/dragonegg-3.3.src/dragonegg.so " +
              "-fplugin-arg-dragonegg-emit-ir -o")
-VERSION = "0.1"
+VERSION = "@PACKAGE_VERSION@"
+LLVM_BINDIR = "@LLVM_BINDIR@"
 
 
 #Allowed options
@@ -80,11 +81,11 @@ def dump_fun(mode_opt, BASE):
             temp = temp+"--loops-file="+mode_opt.regions_file+" "
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
-    safe_system(("opt -S -load {Root}{LoopExt} -loop-extract-all " +
-                "{base}.ll -o {base}.ll").format(Root=PROJECT_ROOT,
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
+                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, base=BASE), EXIT=False)
-    safe_system(("opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
-                "{base}.ll -o {base}.ll").format(Root=PROJECT_ROOT,
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
+                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
 
 
@@ -101,13 +102,14 @@ def replay_fun(mode_opt, BASE):
     print "Compiling replay mode"
     if (mode_opt.invocation):
         temp = temp + "--invocation=" + mode_opt.invocation + " "
-    safe_system(("opt -S -load {Root}{LoopExt} -loop-extract-all " +
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
                 "-isolate-loop={loop} {base}.ll -o {base}.ll").format(
-                Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
+                llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
                 loop=mode_opt.region, base=BASE), EXIT=False)
-    safe_system(("opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
-                "{base}.ll -o {base}.ll").format(Root=PROJECT_ROOT,
-                LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
+                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR,
+                    Root=PROJECT_ROOT, LoopMan=LOOP_MANAGE, opts=temp,
+                    base=BASE), EXIT=False)
     if (mode_opt.instrument):
         print "Instrumentation mode"
         temp_instr = "--instrument-loop=" + mode_opt.region + " "
@@ -115,11 +117,13 @@ def replay_fun(mode_opt, BASE):
             print "Trace mode"
             temp_instr = (temp_instr + "--loop-to-trace="
                           + mode_opt.region + " ")
-        safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+        safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR,
                     base=BASE), EXIT=False)
-        safe_system(("opt -S -load {Root}{LoopInstr} " +
+        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
                     "-vitro-loop-instrumentation {opts} {base}.ll " +
-                    "-o {base}.ll").format(Root=PROJECT_ROOT,
+                    "-o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                     LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
                     EXIT=False)
 
@@ -160,11 +164,12 @@ def original_fun(mode_opt, BASE):
         if(mode_opt.no_nested_regions):
             temp = temp+"--nested-loops=false "
     if(mode_opt.instrument):
-        safe_system(("opt -S -loop-simplify {base}.ll -o {base}.ll").format(
-                    base=BASE, EXIT=False))
-        safe_system(("opt -S -load {Root}{LoopInstr} " +
+        safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR, base=BASE, EXIT=False))
+        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
                     "-vivo-loop-instrumentation {opts} {base}.ll " +
-                    "-o {base}.ll").format(Root=PROJECT_ROOT,
+                    "-o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                     LoopInstr=LOOP_INSTR, opts=temp, base=BASE, EXIT=False))
     else:
         if(mode_opt.trace):
@@ -233,8 +238,8 @@ def first_compil(INCLUDES, SOURCE, BASE, ext):
                     includes=" ".join(INCLUDES), source=SOURCE,
                     Root=PROJECT_ROOT, dragonegg=DRAGONEGG, base=BASE))
     else:
-        safe_system(("clang -O0 -g -c {includes} {source} -S -emit-llvm -o " +
-                    "{base}.ll").format(includes=" ".join(INCLUDES),
+        safe_system(("{llvm_bindir}/clang -O0 -g -c {includes} {source} -S -emit-llvm -o " +
+                    "{base}.ll").format(llvm_bindir=LLVM_BINDIR, includes=" ".join(INCLUDES),
                     source=SOURCE, base=BASE))
 
 
@@ -244,11 +249,11 @@ def last_compil(INCLUDES, SOURCE, BASE, COMPIL_OPT):
     Compile BASE.ll
     If Error compile with INCLUDES
     '''
-    test = os.system("clang -c {opts} {base}.ll -o {base}.o".format(
-                     opts=" ".join(COMPIL_OPT), base=BASE))
+    test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {base}.o".format(
+                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE))
     if (test):
-        safe_system("clang -c {opts} {includes} {source} -o {base}.o".format(
-                    opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
+        safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {base}.o".format(
+                    llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
                     source=SOURCE, base=BASE))
 
 

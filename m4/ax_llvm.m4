@@ -70,6 +70,7 @@ AC_DEFUN([AX_LLVM],
   fi
 
   LLVM_BINDIR=`$LLVM_CONFIG --bindir`
+  AC_DEFINE_UNQUOTED([LLVM_BINDIR], ["$LLVM_BINDIR"], [The llvm bin dir])
   LLVM_CPPFLAGS=`$LLVM_CONFIG --cxxflags`
   LLVM_LDFLAGS=`$LLVM_CONFIG --ldflags`
   LLVM_LIBS=`$LLVM_CONFIG --libs $2`

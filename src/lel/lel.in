@@ -14,7 +14,7 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 RDTSC = "/src/rdtsc/librdtsc.a"
 MEMORYDUMP = "/src/memory_dump/.libs/"
-VERSION = "0.1"
+VERSION = "@PACKAGE_VERSION@"
 LD="gcc-4.7"
 
 
@@ -47,8 +47,8 @@ class OptAction(argparse.Action):
 
 def fail_lel(error_message):
     exit("Error {prog} : {cmd}".format(prog='lel', cmd=error_message))
-    
-    
+
+
 def safe_system(command):
     '''
     Try-catch system call
@@ -68,7 +68,7 @@ def user_main(FILE, LOOP, instrument):
     else:
         temp=""
     TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
-    template = TEMPLATE.read() 
+    template = TEMPLATE.read()
     TEMPLATE.close()
     FILE.write(template.format(time_out=TIMEOUT_SECONDS, likwid=temp,
                in_vitro_call_count=INVITRO_CALL_COUNT,
@@ -133,7 +133,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     safe_system("gcc-4.7 -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     safe_system(("{ld} {opts} -o {binary} objs.o realmain.o {args} " +
-                "-L {Root}{libs} -lload -Wl," + 
+                "-L {Root}{libs} -lload -Wl," +
                 "--rpath={Root}{libs} -ldl").format(
                 ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT,
                 Root=PROJECT_ROOT,libs=MEMORYDUMP))
@@ -148,7 +148,7 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Original mode
     Only call the linker
     '''
-    safe_system(("{ld} {opts} -o {binary} {Root}{libs}").format(ld=LD, 
+    safe_system(("{ld} {opts} -o {binary} {Root}{libs}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=RDTSC))
 
 
