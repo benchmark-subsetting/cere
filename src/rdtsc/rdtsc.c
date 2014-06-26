@@ -100,22 +100,20 @@ void dump_trace(region *r, int nbEltToDump)
 	}
 }
 
-void likwid_markerInit(bool global)
+void likwid_markerInit()
 {
-    calibrate_serialize_overhead();
+	calibrate_serialize_overhead();
 	htable_init(&regionHtab, rehash, NULL);
 	htable_init(&call_count_reminder, rehash2, NULL);
 	atexit(likwid_markerClose);
 	LEVEL=0;
-	//Are we in global instrumentation mode?
-	GLOBAL=global;
 	INITIALIZED=true;
 }
 
 void likwid_markerClose()
 {
 	while(strlen(call_stack) > 0) {
-		rdtsc_markerStopRegion(call_stack, 0);
+		rdtsc_markerStopRegion(call_stack, 0, false);
 	}
 	struct htable_iter iter;
 	if (htable_first(&regionHtab,&iter) == NULL) return;
@@ -147,12 +145,12 @@ void likwid_markerClose()
  * if does not exists, create it
  * else record start counter
 */
-void rdtsc_markerStartRegion(char *reg, int trace) {
+void rdtsc_markerStartRegion(char *reg, int trace, bool global) {
 	if(!INITIALIZED) return;
 
 	//Avoid measuring a son loop when we are not in global dump
 	LEVEL+=1;
-	if(!GLOBAL && LEVEL!=1) return;
+	if(!global && LEVEL!=1) return;
 
 	push(reg, call_stack);
 	char* regionName=call_stack;
@@ -218,15 +216,14 @@ void rdtsc_markerStartRegion(char *reg, int trace) {
 	r->start = rdtsc();
 }
 
-void rdtsc_markerStopRegion(char *reg, int trace) {
-	if(!INITIALIZED) return;
-
-	LEVEL-=1;
-	if(!GLOBAL && LEVEL!=0) return;
-
-    serialize();
+void rdtsc_markerStopRegion(char *reg, int trace, bool global) {
+	//serialize();
 	unsigned long long int stop = rdtsc();
 	unsigned long long int loop_cycles;
+
+	if(!INITIALIZED) return;
+	LEVEL-=1;
+	if(!global && LEVEL!=0) return;
 
 	char* regionName = call_stack;
 	/* We must check that reg is base name of regionName */
@@ -236,12 +233,13 @@ void rdtsc_markerStopRegion(char *reg, int trace) {
 	else {
 		loop_cycles = stop - r->start;
 
-		if(loop_cycles > serialize_overhead) {
-			loop_cycles -= serialize_overhead;
-		} else {
-			//fprintf(stderr, "RDTSC: Warning negative cycles for loop >%s<\n", reg);
-			loop_cycles = 0;
-		}
+		/*Uncomment to remove the cost of a serialize()*/
+		//if(loop_cycles > serialize_overhead) {
+			//loop_cycles -= serialize_overhead;
+		//} else {
+			//loop_cycles = 0;
+			//r->nb_invocation_skiped++;
+		//}
 		pop(call_stack);
 		r->counter += loop_cycles;
 		if(r->traced) {
@@ -254,19 +252,19 @@ void rdtsc_markerStopRegion(char *reg, int trace) {
 }
 
 //For fortran code
-void rdtsc_markerstartregion_(char *regionName, int len, int trace)
+void rdtsc_markerstartregion_(char *regionName, int len, int trace, bool global)
 {
-	rdtsc_markerStartRegion( regionName, trace );
+	rdtsc_markerStartRegion( regionName, trace, global );
 }
 
-void rdtsc_markerstopregion_(char *regionName, int len, int trace)
+void rdtsc_markerstopregion_(char *regionName, int len, int trace, bool global)
 {
-	rdtsc_markerStopRegion( regionName, trace );
+	rdtsc_markerStopRegion( regionName, trace, global );
 }
 
-void likwid_markerinit_(bool global)
+void likwid_markerinit_()
 {
-	likwid_markerInit(global);
+	likwid_markerInit();
 }
 
 void likwid_markerclose_()
