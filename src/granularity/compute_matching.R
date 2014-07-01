@@ -52,7 +52,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 # Check the format of the script
 if (length(args)!=1) {
-    print("usage: ./compute_matching.R <Path to bench>")
+    print("usage: ./compute_matching.R <Path to bench measures>")
     q()
 }
 
@@ -63,7 +63,7 @@ allLoops = load_csv(paste(benchDir, "/all_loops.csv", sep=""))
 allLoops = remove_prefix(allLoops, "__invivo__") #remove the prefix
 
 #Open invitro measures
-invitroRes = load_csv(paste(benchDir, "/results/invitro_results.csv", sep=""))
+invitroRes = load_csv(paste(benchDir, "/invitro_results.csv", sep=""))
 invitroRes = remove_prefix(invitroRes, "__extracted__") #remove prefix
 aggregatedResults = aggregateData(allLoops, invitroRes) #merge invivo and invitro
 
@@ -71,6 +71,6 @@ matchingCodelet = compute_matching(aggregatedResults, TOLERANCE)
 matchingCodelet = matchingCodelet[!duplicated(matchingCodelet$CodeletName),]
 replayedCodelet = compute_matching(aggregatedResults, 1) #Get all invivo loop we were able to replay invitro
 replayedCodelet = replayedCodelet[!duplicated(replayedCodelet$CodeletName),]
-dump_to_file(matchingCodelet, "matching_codelets")
-dump_to_file(replayedCodelet, "replayedCodelet")
+dump_to_file(matchingCodelet, paste(benchDir, "/matching_codelets", sep=""))
+dump_to_file(replayedCodelet, paste(benchDir, "/replayedCodelet", sep=""))
 
