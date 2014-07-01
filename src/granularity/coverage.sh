@@ -85,7 +85,7 @@ ${ROOT}/granularity.py ${BENCH_DIR}/${RES_DIR}/all_loops.csv ${CYCLES} > ${RES_D
 sed -i 's/__invivo__/__extracted__/g' $RES_DIR/loops_to_dump
 
 make clean && rm -f *.ll
-${COMPILE_CMD} MODE="dump --regions-file=loops_to_dump"
+${COMPILE_CMD} MODE="dump --regions-file=$RES_DIR/loops_to_dump"
 eval ${BIN_CMD}
 
 #Create a file with all dumped loops name
