@@ -31,6 +31,8 @@ void mtrace_deactivate(void)
 static void
 hooks_init(void)
 {
+  state.mtrace_init_called = true;
+
   real_malloc = dlsym(RTLD_NEXT, "malloc");
   if (NULL == real_malloc) {
       fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
@@ -84,6 +86,18 @@ malloc(size_t size)
 
 void *calloc(size_t nmemb, size_t size)
 {
+
+  /* On certain versions of linux and when linking with pthreads,
+     dlsym uses calloc. This can cause an infinite loop when calling
+     hooks_init(). To avoid this, we return a statically allocated block of
+     memory in that case. Reported by Sebastien Valat. */
+
+  if (real_calloc==NULL && state.mtrace_init_called) {
+      assert(size < CALLOC_INIT);
+      assert(nmemb * size < CALLOC_INIT);
+      return state.calloc_init_mem;
+  }
+
   if(real_calloc==NULL) hooks_init();
   long unsigned nb_pages_to_allocate = round_up_page(nmemb*size)/PAGESIZE;
 
