@@ -267,12 +267,9 @@ static void
 page_ign_dump(void)
 {
   char path[MAX_PATH];
-  snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], state.pagelog_suffix);
-  FILE * f = fopen(path, "w");
   for (int i = 0; i <state.last_ignored; i++) {
       bool result = dump_page((off64_t)state.pages_ignored[i]);
   }
-  fclose(f);
 }
 
 static void
