@@ -82,12 +82,12 @@ cluster <- function (cycles) {
 CodeletName = args[1]
 nbLoopFiles = as.integer(args[2])
 print(CodeletName)
-allLoops = load_csv(paste("results/", CodeletName, ".csv", sep=""))
+allLoops = load_csv(args[3])
 
 nbValues=allLoops[allLoops$Codelet.Name==CodeletName, ]$Call.Count
 allValues <- matrix(ncol=nbLoopFiles, nrow=nbValues)
 for(i in 1:nbLoopFiles) {
-    binFile=args[2+i]
+    binFile=args[3+i]
     to.read=file(binFile, "rb")
     tracedLoop=readBin(to.read, double(), n=nbValues*2)
     values <- tracedLoop[seq(1,nbValues*2, 2)]
@@ -151,8 +151,7 @@ for (clust in unique(cycles$Cluster)) {
 res <- cycles[cycles$is.representative==T, ]
 res <- res[order(res$Cluster), ]
 #The part of each cluster time in the total loop time.
-print(res)
-print(Sums)
+
 res$part = (Sums/res$values) * total_cycles/total_kept_cycles
 #best=sum(res$values*res$part)*total_invocation
 #best_error=abs(best-total_cycles)/pmax(best, total_cycles)
