@@ -19,6 +19,7 @@ bool is_mru(void * addr);
 #define MAX_STACK 64
 #define MAX_PATH 256
 #define MAX_IGNORE 32
+#define CALLOC_INIT 512
 
 enum dump_sa {
     MRU_SA,
@@ -46,6 +47,7 @@ struct dump_state {
     enum dump_sa dump_sa;
     struct htable counters;
     bool mtrace_active;
+    bool  mtrace_init_called;
     int stack_pos;
     int dump_active_pos;
     char hs[PAGESIZE+BUFSIZ];
@@ -53,6 +55,7 @@ struct dump_state {
     char dump_path[MAX_STACK][MAX_PATH];
     char * pages_cache[MAX_LOG_SIZE];
     char * pages_ignored[MAX_IGNORE];
+    char * calloc_init_mem[CALLOC_INIT];
     char filler __attribute__ ((aligned (PAGESIZE))) ;
 } __attribute__ ((packed));
 
