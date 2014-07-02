@@ -1,5 +1,6 @@
 # -*- mode: m4 -*-
 #
+# Copyright (c) 2014 University of Versailles
 # Copyright (c) 2012, 2013 The University of Utah
 # Copyright (c) 2008 Andy Kitchen <agimbleinthewabe@gmail.com>
 #
@@ -74,6 +75,7 @@ AC_DEFUN([AX_LLVM],
   LLVM_CPPFLAGS=`$LLVM_CONFIG --cxxflags`
   LLVM_LDFLAGS=`$LLVM_CONFIG --ldflags`
   LLVM_LIBS=`$LLVM_CONFIG --libs $2`
+  LLVM_LIBDIR=`$LLVM_CONFIG --libdir`
 
   # The output of `llvm-config --ldflags' often contains library directives
   # that must come *after* all the LLVM libraries on the link line: e.g.,
@@ -113,5 +115,35 @@ llvm::Module *M = new llvm::Module("test", context);]])],
     AC_MSG_FAILURE(
       [cannot compile and link test program with selected LLVM])
   fi
+
+
+  # Check for dragonegg
+
+  AC_ARG_WITH([dragonegg],
+          AS_HELP_STRING([--with-dragonegg@<:@=DIR@:>@],
+              [PATH of dragonegg.so]),
+          [with_dragonegg="$withval"],
+          [with_dragonegg=yes])
+
+  if test "x$with_dragonegg" = "xno"; then
+    AC_MSG_WARN(
+      [--with-dragonegg=no was given. Disabling fortran support.])
+    DRAGONEGG_PATH=""
+  else
+    if test "x$with_dragonegg" = "xyes"; then
+      DRAGONEGG_PATH="$LLVM_LIBDIR/dragonegg.so"
+    else
+      DRAGONEGG_PATH="$with_dragonegg"
+    fi
+
+    if test -z "$DRAGONEGG_PATH"; then
+        AC_MSG_ERROR(
+                [dragonegg.so could not be found at $with_dragonegg_path])
+        DRAGONEGG_PATH=""
+    fi
+  fi
+  AC_DEFINE_UNQUOTED([DRAGONEGG_PATH], ["$DRAGONEGG_PATH"], [The dragonegg.so path])
+
+  AC_SUBST(DRAGONEGG_PATH)
   AC_SUBST(LLVM_BINDIR)
 ])

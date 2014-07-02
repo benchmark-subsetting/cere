@@ -1,9 +1,0 @@
-// RUN: %dragonegg -xc++ -S -std=c++0x %s
-// XFAIL: gcc-4.5
-// PR14777
-void fun()
-{
-  if( nullptr == 0 );
-  decltype(nullptr) mynull = 0;
-  if( mynull == 0 );
-}

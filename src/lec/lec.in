@@ -15,11 +15,9 @@ PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 LOOP_EXT = "/src/LoopExtractorAll/.libs/libLoopExtractorAll.so"
 LOOP_MANAGE = "/src/LoopManager/.libs/libLoopManager.so"
 LOOP_INSTR = "/src/LoopInstrumentation/.libs/libLoopInstrumentation.so"
-DRAGONEGG = ("/libs/dragonegg-3.3.src/dragonegg.so " +
-             "-fplugin-arg-dragonegg-emit-ir -o")
 VERSION = "@PACKAGE_VERSION@"
 LLVM_BINDIR = "@LLVM_BINDIR@"
-
+DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
 
 #Allowed options
 option_forbidden = set([("dump", "--trace"),
@@ -233,10 +231,14 @@ def first_compil(INCLUDES, SOURCE, BASE, ext):
     and compile SOURCE code
     '''
     if ((ext == ".f") or (ext == ".f90") or (ext == ".F") or (ext == ".F90")):
-        safe_system(("gcc-4.7 -O0 -g -c {includes} {source} -S " +
-                    "-fplugin={Root}{dragonegg} {base}.ll").format(
-                    includes=" ".join(INCLUDES), source=SOURCE,
-                    Root=PROJECT_ROOT, dragonegg=DRAGONEGG, base=BASE))
+        if DRAGONEGG_PATH:
+            safe_system(("gcc-4.7 -O0 -g -c {includes} {source} -S " +
+                        "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
+                        includes=" ".join(INCLUDES), source=SOURCE,
+                        Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
+        else:
+            fail_lec("fortran support disabled. Please reconfigure using --with-dragonegg.")
+
     else:
         safe_system(("{llvm_bindir}/clang -O0 -g -c {includes} {source} -S -emit-llvm -o " +
                     "{base}.ll").format(llvm_bindir=LLVM_BINDIR, includes=" ".join(INCLUDES),
