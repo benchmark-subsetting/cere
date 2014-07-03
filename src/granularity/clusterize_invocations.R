@@ -11,6 +11,7 @@ suppressPackageStartupMessages(require(cluster, quietly=TRUE))
 options(warn=-1)
 options(error=traceback)
 MAX_POINTS=50000
+ROOT_PLOTS = "measures/plots/"
 set.seed(2000)
 
 # Check the arguments 
@@ -25,6 +26,15 @@ plot_by_Codelets <- function(tracedLoop, CodeletName) {
     p <- p + geom_point()
     p <- p + ggtitle(CodeletName)
     ggsave(file="test.png", plot=p, dpi=300)
+}
+
+plot_by_Cluster <- function(table, CodeletName) {
+    p <- ggplot(table, aes(y=values, x=invocation, colour=as.character(Cluster), shape = is.representative))
+    p <- p + geom_point()
+    p <- p + ggtitle(CodeletName)
+    p <- p + theme_bw()
+    p <- p + guides(colour=guide_legend(title="Cluster"))
+    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, dpi=300)
 }
 
 # load_csv: reads a csv file
@@ -147,6 +157,8 @@ for (clust in unique(cycles$Cluster)) {
     cycles[cycles$Cluster==clust, ]$is.representative =
       ifelse(cycles[cycles$Cluster==clust, ]$invocation == tmp[1, ]$invocation, T, F)
 }
+
+plot_by_Cluster(cycles, CodeletName)
 
 res <- cycles[cycles$is.representative==T, ]
 res <- res[order(res$Cluster), ]
