@@ -63,11 +63,12 @@ compute_error()
     error=`echo "scale=3;${diff}/${max}" | bc | awk '{printf "%f", $0}'`
 }
 
-rm -f $RES_DIR/new_matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocation_error $RES_DIR/Rplot.pdf $PLOT_DIR/*
+rm -f $RES_DIR/new_matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf $PLOT_DIR/*
 touch $RES_DIR/new_matching_codelets
 #Get application runtime in cycles
 app_cycles=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
 echo "Codelet Name,Error,Exec Time" > $RES_DIR/matching_error.csv
+echo "Codelet Name,Invocation,Cluster,Part,Invitro,Invivo,Error" > $RES_DIR/invocations_error.csv
 #For each codelet
 while read codeletName; do
     echo "$codeletName"
@@ -106,11 +107,12 @@ while read codeletName; do
     mv ${codeletName}.invocations $RES_DIR/.
     #We have invocations to dump, so let's dump them!
     cycles=0
-    result_file="$codeletName"
+    cluster=0
     while read params; do
         invocation=`echo $params | cut -d ' ' -f 1`
         perc=`echo $params | cut -d ' ' -f 2`
         invivo=`echo $params | cut -d ' ' -f 3`
+        cluster=$((${cluster}+1))
         if [[ $invivo -eq 0 ]]; then
             echo "Error invivo cycles=$invivo. Can't measure invitro cycles"
             err=1
@@ -150,11 +152,10 @@ while read codeletName; do
         c=`echo "${tmp_cycles}/${tmp_invocation}" | bc`
         compute_error ${c} ${invivo}
         echo "In vitro cycles = $c & in vivo cycles = $invivo (error = ${error})"
-
         #Aggregate invocations cycles, needed to compute invitro measure for the codelet
         cycles=`echo "${cycles}+${c}*${perc}" | bc`
         #And keep track of error for each invocation
-        result_file="$result_file ${invocation} ${error}"
+        echo "${codeletName},${invocation},${cluster},${perc},${c},${invivo},${error}" >> $RES_DIR/invocations_error.csv
     done < $RES_DIR/${codeletName}.invocations
     #if an error has occured, let's got to the next codelet
     if [[ ! ( -z ${err} ) ]]; then
@@ -163,7 +164,6 @@ while read codeletName; do
         rm -f $RES_DIR/${codeletName/__invivo__/__extracted__}_*.csv
         continue
     fi
-    echo "$result_file" >> $RES_DIR/invocation_error
     #Compute error between invivo and in vitro
     cy=`grep -F "${codeletName}," $RES_DIR/all_loops.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
     cycles=`echo "scale=3;${cycles}" | bc`
