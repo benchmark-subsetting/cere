@@ -5,169 +5,166 @@ import os
 import argparse
 import jinja2
 import csv
+from contextlib import contextmanager
 EXTENSIONS = [".c",".f",".f90",".C",".F",".F90"]
-Dict = {".c":["clike/clike.js","text/x-csrc"],".C":["clike/clike.js",
-        "text/x-csrc"],".f":["fortran/fortran.js","text/x-Fortran"],
-        ".F":["fortran/fortran.js","text/x-Fortran"],".f90":["fortran/fortran.js",
-        "text/x-Fortran"],".F90":["fortran/fortran.js","text/x-Fortran"]}
-Unit = {0 : "", 3 :"Kilo", 6 : "Mega", 9 : "Giga", 12 : "Terra"}
+Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
+             "text/x-csrc"], ".f":["fortran/fortran.js", "text/x-Fortran"],
+             ".F":["fortran/fortran.js", "text/x-Fortran"],
+             ".f90":["fortran/fortran.js", "text/x-Fortran"],
+             ".F90":["fortran/fortran.js", "text/x-Fortran"],
+             ".html":["htmlmixed/htmlmixed.js", "text/htmlmixed"]}
 ROOT = os.path.dirname(os.path.realpath(__file__))
 ROOT_MEASURE = "./measures"
 CSV_DELIMITER = ','
-COLUMN_NAME = "Codelet Name"
-TEMP_DIR = ""
+REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
+INVOCATION_FIELDNAMES = ["Invocation", "Cluster", "Part", "Invitro (cycles)",
+                         "Invivo (cycles)", "Error (%)"]
 
 
-def popd():
-    global TEMP_DIR
-    os.chdir(TEMP_DIR)
-    TEMP_DIR = ""
+class MyError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
 
 
-def safe_exit(error):
-    if (TEMP_DIR):
-        popd()
-    exit("Error Report -> " + error)
+class Code:
+    def __init__(self, name, ext, value, line):
+        self._name = name
+        self._value = value
+        self._line = line
+        self._mode = Mode_dict[ext][1]
+        self._script = Mode_dict[ext][1]
+    def getScript(self):
+        return self._script
 
 
-def pushd(DIR):
-    global TEMP_DIR
+class Dict_call_count():
+    def __init__(self):
+        All_loops = read_csv(ROOT_MEASURE + "/all_loops.csv")
+        self.dict = {}
+        for loop in All_loops:
+            self.dict[loop["Codelet Name"]] = loop["Call Count"]
+
+
+class Report:
+    def __init__(self,bench):
+        self._bench = bench
+        self.init_template()
+        self.init_nb_cycles()
+        self.init_regions()
+        self.init_invocations()
+        self.init_codes()
+        self.init_liste_script()
+        
+    def init_template(self):
+        try:
+            TEMPLATE=open(ROOT + "/template.html", 'r')
+        except (IOError):
+            raise MyError("Can't open template.html")
+        self._template = jinja2.Template(TEMPLATE.read())
+        TEMPLATE.close()
+        
+    def init_nb_cycles(self):
+        Dict = read_csv(ROOT_MEASURE + '/app_cycles.csv')
+        row = Dict.next()
+        self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
+        self._nb_cycles = "{:e}".format(int(self._nb_cycles))
+        
+    def init_regions(self):
+        self._regions = read_csv(ROOT_MEASURE +"/matching_error.csv")
+        self._regions = (i[1] for i in reversed(sorted(enumerate(self._regions),
+                         key=lambda x:x[1]["Exec Time"])))
+        self._regions = map(rewrite_dict_region, self._regions)
+        
+    def init_invocations(self):
+        self._invocations = read_csv(ROOT_MEASURE + '/invocations_error.csv')
+        self._invocations = map(rewrite_dict_invocation, self._invocations)
+        
+    def init_codes(self):
+        self._codes = map(read_code, self._regions)
+        
+    def init_liste_script(self):
+        self._liste_script = []
+        for code in self._codes:
+            self._liste_script = self._liste_script + [code._script]
+        self._liste_script = set(self._liste_script)
+        
+    def write_report(self):
+        try:
+            REPORT=open(self._bench+'.html','w')
+        except (IOError):
+            raise MyError("Can't open "+ self._bench +".html")
+        REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
+                    regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
+                    invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
+                    codes=self._codes, l_modes=self._liste_script))
+        REPORT.close()
+
+
+@contextmanager
+def context(DIR):
     TEMP_DIR = os.getcwd()
     if(os.chdir(DIR)):
-        safe_exit("Can't find " + DIR)
-
-
-def get_template():
-    TEMPLATE=open(ROOT + '/template.html', 'r')
-    if (not TEMPLATE):
-        safe_exit("Can't open template.html")
-    template = jinja2.Template(TEMPLATE.read())
-    TEMPLATE.close()
-    return template
-
-
-def write_report(template, BENCH, nb_cycles, REGIONS, REGIONS_FIELDNAMES,
-                 CODES, LISTE_MODES, INVOCATIONS, INVOCATION_FIELDNAMES):
-    REPORT=open(BENCH+'.html','w')
-    if (not REPORT):
-        safe_exit("Can't open test.html")
-    REPORT.write(template.render(bench=BENCH, root=ROOT, nb_cycles=nb_cycles,
-                 regionlist=REGIONS, regionfields=REGIONS_FIELDNAMES,
-                 invocationlist=INVOCATIONS, invocationfields=INVOCATION_FIELDNAMES,
-                 codes=CODES, l_modes=LISTE_MODES))
-    REPORT.close()
+        exit("Error Report -> Can't find " + DIR)
+    try:
+        yield
+    except MyError as err:
+        exit("Error Report -> " + err.value)
+    else:
+        print ("Report created")
+    os.chdir(TEMP_DIR)
 
 
 def read_csv(File):
-    FILE = open(File, 'rb')
-    if (not FILE):
-        safe_exit("Can't read " + File)
+    try:
+        FILE = open(File, 'rb')
+    except (IOError):
+        raise MyError("Can't read " + File + "/nVerify coverage and matching")
     Dict = csv.DictReader(FILE, delimiter=CSV_DELIMITER)
     return Dict
 
 
-def get_nb_cycles():
-    Dict = read_csv(ROOT_MEASURE + '/app_cycles.csv')
-    row = Dict.next()
-    nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
-    return nb_cycles
+dict_call_count = Dict_call_count()
 
 
-def convert(nb_cycles):
-    temp = int(float(nb_cycles))
-    i = 0
-    while (temp/1000):
-        temp = temp/1000
-        i = i+3
-    word = ""
-    for j,letter in enumerate(nb_cycles):
-        word = word + letter
-        if (j == len(nb_cycles) - i - 1):
-            word = word + ','
-    temp = word + " " + Unit[i]
-    return temp
-
-
-def Percent(x):
+def percent(x):
     return (100 * float(x))
 
 
-def Convert_Percent_region(x):
-    Dict = {"Exec Time (%)":Percent(x["Exec Time"]), COLUMN_NAME:x[COLUMN_NAME],
-            "Error (%)":Percent(x["Error"])}
+def rewrite_dict_region(x):
+    Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
+            "Error (%)":percent(x["Error"]), "nb_invoc":dict_call_count.dict[x["Codelet Name"]]}
     return Dict
 
 
-def Convert_Percent_invocation(x):
-    Dict = {"Cluster":x["Cluster"], "Invocation":x["Invocation"], 
-            "Part":x["Part"], COLUMN_NAME:x[COLUMN_NAME], "Invivo (cycles)":convert(x["Invivo"]),
-            "Invitro (cycles)":convert(x["Invitro"]), "Error (%)":Percent(x["Error"])}
+def rewrite_dict_invocation(x):
+    Dict = {"Cluster":x["Cluster"], "Invocation":x["Invocation"], "Part":x["Part"],
+            "Codelet Name":x["Codelet Name"], "Invivo (cycles)":"{:e}".format(float(x["Invivo"])),
+            "Invitro (cycles)":"{:e}".format(float(x["Invitro"])), "Error (%)":percent(x["Error"])}
     return Dict
 
 
-def sort_regions_fieldnames(regions_fieldnames):
-    return[regions_fieldnames[2] + " (%)", regions_fieldnames[0],
-           regions_fieldnames[1] + " (%)"]
-
-
-def get_tab(FILE):
-    Dict = read_csv(ROOT_MEASURE + FILE)
-    FIELDNAMES = Dict.fieldnames
-    return Dict, FIELDNAMES
-
-
-def get_tab_regions():
-    REGIONS, REGIONS_FIELDNAMES = get_tab('/matching_error.csv')
-    REGIONS = (i[1] for i in reversed(sorted(enumerate(REGIONS), key=lambda x:x[1]["Exec Time"])))
-    REGIONS = map(Convert_Percent_region, REGIONS)
-    REGIONS_FIELDNAMES = sort_regions_fieldnames(REGIONS_FIELDNAMES)
-    return REGIONS, REGIONS_FIELDNAMES
-
-
-def get_tab_invocation():
-    INVOCATIONS, INVOCATIONS_FIELDNAMES = get_tab('/invocations_error.csv')
-    INVOCATIONS = map(Convert_Percent_invocation, INVOCATIONS)
-    INVOCATIONS_FIELDNAMES[-1] = INVOCATIONS_FIELDNAMES[-1] + " (%)"
-    INVOCATIONS_FIELDNAMES[-2] = INVOCATIONS_FIELDNAMES[-2] + " (cycles)"
-    INVOCATIONS_FIELDNAMES[-3] = INVOCATIONS_FIELDNAMES[-3] + " (cycles)"
-    return INVOCATIONS, INVOCATIONS_FIELDNAMES
-
-
-def sep_name(x):
-    region = x[COLUMN_NAME]
-    temp = region
-    filename = ""
-    functionName = ""
-    line = ""
-    i = 0
-    while (i < 4):
-        if (temp[0] == "_"):
-            i = i + 1
-        temp = temp[1:]
-    while i < 5:
-        if (temp[-1] == "_"):
-            i = i + 1
-        else:
-            line = temp[-1] + line
-        temp = temp[:-1]
-    for letters in temp:
-        if (letters == "_"):
-            i = i + 1
-        else:
-            if(i > 5):
-                functionName = functionName + letters
-            else:
-                filename = filename + letters
-    if (i > 6):
+def sep_name(region):
+    '''
+    Separate a region name -> __prefixe__filename_functionname_line
+    in filename functionname and line
+    '''
+    temp = region.split('_')
+    filename = temp[4]
+    functionName = temp[5]
+    line = temp[-1]
+    #if the name is not a wanted name
+    if (len(temp) > 7):
         functionName = "Erreur"
     return [region, filename, functionName, line]
 
 
-def read_code(x):
-    temp = sep_name(x)
+def read_code(region):
+    temp = sep_name(region["Codelet Name"])
     if (temp[2] == "Erreur"):
-        return [temp[0], "Can't obtain source code -> number of '_' > 6",
-                "htmlmixed/htmlmixed.js", "text/htmlmixed", 1]
+        return Code(temp[0], ".html", "Can't obtain source code -> Codelet Name can't "+
+                    "separated in __prefixe__filename_functionname_line", 1)
     EXT = "__None__"
     for ext in EXTENSIONS:
         try:
@@ -179,22 +176,8 @@ def read_code(x):
         except (IOError):
             pass
     if (EXT == "__None__"):
-        safe_exit("Can't open: "+temp[1])
-    return ([temp[0], code]+Dict[EXT]+[temp[3]])
-
-
-def obtains_code(REGIONS):
-    CODES = map(read_code, REGIONS)
-    return CODES
-
-
-def obtains_liste_mode(codes):
-    liste = []
-    for code in codes:
-        liste = liste + [code[2]]
-        code.pop(2)
-    liste = set(liste)
-    return liste, codes
+        raise MyError("Can't open: "+temp[1])
+    return Code(temp[0], EXT, code, temp[3])
 
 
 def main():
@@ -204,18 +187,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dir')
     args = parser.parse_args()
-    pushd(args.dir)
-    BENCH = (args.dir.split("/"))[-2]
-    nb_cycles = get_nb_cycles()
-    template = get_template()
-    REGIONS, REGIONS_FIELDNAMES = get_tab_regions()
-    INVOCATIONS, INVOCATION_FIELDNAMES = get_tab_invocation()
-    CODES = obtains_code(REGIONS)
-    LISTE_MODES, CODES = obtains_liste_mode(CODES)
-    nb_cycles = convert(nb_cycles)
-    write_report(template, BENCH, nb_cycles, REGIONS, REGIONS_FIELDNAMES,
-                 CODES, LISTE_MODES, INVOCATIONS, INVOCATION_FIELDNAMES)
-    popd()
+    with context(args.dir):
+        bench = os.getcwd().split("/") [-1]
+        REPORT = Report(bench)
+        REPORT.write_report()
 
 
 if __name__ == "__main__":

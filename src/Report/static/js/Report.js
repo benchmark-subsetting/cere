@@ -19,12 +19,21 @@ for (var i = 1 ; i < rows.length ; i++){
 
 
 function first_call (j) {
+    id = regions[j].getAttribute('id')
     Code[j].value = suppr_whitespace(Code[j].value);
     editor[j] = CodeMirror.fromTextArea(Code[j], {
         mode:Code[j].getAttribute("mode"), indentUnit:4,
         autofocus:true, lineNumbers:true, /*readOnly:true*/ });
-    Images[2*j].setAttribute('src', ROOT_GRAPHS+regions[j].getAttribute('id')+"_byPhase.png");
-    Images[2*j + 1].setAttribute('src', ROOT_GRAPHS+regions[j].getAttribute('id')+".png");
+    if (regions[j].getAttribute("data-nb-invoc") > 1) {
+        Images[2*j].setAttribute('src', ROOT_GRAPHS+ id +"_byPhase.png");
+        Images[2*j + 1].setAttribute('src', ROOT_GRAPHS+ id +".png");
+    }
+    else {
+        parent = Images[2*j].parentNode;
+        console.log(parent);
+        parent.removeChild(Images[2*j]);
+        parent.removeChild(Images[2*j + 1]);
+    }
 }
 
 
@@ -46,7 +55,7 @@ for (var j = 1 ; j < regions.length ; j++){
 
 table.onclick = function (event) {
     var row = event.target.parentNode;
-    if (event.target.getAttribute("data-button") == "True") {
+    if (row.getAttribute("data-button") == "True") {
         for (var j = 0 ; j < regions.length ; j++){
             rows[j+1].className = "";
             if(regions[j].getAttribute('id') == row.getAttribute('id')) {

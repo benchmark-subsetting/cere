@@ -15,18 +15,18 @@
   </tr>
   {% for row in tab %}
     {% if ((not id) or (row[NAME] == id)) %}
-      <tr>
+      <tr data-button="True">
       {% for column in fieldnames[:-1] %}
         {% if ((not id) or (column != NAME)) %}
           <td>{{row[column]}}</td>
         {% endif %}
       {% endfor %}
       {% if row[fieldnames[-1]] < 15 %}
-        <td class="btn-success btn-block" data-button="True">{{row[fieldnames[-1]]}}</td>
+        <td class="btn-success btn-block">{{row[fieldnames[-1]]}}</td>
       {% elif row[fieldnames[-1]] > 30 %}
-        <td class="btn-danger btn-block" data-button="True">{{row[fieldnames[-1]]}}</td>
+        <td class="btn-danger btn-block">{{row[fieldnames[-1]]}}</td>
       {% else %}
-        <td class="btn-warning btn-block" data-button="True">{{row[fieldnames[-1]]}}</td>
+        <td class="btn-warning btn-block">{{row[fieldnames[-1]]}}</td>
       {% endif %}
        </tr>
     {% endif %}
@@ -54,17 +54,17 @@
   </head>
   <body class="container-fluid">
     <div class="row">
-      <h1>{{bench}}<br><small>nb_cycles : {{nb_cycles}}cycles</small></h1><br>
+      <h1>{{bench}}<br><small>nb_cycles : {{nb_cycles}} cycles</small></h1><br>
       <span id="Main" class="col-md-4">
         {{ table("Regions", regionfields, regionlist, 0) }}
       </span>
       <span id="Region" class="col-md-8">
         {% for region in regionlist %}
-        <div id="{{region[NAME]}}">
+        <div id="{{region[NAME]}}" data-nb-invoc="{{region['nb_invoc']}}">
           {% for code in codes %}
-            {% if code[0] == region[NAME] %}
-              <textarea class="code" mode={{code[2]}} line={{code[3]}}>
-                {{code[1]}}
+            {% if code._name == region[NAME] %}
+              <textarea class="code" mode={{code._mode}} line={{code._line}}>
+                {{code._value}}
               </textarea>
             {% endif %}
           {% endfor %}
