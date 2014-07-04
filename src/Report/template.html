@@ -58,6 +58,8 @@
       <h1>{{bench}}<br><small>nb_cycles : {{nb_cycles}} cycles</small></h1><br>
       <span id="Main" class="col-md-4">
         {{ table("Regions", regionfields, regionlist, 0) }}
+        <br>
+        <h4>{{bench}}: {{part}}%  match</h4>
       </span>
       <span id="Region" class="col-md-8">
         {% for region in regionlist %}

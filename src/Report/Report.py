@@ -67,6 +67,7 @@ class Report:
         self.init_invocations()
         self.init_codes()
         self.init_liste_script()
+        self.init_part()
         
     def init_template(self):
         try:
@@ -101,6 +102,12 @@ class Report:
             self._liste_script = self._liste_script + [code._script]
         self._liste_script = set(self._liste_script)
         
+    def init_part(self):
+        self._part = 0
+        for region in self._regions:
+            if(region["Error (%)"] < 15):
+                self._part = self._part + region["Exec Time (%)"]
+        
     def write_report(self):
         try:
             REPORT=open(self._bench+'.html','w')
@@ -115,7 +122,7 @@ class Report:
         REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
                     regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
                     invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
-                    codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS))
+                    codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS, part=self._part))
         REPORT.close()
 
 
