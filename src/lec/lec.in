@@ -201,6 +201,7 @@ def init_subpars(parser, region_required):
                         const=True, default=False)
     parser.add_argument('--instrument-app', action=OptAction, nargs=0,
                         const=True, default=False)
+    parser.add_argument('-o')
 
 
 def init_parser_core(parser):
@@ -224,6 +225,7 @@ def init_parser_core(parser):
     parser_instrument.set_defaults(func=original_fun)
 
 
+
 def first_compil(INCLUDES, SOURCE, BASE, ext):
     '''
     First Compilation
@@ -245,18 +247,19 @@ def first_compil(INCLUDES, SOURCE, BASE, ext):
                     source=SOURCE, base=BASE))
 
 
-def last_compil(INCLUDES, SOURCE, BASE, COMPIL_OPT):
+def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     '''
     Last Compilation
     Compile BASE.ll
     If Error compile with INCLUDES
     '''
-    test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {base}.o".format(
-                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE))
+
+    test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(
+                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT))
     if (test):
-        safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {base}.o".format(
+        safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {object}".format(
                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
-                    source=SOURCE, base=BASE))
+                    source=SOURCE, base=BASE, object=OBJECT))
 
 
 def main():
@@ -265,12 +268,13 @@ def main():
     '''
     # Create parsers
     parser = MyParser()
-    parser2 = argparse.ArgumentParser()
+    incl_parser = argparse.ArgumentParser()
     init_parser_core(parser)
-    init_parser_incl(parser2, ["-I", "-D"])
+    init_parser_incl(incl_parser, ["-I", "-D"])
+
     #Parse args
     args = parser.parse_known_args()
-    args2 = parser2.parse_known_args(args[1])
+    args2 = incl_parser.parse_known_args(args[1])
     if (len(args2[1]) == 0):
         exit("Error:Need source file")
     INCLUDES = args2[0].Inc
@@ -278,10 +282,11 @@ def main():
     SOURCE = COMPIL_OPT[-1]
     COMPIL_OPT.remove(SOURCE)
     BASE, ext = os.path.splitext(SOURCE)
+    OBJECT = args[0].o if args[0].o else BASE + '.o'
     first_compil(INCLUDES, SOURCE, BASE, ext)
     # call mode_function
     args[0].func(args[0], BASE)
-    last_compil(INCLUDES, SOURCE, BASE, COMPIL_OPT)
+    last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT)
 
 
 if __name__ == "__main__":
