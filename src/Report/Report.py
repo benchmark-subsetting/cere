@@ -120,7 +120,7 @@ def read_csv(File):
     try:
         FILE = open(File, 'rb')
     except (IOError):
-        raise MyError("Can't read " + File + "/nVerify coverage and matching")
+        raise MyError("Can't read " + File + "\nVerify coverage and matching")
     Dict = csv.DictReader(FILE, delimiter=CSV_DELIMITER)
     return Dict
 
