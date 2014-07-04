@@ -105,11 +105,17 @@ class Report:
         try:
             REPORT=open(self._bench+'.html','w')
         except (IOError):
-            raise MyError("Can't open "+ self._bench +".html")
+            raise MyError("Cannot open "+ self._bench +".html")
+        try:
+            with file(ROOT + '/Report.js') as jsf:
+                REPORT_JS=jsf.read()
+        except (IOError):
+            raise MyError("Cannot find Report.js")
+
         REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
                     regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
                     invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
-                    codes=self._codes, l_modes=self._liste_script))
+                    codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS))
         REPORT.close()
 
 
