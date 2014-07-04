@@ -40,11 +40,22 @@ class Code:
 
 
 class Dict_call_count():
+    '''
+    We read in the different level csv to obtain all region with call count
+    '''
     def __init__(self):
-        All_loops = read_csv(ROOT_MEASURE + "/all_loops.csv")
-        self.dict = {}
-        for loop in All_loops:
-            self.dict[loop["Codelet Name"]] = loop["Call Count"]
+        test = True
+        i = 0
+        while (test):
+            try:
+                loops = read_csv("{root}/level_{lev}.csv".format(
+                                 root=ROOT_MEASURE,lev=i))
+                i = i + 1
+                self.dict = {}
+                for loop in loops:
+                    self.dict[loop["Codelet Name"]] = loop["Call Count"]
+            except(MyError):
+                test = False
 
 
 class Report:
