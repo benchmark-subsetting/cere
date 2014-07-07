@@ -81,7 +81,7 @@ fi
 #4) dump loops
 #First get all important loops
 CYCLES=`cat ${RES_DIR}/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-${ROOT}/granularity.py ${BENCH_DIR}/${RES_DIR}/all_loops.csv ${CYCLES} > ${RES_DIR}/loops_to_dump
+${ROOT}/granularity.py ${BENCH_DIR}/${RES_DIR}/all_loops.csv ${CYCLES} -o ${RES_DIR}/loops_to_dump
 sed -i 's/__invivo__/__extracted__/g' $RES_DIR/loops_to_dump
 
 make clean && rm -f *.ll
@@ -144,6 +144,6 @@ else
     ${ROOT}/compute_matching.R $BENCH_DIR/$RES_DIR
 
     #8) Now find codelets to keep
-    ${ROOT}/granularity.py $BENCH_DIR/$RES_DIR/all_loops.csv --matching=$BENCH_DIR/$RES_DIR/replayedCodelet ${CYCLES} > $RES_DIR/loops
+    ${ROOT}/granularity.py $BENCH_DIR/$RES_DIR/all_loops.csv --matching=$BENCH_DIR/$RES_DIR/replayedCodelet ${CYCLES} -o $RES_DIR/loops
     exit 0
 fi

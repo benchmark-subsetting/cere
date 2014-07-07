@@ -133,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument('application_cycles', type=int)
     parser.add_argument('--min_cycles', type=int, default=10**6)
     parser.add_argument('--matching', type=file, default=None)
+    parser.add_argument('-o', type=argparse.FileType('w'), required=True)
 
     args = parser.parse_args()
 
@@ -154,8 +155,6 @@ if __name__ == "__main__":
     for c in chosen:
        print >>sys.stderr, "> {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
 
-    print >>sys.stderr, "===== Machine readeable solution ====="
-
-
     for c in chosen:
-        print c.name
+        args.o.write(c.name + '\n')
+    args.o.close()

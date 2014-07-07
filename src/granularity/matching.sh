@@ -190,6 +190,6 @@ fi
 $PROJECT_ROOT/src/granularity/compute_matching.R ./$RES_DIR
 CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 echo "Before:"
-$PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/matching_codelets ${CYCLES}
+$PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/matching_codelets ${CYCLES} -o /dev/stdout
 echo "After:"
-$PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/new_matching_codelets ${CYCLES}
+$PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/new_matching_codelets ${CYCLES} -o /dev/stdout
