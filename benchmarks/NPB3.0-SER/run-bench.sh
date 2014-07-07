@@ -9,7 +9,7 @@ for bench in FT; do
     cd $BASEDIR/$bench
     RUN_COMMAND="numactl -C 1 ../bin/${sbench}.${CLASS}"
     BUILD_COMMAND="make -j4 CLASS=${CLASS}"
-    ../../../src/granularity/coverage.sh "$RUN_COMMAND" "$BUILD_COMMAND" 
-    ../../../src/granularity/matching.sh . "measures/loops" "$RUN_COMMAND" "$BUILD_COMMAND" 
+    ../../../src/granularity/coverage.sh "$RUN_COMMAND" "$BUILD_COMMAND"
+    ../../../src/granularity/matching.sh --force . "measures/loops" "$RUN_COMMAND" "$BUILD_COMMAND"
     ../../../src/Report/Report.py ./
 done
