@@ -1,0 +1,64 @@
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  l2norm.f
+make.def modified. Rebuilding npbparams.h just in case
+rm -f npbparams.h
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  blts.f
+../sys/setparams lu W
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  buts.f
+make[1]: Entering directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+../sys/setparams lu W
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  error.f
+Compiling replay mode
+Instrumentation mode
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  pintgr.f
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  verify.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  lu.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  read_input.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  domain.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  setcoeff.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  setbv.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  exact.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  setiv.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  erhs.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  ssor.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  rhs.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  jacld.f
+Compiling replay mode
+Instrumentation mode
+../../../src/lec/lec replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument   -c  -O3  jacu.f
+Compiling replay mode
+Instrumentation mode
+Compiling replay mode
+Instrumentation mode
+Compiling replay mode
+Instrumentation mode
+Compiling replay mode
+Instrumentation mode
+../../../src/lel/lel replay --region=__extracted__jacld_jacld__39 --invocation=3064 --instrument    -o ../bin/lu.W lu.o read_input.o domain.o setcoeff.o setbv.o exact.o setiv.o erhs.o ssor.o rhs.o l2norm.o jacld.o blts.o jacu.o buts.o error.o pintgr.o verify.o ../common/print_results.o ../common/timers.o ../common/wtime.o -lgfortran -lm
+[(0, 0), (1, 51), (52, 102), (103, 153), (154, 203), (204, 204), (205, 205), (206, 227), (228, 230), (231, 232), (233, 233), (234, 234), (235, 235), (236, 236), (237, 237), (238, 238), (239, 239), (240, 240), (241, 242)]
+Compressing done!

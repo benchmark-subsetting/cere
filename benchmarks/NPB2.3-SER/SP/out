@@ -1,0 +1,21 @@
+make.def modified. Rebuilding npbparams.h just in case
+rm -f npbparams.h
+../sys/setparams sp W
+make[1]: Entering directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+../../../src/lec/lec dump --region=__extracted__txinvr_txinvr__21 --invocation=294   -c  -O3  sp.f
+../sys/setparams sp W
+../../../src/lec/lec dump --region=__extracted__txinvr_txinvr__21 --invocation=294   -c  -O3  initialize.f
+../../../src/lec/lec dump --region=__extracted__txinvr_txinvr__21 --invocation=294   -c  -O3  exact_solution.f
+../../../src/lec/lec dump --region=__extracted__txinvr_txinvr__21 --invocation=294   -c  -O3  exact_rhs.f
+Compiling dump mode
+../../../src/lec/lec dump --region=__extracted__txinvr_txinvr__21 --invocation=294   -c  -O3  set_constants.f
+Makefile:30: recipe for target 'exact_rhs.o' failed
+make: *** [exact_rhs.o] Hangup
+Makefile:30: recipe for target 'sp.o' failed
+make: *** [sp.o] Hangup
+Makefile:30: recipe for target 'initialize.o' failed
+make: *** [initialize.o] Hangup
+Makefile:30: recipe for target 'set_constants.o' failed
+make: *** [set_constants.o] Hangup

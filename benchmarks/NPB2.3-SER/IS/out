@@ -1,0 +1,17 @@
+make.def modified. Rebuilding npbparams.h just in case
+rm -f npbparams.h
+../sys/setparams is W
+../../../src/lec/lec replay --region=__extracted__is_create_seq_340 --invocation=1 --instrument    -c  -O3  is.c
+make[1]: Entering directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+../sys/setparams is W
+is.c:641:1: warning: type specifier missing, defaults to 'int' [-Wimplicit-int]
+main( argc, argv )
+^~~~
+1 warning generated.
+Compiling replay mode
+Instrumentation mode
+../../../src/lel/lel replay --region=__extracted__is_create_seq_340 --invocation=1 --instrument    -o ../bin/is.W is.o ../common/c_print_results.o ../common/c_timers.o ../common/c_wtime.o 
+[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, 9), (10, 10)]
+Compressing done!

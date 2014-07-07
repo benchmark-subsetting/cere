@@ -1,0 +1,18 @@
+make.def modified. Rebuilding npbparams.h just in case
+rm -f npbparams.h
+../sys/setparams cg W
+../../../src/lec/lec replay --region=__extracted__cg_conj_grad__555 --invocation=3 --instrument   -c  -O3  cg.f
+make[1]: Entering directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/home/poliveira/work/llvm-loop-extractor/benchmarks/NPB2.3-SER/sys'
+../sys/setparams cg W
+cg.f:834.22:
+
+     >             v, iv(1), iv(n+1), nnza )                            
+                      1
+Warning: Type mismatch in argument 'mark' at (1); passed INTEGER(4) to LOGICAL(4)
+Compiling replay mode
+Instrumentation mode
+../../../src/lel/lel replay --region=__extracted__cg_conj_grad__555 --invocation=3 --instrument    -o ../bin/cg.W cg.o ../common/print_results.o ../common/randi8.o ../common/timers.o ../common/wtime.o -lgfortran -lm
+[(0, 496), (497, 504), (505, 505), (506, 1498), (1499, 1575), (1576, 1577), (1578, 1581), (1582, 1582), (1583, 1583), (1584, 1584), (1585, 1585), (1586, 1586), (1587, 1587), (1588, 1589)]
+Compressing done!
