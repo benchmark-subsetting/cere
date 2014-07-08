@@ -78,8 +78,6 @@ CYCLES=`cat ${RES_DIR}/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 ${ROOT}/granularity.py ${BENCH_DIR}/${RES_DIR}/all_loops.csv ${CYCLES} -o ${RES_DIR}/loops
 if [[ ! -f ${RES_DIR}/loops ]]; then
     error="$error \tGranularity script error!\n"
-else
-    sed -i 's/__invivo__/__extracted__/g' ${RES_DIR}/loops
 fi
 
 if [[ ! -z $warning ]]
