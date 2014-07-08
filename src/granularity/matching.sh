@@ -184,9 +184,9 @@ done < ${FILE}
 
 #Plot for each codelets the error between invivo and invitro
 if [[ ( -f  matching_error ) ]]; then
-    $ROOT/density_error.R $RES_DIR/matching_error
+    $ROOT/density_error.R ${RES_DIR}/matching_error
 fi
 #compute matching and compare old and new method
-$PROJECT_ROOT/src/granularity/compute_matching.R ./$RES_DIR
+$PROJECT_ROOT/src/granularity/compute_matching.R ./${RES_DIR}
 CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-$PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/matching_codelets ${CYCLES} -o /dev/stdout
+$PROJECT_ROOT/src/granularity/granularity.py ${RES_DIR}/all_loops.csv --matching=${RES_DIR}/matching_codelets ${CYCLES} -o ${RES_DIR}/selected_codelets
