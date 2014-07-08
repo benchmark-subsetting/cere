@@ -34,7 +34,7 @@ class Code:
         self._value = value
         self._line = line
         self._mode = Mode_dict[ext][1]
-        self._script = Mode_dict[ext][1]
+        self._script = Mode_dict[ext][0]
     def getScript(self):
         return self._script
 
@@ -158,7 +158,8 @@ def percent(x):
 
 def rewrite_dict_region(x):
     Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
-            "Error (%)":percent(x["Error"]), "nb_invoc":dict_call_count.dict[x["Codelet Name"]]}
+            "Error (%)":percent(x["Error"]), "nb_invoc":dict_call_count.dict[x["Codelet Name"]],
+            "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"]))}
     return Dict
 
 
@@ -208,6 +209,10 @@ def main():
     '''
     Main function
     '''
+    try:
+        os.system(ROOT+"/../granularity/graph_error.R")
+    except (IOError):
+        exit("Error Report -> Can't find " + DIR)
     parser = argparse.ArgumentParser()
     parser.add_argument('dir')
     args = parser.parse_args()

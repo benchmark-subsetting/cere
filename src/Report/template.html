@@ -1,11 +1,23 @@
 <!DOCTYPE html>
 {% set NAME = "Codelet Name" %}
-{% set ROOT_CODE_MIRROR = "/static/codemirror/" %}
+
+
+{% macro class(class, error) %}
+  {% if error < 15 %}
+    {{class}}success
+  {% elif error > 30 %}
+    {{class}}danger
+  {% else %}
+    {{class}}warning
+  {% endif %}
+{% endmacro %}
 
 
 {% macro table(tabname, fieldnames, tab, id) %}
   <table class="table table-bordered">
-  <caption> {{tabname}} </caption>
+  {% if (tabname) %}
+    <caption><h4 class="text-uppercase"> {{tabname}} </h4></caption>
+  {% endif %}
   <tr>
   {% for field in fieldnames %}
     {% if ((not id) or (field != NAME)) %}
@@ -21,13 +33,7 @@
           <td>{{row[column]}}</td>
         {% endif %}
       {% endfor %}
-      {% if row[fieldnames[-1]] < 15 %}
-        <td class="btn-success btn-block">{{row[fieldnames[-1]]}}</td>
-      {% elif row[fieldnames[-1]] > 30 %}
-        <td class="btn-danger btn-block">{{row[fieldnames[-1]]}}</td>
-      {% else %}
-        <td class="btn-warning btn-block">{{row[fieldnames[-1]]}}</td>
-      {% endif %}
+        <td class="{{class("btn-",row[fieldnames[-1]])}} btn-block">{{row[fieldnames[-1]]}}</td>
        </tr>
     {% endif %}
   {% endfor %}
@@ -55,30 +61,55 @@
   </head>
   <body class="container-fluid">
     <div class="row">
-      <h1>{{bench}}<br><small>nb_cycles : {{nb_cycles}} cycles</small></h1><br>
+      <br>
       <span id="Main" class="col-md-4">
-        {{ table("Regions", regionfields, regionlist, 0) }}
-        <br>
-        <h4>{{bench}}: {{part}}%  match</h4>
+        {{ table(bench, regionfields, regionlist, 0) }}
+        <h4>Exec Time : {{nb_cycles}} cycles</h4>
+        <h4>Matching : {{part}}%</h4>
+        <img class="img-responsive" alt="Responsive image" src="./measures/plots/bench_error.png">
       </span>
       <span id="Region" class="col-md-8">
-        {% for region in regionlist %}
-        <div id="{{region[NAME]}}" data-nb-invoc="{{region['nb_invoc']}}">
-          {% for code in codes %}
-            {% if code._name == region[NAME] %}
-              <textarea class="code" mode={{code._mode}} line={{code._line}}>
-                {{code._value}}
-              </textarea>
-            {% endif %}
-          {% endfor %}
-          <div>
-            {{ table("Invocations",invocationfields, invocationlist, region[NAME]) }}
-          </div>
-          <div>
-            <img class="img-responsive" alt="Responsive image">
-            <img class="img-responsive" alt="Responsive image">
+        <div class="navbar navbar-default">
+          <div class="container" data-name="navbar">
+            <div class="collapse navbar-collapse">
+              <ul id="navbar" class="nav navbar-nav">
+                <li class="active"><a data-nav="Clustering">Clustering</a></li>
+                <li><a data-nav="Invocation">Invocation</a></li>
+                <li><a data-nav="code">Code</a></li>
+              </ul>
+            </div>
           </div>
         </div>
+        {% for region in regionlist %}
+          <div id="{{region[NAME]}}" data-nb-invoc="{{region['nb_invoc']}}">
+            <div data-name="code">
+              {% for code in codes %}
+                {% if code._name == region[NAME] %}
+                  <textarea class="code" mode={{code._mode}} line={{code._line}}>
+                    {{code._value}}
+                  </textarea>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <div data-name="Clustering">
+              <img class="img-responsive" alt="Responsive image">
+            </div>
+            <div data-name="Invocation">
+              <img class="img-responsive" alt="Responsive image">
+            </div>
+            <div data-name="default">
+              {% for reg in regionlist %}
+                {% if reg[NAME] == region[NAME] %}
+                  <h4><span class={{class("bg-",reg["Error (%)"])}}>
+                    Real time: {{reg["Invitro"]}}  Execution time: {{reg["Invivo"]}}
+                  </span></h4>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <div data-name="default">
+              {{ table(0,invocationfields, invocationlist, region[NAME]) }}
+            </div>
+          </div>
         {% endfor %}
       </span>
     </div>

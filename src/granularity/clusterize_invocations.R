@@ -32,10 +32,10 @@ plot_by_Codelets <- function(tracedLoop, CodeletName) {
 plot_by_Cluster <- function(table, CodeletName) {
     p <- ggplot(table, aes(y=values, x=invocation, colour=as.character(Cluster), shape = is.representative))
     p <- p + geom_point()
-    p <- p + ggtitle(CodeletName)
-    p <- p + theme_bw()
-    p <- p + guides(colour=guide_legend(title="Cluster"))
-    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, dpi=300)
+    p <- p + theme_bw() + ylab("Cycles")
+    #p <- p + guides(colour=guide_legend(title="Cluster"))
+    p <- p + theme(legend.position="none")
+    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, height=3.58, width=10, dpi=300)
 }
 
 # load_csv: reads a csv file
