@@ -116,7 +116,7 @@ def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6,
     #prob.solve(GLPK())
     prob.solve()
     if (LpStatus[prob.status] != 'Optimal'):
-	    raise Unsolvable()
+        raise Unsolvable()
 
     for v in prob.variables():
         assert v.varValue == 1.0 or v.varValue == 0.0
@@ -141,20 +141,23 @@ if __name__ == "__main__":
 
     padding = max([len(c.name) for c in codelets])
 
-    for c in codelets:
-       print >>sys.stderr, "# {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
+    if not args.matching:
+        for c in codelets:
+            print >>sys.stderr, "# {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
+            if((c.cycles*c.callcount)/args.application_cycles*100) >= 1:
+                args.o.write(c.name + '\n')
+        args.o.close()
+    else:
+        chosen = solve(codelets,
+            appli_cycles=args.application_cycles,
+            min_cycles=args.min_cycles,
+            matching_file=args.matching)
 
+        print >>sys.stderr, "===== Solution with coverage ====="
 
-    chosen = solve(codelets,
-        appli_cycles=args.application_cycles,
-        min_cycles=args.min_cycles,
-        matching_file=args.matching)
+        for c in chosen:
+           print >>sys.stderr, "> {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
 
-    print >>sys.stderr, "===== Solution with coverage ====="
-
-    for c in chosen:
-       print >>sys.stderr, "> {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
-
-    for c in chosen:
-        args.o.write(c.name + '\n')
-    args.o.close()
+        for c in chosen:
+            args.o.write(c.name + '\n')
+        args.o.close()

@@ -63,11 +63,11 @@ compute_error()
     error=`echo "scale=3;${diff}/${max}" | bc | awk '{printf "%f", $0}'`
 }
 
-rm -f $RES_DIR/new_matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf $PLOT_DIR/*
-touch $RES_DIR/new_matching_codelets
+rm -f $RES_DIR/matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf $PLOT_DIR/*
+touch $RES_DIR/matching_codelets
 #Get application runtime in cycles
 app_cycles=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
-echo "Codelet Name,Error,Exec Time" > $RES_DIR/matching_error.csv
+echo "Codelet Name,Invivo,Invitro,Error,Exec Time" > $RES_DIR/matching_error.csv
 echo "Codelet Name,Invocation,Cluster,Part,Invitro,Invivo,Error" > $RES_DIR/invocations_error.csv
 #For each codelet
 while read codeletName; do
@@ -175,9 +175,9 @@ while read codeletName; do
         echo "NOT MATCHING: In vitro = $cycles & invivo = $cy (error = $error, exec = $codelet_part)"
     else
         echo "MATCHING: In vitro = $cycles & invivo = $cy (error = $error, exec = $codelet_part)"
-        echo ${codeletName/__invivo__/} >> $RES_DIR/new_matching_codelets
+        echo ${codeletName/__invivo__/} >> $RES_DIR/matching_codelets
     fi
-    echo "$codeletName,$error,$codelet_part" >> $RES_DIR/matching_error.csv
+    echo "$codeletName,$cy,$cycles,$error,$codelet_part" >> $RES_DIR/matching_error.csv
     rm $RES_DIR/${codeletName}.invocations
     rm $RES_DIR/${codeletName/__invivo__/__extracted__}_*.csv
 done < ${FILE}
@@ -189,7 +189,4 @@ fi
 #compute matching and compare old and new method
 $PROJECT_ROOT/src/granularity/compute_matching.R ./$RES_DIR
 CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-echo "Before:"
 $PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/matching_codelets ${CYCLES} -o /dev/stdout
-echo "After:"
-$PROJECT_ROOT/src/granularity/granularity.py $RES_DIR/all_loops.csv --matching=$RES_DIR/new_matching_codelets ${CYCLES} -o /dev/stdout

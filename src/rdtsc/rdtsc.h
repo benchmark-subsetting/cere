@@ -1,5 +1,5 @@
 #include "../ccan/ccan/htable/htable.h"
-#define CALL_STACK_SIZE 4096
+#define CALL_STACK_SIZE 8192
 #define TRACE_SIZE 100000
 
 static char call_stack[CALL_STACK_SIZE];
