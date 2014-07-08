@@ -14,15 +14,23 @@ class Codelet:
         # we store cycles per iteration
         self.cycles = float(totalcycles)/callcount
         self.matching = True
+        self.direct_parents = set()
         self.parents = set()
+        self.children = set()
         self.add_parents(self.fullName)
 
     def __repr__(self):
         return str(id(self))
 
     def add_parents(self, fullName):
-	for parent in fullName.split("#")[:-1]:
-	    self.parents.add(parent)
+        parents = fullName.split("#")[:-1]
+        if parents:
+            self.direct_parents.add(parents[-1])
+        for parent in parents:
+            self.parents.add(parent)
+
+    def add_children(self, name):
+        self.children.add(name)
 
     def is_children_of(self, other):
         return other.name in self.parents
@@ -40,8 +48,11 @@ def parse(csvfile):
             assert codelets[c.name].callcount == c.callcount
             codelets[c.name].add_parents(c.fullName)
 
-    for i in codelets.itervalues():
-        yield i
+    for name,codelet in codelets.iteritems():
+        for direct_parent in codelet.direct_parents:
+            codelets[direct_parent].add_children(name)
+
+    return codelets
     csvfile.close()
 
 class Unsolvable(Exception):
@@ -62,7 +73,7 @@ def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05,
     while(coverage > 0):
         try:
             s = list(solve_under_coverage(codelets, appli_cycles, min_cycles,
-                                          coverage))
+                coverage))
             print >>sys.stderr, "Solved with coverage >= %s" % coverage
             return s
         except Unsolvable:
@@ -81,10 +92,10 @@ def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6,
 
     prob = LpProblem("granularity selection", LpMinimize)
     codelet_vars = LpVariable.dicts("codelet",
-                                    codelets,
-                                    lowBound=0,
-                                    upBound=1,
-                                    cat=LpInteger)
+            codelets,
+            lowBound=0,
+            upBound=1,
+            cat=LpInteger)
 
     # Objective function: the codelet total cost must be minimal
     # we want small codelets
@@ -127,37 +138,60 @@ def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6,
                     yield c
 
 
+def output_codelet(output, codelets, chosen, codelet, direct_parent): 
+    selected = "true" if codelet in chosen else "false" 
+    output.write(",".join([codelet.name, selected, direct_parent]) + "\n")
+    for child_name in codelet.children:
+        output_codelet(output, codelets, chosen, codelets[child_name], codelet.name)
+
+def output_tree(output, codelets, chosen):
+    # print header
+    output.write("Codelet Name, Selected, Parent\n")
+    # find roots
+    for codelet in codelets.itervalues():
+        if not codelet.parents:
+            output_codelet(output, codelets, chosen, codelet, "none")
+
+    output.close()
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Find optimal codelet granularity")
-    parser.add_argument('profile_file', type=file)
-    parser.add_argument('application_cycles', type=int)
-    parser.add_argument('--min_cycles', type=int, default=10**6)
-    parser.add_argument('--matching', type=file, default=None)
-    parser.add_argument('-o', type=argparse.FileType('w'), required=True)
+    parser = argparse.ArgumentParser(description="Choose a subset of codelets", prog="granularity.py")
+    subparsers = parser.add_subparsers(help="ACTION", dest="mode")
+    reduce_parser = subparsers.add_parser("reduce", help="find optimal codelet granularity")
+    reduce_parser.add_argument('profile_file', type=file)
+    reduce_parser.add_argument('application_cycles', type=int)
+    reduce_parser.add_argument('--min_cycles', type=int, default=10**6)
+    reduce_parser.add_argument('--matching', type=file, default=None)
+    reduce_parser.add_argument('-o', type=argparse.FileType('w'), required=True, help="output file", metavar="output_file")
+
+    filter_parser = subparsers.add_parser("filter", help="filter codelets < 1% execution time")
+    filter_parser.add_argument('profile_file', type=file)
+    filter_parser.add_argument('application_cycles', type=int)
+    filter_parser.add_argument('-o', type=argparse.FileType('w'), required=True, help="output file", metavar="output_file")
+
 
     args = parser.parse_args()
 
-    codelets = list(parse(args.profile_file))
+    codelets = parse(args.profile_file)
 
-    padding = max([len(c.name) for c in codelets])
+    padding = max([len(c.name) for c in codelets.itervalues()])
 
-    if not args.matching:
-        for c in codelets:
+    if args.mode == "filter":
+        for c in codelets.itervalues():
             print >>sys.stderr, "# {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
             if((c.cycles*c.callcount)/args.application_cycles*100) >= 1:
                 args.o.write(c.name + '\n')
         args.o.close()
     else:
-        chosen = solve(codelets,
-            appli_cycles=args.application_cycles,
-            min_cycles=args.min_cycles,
-            matching_file=args.matching)
+        chosen = solve(codelets.values(),
+                appli_cycles=args.application_cycles,
+                min_cycles=args.min_cycles,
+                matching_file=args.matching)
+
+        output_tree(args.o, codelets, chosen)
 
         print >>sys.stderr, "===== Solution with coverage ====="
 
         for c in chosen:
-           print >>sys.stderr, "> {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
-
-        for c in chosen:
-            args.o.write(c.name + '\n')
-        args.o.close()
+            print >>sys.stderr, "> {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))

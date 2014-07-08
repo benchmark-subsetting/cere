@@ -75,7 +75,7 @@ fi
 
 #4) get all important loops
 CYCLES=`cat ${RES_DIR}/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-${ROOT}/granularity.py ${BENCH_DIR}/${RES_DIR}/all_loops.csv ${CYCLES} -o ${RES_DIR}/loops
+${ROOT}/granularity.py filter ${BENCH_DIR}/${RES_DIR}/all_loops.csv ${CYCLES} -o ${RES_DIR}/loops
 if [[ ! -f ${RES_DIR}/loops ]]; then
     error="$error \tGranularity script error!\n"
 fi
