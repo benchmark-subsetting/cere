@@ -52,8 +52,8 @@ def parse(csvfile):
         for direct_parent in codelet.direct_parents:
             codelets[direct_parent].add_children(name)
 
-    return codelets
     csvfile.close()
+    return codelets
 
 class Unsolvable(Exception):
     pass
