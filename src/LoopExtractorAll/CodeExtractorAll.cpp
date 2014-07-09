@@ -39,6 +39,8 @@
 
 #include <algorithm>
 #include <sstream>
+#include <fstream>
+#include <iostream>
 #include <set>
 using namespace llvm;
 
@@ -122,24 +124,24 @@ buildExtractionBlockSet(const RegionNode &RN) {
 }
 
 CodeExtractorAll::CodeExtractorAll(BasicBlock *BB, bool AggregateArgs)
-  : DT(0), AggregateArgs(AggregateArgs||AggregateArgsOpt),
+  : DT(0), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(BB)), NumExitBlocks(~0U) {}
 
 CodeExtractorAll::CodeExtractorAll(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
                              bool AggregateArgs)
-  : DT(DT), AggregateArgs(AggregateArgs||AggregateArgsOpt),
+  : DT(DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(BBs)), NumExitBlocks(~0U) {}
 
 CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, Loop &L,
                     std::string loopname, bool AggregateArgs)
-  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt),
+  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),  Loopname(loopname) {
         if (loopname.empty()) Loopname = "all";
     }
 
 CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, const RegionNode &RN,
                              bool AggregateArgs)
-  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt),
+  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(RN)), NumExitBlocks(~0U) {}
 
 /// definedInRegion - Return true if the specified value is defined in the
@@ -303,6 +305,53 @@ std::string removeChar(std::string str, const char toReplace, const char replace
     return str;
 }
 
+//~ bool is_empty(std::fstream& pFile)
+//~ {
+    //~ return pFile.peek() == std::fstream::traits_type::eof();
+//~ }
+
+bool CodeExtractorAll::is_region_in_file(std::string newFunctionName, std::fstream& loopstream) {
+    loopstream.seekg (0, std::ios::beg);
+    errs() << "\tlooking for region " << newFunctionName << " in file\n";
+    std::string line;
+    //~ if ( is_empty(loopstream) ) {
+        //~ errs() << "\tFile is empty\n";
+        //~ return false;
+    //~ }
+    while (getline(loopstream, line)) {
+        errs() << "Function name: " << newFunctionName << ", line: " << line << "\n";
+        if (line.find(newFunctionName) != std::string::npos)
+            return true;
+    }
+    return false;
+}
+
+void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
+                                          std::string File,
+                                          std::string oldFunction,
+                                          std::string firstLine,
+                                          std::string Original_location) {
+    errs() << "Dumping to file\n";
+    std::string header = "Region Name,File Name,Original Location,Function Name,Line";
+    std::ofstream loopstream(LoopFileInfos.c_str(), std::ios::app);
+    if(loopstream.is_open()) {
+        //~ if ( !is_region_in_file(header, loopstream) ) {
+            //~ loopstream.seekp (0, std::ios::end);
+            //~ errs() << "\tHeader Added in "<< loopstream.tellp() << "\n";
+            //~ loopstream << header;
+        //~ }
+        //~ if ( !is_region_in_file(newFunctionName, loopstream) ) {
+            //~ loopstream.seekp (0, std::ios::end);
+            //~ errs() << "\tRegion " << newFunctionName << " added in " << loopstream.tellp() << "\n";
+            loopstream << newFunctionName+","+File+","+Original_location+","+oldFunction+","+firstLine+"\n";
+        //~ }
+        loopstream.close();
+    }
+    else {
+        errs() << "Cannot open file >" << LoopFileInfos << "<\n";
+    }
+}
+
 //Uncomment if you want also loop last
 //line in the isolated function name (does not work very well)
 std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlock *header) {
@@ -325,13 +374,16 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     //~ std::string lastLine = oss.str();
     std::string Original_location = removeExtension(firstLoc.getFilename().str());
     std::string File = removeExtension(module_name);
-    if(File == Original_location)
-        newFunctionName = "__extracted__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
-    else
-        newFunctionName = "__extracted__" + File + "_" + Original_location + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+    if(File == Original_location) {
+        newFunctionName = "__extracted__" + File + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
+    }
+    else {
+        newFunctionName = "__extracted__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
+    }
+    add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, Original_location);
   }
   else {
-    newFunctionName = "__extracted__" + oldFunction->getName().str() + "_" + header->getName().str();
+    newFunctionName = "__extracted__" + oldFunction->getName().str() + separator + header->getName().str();
   }
   newFunctionName = removeChar(newFunctionName, '-', '_');
   newFunctionName = removeChar(newFunctionName, '/', '_');

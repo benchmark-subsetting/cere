@@ -59,6 +59,7 @@ namespace {
     static char ID;
     unsigned NumLoops;
     std::string Loopname;
+    std::string separator;
     std::string Loopfile;
     std::string LoopToTrace;
     int Mode;
@@ -69,7 +70,7 @@ namespace {
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation), measureAppli(AppMeasure) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation), measureAppli(AppMeasure) {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -80,6 +81,7 @@ namespace {
                     line = removeChar(line, '#', ' ');
                     loopsToInstrument.push_back(line);
                 }
+                loopstream.close();
                 readFromFile = true;
             }
             else {
@@ -90,6 +92,7 @@ namespace {
     }
 
     virtual bool runOnFunction(Function &F);
+    std::string createFunctionName(Loop *L, Function *oldFunction);
     bool visitLoop(Loop *L, Module *mod);
     std::vector<Value*> createFunctionParameters(Module* mod, std::string newFunctionName);
 
@@ -208,7 +211,7 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
 
 //Uncomment if you want also loop last
 //line in the isolated function name (does not work very well)
-std::string createFunctionName(Loop *L, Function *oldFunction) {
+std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
   //Get current module
   Module *mod = oldFunction->getParent();
   std::string module_name = mod->getModuleIdentifier();
@@ -229,9 +232,9 @@ std::string createFunctionName(Loop *L, Function *oldFunction) {
     std::string Original_location = removeExtension(firstLoc.getFilename().str());
     std::string File = removeExtension(module_name);
     if(File == Original_location)
-        newFunctionName = "__invivo__" + File + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+        newFunctionName = "__invivo__" + File + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
     else
-        newFunctionName = "__invivo__" + File + "_" + Original_location + "_" + oldFunction->getName().str() + "_" + firstLine;// + "_" + lastLine;
+        newFunctionName = "__invivo__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
   }
   else {
     newFunctionName = "__invivo__" + oldFunction->getName().str();

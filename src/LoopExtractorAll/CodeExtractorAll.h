@@ -48,6 +48,8 @@ namespace llvm {
     // Various bits of state computed on construction.
     DominatorTree *const DT;
     const bool AggregateArgs;
+    std::string separator;
+    std::string LoopFileInfos;
 
     // Bits of intermediate state computed at various phases of extraction.
     SetVector<BasicBlock *> Blocks;
@@ -105,6 +107,9 @@ namespace llvm {
     /// sets, before extraction occurs. These modifications won't have any
     /// significant impact on the cost however.
     void findInputsOutputs(ValueSet &Inputs, ValueSet &Outputs) const;
+
+    void add_region_to_file(std::string, std::string, std::string, std::string, std::string="");
+    bool is_region_in_file(std::string, std::fstream&);
 
   private:
     void severSplitPHINodes(BasicBlock *&Header);
