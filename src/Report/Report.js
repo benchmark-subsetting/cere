@@ -21,25 +21,29 @@ for (var i = 1 ; i < rows.length ; i++){
 }
 
 
+function set_image(image,nb_invoc) {
+    console.log(nb_invoc);
+    if (nb_invoc > 1) {
+        source = "data:image/png;base64," + image.getAttribute("data");
+        image.setAttribute('src', source);
+    }
+    else {
+        parent = image.parentNode;
+        parent.removeChild(image);
+        parent.innerHTML = "<p style=\"height:300px\">One invocation only</p>";
+    }
+}
+
 
 function first_call (j) {
     id = regions[j+1].getAttribute('id')
     Code[j].value = suppr_whitespace(Code[j].value);
     editor[j] = CodeMirror.fromTextArea(Code[j], {
         mode:Code[j].getAttribute("mode"), indentUnit:4,
-        autofocus:true, lineNumbers:true});
-    if (regions[j+1].getAttribute("data-nb-invoc") > 1) {
-        Images[2*j].setAttribute('src', ROOT_GRAPHS+ id +"_byPhase.png");
-        Images[2*j + 1].setAttribute('src', ROOT_GRAPHS+ id +".png");
-    }
-    else {
-        parent = Images[2*j].parentNode;
-        parent.removeChild(Images[2*j]);
-        parent.innerHTML = "<p>One invocation only</p>"
-        parent = Images[2*j + 1].parentNode;
-        parent.removeChild(Images[2*j + 1]);
-        parent.innerHTML = "<p>One invocation only</p>"
-    }
+        autofocus:true, lineNumbers:true, readOnly:true});
+    nb_invoc = regions[j+1].getAttribute("data-nb-invoc");
+    set_image(Images[2*j], nb_invoc);
+    set_image(Images[2*j + 1], nb_invoc);
 }
 
 

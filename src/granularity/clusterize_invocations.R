@@ -35,7 +35,7 @@ plot_by_Cluster <- function(table, CodeletName) {
     p <- p + theme_bw() + ylab("Cycles")
     #p <- p + guides(colour=guide_legend(title="Cluster"))
     p <- p + theme(legend.position="none")
-    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, height=3.58, width=10, dpi=300)
+    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, height=3.60, width=10, dpi=300)
 }
 
 # load_csv: reads a csv file

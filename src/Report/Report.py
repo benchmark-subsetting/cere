@@ -5,6 +5,7 @@ import os
 import argparse
 import jinja2
 import csv
+import base64
 from contextlib import contextmanager
 EXTENSIONS = [".c",".f",".f90",".C",".F",".F90"]
 Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
@@ -15,6 +16,7 @@ Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              ".html":["htmlmixed/htmlmixed.js", "text/htmlmixed"]}
 ROOT = os.path.dirname(os.path.realpath(__file__))
 ROOT_MEASURE = "./measures"
+ROOT_GRAPHS = "./measures/plots"
 CSV_DELIMITER = ','
 REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
 INVOCATION_FIELDNAMES = ["Invocation", "Cluster", "Part", "Invitro (cycles)",
@@ -39,7 +41,7 @@ class Code:
         return self._script
 
 
-class Dict_call_count():
+class Dict_region():
     '''
     We read in the different level csv to obtain all region with call count
     '''
@@ -47,13 +49,21 @@ class Dict_call_count():
         self.dict = {}
         test = True
         i = 0
+        regions = read_csv(ROOT_MEASURE + "/selected_codelets")
+        temp = []
+        for region in regions:
+            temp = temp + [region]
         while (test):
             try:
                 loops = read_csv("{root}/level_{lev}.csv".format(
                                  root=ROOT_MEASURE,lev=i))
                 i = i + 1
                 for loop in loops:
-                    self.dict[loop["Codelet Name"]] = loop["Call Count"]
+                    self.dict[(loop["Codelet Name"],"callcount")] = loop["Call Count"]
+                    for region in temp:
+                        if(region["Codelet Name"] == loop["Codelet Name"]):
+                            self.dict[(loop["Codelet Name"],"selected")] = region[" Selected"]
+                            self.dict[(loop["Codelet Name"],"parent")] = region[" Parent"]
             except(MyError):
                 test = False
 
@@ -68,6 +78,7 @@ class Report:
         self.init_codes()
         self.init_liste_script()
         self.init_part()
+        self.init_graphs()
         
     def init_template(self):
         try:
@@ -84,6 +95,7 @@ class Report:
         self._nb_cycles = "{:e}".format(int(self._nb_cycles))
         
     def init_regions(self):
+        
         self._regions = read_csv(ROOT_MEASURE +"/matching_error.csv")
         self._regions = (i[1] for i in reversed(sorted(enumerate(self._regions),
                          key=lambda x:x[1]["Exec Time"])))
@@ -105,9 +117,19 @@ class Report:
     def init_part(self):
         self._part = 0
         for region in self._regions:
-            if(region["Error (%)"] < 15):
+            if((region["Error (%)"] < 15) and ( DICT.dict[(region["Codelet Name"],"selected")] == "true")):
                 self._part = self._part + region["Exec Time (%)"]
         
+    def init_graphs(self):
+        self._graph_error = encode_graph("/bench_error.png")
+        self._graphs = []
+        for region in self._regions:
+            graph_invoc = encode_graph("/{region}.png".format(region=region["Codelet Name"]))
+            graph_clustering = encode_graph("/{region}_byPhase.png".format(region=region["Codelet Name"]))
+            self._graphs = self._graphs +[{"Codelet Name":region["Codelet Name"],
+                                           "graph_invoc":graph_invoc,
+                                           "graph_clustering":graph_clustering}]
+    
     def write_report(self):
         try:
             REPORT=open(self._bench+'.html','w')
@@ -122,7 +144,8 @@ class Report:
         REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
                     regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
                     invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
-                    codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS, part=self._part))
+                    codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS, part=self._part,
+                    graph_error=self._graph_error,graphs=self._graphs))
         REPORT.close()
 
 
@@ -149,7 +172,16 @@ def read_csv(File):
     return Dict
 
 
-dict_call_count = Dict_call_count()
+DICT = Dict_region()
+
+
+def encode_graph(graph_name):
+        try:
+            with open(ROOT_GRAPHS + graph_name, "rb") as f:
+                graph = f.read()
+        except (IOError):
+            raise MyError("Cannot find " + graph_name)
+        return base64.b64encode(graph)
 
 
 def percent(x):
@@ -158,7 +190,7 @@ def percent(x):
 
 def rewrite_dict_region(x):
     Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
-            "Error (%)":percent(x["Error"]), "nb_invoc":dict_call_count.dict[x["Codelet Name"]],
+            "Error (%)":percent(x["Error"]), "nb_invoc":DICT.dict[(x["Codelet Name"],"callcount")],
             "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"]))}
     return Dict
 

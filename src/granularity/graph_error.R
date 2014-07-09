@@ -30,15 +30,16 @@ plot_graph <- function(table) {
 
 main <- function() {
     table <- load_csv(MEASURE_FILE)
-    codelets <- as.vector(read.table(SELECTED_FILE, sep="\n"))
-    codelets <- sapply(codelets,function(x) as.character(x))
+    codelets <- load_csv(SELECTED_FILE)
+    codelets <- codelets[codelets[,"Selected"]=="true","Codelet.Name"]
     codelets <- sapply(table[,"Codelet.Name"], function(x,y) x %in% y, y=codelets)
-    table <- table[codelets,]
+    table <- table[codelets,c("Error","Exec.Time")]
     ordre <- as.vector(table[,"Error"])
     ordre <- order(ordre)
-    table <- table[ordre,c("Error","Exec.Time")]
+    table <- table[ordre,]
     vec <- as.vector(table[,"Exec.Time"])
     table[,"Exec.Time"] <- sapply(1:length(vec),function(x, y) {sum(y[1:x])}, y = vec)
+    table[nrow(table)+1,] <- c(1,table[-1,"Exec.Time"])
     plot_graph(table)
 }
 

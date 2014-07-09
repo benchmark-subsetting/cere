@@ -16,7 +16,7 @@
 {% macro table(tabname, fieldnames, tab, id) %}
   <table class="table table-bordered">
   {% if (tabname) %}
-    <caption><h4 class="text-uppercase"> {{tabname}} </h4></caption>
+    <caption><h4 class="text-uppercase"> <strong>{{tabname}}</strong> </h4></caption>
   {% endif %}
   <tr>
   {% for field in fieldnames %}
@@ -66,7 +66,7 @@
         {{ table(bench, regionfields, regionlist, 0) }}
         <h4>Exec Time : {{nb_cycles}} cycles</h4>
         <h4>Matching : {{part}}%</h4>
-        <img class="img-responsive" alt="Responsive image" src="./measures/plots/bench_error.png">
+        <img class="img-responsive" alt="Responsive image" src="data:image/png;base64,{{graph_error}}">
       </span>
       <span id="Region" class="col-md-8">
         <div class="navbar navbar-default">
@@ -91,17 +91,21 @@
                 {% endif %}
               {% endfor %}
             </div>
-            <div data-name="Clustering">
-              <img class="img-responsive" alt="Responsive image">
-            </div>
-            <div data-name="Invocation">
-              <img class="img-responsive" alt="Responsive image">
-            </div>
+            {% for graph in graphs %}
+              {% if graph[NAME] == region[NAME] %}
+                <div data-name="Clustering">
+                  <img class="img-responsive" alt="Responsive image" style=\"height:300px\" data={{graph["graph_invoc"]}}>
+                </div>
+                <div data-name="Invocation">
+                  <img class="img-responsive" alt="Responsive image" style=\"height:300px\" data={{graph["graph_clustering"]}}>
+                </div>
+              {% endif %}
+            {% endfor %}
             <div data-name="default">
               {% for reg in regionlist %}
                 {% if reg[NAME] == region[NAME] %}
                   <h4><span class={{class("bg-",reg["Error (%)"])}}>
-                    Real time: {{reg["Invitro"]}}  Execution time: {{reg["Invivo"]}}
+                    Real time: {{reg["Invitro"]}}  --  Execution time: {{reg["Invivo"]}}
                   </span></h4>
                 {% endif %}
               {% endfor %}
