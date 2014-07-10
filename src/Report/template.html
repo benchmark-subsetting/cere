@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 {% set NAME = "Codelet Name" %}
 
+{% macro parent(id) %}
+  {% if (not(id == "none")) %}
+    data-tt-parent-id={{id}}
+  {% endif %}
+{% endmacro %}
+
+{% macro selected(select) %}
+  {% if (select == "true") %}
+    class="text-uppercase text-primary"
+  {% endif %}
+{% endmacro %}
 
 {% macro class(class, error) %}
   {% if error < 15 %}
@@ -13,8 +24,19 @@
 {% endmacro %}
 
 
+{% macro strong(text,test) %}
+  {% if (test == "true") %}
+    <strong>
+  {% endif %}
+  {{text}}
+  {% if (test == "true") %}
+    </strong>
+  {% endif %}
+{% endmacro %}
+
+
 {% macro table(tabname, fieldnames, tab, id) %}
-  <table class="table table-bordered">
+  <table  class="table table-bordered">
   {% if (tabname) %}
     <caption><h4 class="text-uppercase"> <strong>{{tabname}}</strong> </h4></caption>
   {% endif %}
@@ -27,10 +49,10 @@
   </tr>
   {% for row in tab %}
     {% if ((not id) or (row[NAME] == id)) %}
-      <tr data-button="True">
+      <tr {{selected(row["selected"])}} data-button="True"  data-tt-id="{{row[NAME]}}" data-selected="{{row["selected"]}}" {{parent(row["parent"])}}>
       {% for column in fieldnames[:-1] %}
         {% if ((not id) or (column != NAME)) %}
-          <td>{{row[column]}}</td>
+          <td>{{strong(row[column],row["selected"])}}</td>
         {% endif %}
       {% endfor %}
         <td class="{{class("btn-",row[fieldnames[-1]])}} btn-block">{{row[fieldnames[-1]]}}</td>
@@ -39,7 +61,7 @@
   {% endfor %}
   </table>
 {% endmacro %}
-    
+
       
 <html lang="en">
   <head>
@@ -50,7 +72,8 @@
     <!-- Bootstrap -->
     <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="http://cdnjs.cloudflare.com/ajax/libs/codemirror/4.3.0/codemirror.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="">
+    <link href="../../src/Report/static/css/jquery.treetable.css" rel="stylesheet" type="text/css" />
+    <link href="../../src/Report/static/css/jquery.treetable.theme.default.css" rel="stylesheet" type="text/css" />
 
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -124,6 +147,7 @@
       <script src="http://cdnjs.cloudflare.com/ajax/libs/codemirror/4.3.0/mode/{{mode}}"></script>
     {% endfor %}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.js"></script>
+    <script src="../../src/Report/static/js/jquery.treetable.js""></script>
     <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 
 

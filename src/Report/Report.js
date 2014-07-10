@@ -17,12 +17,11 @@ function suppr_whitespace(string) {
 
 
 for (var i = 1 ; i < rows.length ; i++){
-    rows[i].setAttribute('id',regions[i].getAttribute('id'));
+    rows[i].setAttribute('data-tt-id',regions[i].getAttribute('id'));
 }
 
 
 function set_image(image,nb_invoc) {
-    console.log(nb_invoc);
     if (nb_invoc > 1) {
         source = "data:image/png;base64," + image.getAttribute("data");
         image.setAttribute('src', source);
@@ -82,21 +81,29 @@ function change_view(nav){
 }
 
 
-rows[1].className = "bg-primary";
+$(rows[1]).toggleClass("bg-info");
 id_region = regions[1].getAttribute('id');
 first_call(0);
 change_view("init");
 center_code (0);
 change_view("default");
+table.setAttribute("id","treetable")
 
+$("#treetable").treetable({ expandable: true });
+var selected = $('tr[data-selected="true"]')
+for( i = 0 ; i < selected.length ; i++) {
+    node = selected[i].getAttribute("data-tt-id")
+    $("#treetable").treetable("reveal", node)
+}
 
 table.onclick = function (event) {
     var row = event.target.parentNode;
-    id_region = row.getAttribute('id')
+    if (row.getAttribute("data-button") != "True") 
+        row = row.parentNode;
+    id_region = row.getAttribute('data-tt-id')
     if (row.getAttribute("data-button") == "True") {
         change_view("init");
         for (var j = 1 ; j < regions.length ; j++){
-            rows[j].className = "";
             if(regions[j].getAttribute('id') == id_region) {
                 if (!editor[j-1]) {
                     first_call(j-1)
@@ -104,8 +111,8 @@ table.onclick = function (event) {
                 center_code (j-1);
             }
         }
-        if(id_region != "col")
-            row.className = "bg-primary";
+        $("tr.bg-info").removeClass("bg-info");
+        $(row).toggleClass("bg-info");
         change_view("default");
     }
 }

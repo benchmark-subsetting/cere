@@ -17,6 +17,7 @@ Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
 ROOT = os.path.dirname(os.path.realpath(__file__))
 ROOT_MEASURE = "./measures"
 ROOT_GRAPHS = "./measures/plots"
+NAME_FILE = "regions.csv"
 CSV_DELIMITER = ','
 REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
 INVOCATION_FIELDNAMES = ["Invocation", "Cluster", "Part", "Invitro (cycles)",
@@ -68,6 +69,20 @@ class Dict_region():
                 test = False
 
 
+class table_region():
+    def __init__(self):
+        try:
+            FILE = open(NAME_FILE, 'rb')
+        except (IOError):
+            raise MyError("Can't read " + NAME_FILE + "-> Verify coverage and matching")
+        table = csv.reader(FILE, delimiter=CSV_DELIMITER)
+        self._table = []
+        for region in table:
+            self._table = self._table + [region]
+        for region in self._table:
+            region[0] = rm_prefix(region[0])
+
+
 class Report:
     def __init__(self,bench):
         self._bench = bench
@@ -97,8 +112,18 @@ class Report:
     def init_regions(self):
         
         self._regions = read_csv(ROOT_MEASURE +"/matching_error.csv")
-        self._regions = (i[1] for i in reversed(sorted(enumerate(self._regions),
-                         key=lambda x:x[1]["Exec Time"])))
+        regions = read_csv(ROOT_MEASURE + "/selected_codelets")
+        temp = []
+        temp_2 = []
+        for region in self._regions:
+            temp_2 = temp_2 + [region]
+        for region in regions:
+            for region_2 in temp_2:
+                if (region["Codelet Name"] == region_2["Codelet Name"]):
+                    temp = temp + [region_2]
+        #self._regions = (i[1] for i in reversed(sorted(enumerate(self._regions),
+        #                 key=lambda x:x[1]["Exec Time"])))
+        self._regions = temp
         self._regions = map(rewrite_dict_region, self._regions)
         
     def init_invocations(self):
@@ -167,12 +192,19 @@ def read_csv(File):
     try:
         FILE = open(File, 'rb')
     except (IOError):
-        raise MyError("Can't read " + File + "\nVerify coverage and matching")
+        raise MyError("Can't read " + File + "-> Verify coverage and matching")
     Dict = csv.DictReader(FILE, delimiter=CSV_DELIMITER)
     return Dict
 
 
+def rm_prefix(name):
+    name = name.split("__")
+    name = name[2:]
+    return "__".join(name)
+
+
 DICT = Dict_region()
+TABLE = table_region()
 
 
 def encode_graph(graph_name):
@@ -191,7 +223,9 @@ def percent(x):
 def rewrite_dict_region(x):
     Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
             "Error (%)":percent(x["Error"]), "nb_invoc":DICT.dict[(x["Codelet Name"],"callcount")],
-            "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"]))}
+            "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"])),
+            "parent":DICT.dict[(x["Codelet Name"],"parent")],
+            "selected":DICT.dict[(x["Codelet Name"],"selected")]}
     return Dict
 
 
@@ -202,26 +236,17 @@ def rewrite_dict_invocation(x):
     return Dict
 
 
-def sep_name(region):
-    '''
-    Separate a region name -> __prefixe__filename_functionname_line
-    in filename functionname and line
-    '''
-    temp = region.split('_')
-    filename = temp[4]
-    functionName = temp[5]
-    line = temp[-1]
-    #if the name is not a wanted name
-    if (len(temp) > 7):
-        functionName = "Erreur"
-    return [region, filename, functionName, line]
+def obtain_name(region):
+    region = rm_prefix(region)
+    for loop in TABLE._table:
+        if (loop[0] == region):
+            return [loop[0], loop[2], loop[3], loop[4]]
 
 
 def read_code(region):
-    temp = sep_name(region["Codelet Name"])
+    temp = obtain_name(region["Codelet Name"])
     if (temp[2] == "Erreur"):
-        return Code(temp[0], ".html", "Can't obtain source code -> Codelet Name can't "+
-                    "separated in __prefixe__filename_functionname_line", 1)
+        return Code(region["Codelet Name"], ".html", "Can't obtain source code")
     EXT = "__None__"
     for ext in EXTENSIONS:
         try:
@@ -234,7 +259,7 @@ def read_code(region):
             pass
     if (EXT == "__None__"):
         raise MyError("Can't open: "+temp[1])
-    return Code(temp[0], EXT, code, temp[3])
+    return Code(region["Codelet Name"], EXT, code, temp[3])
 
 
 def main():

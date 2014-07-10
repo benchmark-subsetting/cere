@@ -39,6 +39,7 @@ main <- function() {
     table <- table[ordre,]
     vec <- as.vector(table[,"Exec.Time"])
     table[,"Exec.Time"] <- sapply(1:length(vec),function(x, y) {sum(y[1:x])}, y = vec)
+    rownames(table) <- 1:nrow(table)
     table[nrow(table)+1,] <- c(1,table[nrow(table),"Exec.Time"])
     plot_graph(table)
 }
