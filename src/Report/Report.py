@@ -63,8 +63,9 @@ class Dict_region():
                     self.dict[(loop["Codelet Name"],"callcount")] = loop["Call Count"]
                     for region in temp:
                         if(region["Codelet Name"] == loop["Codelet Name"]):
-                            self.dict[(loop["Codelet Name"],"selected")] = region[" Selected"]
-                            self.dict[(loop["Codelet Name"],"parent")] = region[" Parent"]
+                            self.dict[(loop["Codelet Name"],"selected")] = region["Selected"]
+                            self.dict[(loop["Codelet Name"],"parent")] = region["ParentId"]
+                            self.dict[(loop["Codelet Name"],"id")] = region["Id"]
             except(MyError):
                 test = False
 
@@ -121,8 +122,6 @@ class Report:
             for region_2 in temp_2:
                 if (region["Codelet Name"] == region_2["Codelet Name"]):
                     temp = temp + [region_2]
-        #self._regions = (i[1] for i in reversed(sorted(enumerate(self._regions),
-        #                 key=lambda x:x[1]["Exec Time"])))
         self._regions = temp
         self._regions = map(rewrite_dict_region, self._regions)
         
@@ -142,7 +141,7 @@ class Report:
     def init_part(self):
         self._part = 0
         for region in self._regions:
-            if((region["Error (%)"] < 15) and ( DICT.dict[(region["Codelet Name"],"selected")] == "true")):
+            if((region["Error (%)"] < 15) and ( region["selected"] == "true")):
                 self._part = self._part + region["Exec Time (%)"]
         
     def init_graphs(self):
@@ -224,7 +223,7 @@ def rewrite_dict_region(x):
     Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
             "Error (%)":percent(x["Error"]), "nb_invoc":DICT.dict[(x["Codelet Name"],"callcount")],
             "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"])),
-            "parent":DICT.dict[(x["Codelet Name"],"parent")],
+            "parent":DICT.dict[(x["Codelet Name"],"parent")], "id":DICT.dict[(x["Codelet Name"],"id")],
             "selected":DICT.dict[(x["Codelet Name"],"selected")]}
     return Dict
 
@@ -245,8 +244,6 @@ def obtain_name(region):
 
 def read_code(region):
     temp = obtain_name(region["Codelet Name"])
-    if (temp[2] == "Erreur"):
-        return Code(region["Codelet Name"], ".html", "Can't obtain source code")
     EXT = "__None__"
     for ext in EXTENSIONS:
         try:

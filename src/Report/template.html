@@ -48,7 +48,7 @@
   {% endfor %}
   </tr>
   {% for row in tab %}
-    {% if ((not id) or (row[NAME] == id)) %}
+    {% if ((not id) or (row['id'] == id)) %}
       <tr {{selected(row["selected"])}} data-button="True"  data-tt-id="{{row[NAME]}}" data-selected="{{row["selected"]}}" {{parent(row["parent"])}}>
       {% for column in fieldnames[:-1] %}
         {% if ((not id) or (column != NAME)) %}
@@ -104,7 +104,7 @@
           </div>
         </div>
         {% for region in regionlist %}
-          <div id="{{region[NAME]}}" data-nb-invoc="{{region['nb_invoc']}}">
+          <div id="{{region['id']}}" data-nb-invoc="{{region['nb_invoc']}}">
             <div data-name="code">
               {% for code in codes %}
                 {% if code._name == region[NAME] %}
@@ -117,10 +117,10 @@
             {% for graph in graphs %}
               {% if graph[NAME] == region[NAME] %}
                 <div data-name="Clustering">
-                  <img class="img-responsive" alt="Responsive image" style=\"height:300px\" data={{graph["graph_invoc"]}}>
+                  <img class="img-responsive" alt="Responsive image" data={{graph["graph_invoc"]}}>
                 </div>
                 <div data-name="Invocation">
-                  <img class="img-responsive" alt="Responsive image" style=\"height:300px\" data={{graph["graph_clustering"]}}>
+                  <img class="img-responsive" alt="Responsive image" data={{graph["graph_clustering"]}}>
                 </div>
               {% endif %}
             {% endfor %}

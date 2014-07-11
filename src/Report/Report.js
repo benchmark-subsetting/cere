@@ -92,8 +92,12 @@ table.setAttribute("id","treetable")
 $("#treetable").treetable({ expandable: true });
 var selected = $('tr[data-selected="true"]')
 for( i = 0 ; i < selected.length ; i++) {
-    node = selected[i].getAttribute("data-tt-id")
-    $("#treetable").treetable("reveal", node)
+    node = selected[i].getAttribute("data-tt-parent-id");
+    while(node != "None") {
+        $("#treetable").treetable("expandNode", node);
+        parent = $('tr[data-tt-id='+node+']');
+        node = parent[0].getAttribute("data-tt-parent-id")
+    }
 }
 
 table.onclick = function (event) {
