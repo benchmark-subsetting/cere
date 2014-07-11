@@ -137,20 +137,28 @@ def solve_under_coverage(codelets, appli_cycles, min_cycles=10**6,
                 if ("codelet_"+repr(c)) == v.name:
                     yield c
 
+unique_id = 0
 
-def output_codelet(output, codelets, chosen, codelet, direct_parent): 
-    selected = "true" if codelet in chosen else "false" 
-    output.write(",".join([codelet.name, selected, direct_parent]) + "\n")
+def get_uid():
+    global unique_id
+    unique_id += 1
+    return str(unique_id)
+
+
+def output_codelet(output, codelets, chosen, codelet, direct_parent_id):
+    selected = "true" if codelet in chosen else "false"
+    codelet_id =  get_uid()
+    output.write(",".join([codelet_id, codelet.name, selected, direct_parent_id]) + "\n")
     for child_name in codelet.children:
-        output_codelet(output, codelets, chosen, codelets[child_name], codelet.name)
+        output_codelet(output, codelets, chosen, codelets[child_name], codelet_id)
 
 def output_tree(output, codelets, chosen):
     # print header
-    output.write("Codelet Name, Selected, Parent\n")
+    output.write("Id,Codelet Name,Selected,ParentId\n")
     # find roots
     for codelet in codelets.itervalues():
         if not codelet.parents:
-            output_codelet(output, codelets, chosen, codelet, "none")
+            output_codelet(output, codelets, chosen, codelet, "None")
 
     output.close()
 
