@@ -331,7 +331,6 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
                                           std::string oldFunction,
                                           std::string firstLine,
                                           std::string Original_location) {
-    errs() << "Dumping to file\n";
     std::string header = "Region Name,File Name,Original Location,Function Name,Line";
     std::ofstream loopstream(LoopFileInfos.c_str(), std::ios::app);
     if(loopstream.is_open()) {
