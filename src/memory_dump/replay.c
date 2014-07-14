@@ -13,33 +13,21 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "pages.h"
+#include <emmintrin.h>
 
 /**********************************************************************
  * REPLAY MODE                                                        *
  **********************************************************************/
 
-/* load: restores memory before replay
- * loop_name: name of dumped loop
- * invocation: invocation number to load
- * count: number of args
- * addresses: an array of <count> addresses
- */
-
-#define MAX_WARMUP 64
+#define MAX_WARMUP 128
 #define MAX_PAGES 1024
 
 extern int warm(char * addr);
-extern void antideadcode(void * n);
-
 static bool loaded = false;
-//~ static char backup[MAX_PAGES][PAGESIZE];
 static char *warmup[MAX_WARMUP];
-
-//~ static int original_data_counter = 0;
 static int hotpages_counter = 0;
 
-char cold[PAGESIZE*200];
-char cold2[PAGESIZE*200];
+char cold[PAGESIZE*2048];
 
 char *get_filename_ext(const char *filename) {
     char *dot = strrchr(filename, '.');
@@ -56,6 +44,12 @@ char *get_filename_without_ext(char *filename) {
     return retstr;
 }
 
+/* load: restores memory before replay
+ * loop_name: name of dumped loop
+ * invocation: invocation number to load
+ * count: number of args
+ * addresses: an array of <count> addresses
+ */
 void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     char path[BUFSIZ];
     char buf[BUFSIZ + 1];
@@ -63,7 +57,7 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     /* Load adresses */
     snprintf(path, sizeof(path), "dump/%s/%d/core.map", loop_name, invocation);
     FILE* core_map = fopen(path, "r");
-    if (!core_map) 
+    if (!core_map)
         errx(EXIT_FAILURE, "Could not open %s", path);
 
     while(fgets(buf, BUFSIZ, core_map)) {
@@ -78,7 +72,7 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
         /* load hotpages adresses */
         snprintf(path, sizeof(path), "dump/%s/%d/hotpages.map", loop_name, invocation);
         FILE* hot_map = fopen(path, "r");
-        if (!hot_map) 
+        if (!hot_map)
             warn("REPLAY: Could not open %s", path);
 
         while(fgets(buf, BUFSIZ, core_map)) {
@@ -86,10 +80,10 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
             sscanf(buf, "%lx", &address);
             if (address == 0) continue;
             warmup[hotpages_counter++] = (char*) address;
-            if (hotpages_counter >= MAX_WARMUP) break; 
+            if (hotpages_counter >= MAX_WARMUP) break;
         }
         fclose(hot_map);
-        
+
         loaded = true;
     }
 
@@ -111,7 +105,7 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
 
     while ((ent = readdir (dir)) != NULL) {
         /* Read *.memdump files */
-        if(strcmp(get_filename_ext(ent->d_name), "memdump") != 0) 
+        if(strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
           continue;
 
         snprintf(filename, sizeof(filename), "dump/%s/%d/%s", loop_name, invocation, ent->d_name);
@@ -133,21 +127,20 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
         while ((len = read(fp, (char*)(address+read_bytes), PAGESIZE)) > 0) {
             read_bytes+=len;
         }
-        //printf("Wrote %d at %lx-%lx\n", read_bytes, address, address+read_bytes);
 
         close(fp);
-        //fprintf(stderr, "%d Page(s) (%d bytes) Needed for %s (size = %ldK)\n", readed_bytes/PAGESIZE, readed_bytes, ent->d_name, st.st_size/1024);
     }
 
     closedir(dir);
 
     /* Randomize initial state */
-    for (int i=0; i < PAGESIZE; i++)
-        for (int j=0; j < PAGESIZE*100; j++)
-            cold[j] = cold[i]*j;
+    for (int j=0; j < 2048*PAGESIZE; j+=CACHELINESIZE)
+      _mm_prefetch (&(cold[j]), _MM_HINT_T0);
 
     /* Restore cache state */
-    for (int j=0; j < 3; j++)
-        for (int i=0; i < hotpages_counter; i++) 
-            warm(warmup[i]);
+    for (int i=0; i < hotpages_counter; i++) {
+        for (int j = 0; j < PAGESIZE; j+=CACHELINESIZE) {
+            _mm_prefetch (warmup[i]+j, _MM_HINT_T0);
+        }
+    }
 }
