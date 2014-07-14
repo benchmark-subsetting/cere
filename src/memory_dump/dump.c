@@ -213,10 +213,6 @@ dump_handler(int sig, siginfo_t *si, void *unused)
   debug_addr("DUMP Detected access at: ", (off64_t)touched_addr);
 #endif
 
-  /* Unprotect Page */
-  int result = syscall(SYS_mprotect,(char*)start_of_page, PAGESIZE, PROT_READ|PROT_WRITE|PROT_EXEC);
-  assert(result != -1);
-
   mru_handler(sig, si, unused);
 
   /* Dump page */
@@ -266,7 +262,6 @@ page_log_dump(void)
 static void
 page_ign_dump(void)
 {
-  char path[MAX_PATH];
   for (int i = 0; i <state.last_ignored; i++) {
       bool result = dump_page((off64_t)state.pages_ignored[i]);
   }
@@ -531,7 +526,7 @@ void dump(char* loop_name, int invocation, int count, ...)
     //the dump.
     if(!state.dump_initialized) return;
 #ifdef _DEBUG
-    printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
+    printf("enter dump( %s %d count = %d) \n", loop_name, invocation, count);
 #endif
 
     /* Stop malloc protection */

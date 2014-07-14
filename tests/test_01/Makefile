@@ -17,7 +17,7 @@ ${PROGRAM}: ${OBJS}
 
 clean:
 	- rm -f *.o *.s *.ll
-	- rm test
+	- rm -f test
 
 veryclean: clean
 	- rm -rf dump/
