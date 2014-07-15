@@ -15,12 +15,6 @@ function suppr_whitespace(string) {
     return string.replace(/\s+/,"").replace(/\s+$/,"");
 }
 
-
-for (var i = 1 ; i < rows.length ; i++){
-    rows[i].setAttribute('data-tt-id',regions[i].getAttribute('id'));
-}
-
-
 function set_image(image,nb_invoc) {
     if (nb_invoc > 1) {
         source = "data:image/png;base64," + image.getAttribute("data");
