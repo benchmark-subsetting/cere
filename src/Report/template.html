@@ -107,7 +107,7 @@
           <div id="{{region['id']}}" data-nb-invoc="{{region['nb_invoc']}}">
             <div data-name="code">
               {% for code in codes %}
-                {% if code._name == region[NAME] %}
+                {% if code._id == region['id'] %}
                   <textarea class="code" mode={{code._mode}} line={{code._line}}>
                     {{code._value}}
                   </textarea>
@@ -115,7 +115,7 @@
               {% endfor %}
             </div>
             {% for graph in graphs %}
-              {% if graph[NAME] == region[NAME] %}
+              {% if graph['id'] == region['id'] %}
                 <div data-name="Clustering">
                   <img class="img-responsive" alt="Responsive image" data={{graph["graph_clustering"]}}>
                 </div>
@@ -126,7 +126,7 @@
             {% endfor %}
             <div data-name="default">
               {% for reg in regionlist %}
-                {% if reg[NAME] == region[NAME] %}
+                {% if reg['id'] == region['id'] %}
                   <h4><span class={{class("bg-",reg["Error (%)"])}}>
                     Real time: {{reg["Invitro"]}}  --  Execution time: {{reg["Invivo"]}}
                   </span></h4>

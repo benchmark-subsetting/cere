@@ -32,8 +32,8 @@ class MyError(Exception):
 
 
 class Code:
-    def __init__(self, name, ext, value, line):
-        self._name = name
+    def __init__(self, Id, ext, value, line):
+        self._id = Id
         self._value = value
         self._line = line
         self._mode = Mode_dict[ext][1]
@@ -50,10 +50,6 @@ class Dict_region():
         self.dict = {}
         test = True
         i = 0
-        regions = read_csv(ROOT_MEASURE + "/selected_codelets")
-        temp = []
-        for region in regions:
-            temp = temp + [region]
         while (test):
             try:
                 loops = read_csv("{root}/level_{lev}.csv".format(
@@ -61,11 +57,6 @@ class Dict_region():
                 i = i + 1
                 for loop in loops:
                     self.dict[(loop["Codelet Name"],"callcount")] = loop["Call Count"]
-                    for region in temp:
-                        if(region["Codelet Name"] == loop["Codelet Name"]):
-                            self.dict[(loop["Codelet Name"],"selected")] = region["Selected"]
-                            self.dict[(loop["Codelet Name"],"parent")] = region["ParentId"]
-                            self.dict[(loop["Codelet Name"],"id")] = region["Id"]
             except(MyError):
                 test = False
 
@@ -121,6 +112,7 @@ class Report:
         for region in regions:
             for region_2 in temp_2:
                 if (region["Codelet Name"] == region_2["Codelet Name"]):
+                    region_2 = dict(region.items() + region_2.items())
                     temp = temp + [region_2]
         self._regions = temp
         self._regions = map(rewrite_dict_region, self._regions)
@@ -150,7 +142,7 @@ class Report:
         for region in self._regions:
             graph_invoc = encode_graph("/{region}.png".format(region=region["Codelet Name"]))
             graph_clustering = encode_graph("/{region}_byPhase.png".format(region=region["Codelet Name"]))
-            self._graphs = self._graphs +[{"Codelet Name":region["Codelet Name"],
+            self._graphs = self._graphs +[{"id":region["id"],
                                            "graph_invoc":graph_invoc,
                                            "graph_clustering":graph_clustering}]
     
@@ -223,8 +215,7 @@ def rewrite_dict_region(x):
     Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
             "Error (%)":percent(x["Error"]), "nb_invoc":DICT.dict[(x["Codelet Name"],"callcount")],
             "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"])),
-            "parent":DICT.dict[(x["Codelet Name"],"parent")], "id":DICT.dict[(x["Codelet Name"],"id")],
-            "selected":DICT.dict[(x["Codelet Name"],"selected")]}
+            "parent":x["ParentId"], "id":x["Id"], "selected":x["Selected"]}
     return Dict
 
 
@@ -256,7 +247,7 @@ def read_code(region):
             pass
     if (EXT == "__None__"):
         raise MyError("Can't open: "+temp[1])
-    return Code(region["Codelet Name"], EXT, code, temp[3])
+    return Code(region["id"], EXT, code, temp[3])
 
 
 def main():
