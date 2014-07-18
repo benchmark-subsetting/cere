@@ -25,8 +25,10 @@ while read benchInfo; do
 
     echo "$ROOT/coverage.sh $BENCH_DIR $runCommand \"make -j8\" > $BENCH_DIR/coverage_log"
     $ROOT/coverage.sh $BENCH_DIR "$runCommand" "make -j8" > $BENCH_DIR/coverage_log 2>&1
-    echo "$ROOT/matching.sh $BENCH_DIR loops $runCommand \"make -j8\" > $BENCH_DIR/matching_log"
-    $ROOT/matching.sh --force $BENCH_DIR loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
+    echo "$ROOT/matching.sh $BENCH_DIR measures/loops $runCommand \"make -j8\" > $BENCH_DIR/matching_log"
+    $ROOT/matching.sh --force $BENCH_DIR measures/loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
+    echo "Reporting"
+    $PROJECT_ROOT/src/Report/Report.py .
     cd $ORIGIN_DIR 2> /dev/null
     if [ "$?" != "0" ] ; then
         echo "Could not come back to original directory $ORIGIN_DIR"

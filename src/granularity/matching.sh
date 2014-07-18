@@ -7,9 +7,9 @@ export LD_BIND_NOW=1
 
 # Check number of arguments
 if [ $# -lt 3 ] || [ $# -gt 5 ]; then
-    echo "usage: $0 [--force] [BENCH_DIR] codelets-to-dump-file exec_cmd compile_cmd"
-    echo "codelets-to-dump-file must contains loops you want to compute coverage for."
-    echo "Those loops can be obtained by running granularity script on replayed codelets"
+    echo "usage: $0 [--force] [BENCH_DIR] ${RES_DIR}/codelets-to-dump-file exec_cmd compile_cmd"
+    echo "codelets-to-dump-file must contains loops you want to compute matching for."
+    echo "Those loops can be obtained by running granularity script on all loops"
     exit 1
 fi
 

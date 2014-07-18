@@ -27,10 +27,14 @@ if [ "$?" != "0" ] ; then
 fi
 
 #1) Create measures and plots folder
-if [[ !( -d $RES_DIR ) ]]
+# if there is already a measure dir, backup it
+# and creates a new one.
+if [[ ( -d $RES_DIR ) ]]
 then
-    mkdir $RES_DIR
+    mv -f regions.csv $RES_DIR/.
+    tar czf ${RES_DIR} ${RES_DIR}_$(date +%Y%m%d-%H%M%S).tar.gz .
 fi
+mkdir $RES_DIR
 
 #2) Measure application cycles
 make clean && rm -f *.ll
