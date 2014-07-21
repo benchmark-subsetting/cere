@@ -95,7 +95,7 @@ def compile_memory_dump_objects(DIR):
             DUMP_ARGS = (DUMP_ARGS +
                         " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
     OBJ.close()
-    safe_system("gcc-4.7 -c dump/objs.S")
+    safe_system(LD + " -c dump/objs.S")
     return DUMP_ARGS
 
 
@@ -130,7 +130,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     # Compress the traces
     safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
     create_user_main(mode_opt.instrument,LOOP)
-    safe_system("gcc-4.7 -c realmain.c")
+    safe_system(LD + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     safe_system(("{ld} {opts} -o {binary} objs.o realmain.o {args} " +
                 "-L {Root}{libs} -lload -Wl," +

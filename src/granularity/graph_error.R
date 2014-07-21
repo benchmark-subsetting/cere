@@ -5,8 +5,7 @@ suppressPackageStartupMessages(require(data.table, quietly=TRUE))
 options(warn=-1)
 options(error=traceback)
 ROOT_PLOTS = "measures/plots/"
-MEASURE_FILE = "measures/matching_error.csv"
-SELECTED_FILE = "measures/selected_codelets"
+ERROR_TABLE = "measures/table_error.csv"
 
 load_csv <- function(csvFile) {
     return (tryCatch(
@@ -19,7 +18,7 @@ load_csv <- function(csvFile) {
 }
 
 plot_graph <- function(table) {
-    p <- ggplot(table, aes(y=100*Exec.Time, x=100*Error))
+    p <- ggplot(table, aes(y=Exec.Time, x=Error))
     p <- p + geom_line()
     p <- p + theme_bw() + ylab("Exec time Cumulated (%)") + xlab("Error max allowed (%)")
     p <- p + geom_vline(xintercept=15, size = 1.5, linetype="dotted", colour = "red")
@@ -27,22 +26,12 @@ plot_graph <- function(table) {
     ggsave(file= paste(ROOT_PLOTS,"bench_error.png",sep=""), plot=p, height=5, width=7, dpi=300)
 }
 
-
 main <- function() {
-    table <- load_csv(MEASURE_FILE)
-    codelets <- load_csv(SELECTED_FILE)
-    codelets <- codelets[codelets[,"Selected"]=="true","Codelet.Name"]
-    codelets <- sapply(table[,"Codelet.Name"], function(x,y) x %in% y, y=codelets)
-    table <- table[codelets,c("Error","Exec.Time")]
-    ordre <- as.vector(table[,"Error"])
-    ordre <- order(ordre)
-    table <- table[ordre,]
-    vec <- as.vector(table[,"Exec.Time"])
-    table[,"Exec.Time"] <- sapply(1:length(vec),function(x, y) {sum(y[1:x])}, y = vec)
-    rownames(table) <- 1:nrow(table)
-    table[nrow(table)+1,] <- c(1,table[nrow(table),"Exec.Time"])
+    table <- load_csv(ERROR_TABLE)
+    table[nrow(table)+1,] <- c(100,table[nrow(table),"Exec.Time"])
+    table[nrow(table)+1,] <- c(0,0)
+    print (table)
     plot_graph(table)
 }
-
 
 main()

@@ -22,6 +22,8 @@ CSV_DELIMITER = ','
 REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
 INVOCATION_FIELDNAMES = ["Invocation", "Cluster", "Part", "Invitro (cycles)",
                          "Invivo (cycles)", "Error (%)"]
+DICT = ""
+TABLE = ""
 
 
 class MyError(Exception):
@@ -170,14 +172,18 @@ def context(DIR):
     TEMP_DIR = os.getcwd()
     if(os.chdir(DIR)):
         exit("Error Report -> Can't find " + DIR)
+    os.system(ROOT + "/../../src/granularity/graph_error.R")
     try:
+        global TABLE 
+        TABLE = table_region()
+        global DICT 
+        DICT = Dict_region()
         yield
     except MyError as err:
         exit("Error Report -> " + err.value)
     else:
         print ("Report created")
     os.chdir(TEMP_DIR)
-
 
 def read_csv(File):
     try:
@@ -192,10 +198,6 @@ def rm_prefix(name):
     name = name.split("__")
     name = name[2:]
     return "__".join(name)
-
-
-DICT = Dict_region()
-TABLE = table_region()
 
 
 def encode_graph(graph_name):
@@ -254,10 +256,6 @@ def main():
     '''
     Main function
     '''
-    try:
-        os.system(ROOT+"/../granularity/graph_error.R")
-    except (IOError):
-        exit("Error Report -> Can't find " + DIR)
     parser = argparse.ArgumentParser()
     parser.add_argument('dir')
     args = parser.parse_args()

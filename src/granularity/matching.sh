@@ -189,4 +189,4 @@ fi
 #compute matching and compare old and new method
 $PROJECT_ROOT/src/granularity/compute_matching.R ./${RES_DIR}
 CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-$PROJECT_ROOT/src/granularity/granularity.py reduce ${RES_DIR}/all_loops.csv --matching=${RES_DIR}/matching_codelets ${CYCLES} -o ${RES_DIR}/selected_codelets
+$PROJECT_ROOT/src/granularity/granularity.py reduce ${RES_DIR}/all_loops.csv --matching=${RES_DIR}/matching_error.csv ${CYCLES} -o ${RES_DIR}/selected_codelets
