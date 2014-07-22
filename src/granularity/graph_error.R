@@ -30,7 +30,6 @@ main <- function() {
     table <- load_csv(ERROR_TABLE)
     table[nrow(table)+1,] <- c(100,table[nrow(table),"Exec.Time"])
     table[nrow(table)+1,] <- c(0,0)
-    print (table)
     plot_graph(table)
 }
 

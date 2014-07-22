@@ -13,6 +13,8 @@ options(warn=-1)
 options(error=traceback)
 MAX_POINTS=50000
 ROOT_PLOTS = "measures/plots/"
+PALETTE = c("red","blue","green","yellow","black","grey","pink","maroon","orange","purple","magenta",
+            "silver","golden","brown","cyan")
 set.seed(2000)
 
 # Check the arguments 
@@ -34,8 +36,9 @@ plot_by_Cluster <- function(table, CodeletName) {
     p <- p + geom_point()
     p <- p + theme_bw() + ylab("Cycles")
     #p <- p + guides(colour=guide_legend(title="Cluster"))
+    p <- p + scale_colour_manual(values=PALETTE)
     p <- p + theme(legend.position="none")
-    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, height=3.60, width=10, dpi=300)
+    ggsave(file= paste(ROOT_PLOTS,CodeletName,"_byPhase.png",sep=""), plot=p, height=4.16, width=10, dpi=300)
 }
 
 # load_csv: reads a csv file

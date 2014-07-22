@@ -1,6 +1,6 @@
 #!/usr/bin/gnuplot
 
-set term "png" size 1000,360
+set term "png" size 1000,416
 set output outputFile.".png"
 set xlabel 'Invocation'
 set ylabel 'Cycles'

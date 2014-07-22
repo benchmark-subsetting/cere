@@ -134,9 +134,11 @@ class Report:
         
     def init_part(self):
         self._part = 0
+        temp = []
         for region in self._regions:
-            if((region["Error (%)"] < 15) and ( region["selected"] == "true")):
+            if((region["Error (%)"] < 15) and ( region["selected"] == "true") and (region["Codelet Name"] not in temp)):
                 self._part = self._part + region["Exec Time (%)"]
+                temp = temp + [region["Codelet Name"]]
         
     def init_graphs(self):
         self._graph_error = encode_graph("/bench_error.png")

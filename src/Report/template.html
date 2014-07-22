@@ -13,20 +13,25 @@
   {% endif %}
 {% endmacro %}
 
-{% macro class(class, error) %}
+{% macro class(prec, error,suiv) %}
   {% if error < 15 %}
-    {{class}}success
-  {% elif error > 30 %}
-    {{class}}danger
+    {{prec}}success {{suiv}}
+  {% elif error < 30 %}
+    {{prec}}warning {{suiv}}
+  {% elif error < 100 %}
+    {{prec}}danger {{suiv}}
   {% else %}
-    {{class}}warning
+    {{prec}}info"
   {% endif %}
 {% endmacro %}
 
+{% macro color_cluster(Cluster) %}
+  <td> <span color={{Cluster}}>test</span> {{Cluster}} </td>
+{% endmacro %}
 
 {% macro strong(text,test) %}
   {% if (test == "true") %}
-    <strong>
+    <strong strong="y">
   {% endif %}
   {{text}}
   {% if (test == "true") %}
@@ -52,10 +57,14 @@
       <tr {{selected(row["selected"])}} data-button="True"  data-tt-id="{{row["id"]}}" data-selected="{{row["selected"]}}" {{parent(row["parent"])}}>
       {% for column in fieldnames[:-1] %}
         {% if ((not id) or (column != NAME)) %}
-          <td>{{strong(row[column],row["selected"])}}</td>
+          {% if (column == "Cluster") %}
+            {{color_cluster(row[column])}}
+          {% else %}
+            <td>{{strong(row[column],row["selected"])}}</td>
+          {% endif %}
         {% endif %}
       {% endfor %}
-        <td class="{{class("btn-",row[fieldnames[-1]])}} btn-block">{{row[fieldnames[-1]]}}</td>
+        <td {{class("class=\"btn-",row[fieldnames[-1]],"btn-block\"")}}>{{row[fieldnames[-1]]}}</td>
        </tr>
     {% endif %}
   {% endfor %}
@@ -85,13 +94,13 @@
   <body class="container-fluid">
     <div class="row">
       <br>
-      <span id="Main" class="col-md-4">
+      <span id="Main" class="col-md-5">
         {{ table(bench, regionfields, regionlist, 0) }}
         <h4>Exec Time : {{nb_cycles}} cycles</h4>
         <h4>Matching : {{part}}%</h4>
         <img class="img-responsive" alt="Responsive image" src="data:image/png;base64,{{graph_error}}">
       </span>
-      <span id="Region" class="col-md-8">
+      <span id="Region" class="col-md-7">
         <div class="navbar navbar-default">
           <div class="container" data-name="navbar">
             <div class="collapse navbar-collapse">

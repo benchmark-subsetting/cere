@@ -33,25 +33,10 @@ class Error_table:
             name = codelet.name
             time = float(matching.dict[(name,"exec time")])*100
             error = float(matching.dict[(name,"error")])*100
-            index = 0
-            if(error < error_min):
-                coverage = coverage + time
-            else:
-                cov = coverage
-                for i in range(len(temp)):
-                    if (index == 0):
-                        if(error<temp[i][0]):
-                            index = i
-                            temp[i][1] = temp[i][1] + time
-                        else:
-                            cov = coverage + temp[i][1]
-                    else:
-                        temp[i][1] = temp[i][1] + time
-                if(index == 0):
-                    if ((cov + time)>prec_coverage_max):
-                        temp.append([error,cov + time])
-                else:
-                    temp.insert(i,[error,cov + time])
+            coverage = coverage + time
+            if(error > error_min):
+                if ((coverage)>prec_coverage_max):
+                        temp.append([error,coverage])
         if(len(temp) == 0):
             return prec_coverage_max
         self.table = self.table + temp
