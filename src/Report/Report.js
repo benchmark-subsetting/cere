@@ -1,4 +1,6 @@
 var ROOT_GRAPHS = "./measures/plots/";
+var COLOR = ["","red","blue","green","yellow","black","grey","pink","maroon","orange","purple","magenta",
+             "silver","golden","brown","cyan"]
 
 var regions = document.querySelectorAll('#Region > div');
 var table = document.querySelector("#Main table");
@@ -8,8 +10,36 @@ var Images = document.querySelectorAll("#Region .img-responsive");
 var divs = document.querySelectorAll("#Region > div > div");
 var navbar = document.querySelector("#navbar");
 var navs = document.querySelectorAll("#navbar > li");
+var spans = document.querySelectorAll("#Region table span");
+var nas = document.querySelectorAll(".btn-info");
 var view = "graph1"
 var editor = [];
+
+function init_color() {
+    for (i=0;i<spans.length;i++) {
+        spans[i].setAttribute("style", "background-color:" + COLOR[spans[i].getAttribute("color")] +
+                              ";" + "color:" + COLOR[spans[i].getAttribute("color")]);
+    }
+}
+
+function init_nas() {
+    for (i=0;i<nas.length;i++) {
+        nas[i].parentNode.setAttribute("data-button","False");
+        nas[i].innerHTML= "NA"
+    }
+}
+
+function init() {
+    init_color()
+    init_nas()
+    $(rows[1]).toggleClass("bg-info");
+    id_region = regions[1].getAttribute('id');
+    first_call(0);
+    change_view("init");
+    center_code (0);
+    change_view("default");
+    table.setAttribute("id","treetable")
+}
 
 function suppr_whitespace(string) {
     return string.replace(/\s+/,"").replace(/\s+$/,"");
@@ -74,16 +104,9 @@ function change_view(nav){
     show_hidden()
 }
 
+init();
 
-$(rows[1]).toggleClass("bg-info");
-id_region = regions[1].getAttribute('id');
-first_call(0);
-change_view("init");
-center_code (0);
-change_view("default");
-table.setAttribute("id","treetable")
-
-$("#treetable").treetable({ expandable: true });
+$("#treetable").treetable({ expandable: true ,indent:8});
 var selected = $('tr[data-selected="true"]')
 for( i = 0 ; i < selected.length ; i++) {
     node = selected[i].getAttribute("data-tt-parent-id");
@@ -96,7 +119,7 @@ for( i = 0 ; i < selected.length ; i++) {
 
 table.onclick = function (event) {
     var row = event.target.parentNode;
-    if (row.getAttribute("data-button") != "True") 
+    if (event.target.getAttribute("strong") == "y")
         row = row.parentNode;
     id_region = row.getAttribute('data-tt-id')
     if (row.getAttribute("data-button") == "True") {
