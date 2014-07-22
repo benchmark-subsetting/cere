@@ -54,8 +54,9 @@ AC_CHECK_FUNCS([atexit floor gettimeofday memset mkdir pow sqrt strchr strdup st
 AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/LoopExtractorAll/Makefile
-                 src/LoopInstrumentation/Makefile
+                 src/LoopInstrumentation/Makefile               
                  src/LoopManager/Makefile
+		 src/ParallelInstrument/Makefile
                  src/rdtsc/Makefile
                  src/memory_dump/Makefile
                  tests/Makefile])
