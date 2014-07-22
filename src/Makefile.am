@@ -1,1 +1,1 @@
-SUBDIRS=rdtsc memory_dump LoopExtractorAll ParallelInstrument LoopInstrumentation LoopManager 
+SUBDIRS=rdtsc memory_dump LoopExtractorAll LoopInstrumentation LoopManager 
