@@ -121,8 +121,8 @@ table.onclick = function (event) {
     var row = event.target.parentNode;
     if (event.target.getAttribute("strong") == "y")
         row = row.parentNode;
-    id_region = row.getAttribute('data-tt-id')
     if (row.getAttribute("data-button") == "True") {
+        id_region = row.getAttribute('data-tt-id')
         change_view("init");
         for (var j = 1 ; j < regions.length ; j++){
             if(regions[j].getAttribute('id') == id_region) {

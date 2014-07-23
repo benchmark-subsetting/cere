@@ -20,6 +20,7 @@ load_csv <- function(csvFile) {
 plot_graph <- function(table) {
     p <- ggplot(table, aes(y=Exec.Time, x=Error))
     p <- p + geom_line()
+    p <- p + geom_point()
     p <- p + theme_bw() + ylab("Exec time Cumulated (%)") + xlab("Error max allowed (%)")
     p <- p + geom_vline(xintercept=15, size = 1.5, linetype="dotted", colour = "red")
     p <- p + geom_hline(yintercept=85, size = 1.5, linetype="dotted", colour = "blue")

@@ -74,7 +74,7 @@ class table_region():
         for region in table:
             self._table = self._table + [region]
         for region in self._table:
-            region[0] = rm_prefix(region[0])
+            region[0] = region[0].replace("__extracted__","").replace("__invivo__","")
 
 
 class Report:
@@ -144,8 +144,8 @@ class Report:
         self._graph_error = encode_graph("/bench_error.png")
         self._graphs = []
         for region in self._regions:
-            graph_invoc = encode_graph("/{region}.png".format(region=region["Codelet Name"]))
-            graph_clustering = encode_graph("/{region}_byPhase.png".format(region=region["Codelet Name"]))
+            graph_invoc = encode_graph("/{region}.png".format(region=region["Graph Name"]))
+            graph_clustering = encode_graph("/{region}_byPhase.png".format(region=region["Graph Name"]))
             self._graphs = self._graphs +[{"id":region["id"],
                                            "graph_invoc":graph_invoc,
                                            "graph_clustering":graph_clustering}]
@@ -161,12 +161,22 @@ class Report:
         except (IOError):
             raise MyError("Cannot find Report.js")
 
-        REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
-                    regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
-                    invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
-                    codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS, part=self._part,
-                    graph_error=self._graph_error,graphs=self._graphs))
+        try:
+            REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
+                         regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
+                         invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
+                         codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS, part=self._part,
+                         graph_error=self._graph_error, graphs=self._graphs))
+        except(UnicodeDecodeError):
+            self.error_report(REPORT,REPORT_JS)
         REPORT.close()
+    
+    def error_report(self,REPORT,REPORT_JS):
+        print "ERROR"
+        REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
+                         regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
+                         invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
+                         codes=self._codes))
 
 
 @contextmanager
@@ -196,19 +206,13 @@ def read_csv(File):
     return Dict
 
 
-def rm_prefix(name):
-    name = name.split("__")
-    name = name[2:]
-    return "__".join(name)
-
-
 def encode_graph(graph_name):
         try:
             with open(ROOT_GRAPHS + graph_name, "rb") as f:
                 graph = f.read()
         except (IOError):
             raise MyError("Cannot find " + graph_name)
-        return base64.b64encode(graph)
+        return base64.standard_b64encode(graph)
 
 
 def percent(x):
@@ -216,7 +220,8 @@ def percent(x):
 
 
 def rewrite_dict_region(x):
-    Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":x["Codelet Name"],
+    name = x["Codelet Name"].replace("__extracted__","").replace("__invivo__","")
+    Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":name, "Graph Name":x["Codelet Name"],
             "Error (%)":percent(x["Error"]), "nb_invoc":DICT.dict[(x["Codelet Name"],"callcount")],
             "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"])),
             "parent":x["ParentId"], "id":x["Id"], "selected":x["Selected"]}
@@ -224,14 +229,14 @@ def rewrite_dict_region(x):
 
 
 def rewrite_dict_invocation(x):
+    name = x["Codelet Name"].replace("__extracted__","").replace("__invivo__","")
     Dict = {"Cluster":x["Cluster"], "Invocation":x["Invocation"], "Part":x["Part"],
-            "Codelet Name":x["Codelet Name"], "Invivo (cycles)":"{:e}".format(float(x["Invivo"])),
+            "Codelet Name":name, "Invivo (cycles)":"{:e}".format(float(x["Invivo"])),
             "Invitro (cycles)":"{:e}".format(float(x["Invitro"])), "Error (%)":percent(x["Error"])}
     return Dict
 
 
 def obtain_name(region):
-    region = rm_prefix(region)
     for loop in TABLE._table:
         if (loop[0] == region):
             return [loop[0], loop[2], loop[3], loop[4]]
@@ -240,11 +245,17 @@ def obtain_name(region):
 def read_code(region):
     temp = obtain_name(region["Codelet Name"])
     EXT = "__None__"
+    #print region["Codelet Name"]
+    #print temp
     for ext in EXTENSIONS:
         try:
             FILE = open(temp[1]+ext, "r")
             code = FILE.readlines()
             code = "".join(code)
+            try:
+                code.encode('utf-8')
+            except (UnicodeDecodeError):
+                return Code(region["id"], ".html", "ERROR UNICODE -> CORRUPTED FILE:" +temp[1]+ext , 1)
             FILE.close()
             EXT = ext
         except (IOError):
