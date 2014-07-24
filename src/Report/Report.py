@@ -14,6 +14,7 @@ Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              ".f90":["fortran/fortran.js", "text/x-Fortran"],
              ".F90":["fortran/fortran.js", "text/x-Fortran"],
              ".html":["htmlmixed/htmlmixed.js", "text/htmlmixed"]}
+LIST_PREFIX = ["__invivo__","__extracted__"]
 ROOT = os.path.dirname(os.path.realpath(__file__))
 ROOT_MEASURE = "./measures"
 ROOT_GRAPHS = "./measures/plots"
@@ -34,8 +35,7 @@ class MyError(Exception):
 
 
 class Code:
-    def __init__(self, Id, ext, value, line):
-        self._id = Id
+    def __init__(self, ext, value, line):
         self._value = value
         self._line = line
         self._mode = Mode_dict[ext][1]
@@ -44,37 +44,41 @@ class Code:
         return self._script
 
 
-class Dict_region():
-    '''
-    We read in the different level csv to obtain all region with call count
-    '''
-    def __init__(self):
-        self.dict = {}
-        test = True
-        i = 0
-        while (test):
-            try:
-                loops = read_csv("{root}/level_{lev}.csv".format(
-                                 root=ROOT_MEASURE,lev=i))
-                i = i + 1
-                for loop in loops:
-                    self.dict[(loop["Codelet Name"],"callcount")] = loop["Call Count"]
-            except(MyError):
-                test = False
+class Region:
+    def __init__(self,region):
+        self._name = region["Codelet Name"]
+        self._invivo = "{:e}".format(float(region["Invivo"]))
+        self._invitro = "{:e}".format(float(region["Invitro"]))
+        self._table = {"Exec Time (%)":percent(region["Exec Time"]), "Error (%)":percent(region["Error"]),
+                       "Codelet Name":suppr_prefix(region["Codelet Name"])}
+        self._inv_table = []
+        self.init_graph()
+    
+    def init_graph(self):
+        self._graph_invoc = encode_graph("/{region}.png".format(region=self._name))
+        self._graph_clustering = encode_graph("/{region}_byPhase.png".format(region=self._name))
+        
+    def set_callcount(self,callcount):
+        self._callcount = callcount
+        
+    def append_invocation_table(self,inv):
+        self._inv_table = self._inv_table +[ {"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
+                          "Part":inv["Part"], "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
+                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":percent(inv["Error"])}]
+        
+    def init_code(self, code_place):
+        self._code = read_code(code_place)
+        
+    def init_selected(self, selected):
+        self._selected = selected
 
 
-class table_region():
-    def __init__(self):
-        try:
-            FILE = open(NAME_FILE, 'rb')
-        except (IOError):
-            raise MyError("Can't read " + NAME_FILE + "-> Verify coverage and matching")
-        table = csv.reader(FILE, delimiter=CSV_DELIMITER)
-        self._table = []
-        for region in table:
-            self._table = self._table + [region]
-        for region in self._table:
-            region[0] = region[0].replace("__extracted__","").replace("__invivo__","")
+class Node:
+    def __init__(self,node,region):
+        self._region = region
+        self._parent = node["ParentId"]
+        self._selected = node["Selected"]
+        self._id = node["Id"]
 
 
 class Report:
@@ -83,11 +87,11 @@ class Report:
         self.init_template()
         self.init_nb_cycles()
         self.init_regions()
-        self.init_invocations()
-        self.init_codes()
         self.init_liste_script()
+        self.init_tree()
         self.init_part()
-        self.init_graphs()
+        self.init_graph()
+        self.init_javascript()
         
     def init_template(self):
         try:
@@ -104,79 +108,93 @@ class Report:
         self._nb_cycles = "{:e}".format(int(self._nb_cycles))
         
     def init_regions(self):
+        self._regions = {}
+        match_error = read_csv(ROOT_MEASURE +"/matching_error.csv")
+        for region in match_error:
+            self._regions[suppr_prefix(region["Codelet Name"])] = Region(region)
+        self.init_callcount()
+        self.init_invocation_table()
+        self.init_codes()
         
-        self._regions = read_csv(ROOT_MEASURE +"/matching_error.csv")
-        regions = read_csv(ROOT_MEASURE + "/selected_codelets")
-        temp = []
-        temp_2 = []
-        for region in self._regions:
-            temp_2 = temp_2 + [region]
-        for region in regions:
-            for region_2 in temp_2:
-                if (region["Codelet Name"] == region_2["Codelet Name"]):
-                    region_2 = dict(region.items() + region_2.items())
-                    temp = temp + [region_2]
-        self._regions = temp
-        self._regions = map(rewrite_dict_region, self._regions)
+    def init_callcount(self):
+        test = True
+        i = 0
+        while (test):
+            try:
+                loops = read_csv("{root}/level_{lev}.csv".format(
+                                 root=ROOT_MEASURE,lev=i))
+                i = i + 1
+                for loop in loops:
+                    try:
+                        self._regions[suppr_prefix(loop["Codelet Name"])].set_callcount(loop["Call Count"])
+                    except(KeyError):
+                        print "CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error"
+            except(MyError):
+                test = False
         
-    def init_invocations(self):
-        self._invocations = read_csv(ROOT_MEASURE + '/invocations_error.csv')
-        self._invocations = map(rewrite_dict_invocation, self._invocations)
+    def init_invocation_table(self):
+        invocations = read_csv(ROOT_MEASURE + '/invocations_error.csv')
+        for inv in invocations:
+            try:
+                self._regions[suppr_prefix(inv["Codelet Name"])].append_invocation_table(inv)
+            except(KeyError):
+                print "INVOCATIONS: " + suppr_prefix(inv["Codelet Name"]) + " not in matching error"
         
     def init_codes(self):
-        self._codes = map(read_code, self._regions)
+        try:
+            FILE = open(NAME_FILE, 'rb')
+        except (IOError):
+            raise MyError("Can't read " + NAME_FILE + "-> Verify coverage and matching")
+        table = csv.reader(FILE, delimiter=CSV_DELIMITER)
+        for code_place in table:
+            try:
+                self._regions[suppr_prefix(code_place[0])].init_code(code_place)
+            except(KeyError):
+                print "CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error"
         
     def init_liste_script(self):
         self._liste_script = []
-        for code in self._codes:
-            self._liste_script = self._liste_script + [code._script]
+        for region in self._regions:
+            self._liste_script = self._liste_script + [self._regions[region]._code._script]
+        
+    def init_tree(self):
+        self._tree = []
+        tree = read_csv(ROOT_MEASURE + "/selected_codelets")
+        for node in tree:
+            try:
+                region = self._regions[suppr_prefix(node["Codelet Name"])]
+                region.init_selected(node["Selected"])
+                self._tree = self._tree + [Node(node,region)]
+            except(KeyError):
+                print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
         self._liste_script = set(self._liste_script)
         
     def init_part(self):
         self._part = 0
-        temp = []
         for region in self._regions:
-            if((region["Error (%)"] < 15) and ( region["selected"] == "true") and (region["Codelet Name"] not in temp)):
-                self._part = self._part + region["Exec Time (%)"]
-                temp = temp + [region["Codelet Name"]]
+            if(self._regions[region]._selected == "true"):
+                self._part = self._part + self._regions[region]._table["Exec Time (%)"]
         
-    def init_graphs(self):
+    def init_graph(self):
         self._graph_error = encode_graph("/bench_error.png")
-        self._graphs = []
-        for region in self._regions:
-            graph_invoc = encode_graph("/{region}.png".format(region=region["Graph Name"]))
-            graph_clustering = encode_graph("/{region}_byPhase.png".format(region=region["Graph Name"]))
-            self._graphs = self._graphs +[{"id":region["id"],
-                                           "graph_invoc":graph_invoc,
-                                           "graph_clustering":graph_clustering}]
+        
+    def init_javascript(self):
+        try:
+            with file(ROOT + '/Report.js') as jsf:
+                self.javascript=jsf.read()
+        except (IOError):
+            raise MyError("Cannot find Report.js")
     
     def write_report(self):
         try:
             REPORT=open(self._bench+'.html','w')
         except (IOError):
             raise MyError("Cannot open "+ self._bench +".html")
-        try:
-            with file(ROOT + '/Report.js') as jsf:
-                REPORT_JS=jsf.read()
-        except (IOError):
-            raise MyError("Cannot find Report.js")
-
-        try:
-            REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
-                         regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
-                         invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
-                         codes=self._codes, l_modes=self._liste_script, report_js=REPORT_JS, part=self._part,
-                         graph_error=self._graph_error, graphs=self._graphs))
-        except(UnicodeDecodeError):
-            self.error_report(REPORT,REPORT_JS)
-        REPORT.close()
-    
-    def error_report(self,REPORT,REPORT_JS):
-        print "ERROR"
         REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
-                         regionlist=self._regions, regionfields=REGIONS_FIELDNAMES,
-                         invocationlist=self._invocations, invocationfields=INVOCATION_FIELDNAMES,
-                         codes=self._codes))
+                     regionlist=self._regions, regionfields=REGIONS_FIELDNAMES, tree = self._tree,
+                     invocationfields=INVOCATION_FIELDNAMES, l_modes=self._liste_script,
+                     report_js=self.javascript, part=self._part, graph_error=self._graph_error))
+        REPORT.close()
 
 
 @contextmanager
@@ -186,10 +204,6 @@ def context(DIR):
         exit("Error Report -> Can't find " + DIR)
     os.system(ROOT + "/../../src/granularity/graph_error.R")
     try:
-        global TABLE 
-        TABLE = table_region()
-        global DICT 
-        DICT = Dict_region()
         yield
     except MyError as err:
         exit("Error Report -> " + err.value)
@@ -219,50 +233,30 @@ def percent(x):
     return (100 * float(x))
 
 
-def rewrite_dict_region(x):
-    name = x["Codelet Name"].replace("__extracted__","").replace("__invivo__","")
-    Dict = {"Exec Time (%)":percent(x["Exec Time"]), "Codelet Name":name, "Graph Name":x["Codelet Name"],
-            "Error (%)":percent(x["Error"]), "nb_invoc":DICT.dict[(x["Codelet Name"],"callcount")],
-            "Invivo":"{:e}".format(float(x["Invivo"])), "Invitro":"{:e}".format(float(x["Invitro"])),
-            "parent":x["ParentId"], "id":x["Id"], "selected":x["Selected"]}
-    return Dict
+def suppr_prefix(name):
+    for pre in LIST_PREFIX:
+        name = name.replace(pre,"")
+    return name
 
 
-def rewrite_dict_invocation(x):
-    name = x["Codelet Name"].replace("__extracted__","").replace("__invivo__","")
-    Dict = {"Cluster":x["Cluster"], "Invocation":x["Invocation"], "Part":x["Part"],
-            "Codelet Name":name, "Invivo (cycles)":"{:e}".format(float(x["Invivo"])),
-            "Invitro (cycles)":"{:e}".format(float(x["Invitro"])), "Error (%)":percent(x["Error"])}
-    return Dict
-
-
-def obtain_name(region):
-    for loop in TABLE._table:
-        if (loop[0] == region):
-            return [loop[0], loop[2], loop[3], loop[4]]
-
-
-def read_code(region):
-    temp = obtain_name(region["Codelet Name"])
+def read_code(code_place):
     EXT = "__None__"
-    #print region["Codelet Name"]
-    #print temp
     for ext in EXTENSIONS:
         try:
-            FILE = open(temp[1]+ext, "r")
+            FILE = open(code_place[2]+ext, "r")
             code = FILE.readlines()
             code = "".join(code)
             try:
                 code.encode('utf-8')
             except (UnicodeDecodeError):
-                return Code(region["id"], ".html", "ERROR UNICODE -> CORRUPTED FILE:" +temp[1]+ext , 1)
+                return Code(".html", "ERROR UNICODE -> CORRUPTED FILE:" +code_place[2]+ext , 1)
             FILE.close()
             EXT = ext
         except (IOError):
             pass
     if (EXT == "__None__"):
-        raise MyError("Can't open: "+temp[1])
-    return Code(region["id"], EXT, code, temp[3])
+        raise MyError("Can't open: "+code_place[2])
+    return Code(EXT, code, code_place[4])
 
 
 def main():
