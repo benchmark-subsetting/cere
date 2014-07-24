@@ -5,8 +5,6 @@ var COLOR = ["","red","blue","green","yellow","black","grey","pink","maroon","or
 var regions = document.querySelectorAll('#Region > div');
 var table = document.querySelector("#Main table");
 var rows = document.querySelectorAll('#Main table tbody tr');
-var Code = document.querySelectorAll(".code");
-var Images = document.querySelectorAll("#Region .img-responsive");
 var divs = document.querySelectorAll("#Region > div > div");
 var navbar = document.querySelector("#navbar");
 var navs = document.querySelectorAll("#navbar > li");
@@ -17,8 +15,10 @@ var editor = [];
 
 function init_color() {
     for (i=0;i<spans.length;i++) {
-        spans[i].setAttribute("style", "background-color:" + COLOR[spans[i].getAttribute("color")] +
-                              ";" + "color:" + COLOR[spans[i].getAttribute("color")]);
+        if(i<16) {
+            spans[i].setAttribute("style", "background-color:" + COLOR[spans[i].getAttribute("color")] +
+                                  ";" + "color:" + COLOR[spans[i].getAttribute("color")]);
+        }
     }
 }
 
@@ -59,19 +59,23 @@ function set_image(image,nb_invoc) {
 
 
 function first_call (j) {
-    id = regions[j+1].getAttribute('id')
-    Code[j].value = suppr_whitespace(Code[j].value);
-    editor[j] = CodeMirror.fromTextArea(Code[j], {
-        mode:Code[j].getAttribute("mode"), indentUnit:4,
-        autofocus:true, lineNumbers:true, readOnly:true});
+    var id = regions[j+1].getAttribute('id');
+    var code = $("#"+id+" .code")[0];
+    code.value = suppr_whitespace(code.value);
+    editor[j] = CodeMirror.fromTextArea(code, {
+                mode:code.getAttribute("mode"), indentUnit:4,
+                autofocus:true, lineNumbers:true, readOnly:true});
     nb_invoc = regions[j+1].getAttribute("data-nb-invoc");
-    set_image(Images[2*j], nb_invoc);
-    set_image(Images[2*j + 1], nb_invoc);
+    images = $("#"+id+" img");
+    for (i=0;i<images.length;i++) {
+        set_image(images[i], nb_invoc);
+    }
 }
 
 
 function center_code (j) {
-    var Line = parseInt(Code[j].getAttribute('line'));
+    var code = $("#"+id_region+" .code")[0];
+    var Line = parseInt(code.getAttribute('line'));
     editor[j].scrollTo(null,editor[j].heightAtLine(Line-4,mode="local"));
     editor[j].doc.addLineClass(Line-1, "background", "bg-danger")
 }
@@ -122,7 +126,7 @@ table.onclick = function (event) {
     if (event.target.getAttribute("strong") == "y")
         row = row.parentNode;
     if (row.getAttribute("data-button") == "True") {
-        id_region = row.getAttribute('data-tt-id')
+        id_region = row.getAttribute('data-region')
         change_view("init");
         for (var j = 1 ; j < regions.length ; j++){
             if(regions[j].getAttribute('id') == id_region) {

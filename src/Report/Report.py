@@ -23,8 +23,7 @@ CSV_DELIMITER = ','
 REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
 INVOCATION_FIELDNAMES = ["Invocation", "Cluster", "Part", "Invitro (cycles)",
                          "Invivo (cycles)", "Error (%)"]
-DICT = ""
-TABLE = ""
+DEBUG_MODE = False
 
 
 class MyError(Exception):
@@ -128,7 +127,8 @@ class Report:
                     try:
                         self._regions[suppr_prefix(loop["Codelet Name"])].set_callcount(loop["Call Count"])
                     except(KeyError):
-                        print "CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error"
+                        if(DEBUG_MODE):
+                            print "CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error"
             except(MyError):
                 test = False
         
@@ -138,7 +138,8 @@ class Report:
             try:
                 self._regions[suppr_prefix(inv["Codelet Name"])].append_invocation_table(inv)
             except(KeyError):
-                print "INVOCATIONS: " + suppr_prefix(inv["Codelet Name"]) + " not in matching error"
+                if(DEBUG_MODE):
+                    print "INVOCATIONS: " + suppr_prefix(inv["Codelet Name"]) + " not in matching error"
         
     def init_codes(self):
         try:
@@ -150,7 +151,8 @@ class Report:
             try:
                 self._regions[suppr_prefix(code_place[0])].init_code(code_place)
             except(KeyError):
-                print "CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error"
+                if(DEBUG_MODE):
+                    print "CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error"
         
     def init_liste_script(self):
         self._liste_script = []
@@ -166,7 +168,8 @@ class Report:
                 region.init_selected(node["Selected"])
                 self._tree = self._tree + [Node(node,region)]
             except(KeyError):
-                print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
+                if(DEBUG_MODE):
+                    print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
         self._liste_script = set(self._liste_script)
         
     def init_part(self):

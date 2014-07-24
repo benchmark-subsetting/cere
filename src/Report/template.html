@@ -72,7 +72,7 @@
   {% endfor %}
   </tr>
   {% for node in tree %}
-    <tr {{selected(node._selected)}} data-button="True"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
+    <tr {{selected(node._selected)}} data-button="True" data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
     {% for column in fieldnames[:-1] %}
       <td>{{strong(node._region._table[column],node._selected)}}</td>
     {% endfor %}
@@ -122,26 +122,26 @@
             </div>
           </div>
         </div>
-        {% for node in tree %}
-          <div id="{{node._id}}" data-nb-invoc="{{node._region._callcount}}">
+        {% for region in regionlist %}
+          <div id="{{regionlist[region]._name}}" data-nb-invoc="{{regionlist[region]._callcount}}">
             <div data-name="code">
-              <textarea class="code" mode={{node._region._code._mode}} line={{node._region._code._line}}>
-                {{node._region._code._value}}
+              <textarea class="code" mode={{regionlist[region]._code._mode}} line={{regionlist[region]._code._line}}>
+                {{regionlist[region]._code._value}}
               </textarea>
             </div>
             <div data-name="Clustering">
-              <img class="img-responsive" alt="Responsive image" data={{node._region._graph_clustering}}>
+              <img class="img-responsive" alt="Responsive image" data={{regionlist[region]._graph_clustering}}>
             </div>
             <div data-name="Invocation">
-              <img class="img-responsive" alt="Responsive image" data={{node._region._graph_invoc}}>
+              <img class="img-responsive" alt="Responsive image" data={{regionlist[region]._graph_invoc}}>
             </div>
             <div data-name="default">
-              <h4><span class={{class("bg-",node._region._table["Error (%)"])}}>
-                Real time: {{node._region._invitro}}  --  Execution time: {{node._region._invivo}}
+              <h4><span class={{class("bg-",regionlist[region]._table["Error (%)"])}}>
+                Real time: {{regionlist[region]._invitro}}  --  Execution time: {{regionlist[region]._invivo}}
               </span></h4>
             </div>
             <div data-name="default">
-              {{ inv_table(invocationfields, node._region._inv_table)}}
+              {{ inv_table(invocationfields, regionlist[region]._inv_table)}}
             </div>
           </div>
         {% endfor %}
