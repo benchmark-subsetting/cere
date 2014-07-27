@@ -31,8 +31,9 @@ fi
 # and creates a new one.
 if [[ ( -d $RES_DIR ) ]]
 then
-    mv -f regions.csv $RES_DIR/.
-    tar czf ${RES_DIR} ${RES_DIR}_$(date +%Y%m%d-%H%M%S).tar.gz .
+    cp -f regions.csv $RES_DIR/.
+    tar -czf ${RES_DIR}_$(date +%Y%m%d-%H%M%S).tar.gz ${RES_DIR}
+    rm -rf ${RES_DIR} regions.csv
 fi
 mkdir $RES_DIR
 

@@ -12,6 +12,11 @@ FILE=$1
 ORIGIN_DIR=$PWD
 
 while read benchInfo; do
+    #skip commented lines
+    if [[ $benchInfo =~ \#.* ]]; then
+        continue
+    fi
+
     benchName=`echo $benchInfo | cut -d ' ' -f 1`
     runCommand=`echo $benchInfo | grep -Po '".*?"'`
     echo "$benchName: $runCommand"
@@ -26,9 +31,9 @@ while read benchInfo; do
     echo "$ROOT/coverage.sh $BENCH_DIR $runCommand \"make -j8\" > $BENCH_DIR/coverage_log"
     $ROOT/coverage.sh $BENCH_DIR "$runCommand" "make -j8" > $BENCH_DIR/coverage_log 2>&1
     echo "$ROOT/matching.sh $BENCH_DIR measures/loops $runCommand \"make -j8\" > $BENCH_DIR/matching_log"
-    $ROOT/matching.sh --force $BENCH_DIR measures/loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
-    echo "Reporting"
-    $PROJECT_ROOT/src/Report/Report.py .
+    $ROOT/matching.sh $BENCH_DIR measures/loops "$runCommand" "make -j8" > $BENCH_DIR/matching_log 2>&1
+    echo "$PROJECT_ROOT/src/Report/Report.py $BENCH_DIR > $BENCH_DIR/report_log"
+    $PROJECT_ROOT/src/Report/Report.py $BENCH_DIR > $BENCH_DIR/report_log 2>&1
     cd $ORIGIN_DIR 2> /dev/null
     if [ "$?" != "0" ] ; then
         echo "Could not come back to original directory $ORIGIN_DIR"
