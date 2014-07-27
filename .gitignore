@@ -2,7 +2,8 @@ libs/dragonegg.so
 **/*.o
 **/*.a
 **/*.so
-**/.ll
+**/*.ll
+**/*.mod
 **/.*
 *.in
 configure
