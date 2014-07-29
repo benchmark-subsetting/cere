@@ -114,7 +114,7 @@ $("#treetable").treetable({ expandable: true ,indent:8});
 var selected = $('tr[data-selected="true"]')
 for( i = 0 ; i < selected.length ; i++) {
     node = selected[i].getAttribute("data-tt-parent-id");
-    while(node != "None") {
+    while(node != null) {
         $("#treetable").treetable("expandNode", node);
         parent = $('tr[data-tt-id='+node+']');
         node = parent[0].getAttribute("data-tt-parent-id")

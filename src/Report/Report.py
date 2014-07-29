@@ -171,7 +171,20 @@ class Report:
                 if(DEBUG_MODE):
                     print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
         self._liste_script = set(self._liste_script)
+        self.test_tree()
         
+    def test_tree(self):
+        for node in self._tree:
+            if (node._parent is not "none"):
+                test = 0
+                for parent in self._tree:
+                    if(parent._id == node._parent):
+                        test = 1
+                        break
+                if (test == 0):
+                    node._parent = "none"
+				
+
     def init_part(self):
         self._part = 0
         for region in self._regions:
