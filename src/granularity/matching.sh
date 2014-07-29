@@ -63,7 +63,7 @@ compute_error()
     error=`echo "scale=3;${diff}/${max}" | bc | awk '{printf "%f", $0}'`
 }
 
-rm -f $RES_DIR/matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf $PLOT_DIR/*
+#rm -f $RES_DIR/matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf $PLOT_DIR/*
 touch $RES_DIR/matching_codelets
 #Get application runtime in cycles
 app_cycles=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
@@ -83,6 +83,8 @@ while read codeletName; do
             mv $codeletName.bin "$RES_DIR/${codeletName}.bin.${i}"
             mv -f rdtsc_result.csv $RES_DIR/$codeletName.csv
         done
+    else
+        echo "Using previous trace results"
     fi
     if [[ ! ( -f  "$RES_DIR/${codeletName}.csv" ) ]]; then
         echo "Error for $codeletName: No measure files for invivo trace"
@@ -92,19 +94,28 @@ while read codeletName; do
     bynaryFiles=`ls $RES_DIR/*$codeletName.bin.*`
     nbLoopFiles=`ls $RES_DIR/*$codeletName.bin.* | wc -l`
     echo "Ploting"
-    gnuplot -e "filename='$bynaryFiles'" -e "outputFile='${codeletName}'" $ROOT/plot_trace.gnu
-    if [[ ! ( -f  "${codeletName}.png" ) ]]; then
-        echo "No plots for $codeletName"
+    if [[ ( -f  "${PLOT_DIR}/${codeletName}.png" ) ]]; then
+        echo "Keeping previous plots"
     else
-        mv ${codeletName}.png $PLOT_DIR/.
+        gnuplot -e "filename='$bynaryFiles'" -e "outputFile='${codeletName}'" $ROOT/plot_trace.gnu
+        if [[ ! ( -f  "${codeletName}.png" ) ]]; then
+            echo "No plots for $codeletName"
+        else
+            mv ${codeletName}.png $PLOT_DIR/.
+        fi
     fi
     echo "Computing clustering info"
-    $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $RES_DIR/${codeletName}.csv $bynaryFiles
-    if [[ ! ( -f  "${codeletName}.invocations" ) ]]; then
-        echo "Error for $codeletName: No clustering infos"
-        continue
+    if [[ ( -f  "${RES_DIR}/${codeletName}.invocations" ) ]]; then
+        echo "Using previous clustering infos"
+    else
+        $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $RES_DIR/${codeletName}.csv $bynaryFiles
+        if [[ ! ( -f  "${codeletName}.invocations" ) ]]; then
+            echo "Error for $codeletName: No clustering infos"
+            continue
+        else
+            mv ${codeletName}.invocations $RES_DIR/.
+        fi
     fi
-    mv ${codeletName}.invocations $RES_DIR/.
     #We have invocations to dump, so let's dump them!
     cycles=0
     cluster=0
@@ -160,7 +171,7 @@ while read codeletName; do
     #if an error has occured, let's got to the next codelet
     if [[ ! ( -z ${err} ) ]]; then
         unset err
-        rm -f $RES_DIR/${codeletName}.invocations
+        #rm -f $RES_DIR/${codeletName}.invocations
         rm -f $RES_DIR/${codeletName/__invivo__/__extracted__}_*.csv
         continue
     fi
@@ -178,7 +189,7 @@ while read codeletName; do
         echo ${codeletName/__invivo__/} >> $RES_DIR/matching_codelets
     fi
     echo "$codeletName,$cy,$cycles,$error,$codelet_part" >> $RES_DIR/matching_error.csv
-    rm $RES_DIR/${codeletName}.invocations
+    #rm $RES_DIR/${codeletName}.invocations
     rm $RES_DIR/${codeletName/__invivo__/__extracted__}_*.csv
 done < ${FILE}
 
@@ -187,6 +198,6 @@ if [[ ( -f  matching_error ) ]]; then
     $ROOT/density_error.R ${RES_DIR}/matching_error
 fi
 #compute matching and compare old and new method
-$PROJECT_ROOT/src/granularity/compute_matching.R ./${RES_DIR}
+#$PROJECT_ROOT/src/granularity/compute_matching.R ./${RES_DIR}
 CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
 $PROJECT_ROOT/src/granularity/granularity.py reduce ${RES_DIR}/all_loops.csv --matching=${RES_DIR}/matching_error.csv ${CYCLES} -o ${RES_DIR}/selected_codelets
