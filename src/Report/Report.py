@@ -7,14 +7,15 @@ import jinja2
 import csv
 import base64
 from contextlib import contextmanager
-EXTENSIONS = [".c",".f",".f90",".C",".F",".F90",".cc"]
+EXTENSIONS = [".c",".f",".f90",".C",".F",".F90",".cc",".cpp"]
 Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              "text/x-csrc"], ".f":["fortran/fortran.js", "text/x-Fortran"],
              ".F":["fortran/fortran.js", "text/x-Fortran"],
              ".f90":["fortran/fortran.js", "text/x-Fortran"],
              ".F90":["fortran/fortran.js", "text/x-Fortran"],
              ".html":["htmlmixed/htmlmixed.js", "text/htmlmixed"],
-             ".cc":["clike/clike.js", "text/x-c++src"]}
+             ".cc":["clike/clike.js", "text/x-c++src"],
+             ".cpp":["clike/clike.js", "text/x-c++src"]}
 LIST_PREFIX = ["__invivo__","__extracted__"]
 ROOT = os.path.dirname(os.path.realpath(__file__))
 ROOT_MEASURE = "./measures"
