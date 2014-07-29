@@ -15,7 +15,7 @@ var editor = [];
 
 function init_color() {
     for (i=0;i<spans.length;i++) {
-        if(i<16) {
+        if(spans[i].getAttribute("color")<16) {
             spans[i].setAttribute("style", "background-color:" + COLOR[spans[i].getAttribute("color")] +
                                   ";" + "color:" + COLOR[spans[i].getAttribute("color")]);
         }
