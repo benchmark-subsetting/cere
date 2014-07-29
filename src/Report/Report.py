@@ -51,6 +51,8 @@ class Region:
         self._table = {"Exec Time (%)":percent(region["Exec Time"]), "Error (%)":percent(region["Error"]),
                        "Codelet Name":suppr_prefix(region["Codelet Name"])}
         self._inv_table = []
+        self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
+        self._callcount = 0
         self.init_graph()
     
     def init_graph(self):
@@ -102,9 +104,14 @@ class Report:
         
     def init_nb_cycles(self):
         Dict = read_csv(ROOT_MEASURE + '/app_cycles.csv')
-        row = Dict.next()
-        self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
-        self._nb_cycles = "{:e}".format(int(self._nb_cycles))
+        try:
+            row = Dict.next()
+            self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
+            self._nb_cycles = "{:e}".format(int(self._nb_cycles))
+        except (StopIteration):
+            raise MyError("/app_cycles.csv empty")
+        except (KeyError):
+            raise MyError("error key: not CPU_CLK_UNHALTED_CORE in /app_cycles.csv ")
         
     def init_regions(self):
         self._regions = {}
@@ -171,9 +178,9 @@ class Report:
                 if(DEBUG_MODE):
                     print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
         self._liste_script = set(self._liste_script)
-        self.test_tree()
+        self.test_parent_tree()
         
-    def test_tree(self):
+    def test_parent_tree(self):
         for node in self._tree:
             if (node._parent is not "none"):
                 test = 0
@@ -265,7 +272,7 @@ def read_code(code_place):
             try:
                 code.encode('utf-8')
             except (UnicodeDecodeError):
-                return Code(".html", "ERROR UNICODE -> CORRUPTED FILE:" +code_place[2]+ext , 1)
+                return Code(".html", "ERROR UNICODE -> FILE:" +code_place[2]+ext , 1)
             FILE.close()
             EXT = ext
         except (IOError):

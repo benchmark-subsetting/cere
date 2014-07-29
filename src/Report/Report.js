@@ -53,7 +53,10 @@ function set_image(image,nb_invoc) {
     else {
         parent = image.parentNode;
         parent.removeChild(image);
-        parent.innerHTML = "<p style=\"height:300px\">One invocation only</p>";
+        if (nb_invoc == 1)
+            parent.innerHTML = "<p style=\"height:300px\">One invocation only</p>";
+        else
+            parent.innerHTML = "<p style=\"height:300px\">No Invocation -> THIS CODELET NOT IN level_*.csv? </p>";
     }
 }
 
