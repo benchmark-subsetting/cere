@@ -33,7 +33,13 @@
   {% if (test == "true") %}
     <strong strong="y">
   {% endif %}
-  {{text}}
+  {% if text is number %}
+    {{text}}
+  {% elif text[40] is undefined %}
+    {{text}}
+  {% else %}
+    {{text[:39]}}...
+  {% endif %}
   {% if (test == "true") %}
     </strong>
   {% endif %}
@@ -136,9 +142,15 @@
               <img class="img-responsive" alt="Responsive image" data={{regionlist[region]._graph_invoc}}>
             </div>
             <div data-name="default">
+              <h4><strong>
+                {{regionlist[region]._name}}
+              </strong></h4><br>
               <h4><span class={{class("bg-",regionlist[region]._table["Error (%)"])}}>
-                Real time: {{regionlist[region]._invitro}}  --  Execution time: {{regionlist[region]._invivo}}
+                Real time: {{regionlist[region]._invivo}}  --  Predicted time: {{regionlist[region]._invitro}}
               </span></h4>
+              <h4>
+                Callcount: {{regionlist[region]._callcount}}
+              </h4>
             </div>
             <div data-name="default">
               {{ inv_table(invocationfields, regionlist[region]._inv_table)}}

@@ -6,7 +6,7 @@ import os
 from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, GLPK
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
-tolerated_error = [5,10,15,20,25,30,99.9]
+tolerated_error = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99.9]
 ERROR = 15
 ERROR_TABLE_FILENAME = "measures/table_error.csv"
 
@@ -22,25 +22,11 @@ class Error_table:
     def __init__(self):
         self.table = []
 
-    def complete_error_table(self,error_min,prec_coverage_max,chosen, matching):
-        temp = []
+    def complete_error_table(self,error,chosen,matching):
         coverage = 0
-        myList = []
         for codelet in chosen:
-            myList = myList + [float(matching.dict[(codelet.name,"error")])]
-        for j in [i[0] for i in sorted(enumerate(myList), key=lambda x:x[1])]:
-            codelet = chosen[j]
-            name = codelet.name
-            time = float(matching.dict[(name,"exec time")])*100
-            error = float(matching.dict[(name,"error")])*100
-            coverage = coverage + time
-            if(error > error_min):
-                if ((coverage)>prec_coverage_max):
-                        temp.append([error,coverage])
-        if(len(temp) == 0):
-            return prec_coverage_max
-        self.table = self.table + temp
-        return temp[-1][1]
+            coverage = coverage + (100*float(matching.dict[(codelet.name,"exec time")]))
+        self.table = self.table + [[error,coverage]]
 
     def write_table(self):
         output = open(ERROR_TABLE_FILENAME,'w')
@@ -235,8 +221,6 @@ if __name__ == "__main__":
     else:
         if args.matching:
             matching_loops = Codelet_matching(args.matching)
-        error_prec = 0
-        coverage_max = 0
         table = Error_table()
         for error in tolerated_error:
             try:
@@ -245,14 +229,13 @@ if __name__ == "__main__":
                                min_cycles=args.min_cycles,
                                matching_loops=matching_loops,error=error)
 
-                coverage_max = table.complete_error_table(error_prec,coverage_max,chosen,matching_loops)
+                table.complete_error_table(error,chosen,matching_loops)
                 if (error == ERROR):
                     output_tree(args.o, codelets, chosen)
             except(Unsolvable):
                 if(error == ERROR):
                     print >>sys.stderr, "Solution impossible"
                     sys.exit(1)
-            error_prec = error
 
         table.write_table()
         print >>sys.stderr, "===== Solution with coverage ====="
