@@ -7,16 +7,17 @@ from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, 
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 tolerated_error = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99.9]
-ERROR = 15
+TARGET_ERROR = 15
+assert(TARGET_ERROR in tolerated_error)
 ERROR_TABLE_FILENAME = "measures/table_error.csv"
 
-class Codelet_matching:
+class Codelet_matching(dict):
     def __init__(self,matching_file):
-        self.dict = {}
         loops = csv.DictReader(matching_file, delimiter=',')
         for loop in loops:
-            self.dict[(loop["Codelet Name"],"error")] = loop["Error"]
-            self.dict[(loop["Codelet Name"],"exec time")] = loop["Exec Time"]
+            self[(loop["Codelet Name"],"error")] = loop["Error"]
+            self[(loop["Codelet Name"],"exec time")] = loop["Exec Time"]
+
 
 class Error_table:
     def __init__(self):
@@ -25,7 +26,7 @@ class Error_table:
     def complete_error_table(self,error,chosen,matching):
         coverage = 0
         for codelet in chosen:
-            coverage = coverage + (100*float(matching.dict[(codelet.name,"exec time")]))
+            coverage = coverage + (100*float(matching[(codelet.name,"exec time")]))
         self.table = self.table + [[error,coverage]]
 
     def write_table(self):
@@ -89,7 +90,7 @@ class Unsolvable(Exception):
     pass
 
 def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05,
-        max_coverage=0.95, matching_loops=None, error=ERROR):
+        max_coverage=0.95, matching_loops=None, error=TARGET_ERROR):
     if(matching_loops):
         # By default, codelets are considered matching
         for c in codelets:
@@ -101,16 +102,14 @@ def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05,
         try:
             s = list(solve_under_coverage(codelets, appli_cycles, min_cycles,
                 coverage))
-            if (error == ERROR):
-                print >>sys.stderr, "Solved with coverage >= %s" % coverage
-            return s
+            return s, coverage
         except Unsolvable:
             coverage = coverage - step
     
     raise Unsolvable()
 
 def matches(matching, c, error):
-    if (((c.name,"error") in matching.dict.keys()) and ((float(matching.dict[(c.name,"error")])*100) <= error)):
+    if (((c.name,"error") in matching.keys()) and ((float(matching[(c.name,"error")])*100) <= error)):
         return True
     return False
 
@@ -221,24 +220,29 @@ if __name__ == "__main__":
     else:
         if args.matching:
             matching_loops = Codelet_matching(args.matching)
+        else:
+            matching_loops = None
         table = Error_table()
+        target_error_chosen = set()
         for error in tolerated_error:
             try:
-                chosen = solve(codelets.values(),
-                               appli_cycles=args.application_cycles,
-                               min_cycles=args.min_cycles,
-                               matching_loops=matching_loops,error=error)
+                chosen, coverage = solve(codelets.values(),
+                        appli_cycles=args.application_cycles,
+                        min_cycles=args.min_cycles,
+                        matching_loops=matching_loops,error=error)
 
                 table.complete_error_table(error,chosen,matching_loops)
-                if (error == ERROR):
-                    output_tree(args.o, codelets, chosen)
+                if (error == TARGET_ERROR):
+                    print >>sys.stderr, "Solved with coverage >= %s" % coverage
+                    target_error_chosen = chosen
             except(Unsolvable):
-                if(error == ERROR):
+                if(error == TARGET_ERROR):
                     print >>sys.stderr, "Solution impossible"
-                    sys.exit(1)
+                table.complete_error_table(error,set(),matching_loops)
 
+        output_tree(args.o, codelets, target_error_chosen)
         table.write_table()
         print >>sys.stderr, "===== Solution with coverage ====="
 
-        for c in chosen:
+        for c in target_error_chosen:
             print >>sys.stderr, "> {} {}".format(c.name.ljust(padding), round((c.cycles*c.callcount)/args.application_cycles*100, 2))
