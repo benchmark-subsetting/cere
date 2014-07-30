@@ -55,6 +55,7 @@ class Region:
         self._inv_table = []
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
         self._callcount = 0
+        self._selected = "false"
         self.init_graph()
     
     def init_graph(self):
@@ -183,7 +184,9 @@ class Report:
         self.test_parent_tree()
         
     def test_parent_tree(self):
+        test=0
         for node in self._tree:
+            test=1
             if (node._parent is not "none"):
                 test = 0
                 for parent in self._tree:
@@ -192,7 +195,8 @@ class Report:
                         break
                 if (test == 0):
                     node._parent = "none"
-				
+        if (test == 0):
+            raise MyError("/selected_codelets empty")
 
     def init_part(self):
         self._part = 0
