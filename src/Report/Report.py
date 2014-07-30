@@ -184,19 +184,17 @@ class Report:
         self.test_parent_tree()
         
     def test_parent_tree(self):
-        test=0
+        if (len(self._tree) == 0):
+            raise MyError("/selected_codelets empty")
         for node in self._tree:
-            test=1
             if (node._parent is not "none"):
-                test = 0
+                orphan = True
                 for parent in self._tree:
                     if(parent._id == node._parent):
-                        test = 1
+                        orphan = False
                         break
-                if (test == 0):
+                if (orphan):
                     node._parent = "none"
-        if (test == 0):
-            raise MyError("/selected_codelets empty")
 
     def init_part(self):
         self._part = 0
