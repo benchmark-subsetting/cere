@@ -321,12 +321,21 @@ void configure_sigaction(void)
 }
 
 void copy(char* source, char* dest) {
-	char cmd[1024];
-	snprintf(cmd, sizeof(cmd), "cp %s %s", source, dest);
-	int res = system(cmd);
-	if (res == -1) {
-		errx(EXIT_FAILURE, "Error while copying the original binary");
-	}
+    char buf[BUFSIZ + 1];
+    FILE *input = fopen(source, "r");
+    FILE *output = fopen(dest, "w");
+    if (!input || !output)
+        errx(EXIT_FAILURE, "Error while copying the original binary");
+
+    size_t bytes;
+
+    while (0 < (bytes = fread(buf, 1, sizeof(buf), input))) {
+        if (bytes != fwrite(buf, 1, bytes, output)) {
+            errx(EXIT_FAILURE, "Error while copying the original binary");
+        }
+    }
+    fclose(input);
+    fclose(output);
 }
 
 static void
@@ -337,12 +346,7 @@ lock_mem(void)
       printf("lock_mem()\n");
 #endif
   char *p;
-  char path[MAX_PATH];
-
-
-  pid_t my_pid = getpid();
-  snprintf(path, sizeof(path), "/proc/%d/maps", my_pid);
-  FILE * maps = fopen(path, "r");
+  FILE * maps = fopen("/proc/self/maps", "r");
 
   if(!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
@@ -474,8 +478,7 @@ void dump_init(bool global_dump)
   state.core_suffix = strdup("core.map");
 
   /* Copy the original binary */
-  char* exe= strdup(__progname);
-  copy(exe, "lel_bin");
+  copy("/proc/self/exe", "lel_bin");
 
   /* configure atexit */
   atexit(dump_close);
