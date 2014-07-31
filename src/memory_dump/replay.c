@@ -19,8 +19,9 @@
  * REPLAY MODE                                                        *
  **********************************************************************/
 
-#define MAX_WARMUP 128
-#define MAX_PAGES 1024
+
+#define MAX_WARMUP 2048
+#define MAX_PAGES 2048
 
 extern int warm(char * addr);
 static bool loaded = false;
@@ -134,13 +135,12 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     closedir(dir);
 
     /* Randomize initial state */
-    for (int j=0; j < 2048*PAGESIZE; j+=CACHELINESIZE)
-      _mm_prefetch (&(cold[j]), _MM_HINT_T0);
+    system("flush-cache");
 
     /* Restore cache state */
     for (int i=0; i < hotpages_counter; i++) {
-        for (int j = 0; j < PAGESIZE; j+=CACHELINESIZE) {
-            _mm_prefetch (warmup[i]+j, _MM_HINT_T0);
+        for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++) {
+            __builtin_prefetch(j);
         }
     }
 }

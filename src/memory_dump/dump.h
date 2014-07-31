@@ -14,7 +14,7 @@ void after_dump(void);
 bool is_mru(void * addr); 
 
 #define MAX_DIGITS 12
-#define LOG_SIZE 64
+#define LOG_SIZE 2048
 #define MAX_LOG_SIZE LOG_SIZE
 #define MAX_STACK 64
 #define MAX_PATH 256

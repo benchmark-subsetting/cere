@@ -156,7 +156,7 @@ find_merge <- function() {
                 left = ClusterInfo[i,]$Centroid
                 right = ClusterInfo[j,]$Centroid
                 error = abs(left-right)/max(left,right)
-                if (error <= 0.05) {
+                if (error <= 0.01) {
                     # merge left and right clusters
                     return(list(ClusterInfo[i,]$Cluster, ClusterInfo[j,]$Cluster))
                 }
