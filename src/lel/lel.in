@@ -107,8 +107,6 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
                 "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
-    safe_system("cp {binary} lel_bin".format(binary=BINARY))
-
 
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -137,8 +135,8 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                 "--rpath={Root}{libs} -ldl").format(
                 ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT,
                 Root=PROJECT_ROOT,libs=MEMORYDUMP))
-    safe_system(("{root}/staticpatcher.py lel_bin {binary} " +
-                "{loop}/{invocation}").format(root=ROOT,
+    safe_system(("{root}/staticpatcher.py {dump_dir}/lel_bin {binary} " +
+                "{loop}/{invocation}").format(root=ROOT, dump_dir=DIR,
                 binary=BINARY, loop=LOOP, invocation=INVOCATION))
 
 

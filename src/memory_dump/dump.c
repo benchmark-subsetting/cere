@@ -25,7 +25,7 @@
 #undef _DEBUG
 
 struct dump_state state __attribute__ ((aligned (PAGESIZE)));
-
+extern const char *__progname;
 
 static char
 hex(char value)
@@ -320,6 +320,15 @@ void configure_sigaction(void)
   sigemptyset(&state.sa.sa_mask);
 }
 
+void copy(char* source, char* dest) {
+	char cmd[1024];
+	snprintf(cmd, sizeof(cmd), "cp %s %s", source, dest);
+	int res = system(cmd);
+	if (res == -1) {
+		errx(EXIT_FAILURE, "Error while copying the original binary");
+	}
+}
+
 static void
 lock_mem(void)
 {
@@ -464,6 +473,10 @@ void dump_init(bool global_dump)
   state.pagelog_suffix = strdup("hotpages.map");
   state.core_suffix = strdup("core.map");
 
+  /* Copy the original binary */
+  char* exe= strdup(__progname);
+  copy(exe, "lel_bin");
+
   /* configure atexit */
   atexit(dump_close);
 
@@ -504,6 +517,8 @@ void dump_init(bool global_dump)
 
 void dump_close()
 {
+  unlink("lel_bin");
+
   /* deactivate memory tracing */
   state.mtrace_active = false;
 
@@ -528,7 +543,7 @@ void dump(char* loop_name, int invocation, int count, ...)
 #ifdef _DEBUG
     printf("enter dump( %s %d count = %d) \n", loop_name, invocation, count);
 #endif
-
+    char lel_bin_path[1024];
     /* Stop malloc protection */
     int old_state = state.mtrace_active;
     state.mtrace_active = false;
@@ -592,7 +607,7 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     if (mkdir(state.dump_path[sp], 0777) != 0)
         errx(EXIT_FAILURE, "dump %s already exists, stop\n", state.dump_path[sp]);
-
+ 
     state.stack_pos = sp;
 
     assert(state.mtrace_active == false);
@@ -602,6 +617,12 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     /* Dump ignored pages */
     page_ign_dump();
+ 
+    /*Link to the original binary*/
+    snprintf(lel_bin_path, sizeof(lel_bin_path), "%s/lel_bin", state.dump_path[state.stack_pos]);
+    int res = syscall(SYS_link, "lel_bin", lel_bin_path);
+    if(res == -1)
+	  errx(EXIT_FAILURE, "Error copying the dump binary\n");
 
     /* Dump addresses */
     void * addresses[count];
@@ -636,6 +657,7 @@ void after_dump(void)
   //Avoid doing something before initializing
   //the dump.
   if(!state.dump_initialized) return;
+
   if(state.global_dump) {
     assert(state.mtrace_active == true);
     assert(state.dump_sa == MRU_SA || state.dump_sa == DUMP_SA);
