@@ -138,6 +138,8 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     system("cacheflush");
 
     /* Restore cache state */
+    int c = 5;
+    while(c--)
     for (int i=0; i < hotpages_counter; i++) {
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++) {
             __builtin_prefetch(j);
