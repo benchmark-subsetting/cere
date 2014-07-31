@@ -106,6 +106,11 @@ mru_handler(int sig, siginfo_t *si, void *unused)
   /* Add page to page cache */
   /* we need to evict one of the pages, reprotect it ! */
   if (state.pages_cache[state.last_page] != 0) {
+
+      /* add the evicted page to the trace */
+      state.pages_trace[state.last_trace] = state.pages_cache[state.last_page];
+      state.last_trace = (state.last_trace + 1)%TRACE_SIZE;
+
 #ifdef _DEBUG
       debug_addr("MRU Reprotecting page ", (off64_t)state.pages_cache[state.last_page]);
 #endif
@@ -248,12 +253,22 @@ page_log_dump(void)
   char path[MAX_PATH];
   snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], state.pagelog_suffix);
   FILE * f = fopen(path, "w");
+
+  /* Dump the trace */
+  for (int i = 0; i <TRACE_SIZE; i++) {
+      int c = (i + state.last_trace) % TRACE_SIZE;
+      if (state.pages_trace[c] != 0) {
+          fprintf(f, "%lx\n", (off64_t)state.pages_trace[c]);
+      }
+  }
+
+  /* Dump the log */
   for (int i = 0; i <state.log_size; i++) {
       int c = (i + state.last_page) % state.log_size;
       if (state.pages_cache[c] != 0) {
           bool result = dump_page((off64_t)state.pages_cache[c]);
-          if (result)
-            fprintf(f, "%lx\n", (off64_t)state.pages_cache[c]);
+          //if (result)
+          fprintf(f, "%lx\n", (off64_t)state.pages_cache[c]);
       }
   }
   fclose(f);
@@ -489,6 +504,7 @@ void dump_init(bool global_dump)
   /* init counters table */
   init_counters();
   state.last_page = 0;
+  state.last_trace = 0;
 
   /* set log size */
   set_log_size(LOG_SIZE);

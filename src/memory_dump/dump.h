@@ -14,8 +14,8 @@ void after_dump(void);
 bool is_mru(void * addr); 
 
 #define MAX_DIGITS 12
-#define LOG_SIZE 2048
-#define MAX_LOG_SIZE LOG_SIZE
+#define TRACE_SIZE 2048
+#define LOG_SIZE 64
 #define MAX_STACK 64
 #define MAX_PATH 256
 #define MAX_IGNORE 32
@@ -41,6 +41,7 @@ struct dump_state {
     bool global_dump;
     bool dump_initialized;
     int last_page;
+    int last_trace;
     int log_size;
     int mem_fd;
     int last_ignored;
@@ -53,7 +54,8 @@ struct dump_state {
     char hs[PAGESIZE+BUFSIZ];
     bool dump_active[MAX_STACK];
     char dump_path[MAX_STACK][MAX_PATH];
-    char * pages_cache[MAX_LOG_SIZE];
+    char * pages_cache[LOG_SIZE];
+    char * pages_trace[TRACE_SIZE];
     char * pages_ignored[MAX_IGNORE];
     char * calloc_init_mem[CALLOC_INIT];
     char filler __attribute__ ((aligned (PAGESIZE))) ;
