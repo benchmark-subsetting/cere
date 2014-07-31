@@ -135,7 +135,7 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     closedir(dir);
 
     /* Randomize initial state */
-    system("flush-cache");
+    system("cacheflush");
 
     /* Restore cache state */
     for (int i=0; i < hotpages_counter; i++) {

@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     init(a, WIDTH);
     init(b, WIDTH);
 
-    system("flush-cache");
+    system("cacheflush");
 
     printf("a: %p -> %p\n", &a[0], &a[WIDTH]); 
     printf("b: %p -> %p\n", &b[0], &b[WIDTH]); 
