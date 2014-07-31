@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript 
+#!/usr/bin/env Rscript
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -17,7 +17,7 @@ PALETTE = c("red","blue","green","yellow","black","grey","pink","maroon","orange
             "silver","golden","brown","cyan")
 set.seed(2000)
 
-# Check the arguments 
+# Check the arguments
 if ((length(args) < 3)) {
     print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <binary files list>")
     print("If called without specifying the number of cluster, the scrpit will try to find the best number")
@@ -124,7 +124,7 @@ POINTS_TO_KEEP=min(MAX_POINTS, total_invocation)
 
 if (total_invocation > MAX_POINTS) {
     allValues=allValues[sample(nrow(allValues), POINTS_TO_KEEP, replace=F), ]
-} 
+}
 
 if (nbLoopFiles > 1)
 {
@@ -142,8 +142,40 @@ print(total_kept_cycles)
 clusters = cluster(cycles)
 cycles = cbind(cycles, Cluster=clusters)
 
+
 #Compute centroids of each cluster
 Centroids <- sapply(sort(unique(cycles$Cluster)), clust.centroid, cycles$values, cycles$Cluster)
+ClusterInfo = data.frame(Cluster=1:length(Centroids), Centroid = Centroids)
+
+# Merge clusters
+find_merge <- function() {
+    if (nrow(ClusterInfo) == 1) { return(list())}
+    for (i in 1:nrow(ClusterInfo)) {
+        for (j in i:nrow(ClusterInfo)) {
+            if (j != i) {
+                left = ClusterInfo[i,]$Centroid
+                right = ClusterInfo[j,]$Centroid
+                error = abs(left-right)/max(left,right)
+                if (error <= 0.05) {
+                    # merge left and right clusters
+                    return(list(ClusterInfo[i,]$Cluster, ClusterInfo[j,]$Cluster))
+                }
+            }
+        }
+    }
+    return(list())
+}
+
+while(1) {
+    merged = find_merge()
+    if (length(merged) == 0) break;
+    left = merged[[1]]
+    right = merged[[2]]
+    ClusterInfo = ClusterInfo[ClusterInfo$Cluster != right,]
+    cycles[cycles$Cluster==right,]$Cluster = left
+}
+
+
 #Compute for each cluster its size
 Sums <- sapply(sort(unique(cycles$Cluster)), clust.sum, cycles$values, cycles$Cluster)
 
@@ -153,7 +185,7 @@ cycles$is.representative=F
 for (clust in unique(cycles$Cluster)) {
     tmp = cycles[cycles$Cluster==clust, ]
     tmp$Cluster <- NULL
-    center = Centroids[[clust]]
+    center = ClusterInfo[ClusterInfo$Cluster == clust, ]$Centroid
 
     tmp$DistToCentroid = abs(tmp$values - center)
     tmp <- tmp[order(tmp$DistToCentroid), ] #order first by distance to centroid
