@@ -576,8 +576,8 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     /* increment call_count */
     region->call_count++;
-    /* start malloc protection 10 invocations before the one we want to dump */
-    if( !state.global_dump && ( (invocation <= 10 && region->call_count==1) || (region->call_count==invocation-10) ) )
+    /* start malloc protection PAST_INV invocations before the one we want to dump */
+    if( !state.global_dump && ( (invocation <= PAST_INV && region->call_count==1) || (region->call_count==invocation-PAST_INV) ) )
     {
       /* set ignore */
       set_ignore();
