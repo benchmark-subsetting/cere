@@ -15,7 +15,7 @@ bool is_mru(void * addr);
 
 #define PAST_INV 30
 #define MAX_DIGITS 12
-#define TRACE_SIZE 2048
+#define TRACE_SIZE (16384*100)
 #define LOG_SIZE 64
 #define MAX_STACK 64
 #define MAX_PATH 256

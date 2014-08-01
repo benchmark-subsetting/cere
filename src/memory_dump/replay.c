@@ -1,5 +1,6 @@
 #define _LARGEFILE64_SOURCE
 #define MIN(a,b) (((a) < (b))?(a):(b))
+#define MAX(a,b) (((a) > (b))?(a):(b))
 #include <assert.h>
 #include <err.h>
 #include <stdbool.h>
@@ -15,17 +16,18 @@
 #include "pages.h"
 #include <emmintrin.h>
 
+
 /**********************************************************************
  * REPLAY MODE                                                        *
  **********************************************************************/
 
 
-#define MAX_WARMUP 2048
+#define MAX_WARMUP 16384*100
 #define MAX_PAGES 2048
 
-extern int warm(char * addr);
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
+static bool valid[MAX_WARMUP];
 static int hotpages_counter = 0;
 
 char cold[PAGESIZE*2048];
@@ -104,6 +106,8 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
         exit(EXIT_FAILURE);
     }
 
+
+
     while ((ent = readdir (dir)) != NULL) {
         /* Read *.memdump files */
         if(strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
@@ -124,25 +128,36 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
         off64_t address;
         sscanf(get_filename_without_ext(ent->d_name), "%lx", &address);
 
+
         int read_bytes=0;
         while ((len = read(fp, (char*)(address+read_bytes), PAGESIZE)) > 0) {
             read_bytes+=len;
         }
+
+        for (int i=0; i < hotpages_counter; i++) {
+            if ((warmup[i] >= (char*) address) && 
+                    (warmup[i]< ((char*) address + read_bytes))) {
+                valid[i] = true;
+                //printf("warmup = %p\n", warmup[i]);
+            }
+        }
+
 
         close(fp);
     }
 
     closedir(dir);
 
-    /* Randomize initial state */
+    /* Flush cache */
     system("cacheflush");
 
     /* Restore cache state */
-    int c = 3;
-    while(c--)
     for (int i=0; i < hotpages_counter; i++) {
-        for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++) {
-            __builtin_prefetch(j);
+        if (valid[i]) {
+            for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
+                *j-=1; 
+            for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
+                *j+=1; 
         }
     }
 }
