@@ -1,9 +1,9 @@
 #!/bin/bash
 
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-CLASS=W
+CLASS=A
 
-for bench in FT; do
+for bench in BT CG FT EP IS LU MG SP; do
     echo "Benchmarking $bench"
     sbench=$( echo $bench | tr '[A-Z]' '[a-z]' )
     cd $BASEDIR/$bench
