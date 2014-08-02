@@ -25,6 +25,7 @@
 #define MAX_WARMUP 16384*100
 #define MAX_PAGES 2048
 
+extern char* cacheflush();
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
 static bool valid[MAX_WARMUP];
@@ -149,15 +150,17 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     closedir(dir);
 
     /* Flush cache */
-    system("cacheflush");
+    cacheflush();
 
-    /* Restore cache state */
+    /* Warmup cache */
     for (int i=0; i < hotpages_counter; i++) {
-        if (valid[i]) {
-            for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
-                *j-=1; 
-            for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
-                *j+=1; 
-        }
+        if (!valid[i]) continue;
+        for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
+            *j+=1;
+    }
+    for (int i=0; i < hotpages_counter; i++) {
+        if (!valid[i]) continue;
+        for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
+            *j-=1;
     }
 }
