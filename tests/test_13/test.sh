@@ -34,12 +34,14 @@ function do_test()
     echo "it[2] diff($ITER2,   $REPLAY2) = $DIFF2 %"
     echo "it[4] diff($ITER4,   $REPLAY4) = $DIFF4 %"
 
-    if [[ "$DIFF2" -gt "20" ]]; then
-        exit 1
-    fi
+    if [[ "$HOST" == "tahiti" ]]; then
+        if [[ "$DIFF2" -gt "20" ]]; then
+            exit 1
+        fi
 
-    if [[ "$DIFF4" -gt "20" ]]; then
-        exit 1
+        if [[ "$DIFF4" -gt "20" ]]; then
+            exit 1
+        fi
     fi
 
     exit 0

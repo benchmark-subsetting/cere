@@ -31,6 +31,8 @@ static char *warmup[MAX_WARMUP];
 static bool valid[MAX_WARMUP];
 static int hotpages_counter = 0;
 
+static int type_of_warmup = 0;
+
 char cold[PAGESIZE*2048];
 
 char *get_filename_ext(const char *filename) {
@@ -57,6 +59,13 @@ char *get_filename_without_ext(char *filename) {
 void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     char path[BUFSIZ];
     char buf[BUFSIZ + 1];
+
+
+    char * ge = getenv("WARMUP_TYPE");
+    if (ge) {
+        type_of_warmup = atoi(ge);
+        assert(type_of_warmup >= 0 && type_of_warmup <3);
+    }
 
     /* Load adresses */
     snprintf(path, sizeof(path), "dump/%s/%d/core.map", loop_name, invocation);
@@ -90,6 +99,9 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
 
         loaded = true;
     }
+
+    // No warmup at all for NOWARMUP
+    if (type_of_warmup == 2) return;
 
     DIR *dir;
     struct dirent *ent;
@@ -148,6 +160,9 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     }
 
     closedir(dir);
+
+    // No flush or warmup for OPTIMISTIC warmup
+    if (type_of_warmup == 1) return;
 
     /* Flush cache */
     cacheflush();
