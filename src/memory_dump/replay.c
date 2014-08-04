@@ -22,9 +22,11 @@
  **********************************************************************/
 
 
-#define MAX_WARMUP 16384*100
-#define MAX_PAGES 2048
+#define MAX_WARMUP (16384*100)
+#define MAX_COLD (4096*64)
+#define REPLAY_PAST MAX_COLD
 
+char cold[MAX_COLD*PAGESIZE];
 extern char* cacheflush();
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
@@ -33,7 +35,6 @@ static int hotpages_counter = 0;
 
 static int type_of_warmup = 0;
 
-char cold[PAGESIZE*2048];
 
 char *get_filename_ext(const char *filename) {
     char *dot = strrchr(filename, '.');
@@ -101,7 +102,11 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     }
 
     // No warmup at all for NOWARMUP
-    if (type_of_warmup == 2) return;
+    if (type_of_warmup == 2)
+    {
+        cacheflush();
+        return;
+    }
 
     DIR *dir;
     struct dirent *ent;
@@ -160,31 +165,36 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
 
     closedir(dir);
 
-    // No flush or warmup for OPTIMISTIC warmup
+    /* No flush or warmup for OPTIMISTIC warmup */
     if (type_of_warmup == 1) return;
+
+    /* invalid address should warm cold zone */
+    int start = MAX(0, hotpages_counter-REPLAY_PAST);
+    for (int i=start; i < hotpages_counter; i++) {
+        if (!valid[i])
+        {
+            warmup[i] = &cold[((unsigned long long)warmup[i])%((MAX_COLD-1)*PAGESIZE)];
+        }
+    }
 
     /* Flush cache */
     cacheflush();
 
     /* Warmup cache */
-    for (int i=0; i < hotpages_counter; i++) {
-        if (!valid[i]) continue;
+    for (int i=start; i < hotpages_counter; i++) {
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
             *j-=1;
     }
-    for (int i=0; i < hotpages_counter; i++) {
-        if (!valid[i]) continue;
+    for (int i=start; i < hotpages_counter; i++) {
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
             *j+=1;
     }
     int s = 0;
-    for (int i=0; i < hotpages_counter; i++) {
-        if (!valid[i]) continue;
+    for (int i=start; i < hotpages_counter; i++) {
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
             s += *j;
     }
-    for (int i=0; i < hotpages_counter; i++) {
-        if (!valid[i]) continue;
+    for (int i=start; i < hotpages_counter; i++) {
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
             __builtin_prefetch(j);
     }
