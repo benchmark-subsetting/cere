@@ -171,12 +171,13 @@ def get_uid():
     return str(unique_id)
 
 
-def output_codelet(output, codelets, chosen, codelet, direct_parent_id):
+def output_codelet(output, codelets, chosen, codelet, direct_parent_id, parents):
     selected = "true" if codelet in chosen else "false"
     codelet_id =  get_uid()
     output.write(",".join([codelet_id, codelet.name, selected, direct_parent_id]) + "\n")
     for child_name in codelet.children:
-        output_codelet(output, codelets, chosen, codelets[child_name], codelet_id)
+        if child_name not in parents:
+            output_codelet(output, codelets, chosen, codelets[child_name], codelet_id, parents | set([codelet.name]))
 
 def output_tree(output, codelets, chosen):
     # print header
@@ -184,7 +185,7 @@ def output_tree(output, codelets, chosen):
     # find roots
     for codelet in codelets.itervalues():
         if not codelet.parents:
-            output_codelet(output, codelets, chosen, codelet, "None")
+            output_codelet(output, codelets, chosen, codelet, "None", set())
 
     output.close()
 
