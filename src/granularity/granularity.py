@@ -90,7 +90,7 @@ class Unsolvable(Exception):
     pass
 
 def solve(codelets, appli_cycles, min_cycles=10**6, step=0.05,
-        max_coverage=0.95, matching_loops=None, error=TARGET_ERROR):
+        max_coverage=1, matching_loops=None, error=TARGET_ERROR):
     if(matching_loops):
         # By default, codelets are considered matching
         for c in codelets:
