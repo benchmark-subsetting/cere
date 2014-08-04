@@ -120,7 +120,6 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     }
 
 
-
     while ((ent = readdir (dir)) != NULL) {
         /* Read *.memdump files */
         if(strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
@@ -171,11 +170,23 @@ void load(char* loop_name, int invocation, int count, void* addresses[count]) {
     for (int i=0; i < hotpages_counter; i++) {
         if (!valid[i]) continue;
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
-            *j+=1;
+            *j-=1;
     }
     for (int i=0; i < hotpages_counter; i++) {
         if (!valid[i]) continue;
         for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
-            *j-=1;
+            *j+=1;
     }
+    int s = 0;
+    for (int i=0; i < hotpages_counter; i++) {
+        if (!valid[i]) continue;
+        for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
+            s += *j;
+    }
+    for (int i=0; i < hotpages_counter; i++) {
+        if (!valid[i]) continue;
+        for (char * j = warmup[i]; j < warmup[i]+PAGESIZE; j++)
+            __builtin_prefetch(j);
+    }
+
 }
