@@ -16,12 +16,13 @@
 {% macro class(prec, error,suiv) %}
   {% if error < 15 %}
     {{prec}}success {{suiv}}
-  {% elif error < 30 %}
+    {% elif error < 30 %}
     {{prec}}warning {{suiv}}
-  {% elif error < 100 %}
-    {{prec}}danger {{suiv}}
+    {# {% elif error < 100 %} #}
   {% else %}
-    {{prec}}info"
+    {{prec}}danger {{suiv}}
+    {# { % else % }
+  {{prec}}info" #}
   {% endif %}
 {% endmacro %}
 
