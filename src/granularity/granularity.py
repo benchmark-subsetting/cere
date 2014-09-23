@@ -81,7 +81,8 @@ def parse(csvfile):
 
     for name,codelet in codelets.iteritems():
         for direct_parent in codelet.direct_parents:
-            codelets[direct_parent].add_children(name)
+            if direct_parent in codelets:
+                codelets[direct_parent].add_children(name)
 
     csvfile.close()
     return codelets
