@@ -37,6 +37,12 @@ class MyError(Exception):
 
 class Code:
     def __init__(self, ext, value, line):
+        '''
+        Initialize the information of a Code
+        value: text of code
+        line: line of function in text code
+        mode and script: information for codemirror depends on language of text code
+        '''
         self._value = value
         self._line = line
         self._mode = Mode_dict[ext][1]
@@ -47,6 +53,19 @@ class Code:
 
 class Region:
     def __init__(self,region):
+        '''
+        Initialize the Region
+        name: Region name
+        invivo: Exec time in invivo mode
+        invitro: Exec time in invitro mode
+        table: row for the main table in report
+        inv_table: table with invocation information
+        code: Objet code with code information
+        callcount: region callcount
+        selected: if region is selected with matching script
+        graph_clustering: graph with the clustering of invocation
+        graph_invoc: graph with the different invocation
+        '''
         self._name = region["Codelet Name"]
         self._invivo = "{:e}".format(float(region["Invivo"]))
         self._invitro = "{:e}".format(float(region["Invitro"]))
@@ -59,7 +78,7 @@ class Region:
         self.init_graph()
     
     def init_graph(self):
-        self._graph_invoc = encode_graph("/{region}.png".format(region=self._name))
+        #self._graph_invoc = encode_graph("/{region}.png".format(region=self._name))
         self._graph_clustering = encode_graph("/{region}_byPhase.png".format(region=self._name))
         
     def set_callcount(self,callcount):
@@ -79,6 +98,13 @@ class Region:
 
 class Node:
     def __init__(self,node,region):
+        '''
+        Initialize the information of a node
+        region: object Region contained by the Node
+        id: id of the node 
+        parent: id of the Node's Parent
+        selected: True if the Node is selected by matching algorithm
+        '''
         self._region = region
         self._parent = node["ParentId"]
         self._selected = node["Selected"]
@@ -87,6 +113,18 @@ class Node:
 
 class Report:
     def __init__(self,bench):
+        '''
+        Initialize the Report
+        bench: bench Name
+        template: Report template
+        nb_cycles: nb_cycles of bench
+        regions: list of analyzed regions. 
+                 Analyzed regions are the regions with all results
+        liste_script: list of script javascript for codemirror to print text code
+        tree: tree of regions to make the main table in report
+        part: coverage of application with selected region
+        javascript: main script javascript for report
+        '''
         self._bench = bench
         self.init_template()
         self.init_nb_cycles()
@@ -94,10 +132,13 @@ class Report:
         self.init_liste_script()
         self.init_tree()
         self.init_part()
-        self.init_graph()
+        self.init_graph_error()
         self.init_javascript()
         
     def init_template(self):
+        '''
+        Read the template in Report/template.html
+        '''
         try:
             TEMPLATE=open(ROOT + "/template.html", 'r')
         except (IOError):
@@ -106,6 +147,9 @@ class Report:
         TEMPLATE.close()
         
     def init_nb_cycles(self):
+        '''
+        Read the nb_cycles value of application in app_cycles.csv
+        '''
         Dict = read_csv(ROOT_MEASURE + '/app_cycles.csv')
         try:
             row = Dict.next()
@@ -117,6 +161,12 @@ class Report:
             raise MyError("error key: not CPU_CLK_UNHALTED_CORE in /app_cycles.csv ")
         
     def init_regions(self):
+        '''
+        Initialize the region list
+        For each region in matching_error we create a new objet Region, which contains all information neccessary 
+        for the report about this region
+        Then we initialize the value not in matching_error.csv like callcount
+        '''
         self._regions = {}
         match_error = read_csv(ROOT_MEASURE +"/matching_error.csv")
         for region in match_error:
@@ -126,6 +176,10 @@ class Report:
         self.init_codes()
         
     def init_callcount(self):
+        '''
+        Initialize the callcount
+        We read all files level_*.csv and for each region in each file we initialize his callcount with the value in the file
+        '''
         test = True
         i = 0
         while (test):
@@ -143,6 +197,10 @@ class Report:
                 test = False
         
     def init_invocation_table(self):
+        '''
+        Initialize the information about the different invocation of regions
+        We read invocations_error and append invocation information for the region in column "Codelet Name"
+        '''
         invocations = read_csv(ROOT_MEASURE + '/invocations_error.csv')
         for inv in invocations:
             try:
@@ -152,6 +210,10 @@ class Report:
                     print "INVOCATIONS: " + suppr_prefix(inv["Codelet Name"]) + " not in matching error"
         
     def init_codes(self):
+        '''
+        Initialize the list of Code.
+        For each region we extract code in file to print them in Report
+        '''
         try:
             FILE = open(NAME_FILE, 'rb')
         except (IOError):
@@ -165,11 +227,20 @@ class Report:
                     print "CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error"
         
     def init_liste_script(self):
+        '''
+        Initialize the list of script include in template for codemirror.
+        There is one script for each code language 
+        '''
         self._liste_script = []
         for region in self._regions:
             self._liste_script = self._liste_script + [self._regions[region]._code._script]
+        self._liste_script = set(self._liste_script)
         
     def init_tree(self):
+        '''
+        Initialize the tree given by selected_codelets
+        For each line of selected_codelets create a Node object with the region and node information
+        '''
         self._tree = []
         tree = read_csv(ROOT_MEASURE + "/selected_codelets")
         for node in tree:
@@ -180,10 +251,13 @@ class Report:
             except(KeyError):
                 if(DEBUG_MODE):
                     print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
-        self._liste_script = set(self._liste_script)
         self.test_parent_tree()
         
     def test_parent_tree(self):
+        '''
+        Verify for each child in tree that his parent is in the tree
+        If not the child._parent is changed to "none"
+        '''
         if (len(self._tree) == 0):
             raise MyError("/selected_codelets empty")
         for node in self._tree:
@@ -197,15 +271,25 @@ class Report:
                     node._parent = "none"
 
     def init_part(self):
+        '''
+        Calcul coverage of selected regions 
+        See all region and add region's coverage if the region is selected
+        '''
         self._part = 0
         for region in self._regions:
             if(self._regions[region]._selected == "true"):
                 self._part = self._part + self._regions[region]._table["Exec Time (%)"]
         
-    def init_graph(self):
+    def init_graph_error(self):
+        '''
+        Read bench_error.png
+        '''
         self._graph_error = encode_graph("/bench_error.png")
         
     def init_javascript(self):
+        '''
+        Read javascript file : Report/Report.js
+        '''
         try:
             with file(ROOT + '/Report.js') as jsf:
                 self.javascript=jsf.read()
@@ -213,6 +297,9 @@ class Report:
             raise MyError("Cannot find Report.js")
     
     def write_report(self):
+        '''
+        Write report by passing information to the template
+        '''
         try:
             REPORT=open(self._bench+'.html','w')
         except (IOError):
@@ -226,6 +313,10 @@ class Report:
 
 @contextmanager
 def context(DIR):
+    '''
+    Change directory to wanted directory
+    Rechange to original directory at the end
+    '''
     TEMP_DIR = os.getcwd()
     if(os.chdir(DIR)):
         exit("Error Report -> Can't find " + DIR)
@@ -248,12 +339,15 @@ def read_csv(File):
 
 
 def encode_graph(graph_name):
-        try:
-            with open(ROOT_GRAPHS + graph_name, "rb") as f:
-                graph = f.read()
-        except (IOError):
-            raise MyError("Cannot find " + graph_name)
-        return base64.standard_b64encode(graph)
+    '''
+    Read graph and encode this graph in base 64.
+    '''
+    try:
+        with open(ROOT_GRAPHS + graph_name, "rb") as f:
+            graph = f.read()
+    except (IOError):
+        raise MyError("Cannot find " + graph_name)
+    return base64.standard_b64encode(graph)
 
 
 def percent(x):
@@ -261,12 +355,22 @@ def percent(x):
 
 
 def suppr_prefix(name):
+    '''
+    Remove prefix of a region name
+    '''
     for pre in LIST_PREFIX:
         name = name.replace(pre,"")
     return name
 
 
 def read_code(code_place):
+    '''
+    Create Code Object with information in code place
+    code_place[0] contains region name
+    code_place[2] contains file name of wanted region
+    code_place[4] contains line of wanted region
+    code_place[1] and code_place[3] are not used in Report
+    '''
     EXT = "__None__"
     for ext in EXTENSIONS:
         try:
@@ -289,6 +393,9 @@ def read_code(code_place):
 def main():
     '''
     Main function
+    Change directory to the directory passed by the script call
+    Then obtain bench name by looking at the last element of folder path
+    We initialize the Report object and write him directly in the folder 
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('dir')
