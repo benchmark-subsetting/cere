@@ -431,6 +431,9 @@ else
 	-$(RMRF) $(filter-out make.clean.err make.clean.out build_pre_bench.err build_pre_bench.out,$(wildcard *.err) $(wildcard *.out))
 endif
 
+veryclean: clean
+	rm -rf dump/ *.ll regions.csv realmain.c
+
 build: $(EXTRA_TARGETS) $(EXEBASE)
 
 ###############################################################################
