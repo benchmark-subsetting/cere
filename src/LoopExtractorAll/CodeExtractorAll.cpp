@@ -36,6 +36,7 @@
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/IR/Function.h"
 
 #include <algorithm>
 #include <sstream>
@@ -488,6 +489,14 @@ Function *CodeExtractorAll::constructFunction(const ValueSet &inputs,
         if (Blocks.count(inst->getParent()))
           inst->replaceUsesOfWith(inputs[i], RewriteVal);
   }
+
+  //Creates Attribute Noalias
+  AttributeSet newParamAttr = AttributeSet().addAttribute(newFunction->getContext(), 0, Attribute::NoAlias);
+
+  AI = newFunction->arg_begin();
+  for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI)
+      if (AI->getType()->isPointerTy())
+        AI->addAttr(newParamAttr);
 
   // Set names for input and output arguments.
   if (!AggregateArgs) {
