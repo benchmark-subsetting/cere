@@ -63,8 +63,8 @@ compute_error()
     error=`echo "scale=3;${diff}/${max}" | bc | awk '{printf "%f", $0}'`
 }
 
-#rm -f $RES_DIR/matching_codelets $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf $PLOT_DIR/*
-touch $RES_DIR/matching_codelets
+rm -f $RES_DIR/matching_codelets $RES_DIR/table_error.csv $RES_DIR/matching_error.csv $RES_DIR/invocations_error.csv $RES_DIR/Rplot.pdf
+#touch $RES_DIR/matching_codelets
 #Get application runtime in cycles
 app_cycles=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
 echo "Codelet Name,Invivo,Invitro,Error,Exec Time" > $RES_DIR/matching_error.csv
@@ -72,14 +72,14 @@ echo "Codelet Name,Invocation,Cluster,Part,Invitro,Invivo,Error" > $RES_DIR/invo
 #For each codelet
 while read codeletName; do
     echo "$codeletName"
-    make clean &>> out && rm -f *.ll &>> out
+    make clean &> full_matching_log && rm -f *.ll &>> full_matching_log
     #If invivo trace not already measured, do it
     if [[ ! -f $RES_DIR/$codeletName.csv ]]; then
         echo "Measuring invivo trace"
-        ${COMPIL_CMD} MODE="original --instrument --region=$codeletName --trace" #&>> out
+        ${COMPIL_CMD} MODE="original --instrument --region=$codeletName --trace" &>> full_matching_log
         for i in "1"
         do
-            eval ${BIN_CMD} #&>> out
+            eval ${BIN_CMD} &>> full_matching_log
             mv $codeletName.bin "$RES_DIR/${codeletName}.bin.${i}"
             mv -f rdtsc_result.csv $RES_DIR/$codeletName.csv
         done
@@ -93,17 +93,17 @@ while read codeletName; do
     #We have everything to clusterize performance
     bynaryFiles=`ls $RES_DIR/*$codeletName.bin.*`
     nbLoopFiles=`ls $RES_DIR/*$codeletName.bin.* | wc -l`
-    echo "Ploting"
-    if [[ ( -f  "${PLOT_DIR}/${codeletName}.png" ) ]]; then
-        echo "Keeping previous plots"
-    else
-        gnuplot -e "filename='$bynaryFiles'" -e "outputFile='${codeletName}'" $ROOT/plot_trace.gnu
-        if [[ ! ( -f  "${codeletName}.png" ) ]]; then
-            echo "No plots for $codeletName"
-        else
-            mv ${codeletName}.png $PLOT_DIR/.
-        fi
-    fi
+    #echo "Ploting"
+    #if [[ ( -f  "${PLOT_DIR}/${codeletName}.png" ) ]]; then
+    #    echo "Keeping previous plots"
+    #else
+    #    gnuplot -e "filename='$bynaryFiles'" -e "outputFile='${codeletName}'" $ROOT/plot_trace.gnu
+    #    if [[ ! ( -f  "${codeletName}.png" ) ]]; then
+    #        echo "No plots for $codeletName"
+    #    else
+    #        mv ${codeletName}.png $PLOT_DIR/.
+    #    fi
+    #fi
     echo "Computing clustering info"
     if [[ ( -f  "${RES_DIR}/${codeletName}.invocations" ) ]]; then
         echo "Using previous clustering infos"
@@ -135,31 +135,36 @@ while read codeletName; do
         #if this invocation is not dumped, do it
         if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "Dumping invocation ${invocation}"
-            make clean &>> out && rm -f *.ll &>> out
-            ${COMPIL_CMD} MODE="dump --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &> out
-            eval ${BIN_CMD} &> out
+            make clean &>> full_matching_log && rm -f *.ll &>> full_matching_log
+            ${COMPIL_CMD} MODE="dump --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &>> full_matching_log
+            eval ${BIN_CMD} &>> full_matching_log
         fi
         if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "No dump for ${codeletName} invocation ${invocation}"
             err=1
-            continue
+            #continue
         fi
         #Run the invitro version of this invocation
         if [[ ! -f results/${codeletName/__invivo__/__extracted__}_${invocation}.csv ]]; then
             echo "Running invitro version"
-            make clean &>> out && rm -f *.ll &>> out
-            ${COMPIL_CMD} MODE="replay --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation} --instrument" &> out
-            eval ${BIN_CMD} &>> out
+            make clean &>> full_matching_log && rm -f *.ll &>> full_matching_log
+            ${COMPIL_CMD} MODE="replay --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation} --instrument" &>> full_matching_log
+            eval ${BIN_CMD} &>> full_matching_log
             mv -f rdtsc_result.csv $RES_DIR/${codeletName/__invivo__/__extracted__}_${invocation}.csv
         fi
         if [[ ! -f $RES_DIR/${codeletName/__invivo__/__extracted__}_${invocation}.csv ]]; then
             echo "No invitro measure for ${codeletName} invocation ${invocation}"
             err=1
-            continue
+            #continue
         fi
         #Compute error between invivo and invitro cycles for this invocation
-        tmp_cycles=`cat $RES_DIR/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 3`
-        tmp_invocation=`cat $RES_DIR/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 2`
+        if [[ ! ( -z ${err} ) ]]; then
+            tmp_cycles=0
+            tmp_invocation=1
+        else
+            tmp_cycles=`cat $RES_DIR/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 3`
+            tmp_invocation=`cat $RES_DIR/${codeletName/__invivo__/__extracted__}_${invocation}.csv | tail -n 1 | cut -d ',' -f 2`
+        fi
         c=`echo "${tmp_cycles}/${tmp_invocation}" | bc`
         compute_error ${c} ${invivo}
         echo "In vitro cycles = $c & in vivo cycles = $invivo (error = ${error})"
@@ -167,14 +172,14 @@ while read codeletName; do
         cycles=`echo "${cycles}+${c}*${perc}" | bc`
         #And keep track of error for each invocation
         echo "${codeletName},${invocation},${cluster},${perc},${c},${invivo},${error}" >> $RES_DIR/invocations_error.csv
+        #if an error has occured, let's go to the next codelet
+        if [[ ! ( -z ${err} ) ]]; then
+            unset err
+            #    #rm -f $RES_DIR/${codeletName}.invocations
+            #    rm -f $RES_DIR/${codeletName/__invivo__/__extracted__}_*.csv
+            #    continue
+        fi
     done < $RES_DIR/${codeletName}.invocations
-    #if an error has occured, let's got to the next codelet
-    if [[ ! ( -z ${err} ) ]]; then
-        unset err
-        #rm -f $RES_DIR/${codeletName}.invocations
-        rm -f $RES_DIR/${codeletName/__invivo__/__extracted__}_*.csv
-        continue
-    fi
     #Compute error between invivo and in vitro
     cy=`grep -F "${codeletName}," $RES_DIR/all_loops.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
     cycles=`echo "scale=3;${cycles}" | bc`
@@ -186,7 +191,7 @@ while read codeletName; do
         echo "NOT MATCHING: In vitro = $cycles & invivo = $cy (error = $error, exec = $codelet_part)"
     else
         echo "MATCHING: In vitro = $cycles & invivo = $cy (error = $error, exec = $codelet_part)"
-        echo ${codeletName/__invivo__/} >> $RES_DIR/matching_codelets
+        #echo ${codeletName/__invivo__/} >> $RES_DIR/matching_codelets
     fi
     echo "$codeletName,$cy,$cycles,$error,$codelet_part" >> $RES_DIR/matching_error.csv
     #rm $RES_DIR/${codeletName}.invocations
