@@ -18,9 +18,8 @@ PALETTE = c("red","blue","green","yellow","black","grey","pink","maroon","orange
 set.seed(2000)
 
 # Check the arguments
-if ((length(args) < 3)) {
-    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <binary files list>")
-    print("If called without specifying the number of cluster, the scrpit will try to find the best number")
+if ((length(args) < 4)) {
+    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <csv file> <binary files list>")
     q()
 }
 
@@ -79,6 +78,7 @@ clust.length = function(i, dat, clusters) {
 }
 
 cluster <- function (cycles) {
+    #if the codelet has less than 11 invocations
     if(nrow(cycles) <= 10)
     {
         nb_clust=nrow(cycles)
