@@ -31,11 +31,7 @@ fi
 # and creates a new one.
 if [[ ( -d $RES_DIR ) ]]
 then
-    cp -f regions.csv *_log *.html $RES_DIR/.
-    cp -f $RES_DIR/__invivo__* $RES_DIR/level_* $RES_DIR/all_loops.csv $RES_DIR/app_cycles.csv $RES_DIR/loops .
-    tar -czf ${RES_DIR}_$(date +%Y%m%d-%H%M%S).tar.gz ${RES_DIR}
-    rm -f ${RES_DIR}/* regions.csv *.html *_log
-    mv __invivo__* level_* all_loops.csv app_cycles.csv loops $RES_DIR/.
+    rm -f regions.csv *.html *_log realmain.c out dump_generation
     echo "Keeping previous coverage results"
     exit 0
 else
