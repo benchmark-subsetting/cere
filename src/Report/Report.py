@@ -10,9 +10,9 @@ from contextlib import contextmanager
 EXTENSIONS = [".c",".f",".f90",".C",".F",".F90",".cc",".cpp"]
 Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              "text/x-csrc"], ".f":["fortran/fortran.js", "text/x-Fortran"],
-             ".F":["fortran/fortran.js", "text/x-Fortran"],
-             ".f90":["fortran/fortran.js", "text/x-Fortran"],
-             ".F90":["fortran/fortran.js", "text/x-Fortran"],
+             ".F":["fortran/fortran.js", "text/x-fortran"],
+             ".f90":["fortran/fortran.js", "text/x-fortran"],
+             ".F90":["fortran/fortran.js", "text/x-fortran"],
              ".html":["htmlmixed/htmlmixed.js", "text/htmlmixed"],
              ".cc":["clike/clike.js", "text/x-c++src"],
              ".cpp":["clike/clike.js", "text/x-c++src"]}
@@ -112,7 +112,7 @@ class Node:
 
 
 class Report:
-    def __init__(self,bench):
+    def __init__(self,bench,mincycles):
         '''
         Initialize the Report
         bench: bench Name
@@ -128,7 +128,7 @@ class Report:
         self._bench = bench
         self.init_template()
         self.init_nb_cycles()
-        self.init_regions()
+        self.init_regions(mincycles)
         self.init_liste_script()
         self.init_tree()
         self.init_part()
@@ -160,7 +160,7 @@ class Report:
         except (KeyError):
             raise MyError("error key: not CPU_CLK_UNHALTED_CORE in /app_cycles.csv ")
         
-    def init_regions(self):
+    def init_regions(self,mincycles):
         '''
         Initialize the region list
         For each region in matching_error we create a new objet Region, which contains all information neccessary 
@@ -172,6 +172,8 @@ class Report:
         for region in match_error:
             self._regions[suppr_prefix(region["Codelet Name"])] = Region(region)
         self.init_callcount()
+        #print(self._regions)
+        self._regions = dict([(k,r) for k,r in self._regions.iteritems() if float(r._invivo)/float(r._callcount) > mincycles])
         self.init_invocation_table()
         self.init_codes()
         
@@ -399,10 +401,11 @@ def main():
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('dir')
+    parser.add_argument('--mincycles', type=int,default=0)
     args = parser.parse_args()
     with context(args.dir):
         bench = os.getcwd().split("/") [-1]
-        REPORT = Report(bench)
+        REPORT = Report(bench,args.mincycles)
         REPORT.write_report()
 
 

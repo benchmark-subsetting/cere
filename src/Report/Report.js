@@ -1,7 +1,8 @@
 var ROOT_GRAPHS = "./measures/plots/";
 var COLOR = ["","red","blue","green","yellow","black","grey","pink","maroon","orange","purple","magenta",
              "silver","golden","brown","cyan"]
-var view = "graph1"
+var view = "graph1";
+var id_region;
 var editor = [];
 
 //initialise the color for cluster in invocation table
@@ -33,11 +34,9 @@ function init() {
     $(row).toggleClass("bg-info");
     id_region = row.getAttribute('data-region');
     //initialise the correspondant region
-    first_call(id_region);
+    first_call();
     //initialise the view
     change_view("default");
-    //prepare treetable
-    //table.setAttribute("id","treetable")
 }
 
 //remove whitespace after and before text code
@@ -64,29 +63,30 @@ function set_image(image,nb_invoc) {
 
 
 //initialise region j
-function first_call (j) {
+function first_call () {
     //initialise codemirror editor
-    var code = $("#"+j+" .code")[0];
+    var code = $("#"+id_region+" .code")[0];
     code.value = suppr_whitespace(code.value);
-    editor[j] = CodeMirror.fromTextArea(code, {
-                mode:code.getAttribute("mode"), indentUnit:4,
-                autofocus:true, lineNumbers:true, readOnly:true});
-    nb_invoc = $("#Region > div[id="+j+"]")[0].getAttribute("data-nb-invoc");
+    editor[id_region] = CodeMirror.fromTextArea(code, {
+                        mode:code.getAttribute("mode"), indentUnit:4,
+                        autofocus:true, lineNumbers:true, readOnly:true});
+    center_code();
     
     //initialise image
-    images = $("#"+j+" img");
+    nb_invoc = $("#Region > div[id="+id_region+"]")[0].getAttribute("data-nb-invoc");
+    images = $("#"+id_region+" img");
     for (i=0;i<images.length;i++) {
         set_image(images[i], nb_invoc);
     }
 }
 
 
-function center_code (j) {
+function center_code () {
     //focus codemirror editor to wanted line and highlight 
-    var code = $("#"+j+" .code")[0];
+    var code = $("#"+id_region+" .code")[0];
     var Line = parseInt(code.getAttribute('line'));
-    editor[j].scrollTo(null,editor[j].heightAtLine(Line-4,mode="local"));
-    editor[j].doc.addLineClass(Line-1, "background", "bg-danger")
+    editor[id_region].scrollTo(null,editor[id_region].heightAtLine(Line-4,mode="local"));
+    editor[id_region].doc.addLineClass(Line-1, "background", "bg-danger")
 }
 
 
@@ -108,6 +108,8 @@ function change_view(nav){
     var navs = $("#navbar > li");
     if (nav =="default")
         nav = navs[0].firstChild;
+    if (nav == navs[1].firstChild)
+        center_code();
     view = nav.getAttribute("data-nav");
     navs.each(function() {
         if(this == nav.parentNode)
@@ -142,9 +144,8 @@ table[0].onclick = function (event) {
     if (row.getAttribute("data-button") == "True") {
         id_region = row.getAttribute('data-region');
         if (!editor[id_region]) {
-            first_call(id_region)
+            first_call()
             }
-        center_code (id_region);
         $("tr.bg-info").removeClass("bg-info");
         $(row).toggleClass("bg-info");
         change_view("default");
@@ -153,6 +154,9 @@ table[0].onclick = function (event) {
 
 //manage click on navigation menu
 $("#navbar")[0].onclick = function (event) {
+    change_view(event.target);
+    //Call 3 times this function fix graphics bug
+    change_view(event.target);
     change_view(event.target);
 }
 
