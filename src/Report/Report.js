@@ -70,7 +70,6 @@ function first_call () {
     editor[id_region] = CodeMirror.fromTextArea(code, {
                         mode:code.getAttribute("mode"), indentUnit:4,
                         autofocus:true, lineNumbers:true, readOnly:true});
-    center_code();
     
     //initialise image
     nb_invoc = $("#Region > div[id="+id_region+"]")[0].getAttribute("data-nb-invoc");

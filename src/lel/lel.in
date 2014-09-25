@@ -2,6 +2,7 @@
 # Loop Extractor Compiler
 # (C) 2013 University of Versailles
 import os
+import re
 import argparse
 
 
@@ -43,6 +44,19 @@ class OptAction(argparse.Action):
                 setattr(namespace, self.dest, self.const)
             else:
                 setattr(namespace, self.dest, values)
+
+def grep(path, regex):
+    regex=".*"+regex+".*"
+    regObj = re.compile(regex)
+    res = []
+    for root, dirs, fnames in os.walk(path):
+        for fname in fnames:
+            if fname.endswith(".ll"):
+                with open(fname, "r") as f:
+                    for line in f.readlines():
+                        if regObj.match(line):
+                            res.append(os.path.join(root, fname))
+    return res
 
 
 def fail_lel(error_message):
@@ -104,6 +118,20 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Dump mode
     Call the linker and copy the original binary
     '''
+    if (mode_opt.region):
+        LOOP=mode_opt.region
+        if(not grep(".", LOOP)):
+            fail_lel("No region {region} in .ll".format(region=LOOP))
+    if (mode_opt.regions_file):
+        error = 1
+        with open(mode_opt.regions_file, "r") as f:
+            for line in f.readlines():
+                if(not grep(".", line[:-1])):
+                    print("No region {region} in .ll".format(region=line[:-1]))
+                else:
+                    error = 0
+        if (error):
+            fail_lel("region in {f} are not found in .ll".format(f=mode_opt.regions_file))
     safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
                 "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
@@ -115,6 +143,8 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     Create Realmain and call the linker
     '''
     LOOP=mode_opt.region
+    if(not grep(".", LOOP)):
+        fail_lel("No region {region} in .ll".format(region=LOOP))
     INVOCATION=mode_opt.invocation
     if (mode_opt.instrument):
         COMPIL_OPT = PROJECT_ROOT + RDTSC + " " + COMPIL_OPT

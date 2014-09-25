@@ -274,7 +274,7 @@ class Report:
 
     def init_part(self):
         '''
-        Calcul coverage of selected regions 
+        Compute coverage of selected regions 
         See all region and add region's coverage if the region is selected
         '''
         self._part = 0
