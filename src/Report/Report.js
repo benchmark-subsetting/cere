@@ -15,20 +15,9 @@ function init_color() {
     });
 }
 
-// replace 100% by NA and lock the row
-/*
-function init_nas() {
-    $(".btn-info").each(function() {
-        this.parentNode.setAttribute("data-button","False");
-        this.innerHTML= "NA"
-    });
-}
-*/
-
 //initialise the view of report
 function init() {
     init_color()
-    //init_nas()
     //select the first row of table
     row = $('#Main table tbody tr')[1]
     $(row).toggleClass("bg-info");

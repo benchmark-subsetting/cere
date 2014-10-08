@@ -15,18 +15,21 @@
   {% endif %}
 {% endmacro %}
 
-<!-- In function of the error choose the color of error case -->
-{% macro class(prec, error,suiv) %}
-  {% if error < 15 %}
-    {{prec}}success {{suiv}}
-    {% elif error < 30 %}
-    {{prec}}warning {{suiv}}
-    {# {% elif error < 100 %} #}
-  {% else %}
-    {{prec}}danger {{suiv}}
-    {# { % else % }
-  {{prec}}info" #}
+{% macro printable(toHide) %}
+  {% if (toHide == "false") %}
+    data-button="True"
   {% endif %}
+{% endmacro %}
+
+<!-- In function of the error choose the color of error case -->
+{% macro class(prec, error, suiv) %}
+    {% if error <= 15 %}
+      {{prec}}success {{suiv}}
+    {% elif error <= 30 %}
+        {{prec}}warning {{suiv}}
+    {% else %}
+      {{prec}}danger {{suiv}}
+    {% endif %}
 {% endmacro %}
 
 <!-- Define the color of invocation Cluster -->
@@ -36,12 +39,14 @@
 
 <!-- Modify the text
 Print them in strong or remove the end if the text is too long -->
-{% macro strong(text,test) %}
+{% macro strong(text, test, toHide) %}
   {% if (test == "true") %}
     <strong strong="y">
   {% endif %}
   {% if text is number %}
-    {{text}}
+    {% if (toHide == "false") %}
+      {{text}}
+    {% endif %}
   {% elif text[40] is undefined %}
     {{text}}
   {% else %}
@@ -70,7 +75,7 @@ Print them in strong or remove the end if the text is too long -->
         <td>{{row[column]}}</td>
       {% endif %}
     {% endfor %}
-      <td {{class("class=\"btn-",row[fieldnames[-1]],"btn-block\"")}}>{{row[fieldnames[-1]]}}</td>
+      <td {{class("class=\"btn-",row[fieldnames[-1]], "btn-block\"")}}>{{row[fieldnames[-1]]}}</td>
     </tr>
   {% endfor %}
   </table>
@@ -86,11 +91,15 @@ Print them in strong or remove the end if the text is too long -->
   {% endfor %}
   </tr>
   {% for node in tree %}
-    <tr {{selected(node._selected)}} data-button="True" data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
+    <tr {{selected(node._selected)}} {{printable(node._region._tooSmall)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
     {% for column in fieldnames[:-1] %}
-      <td>{{strong(node._region._table[column],node._selected)}}</td>
+      <td>{{strong(node._region._table[column], node._selected, node._region._tooSmall)}}</td>
     {% endfor %}
-      <td {{class("class=\"btn-",node._region._table[fieldnames[-1]],"btn-block\"")}}>{{node._region._table[fieldnames[-1]]}}</td>
+    {% if (node._region._tooSmall == "false") %}
+    <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}>{{node._region._table[fieldnames[-1]]}}</td>
+    {% else %}
+      <td BGCOLOR=#BDBDBD></td>
+    {% endif %}
     </tr>
   {% endfor %}
   </table>
@@ -161,7 +170,6 @@ Print them in strong or remove the end if the text is too long -->
         We created a div for each region but they are printed one by one with javascript-->
         {% for region in regionlist %}
           <div id="{{regionlist[region]._name}}" data-nb-invoc="{{regionlist[region]._callcount}}">
-            
             
             <!-- Code -->
             <div data-name="code">

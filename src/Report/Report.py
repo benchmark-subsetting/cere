@@ -63,6 +63,8 @@ class Region:
         code: Objet code with code information
         callcount: region callcount
         selected: if region is selected with matching script
+        tooSmall: if nb cycles per invocation < mincycles we won't print this region
+        execError: if the codelet failed to replay
         graph_clustering: graph with the clustering of invocation
         graph_invoc: graph with the different invocation
         '''
@@ -75,10 +77,11 @@ class Region:
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
         self._callcount = 0
         self._selected = "false"
+        self._tooSmall = "false"
+        self._execError = "false"
         self.init_graph()
     
     def init_graph(self):
-        #self._graph_invoc = encode_graph("/{region}.png".format(region=self._name))
         self._graph_clustering = encode_graph("/{region}_byPhase.png".format(region=self._name))
         
     def set_callcount(self,callcount):
@@ -109,7 +112,6 @@ class Node:
         self._parent = node["ParentId"]
         self._selected = node["Selected"]
         self._id = node["Id"]
-
 
 class Report:
     def __init__(self,bench,mincycles):
@@ -172,8 +174,11 @@ class Report:
         for region in match_error:
             self._regions[suppr_prefix(region["Codelet Name"])] = Region(region)
         self.init_callcount()
-        #print(self._regions)
-        self._regions = dict([(k,r) for k,r in self._regions.iteritems() if float(r._invivo)/float(r._callcount) > mincycles])
+        for k,r in self._regions.iteritems():
+            if float(r._invivo)/float(r._callcount) < mincycles:
+                self._regions[k]._tooSmall = "true"
+            if r._table["Error (%)"] == 100:
+                self._regions[k]._execError = "true"
         self.init_invocation_table()
         self.init_codes()
         
@@ -254,6 +259,7 @@ class Report:
                 if(DEBUG_MODE):
                     print "SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in matching error"
         self.test_parent_tree()
+        self.remove_loops()
         
     def test_parent_tree(self):
         '''
@@ -272,6 +278,34 @@ class Report:
                 if (orphan):
                     node._parent = "none"
 
+    def remove_loops(self):
+        '''
+        Remove too small loops from the tree.
+        '''
+        if (len(self._tree) == 0):
+            raise MyError("/selected_codelets empty")
+        self.tmp_tree = []
+        for node in self._tree:
+            if node._region._tooSmall == "false" and node._region._execError == "false" and node not in self.tmp_tree:
+                self.tmp_tree = self.tmp_tree + [node]
+                while node._parent != "none":
+                    parent = self.get_node_by_id(node._parent, self._tree)
+                    if parent._region._execError == "true":
+                        node = self.tmp_tree[node]
+                        granpa = self.get_node_by_id(parent._parent)
+                        node._parent = granpa._id if granpa != "none" else "none"
+                    else:
+                        node = parent
+                        if node not in self.tmp_tree: self.tmp_tree = self.tmp_tree + [node]
+                        else: break
+        self._tree = self.tmp_tree
+
+    def get_node_by_id(self, _id, tree):
+        for node in tree:
+            if node._id == _id:
+                return node
+        return "none"
+
     def init_part(self):
         '''
         Compute coverage of selected regions 
@@ -281,13 +315,13 @@ class Report:
         for region in self._regions:
             if(self._regions[region]._selected == "true"):
                 self._part = self._part + self._regions[region]._table["Exec Time (%)"]
-        
+
     def init_graph_error(self):
         '''
         Read bench_error.png
         '''
         self._graph_error = encode_graph("/bench_error.png")
-        
+
     def init_javascript(self):
         '''
         Read javascript file : Report/Report.js
@@ -297,7 +331,7 @@ class Report:
                 self.javascript=jsf.read()
         except (IOError):
             raise MyError("Cannot find Report.js")
-    
+
     def write_report(self):
         '''
         Write report by passing information to the template
@@ -311,7 +345,6 @@ class Report:
                      invocationfields=INVOCATION_FIELDNAMES, l_modes=self._liste_script,
                      report_js=self.javascript, part=self._part, graph_error=self._graph_error))
         REPORT.close()
-
 
 @contextmanager
 def context(DIR):

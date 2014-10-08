@@ -40,7 +40,7 @@ class Codelet:
     def __init__(self, name, callcount, totalcycles):
         self.fullName = name
         self.name = name.split("#")[-1]
-        self.depth = self.name.count("#")
+        self.depth = self.fullName.count("#")
         self.callcount = callcount
         # we store cycles per iteration
         self.cycles = float(totalcycles)/callcount
@@ -65,6 +65,10 @@ class Codelet:
 
     def is_children_of(self, other):
         return other.name in self.parents
+    
+    def update_depth(self, new_depth):
+        if new_depth < self.depth:
+            self.depth = new_depth
 
 def parse(csvfile):
     csvreader = csv.reader(csvfile, delimiter=',')
@@ -77,6 +81,7 @@ def parse(csvfile):
         else:
             assert codelets[c.name].cycles == c.cycles
             assert codelets[c.name].callcount == c.callcount
+            codelets[c.name].update_depth(c.depth)
             codelets[c.name].add_parents(c.fullName)
 
     for name,codelet in codelets.iteritems():
@@ -185,7 +190,7 @@ def output_tree(output, codelets, chosen):
     output.write("Id,Codelet Name,Selected,ParentId\n")
     # find roots
     for codelet in codelets.itervalues():
-        if not codelet.parents:
+        if codelet.depth == 0: #not codelet.parents:
             output_codelet(output, codelets, chosen, codelet, "None", set())
 
     output.close()
