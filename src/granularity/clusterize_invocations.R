@@ -9,6 +9,7 @@ suppressPackageStartupMessages(require(plyr, quietly=TRUE))
 suppressPackageStartupMessages(require(GMD, quietly=TRUE))
 suppressPackageStartupMessages(require(fpc, quietly=TRUE))
 suppressPackageStartupMessages(require(cluster, quietly=TRUE))
+suppressPackageStartupMessages(require(fields, quietly=TRUE))
 options(warn=-1)
 options(error=traceback)
 MAX_POINTS=50000
@@ -175,10 +176,6 @@ while(1) {
     cycles[cycles$Cluster==right,]$Cluster = left
 }
 
-
-#Compute for each cluster its size
-Sums <- sapply(sort(unique(cycles$Cluster)), clust.sum, cycles$values, cycles$Cluster)
-
 #Compute for each invocation, the distance to its cluster centroid.
 #And elect as representative invocation, the closest to the centroid.
 cycles$is.representative=F
@@ -194,16 +191,41 @@ for (clust in unique(cycles$Cluster)) {
       ifelse(cycles[cycles$Cluster==clust, ]$invocation == tmp[1, ]$invocation, T, F)
 }
 
+#compute distance between clusters
+distances = rdist(ClusterInfo$Centroid)
+
+#Find the nearest cluster to clust
+find_nearest_cluster <- function(clust, distances) {
+    tmp_vec = distances[,clust]
+    tmp_vec[[clust]] = Inf
+    nearest_clust = which.min(tmp_vec)
+    return(nearest_clust)
+}
+
+#If a representative is below 2000 cycles, we search
+#for the nearest cluster to fused them both.
+if (nrow(ClusterInfo) != 1) {
+    for (i in 1:nrow(ClusterInfo)) {
+        clust=ClusterInfo[i,]$Cluster
+        if (cycles[cycles$Cluster==clust & cycles$is.representative==T, ]$values < 2000)
+        {
+            nearest_clust = find_nearest_cluster(clust, distances)
+            cycles[cycles$Cluster==clust, ]$is.representative = F
+            cycles[cycles$Cluster==clust, ]$Cluster = nearest_clust
+        }
+    }
+}
+
+#Compute for each cluster its size
+Sums <- sapply(sort(unique(cycles$Cluster)), clust.sum, cycles$values, cycles$Cluster)
+
 plot_by_Cluster(cycles, CodeletName)
 
 res <- cycles[cycles$is.representative==T, ]
 res <- res[order(res$Cluster), ]
-#The part of each cluster time in the total loop time.
 
+#The part of each cluster time in the total loop time.
 res$part = (Sums/res$values) * total_cycles/total_kept_cycles
-#best=sum(res$values*res$part)*total_invocation
-#best_error=abs(best-total_cycles)/pmax(best, total_cycles)
 print(res)
-#print(paste("Best error is", best_error))
 todump=data.frame(res$invocation, res$part, res$values)
 dump_to_file(todump, paste(CodeletName, ".invocations", sep=""))
