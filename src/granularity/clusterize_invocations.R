@@ -19,8 +19,8 @@ PALETTE = c("red","blue","green","yellow","black","grey","pink","maroon","orange
 set.seed(2000)
 
 # Check the arguments
-if ((length(args) < 4)) {
-    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <csv file> <binary files list>")
+if ((length(args) < 5)) {
+    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <csv file> <bynary files> <all_loops>")
     q()
 }
 
@@ -97,12 +97,23 @@ cluster <- function (cycles) {
 CodeletName = args[1]
 nbLoopFiles = as.integer(args[2])
 print(CodeletName)
-allLoops = load_csv(args[3])
+nonTraceCycles = load_csv(args[3])
+allLoops = load_csv(args[4])
 
-nbValues=allLoops[allLoops$Codelet.Name==CodeletName, ]$Call.Count
+for (i in 1:nrow(allLoops)) {
+    new_name = tail(unlist(strsplit(toString(allLoops[i,]$Codelet.Name), "#")), 1)
+    if (CodeletName == new_name) {
+        old_name = allLoops[i,]$Codelet.Name
+        break
+    }
+}
+
+inVivoCycles=allLoops[i,]$CPU_CLK_UNHALTED_CORE
+nbValues=nonTraceCycles[nonTraceCycles$Codelet.Name==CodeletName, ]$Call.Count
+
 allValues <- matrix(ncol=nbLoopFiles, nrow=nbValues)
 for(i in 1:nbLoopFiles) {
-    binFile=args[3+i]
+    binFile=args[4+i]
     to.read=file(binFile, "rb")
     tracedLoop=readBin(to.read, double(), n=nbValues*2)
     values <- tracedLoop[seq(1,nbValues*2, 2)]
@@ -113,13 +124,9 @@ allValues <- data.frame(allValues)
 names(allValues) <- paste("repetition_", seq(1:nbLoopFiles), sep='')
 allValues$invocation=seq(1,nbValues)
 total_invocation = nrow(allValues)
-total_cycles = sum(as.numeric(allValues[,paste("repetition_", nbLoopFiles, sep='')]), na.rm=T)
-print(paste("Trace Cycles =", total_cycles))
+
+print(paste("Cycles = ", inVivoCycles)
 print(paste("Invocations=", total_invocation))
-if (total_cycles - allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE)
-{
-    print(paste("Sanity check failed: Trace cycles =", total_cycles, "& cycles =", allLoops[allLoops$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE))
-}
 
 POINTS_TO_KEEP=min(MAX_POINTS, total_invocation)
 
@@ -225,7 +232,7 @@ res <- cycles[cycles$is.representative==T, ]
 res <- res[order(res$Cluster), ]
 
 #The part of each cluster time in the total loop time.
-res$part = (Sums/res$values) * total_cycles/total_kept_cycles
+res$part = (Sums/res$values) * inVivoCycles/total_kept_cycles
 print(res)
 todump=data.frame(res$invocation, res$part, res$values)
 dump_to_file(todump, paste(CodeletName, ".invocations", sep=""))

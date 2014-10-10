@@ -93,22 +93,12 @@ while read codeletName; do
     #We have everything to clusterize performance
     bynaryFiles=`ls $RES_DIR/*$codeletName.bin.*`
     nbLoopFiles=`ls $RES_DIR/*$codeletName.bin.* | wc -l`
-    #echo "Ploting"
-    #if [[ ( -f  "${PLOT_DIR}/${codeletName}.png" ) ]]; then
-    #    echo "Keeping previous plots"
-    #else
-    #    gnuplot -e "filename='$bynaryFiles'" -e "outputFile='${codeletName}'" $ROOT/plot_trace.gnu
-    #    if [[ ! ( -f  "${codeletName}.png" ) ]]; then
-    #        echo "No plots for $codeletName"
-    #    else
-    #        mv ${codeletName}.png $PLOT_DIR/.
-    #    fi
-    #fi
+
     echo "Computing clustering info"
     if [[ ( -f  "${RES_DIR}/${codeletName}.invocations" ) ]]; then
         echo "Using previous clustering infos"
     else
-        $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $RES_DIR/${codeletName}.csv $bynaryFiles
+        $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $RES_DIR/${codeletName}.csv $RES_DIR/all_loops.csv $bynaryFiles
         if [[ ! ( -f  "${codeletName}.invocations" ) ]]; then
             echo "Error for $codeletName: No clustering infos"
             continue
