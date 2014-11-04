@@ -15,5 +15,4 @@ config.h
 *~
 aclocal.m4
 autoconf
-Makefile
 libtool
