@@ -11,7 +11,6 @@ autom4te.cache
 stamp-h1
 config.log
 config.status
-config.h
 *~
 aclocal.m4
 autoconf
