@@ -36,15 +36,20 @@ static cl::opt<std::string>
 IsolateLoop("isolate-loop", cl::init("all"),
                   cl::value_desc("loopname"),
                   cl::desc("loop-extract-all will only isolate this loop"));
+static cl::opt<bool>
+AppMeasure("instrument-app", cl::init(false),
+                  cl::value_desc("Boolean"),
+                  cl::desc("if True, application time will be measured"));
 
 namespace {
   struct LoopExtractorAll : public LoopPass {
     static char ID; // Pass identification, replacement for typeid
     unsigned NumLoops;
     std::string Loopname;
+    bool measureAppli;
 
     explicit LoopExtractorAll(unsigned numLoops = ~0, const std::string &loopname = "") 
-      : LoopPass(ID), NumLoops(numLoops), Loopname(loopname) {
+      : LoopPass(ID), NumLoops(numLoops), Loopname(loopname), measureAppli(AppMeasure) {
         if (loopname.empty()) Loopname = IsolateLoop;
       }
 
@@ -87,7 +92,7 @@ bool LoopExtractorAll::runOnLoop(Loop *L, LPPassManager &LPM) {
   if (ShouldExtractLoop) {
     if (NumLoops == 0) return Changed;
     --NumLoops;
-    CodeExtractorAll Extractor(DT, *L, Loopname);
+    CodeExtractorAll Extractor(DT, *L, Loopname, measureAppli);
     if (Extractor.extractCodeRegion() != 0) {
       Changed = true;
       // After extraction, the loop is replaced by a function call, so

@@ -21,7 +21,7 @@ int main()
 {
 	int i, j;
 	int TAB[100];
-	likwid_markerInit();
+	rdtsc_markerInit();
 
 	rdtsc_markerStartRegion("test_1", 1);
 	for(i=0; i<10; i++)
@@ -41,6 +41,5 @@ int main()
 		//~ rdtsc_markerStopRegion("test_2", 1);
 	//~ }
 
-	likwid_markerClose();
 	return 0;
 }

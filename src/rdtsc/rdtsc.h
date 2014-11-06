@@ -46,12 +46,12 @@ static uint32_t hash_string(const char*);
 
 static bool streq(const void*, void*);
 static size_t rehash(const void*, void*);
-void likwid_markerInit();
-void likwid_markerClose();
+void rdtsc_markerInit();
+void rdtsc_markerClose();
 void rdtsc_markerStartRegion(char*, int, bool);
 void rdtsc_markerStopRegion(char*, int, bool);
 
-void likwid_markerinit_();
-void likwid_markerclose_();
+void rdtsc_markerinit_();
+void rdtsc_markerclose_();
 void rdtsc_markerstartregion_(char*, int, int, bool);
 void rdtsc_markerstopregion_(char*, int, int, bool);

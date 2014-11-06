@@ -100,17 +100,17 @@ void dump_trace(region *r, int nbEltToDump)
 	}
 }
 
-void likwid_markerInit()
+void rdtsc_markerInit()
 {
 	calibrate_serialize_overhead();
 	htable_init(&regionHtab, rehash, NULL);
 	htable_init(&call_count_reminder, rehash2, NULL);
-	atexit(likwid_markerClose);
+	atexit(rdtsc_markerClose);
 	LEVEL=0;
 	INITIALIZED=true;
 }
 
-void likwid_markerClose()
+void rdtsc_markerClose()
 {
 	while(strlen(call_stack) > 0) {
 		rdtsc_markerStopRegion(call_stack, 0, false);
@@ -262,14 +262,14 @@ void rdtsc_markerstopregion_(char *regionName, int len, int trace, bool global)
 	rdtsc_markerStopRegion( regionName, trace, global );
 }
 
-void likwid_markerinit_()
+void rdtsc_markerinit_()
 {
-	likwid_markerInit();
+	rdtsc_markerInit();
 }
 
-void likwid_markerclose_()
+void rdtsc_markerclose_()
 {
-	likwid_markerClose();
+	rdtsc_markerClose();
 }
 
 

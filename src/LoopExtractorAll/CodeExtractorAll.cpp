@@ -134,9 +134,9 @@ CodeExtractorAll::CodeExtractorAll(ArrayRef<BasicBlock *> BBs, DominatorTree *DT
     Blocks(buildExtractionBlockSet(BBs)), NumExitBlocks(~0U) {}
 
 CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, Loop &L,
-                    std::string loopname, bool AggregateArgs)
+                    std::string loopname, bool measureAppli, bool AggregateArgs)
   : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
-    Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),  Loopname(loopname) {
+    Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U), Loopname(loopname), measureApp(measureAppli) {
         if (loopname.empty()) Loopname = "all";
     }
 
@@ -352,8 +352,6 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
     }
 }
 
-//Uncomment if you want also loop last
-//line in the isolated function name (does not work very well)
 std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlock *header) {
   //Get current module
   Module *mod = oldFunction->getParent();
@@ -362,23 +360,18 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
   std::string newFunctionName;
   std::ostringstream oss;
   BasicBlock *firstBB = Blocks[0];
-  //~ BasicBlock *lastBB = Blocks[Blocks.size()-1];
+
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    //~ MDNode *lastN = lastBB->back().getMetadata("dbg");
     DILocation firstLoc(firstN);
-    //~ DILocation lastLoc(lastN);
     oss << firstLoc.getLineNumber();
     std::string firstLine = oss.str();
-    //~ oss.clear();
-    //~ oss << lastLoc.getLineNumber();
-    //~ std::string lastLine = oss.str();
     std::string Original_location = removeExtension(firstLoc.getFilename().str());
     std::string File = removeExtension(module_name);
     if(File == Original_location) {
-        newFunctionName = "__extracted__" + File + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
+        newFunctionName = "__extracted__" + File + separator + oldFunction->getName().str() + separator + firstLine;
     }
     else {
-        newFunctionName = "__extracted__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
+        newFunctionName = "__extracted__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;
     }
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, Original_location);
   }
@@ -456,8 +449,11 @@ Function *CodeExtractorAll::constructFunction(const ValueSet &inputs,
                                            GlobalValue::InternalLinkage,
                                            newFunctionName,
                                            M);
+
   // Always try to inline the outlined function
-  newFunction->addFnAttr(Attribute::AlwaysInline);
+  if (measureApp) newFunction->addFnAttr(Attribute::NoInline);
+  else newFunction->addFnAttr(Attribute::AlwaysInline);
+
   // If the old function is no-throw, so is the new one.
   if (oldFunction->doesNotThrow())
     newFunction->setDoesNotThrow();

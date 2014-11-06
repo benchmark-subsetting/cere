@@ -37,10 +37,6 @@ static cl::opt<bool>
 NestedInstrumentation("nested-loops", cl::init(true),
                   cl::value_desc("Boolean"),
                   cl::desc("This options allow/deactivate measures of nested loops"));
-static cl::opt<bool>
-AppMeasure("instrument-app", cl::init(false),
-                  cl::value_desc("Boolean"),
-                  cl::desc("if True, application time will be measured"));
 
 std::string removeExtension( const std::string &filename) {
     size_t lastdot = filename.find_last_of(".");
@@ -64,13 +60,12 @@ namespace {
     std::string LoopToTrace;
     int Mode;
     bool nestedIsAllowed;
-    bool measureAppli;
     bool readFromFile;
     std::vector<std::string> loopsToInstrument;
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation), measureAppli(AppMeasure) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), nestedIsAllowed(NestedInstrumentation){
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -209,8 +204,6 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
     return void_16_params;
 }
 
-//Uncomment if you want also loop last
-//line in the isolated function name (does not work very well)
 std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
   //Get current module
   Module *mod = oldFunction->getParent();
@@ -219,22 +212,17 @@ std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldF
   std::string newFunctionName;
   std::ostringstream oss;
   BasicBlock *firstBB = L->getBlocks()[0];
-  //~ BasicBlock *lastBB = Blocks[Blocks.size()-1];
+
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    //~ MDNode *lastN = lastBB->back().getMetadata("dbg");
     DILocation firstLoc(firstN);
-    //~ DILocation lastLoc(lastN);
     oss << firstLoc.getLineNumber();
     std::string firstLine = oss.str();
-    //~ oss.clear();
-    //~ oss << lastLoc.getLineNumber();
-    //~ std::string lastLine = oss.str();
     std::string Original_location = removeExtension(firstLoc.getFilename().str());
     std::string File = removeExtension(module_name);
     if(File == Original_location)
-        newFunctionName = "__invivo__" + File + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
+        newFunctionName = "__invivo__" + File + separator + oldFunction->getName().str() + separator + firstLine;
     else
-        newFunctionName = "__invivo__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;// + "_" + lastLine;
+        newFunctionName = "__invivo__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;
   }
   else {
     newFunctionName = "__invivo__" + oldFunction->getName().str();
@@ -251,7 +239,7 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
     Module* mod = F.getParent();
     if(Mode == VIVO) { //Not replaying a loop so we have to insert init in main function
         std::vector<Type*>FuncTy_8_args;
-        //~ FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
+
         FunctionType* FuncTy_8 = FunctionType::get(
                         /*Result=*/Type::getVoidTy(mod->getContext()),
                         /*Params=*/FuncTy_8_args,
@@ -266,53 +254,25 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
 
         if (Main) {
             BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
-            std::vector<BasicBlock*> ReturningBlocks;
-            for(Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
-                if (isa<ReturnInst>(I->getTerminator())) ReturningBlocks.push_back(I);
-            }
-            
-            if(measureAppli) {
-                FunctionType* FuncTy_0 = createFunctionType(mod);
-                std::vector<Value*> funcParameter = createFunctionParameters(mod, "main");
-                Function *startFunction = mod->getFunction("rdtsc_markerStartRegion");
-                Function *stopFunction = mod->getFunction("rdtsc_markerStopRegion");
-                if(!startFunction) {
-                    Function* func_start = createFunction(FuncTy_0, mod, "rdtsc_markerStartRegion");
-                    CallInst::Create(func_start, funcParameter, "", &firstBB->front());
-                }
-                if(!stopFunction) {
-                    Function* func_stop = createFunction(FuncTy_0, mod, "rdtsc_markerStopRegion");
-                    //We must insert stop probe in all exits blocks
-                    for (std::vector<BasicBlock*>::iterator I = ReturningBlocks.begin(), E = ReturningBlocks.end(); I != E; ++I) {
-                        CallInst::Create(func_stop, funcParameter, "", &(*I)->back());
-                    }
-                }
-            }
-            Function *initFunction = mod->getFunction("likwid_markerInit");
+
+            Function *initFunction = mod->getFunction("rdtsc_markerInit");
             if(!initFunction) {
                 Function *initFunction = Function::Create(FuncTy_8,
                                 GlobalValue::ExternalLinkage,
-                                "likwid_markerInit",
+                                "rdtsc_markerInit",
                                 mod);
                 CallInst::Create(initFunction, "", &firstBB->front());
                 DEBUG(dbgs() << "Init successfuly inserted in main function\n");
             }
         }
     }
-    if(!measureAppli) {
-        LoopInfo &LI = getAnalysis<LoopInfo>();
-        std::vector<Loop*> SubLoops(LI.begin(), LI.end());
-        for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
-            visitLoop(SubLoops[i], mod);
-    }
+    LoopInfo &LI = getAnalysis<LoopInfo>();
+    std::vector<Loop*> SubLoops(LI.begin(), LI.end());
+    for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
+        visitLoop(SubLoops[i], mod);
     return true;
 }
 
-/**TODO:
- * 1) Place in main a call to init_rdtsc and close_rdtsc
- * 2) If LoopExtractorAll has been called, we instrument isolated loops
- *  otherwise we are dealing with invivo loops.
-**/ 
 bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
 {
     //get current module

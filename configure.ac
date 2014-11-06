@@ -21,6 +21,7 @@ AX_LLVM([3.3],[all])
 AC_CHECK_LIB([c], [exit])
 AC_CHECK_LIB([gfortran], [exit])
 AC_CHECK_LIB([m], [sin])
+AC_CHECK_LIB([profiler], [ProfilerStart])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/time.h unistd.h utime.h])

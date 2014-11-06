@@ -14,6 +14,7 @@ class MyParser(argparse.ArgumentParser):
 ROOT = os.path.dirname(os.path.realpath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 RDTSC = "/src/rdtsc/librdtsc.a"
+PROFILE_LIB = "-lprofiler"
 MEMORYDUMP = "/src/memory_dump/.libs/"
 VERSION = "@PACKAGE_VERSION@"
 LD="gcc-4.7"
@@ -78,13 +79,13 @@ def user_main(FILE, LOOP, instrument):
     # Define by default CALL_COUNT to 11
     INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
     if (instrument):
-        temp = "likwid_markerInit();\n"
+        temp = "rdtsc_markerInit();\n"
     else:
         temp=""
     TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
     template = TEMPLATE.read()
     TEMPLATE.close()
-    FILE.write(template.format(time_out=TIMEOUT_SECONDS, likwid=temp,
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS, rdtsc=temp,
                in_vitro_call_count=INVITRO_CALL_COUNT,
                loop=LOOP.replace("-","_")))
 
@@ -176,8 +177,15 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Original mode
     Only call the linker
     '''
-    safe_system(("{ld} {opts} -o {binary} {Root}{libs}").format(ld=LD,
-                binary=BINARY, opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=RDTSC))
+    if(mode_opt.instrument_app):
+        safe_system(("{ld} {opts} {libs} -o {binary}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
+    elif(mode_opt.instrument):
+        safe_system(("{ld} {opts} {libs} -o {binary}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT, libs=PROJECT_ROOT+RDTSC))
+    else:
+        safe_system(("{ld} {opts} -o {binary}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT))
 
 
 # initialize subparsers

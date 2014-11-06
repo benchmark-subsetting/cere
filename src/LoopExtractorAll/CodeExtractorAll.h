@@ -55,6 +55,7 @@ namespace llvm {
     SetVector<BasicBlock *> Blocks;
     unsigned NumExitBlocks;
     std::string Loopname;
+    bool measureApp;
     Type *RetTy;
 
   public:
@@ -77,7 +78,7 @@ namespace llvm {
     ///
     /// Behaves just like the generic code sequence constructor, but uses the
     /// block sequence of the loop.
-    CodeExtractorAll(DominatorTree &DT, Loop &L, std::string loopname = "", bool AggregateArgs = false);
+    CodeExtractorAll(DominatorTree &DT, Loop &L, std::string loopname = "", bool measureAppli = false, bool AggregateArgs = false);
 
     /// \brief Create a code extractor for a region node.
     ///
