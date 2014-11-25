@@ -31,5 +31,5 @@ clean:
 	- rm -f IS core
 
 veryclean: clean
-	- rm -rf dump/ measures/
+	- rm -rf cere_dumps/ cere_measures/
 	- rm -f lel_bin realmain.c

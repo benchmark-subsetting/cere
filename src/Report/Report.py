@@ -175,8 +175,6 @@ class Report:
             self._regions[suppr_prefix(region["Codelet Name"])] = Region(region)
         self.init_callcount()
         for k,r in self._regions.iteritems():
-            if float(r._invivo)/float(r._callcount) < mincycles:
-                self._regions[k]._tooSmall = "true"
             if r._table["Error (%)"] == 100:
                 self._regions[k]._execError = "true"
         self.init_invocation_table()
@@ -187,21 +185,15 @@ class Report:
         Initialize the callcount
         We read all files level_*.csv and for each region in each file we initialize his callcount with the value in the file
         '''
-        test = True
-        i = 0
-        while (test):
+        for k,r in self._regions.iteritems():
+            infos = csv.reader(open(ROOT_MEASURE+"/__invivo__{0}.csv".format(k)))
+            line = infos.next()
+            line = infos.next()
             try:
-                loops = read_csv("{root}/level_{lev}.csv".format(
-                                 root=ROOT_MEASURE,lev=i))
-                i = i + 1
-                for loop in loops:
-                    try:
-                        self._regions[suppr_prefix(loop["Codelet Name"])].set_callcount(loop["Call Count"])
-                    except(KeyError):
-                        if(DEBUG_MODE):
-                            print "CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error"
-            except(MyError):
-                test = False
+                self._regions[k].set_callcount(line[1])
+            except(KeyError):
+                if(DEBUG_MODE):
+                    print "CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error"
         
     def init_invocation_table(self):
         '''

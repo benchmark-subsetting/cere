@@ -13,14 +13,14 @@ suppressPackageStartupMessages(require(fields, quietly=TRUE))
 options(warn=-1)
 options(error=traceback)
 MAX_POINTS=50000
-ROOT_PLOTS = "measures/plots/"
+ROOT_PLOTS = "cere_measures/plots/"
 PALETTE = c("red","blue","green","yellow","black","grey","pink","maroon","orange","purple","magenta",
             "silver","golden","brown","cyan")
 set.seed(2000)
 
 # Check the arguments
-if ((length(args) < 5)) {
-    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <csv file> <bynary files> <all_loops>")
+if ((length(args) < 4)) {
+    print("usage: ./plot_codelets.R <codelet_name> <Nb binary files> <csv file> <bynary files>")
     q()
 }
 
@@ -98,22 +98,22 @@ CodeletName = args[1]
 nbLoopFiles = as.integer(args[2])
 print(CodeletName)
 nonTraceCycles = load_csv(args[3])
-allLoops = load_csv(args[4])
+#~ allLoops = load_csv(args[4])
 
-for (i in 1:nrow(allLoops)) {
-    new_name = tail(unlist(strsplit(toString(allLoops[i,]$Codelet.Name), "#")), 1)
-    if (CodeletName == new_name) {
-        old_name = allLoops[i,]$Codelet.Name
-        break
-    }
-}
+#~ for (i in 1:nrow(allLoops)) {
+#~     new_name = tail(unlist(strsplit(toString(allLoops[i,]$Codelet.Name), "#")), 1)
+#~     if (CodeletName == new_name) {
+#~         old_name = allLoops[i,]$Codelet.Name
+#~         break
+#~     }
+#~ }
 
-inVivoCycles=allLoops[i,]$CPU_CLK_UNHALTED_CORE
+inVivoCycles=nonTraceCycles[nonTraceCycles$Codelet.Name==CodeletName, ]$CPU_CLK_UNHALTED_CORE
 nbValues=nonTraceCycles[nonTraceCycles$Codelet.Name==CodeletName, ]$Call.Count
 
 allValues <- matrix(ncol=nbLoopFiles, nrow=nbValues)
 for(i in 1:nbLoopFiles) {
-    binFile=args[4+i]
+    binFile=args[3+i]
     to.read=file(binFile, "rb")
     tracedLoop=readBin(to.read, double(), n=nbValues*2)
     values <- tracedLoop[seq(1,nbValues*2, 2)]
@@ -125,7 +125,7 @@ names(allValues) <- paste("repetition_", seq(1:nbLoopFiles), sep='')
 allValues$invocation=seq(1,nbValues)
 total_invocation = nrow(allValues)
 
-print(paste("Cycles = ", inVivoCycles)
+print(paste("Cycles = ", inVivoCycles))
 print(paste("Invocations=", total_invocation))
 
 POINTS_TO_KEEP=min(MAX_POINTS, total_invocation)

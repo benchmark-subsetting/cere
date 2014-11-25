@@ -1,7 +1,7 @@
 #!/bin/bash
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$ROOT/../../"
-RES_DIR="measures"
+RES_DIR="cere_measures"
 PLOT_DIR="$RES_DIR/plots"
 export LD_BIND_NOW=1
 
@@ -36,17 +36,21 @@ if [ "$?" != "0" ] ; then
     exit 1
 fi
 
+if [[ !( -d $RES_DIR ) ]]
+then
+    mkdir $RES_DIR
+fi
 if [[ !( -d $PLOT_DIR ) ]]
 then
     mkdir $PLOT_DIR
 fi
 
-#Check if everything we need is present
-if [[ ! -f $RES_DIR/all_loops.csv ]] || [[ ! -f $RES_DIR/app_cycles.csv ]]; then
-    echo "all_loops.csv or app_cycles.csv not found."
-    echo "Please first run $ROOT/coverage.sh $PWD \"$BIN_CMD\" \"$COMPIL_CMD\""
-    exit 1
-fi
+#~ #Check if everything we need is present
+#~ if [[ ! -f $RES_DIR/all_loops.csv ]] || [[ ! -f $RES_DIR/app_cycles.csv ]]; then
+    #~ echo "all_loops.csv or app_cycles.csv not found."
+    #~ echo "Please first run $ROOT/coverage.sh $PWD \"$BIN_CMD\" \"$COMPIL_CMD\""
+    #~ exit 1
+#~ fi
 
 # compute error |x-y|/max(x,y)
 compute_error()
@@ -98,7 +102,7 @@ while read codeletName; do
     if [[ ( -f  "${RES_DIR}/${codeletName}.invocations" ) ]]; then
         echo "Using previous clustering infos"
     else
-        $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $RES_DIR/${codeletName}.csv $RES_DIR/all_loops.csv $bynaryFiles
+        $ROOT/clusterize_invocations.R $codeletName $nbLoopFiles $RES_DIR/${codeletName}.csv $bynaryFiles #$RES_DIR/all_loops.csv
         if [[ ! ( -f  "${codeletName}.invocations" ) ]]; then
             echo "Error for $codeletName: No clustering infos"
             continue
@@ -123,13 +127,13 @@ while read codeletName; do
             rm -rf dump/${codeletName/__invivo__/__extracted__}/${invocation}
         fi
         #if this invocation is not dumped, do it
-        if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
+        if [[ ! ( -d "cere_dumps/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "Dumping invocation ${invocation}"
             make clean &>> full_matching_log && rm -f *.ll &>> full_matching_log
             ${COMPIL_CMD} MODE="dump --region=${codeletName/__invivo__/__extracted__} --invocation=${invocation}" &>> full_matching_log
             eval ${BIN_CMD} &>> full_matching_log
         fi
-        if [[ ! ( -d "dump/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
+        if [[ ! ( -d "cere_dumps/${codeletName/__invivo__/__extracted__}/${invocation}" ) ]]; then
             echo "No dump for ${codeletName} invocation ${invocation}"
             err=1
             #continue
@@ -171,7 +175,7 @@ while read codeletName; do
         fi
     done < $RES_DIR/${codeletName}.invocations
     #Compute error between invivo and in vitro
-    cy=`grep -F "${codeletName}," $RES_DIR/all_loops.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
+    cy=`grep -F "${codeletName}," $RES_DIR/$codeletName.csv | head -n 1 | cut -d ',' -f 3 | tr -d $'\r'`
     cycles=`echo "scale=3;${cycles}" | bc`
     codelet_part=`echo "scale=3;${cy}/${app_cycles}" | bc | awk '{printf "%f", $0}'`
 
@@ -194,5 +198,5 @@ if [[ ( -f  matching_error ) ]]; then
 fi
 #compute matching and compare old and new method
 #$PROJECT_ROOT/src/granularity/compute_matching.R ./${RES_DIR}
-CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
-$PROJECT_ROOT/src/granularity/granularity.py reduce ${RES_DIR}/all_loops.csv --matching=${RES_DIR}/matching_error.csv ${CYCLES} -o ${RES_DIR}/selected_codelets
+#~ CYCLES=`cat $RES_DIR/app_cycles.csv | tail -n 1 | cut -d ',' -f 3`
+#~ $PROJECT_ROOT/src/granularity/granularity.py reduce ${RES_DIR}/all_loops.csv --matching=${RES_DIR}/matching_error.csv ${CYCLES} -o ${RES_DIR}/selected_codelets

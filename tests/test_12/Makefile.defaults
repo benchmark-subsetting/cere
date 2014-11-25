@@ -432,7 +432,7 @@ else
 endif
 
 veryclean: clean
-	rm -rf dump/ *.ll regions.csv realmain.c
+	rm -rf cere_dumps/ *.ll regions.csv realmain.c
 
 build: $(EXTRA_TARGETS) $(EXEBASE)
 

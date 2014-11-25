@@ -17,7 +17,7 @@ loop=sys.argv[3]
 
 def parse_dumps(loop):
     secs = []
-    for f in os.listdir("dump/{0}/".format(loop)):
+    for f in os.listdir("cere_dumps/{0}/".format(loop)):
         if f.endswith(".memdump"):
             secs.append(int(f.split(".")[0], 16))
     return sorted(secs)
@@ -104,7 +104,7 @@ with open(topatch, 'r+b') as topatch_file:
         dump = find_dump(original_map[s]['addr'], dumps)
         if not dump:
             continue
-        with open("dump/{0}/{1:012x}.memdump".format(loop, dump), "rb") as dump_file:
+        with open("cere_dumps/{0}/{1:012x}.memdump".format(loop, dump), "rb") as dump_file:
             # Seek in the original file
             try:
                 dump_file.seek(original_map[s]['addr']-dump, 0)

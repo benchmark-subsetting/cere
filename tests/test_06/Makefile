@@ -34,5 +34,5 @@ clean:
 	- rm -f ft core
 
 veryclean: clean
-	- rm -rf dump/
+	- rm -rf cere_dumps/ cere_measures/
 	- rm -f lel_bin realmain.c dump.c

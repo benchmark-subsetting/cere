@@ -99,8 +99,8 @@ def create_user_main(Instrument,LOOP):
 
 def compile_memory_dump_objects(DIR):
     DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
-    safe_system("rm -f dump/objs.S")
-    OBJ=open("dump/objs.S",'w')
+    safe_system("rm -f cere_dumps/objs.S")
+    OBJ=open("cere_dumps/objs.S",'w')
     for FILE in os.listdir(DIR):
         BASE, ext = os.path.splitext(FILE)
         FILE = DIR+"/"+FILE
@@ -110,7 +110,7 @@ def compile_memory_dump_objects(DIR):
             DUMP_ARGS = (DUMP_ARGS +
                         " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
     OBJ.close()
-    safe_system(LD + " -c dump/objs.S")
+    safe_system(LD + " -c cere_dumps/objs.S")
     return DUMP_ARGS
 
 
@@ -151,7 +151,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
         COMPIL_OPT = PROJECT_ROOT + RDTSC + " " + COMPIL_OPT
     if(not INVOCATION):
         INVOCATION=1
-    DIR="dump/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
+    DIR="cere_dumps/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
         fail_lel("No dump for {loop} invocation {invocation}".format(loop=LOOP,
@@ -178,13 +178,13 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Only call the linker
     '''
     if(mode_opt.instrument_app):
-        safe_system(("{ld} {opts} {libs} -o {binary}").format(ld=LD,
+        safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
     elif(mode_opt.instrument):
-        safe_system(("{ld} {opts} {libs} -o {binary}").format(ld=LD,
+        safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT, libs=PROJECT_ROOT+RDTSC))
     else:
-        safe_system(("{ld} {opts} -o {binary}").format(ld=LD,
+        safe_system(("{ld} -o {binary} {opts}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT))
 
 

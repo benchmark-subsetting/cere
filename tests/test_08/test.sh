@@ -2,7 +2,7 @@
 
 function do_test()
 {
-    rm -rf dump/ *.ll
+    rm -rf cere_dumps/ *.ll
     make clean
     make -j4 MODE="dump --region=__extracted__advx1_advx1__622 --invocation=1"
     LD_BIND_NOW=1 ./zeusmp

@@ -488,7 +488,7 @@ void dump_init(bool global_dump)
 
   state.global_dump = global_dump;
 
-  state.dump_prefix = strdup("dump");
+  state.dump_prefix = strdup("cere_dumps");
   state.pagelog_suffix = strdup("hotpages.map");
   state.core_suffix = strdup("core.map");
 

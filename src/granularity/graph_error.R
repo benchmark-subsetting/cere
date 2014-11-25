@@ -4,8 +4,8 @@ suppressPackageStartupMessages(require(ggplot2, quietly=TRUE))
 suppressPackageStartupMessages(require(data.table, quietly=TRUE))
 options(warn=-1)
 options(error=traceback)
-ROOT_PLOTS = "measures/plots/"
-ERROR_TABLE = "measures/table_error.csv"
+ROOT_PLOTS = "cere_measures/plots/"
+ERROR_TABLE = "cere_measures/table_error.csv"
 
 load_csv <- function(csvFile) {
     return (tryCatch(
