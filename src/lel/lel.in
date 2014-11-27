@@ -4,7 +4,7 @@
 import os
 import re
 import argparse
-
+import tempfile
 
 #to ignore prefix matching
 class MyParser(argparse.ArgumentParser):
@@ -122,7 +122,7 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     if (mode_opt.region):
         LOOP=mode_opt.region
         if(not grep(".", LOOP)):
-            fail_lel("No region {region} in .ll".format(region=LOOP))
+            print("No region {region} in .ll".format(region=LOOP))
     if (mode_opt.regions_file):
         error = 1
         with open(mode_opt.regions_file, "r") as f:
@@ -132,7 +132,7 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
                 else:
                     error = 0
         if (error):
-            fail_lel("region in {f} are not found in .ll".format(f=mode_opt.regions_file))
+            print("region in {f} are not found in .ll".format(f=mode_opt.regions_file))
     safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
                 "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
@@ -145,7 +145,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
     LOOP=mode_opt.region
     if(not grep(".", LOOP)):
-        fail_lel("No region {region} in .ll".format(region=LOOP))
+        print("No region {region} in .ll".format(region=LOOP))
     INVOCATION=mode_opt.invocation
     if (mode_opt.instrument):
         COMPIL_OPT = PROJECT_ROOT + RDTSC + " " + COMPIL_OPT
@@ -161,11 +161,14 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     create_user_main(mode_opt.instrument,LOOP)
     safe_system(LD + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
-    safe_system(("{ld} {opts} -o {binary} objs.o realmain.o {args} " +
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(("{opts} -o {binary} objs.o realmain.o {args} " +
                 "-L {Root}{libs} -lload -Wl," +
-                "--rpath={Root}{libs} -ldl").format(
+                "--rpath={Root}{libs} -ldl\n").format(
                 ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT,
                 Root=PROJECT_ROOT,libs=MEMORYDUMP))
+        f.flush()
+        safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
     safe_system(("{root}/staticpatcher.py {dump_dir}/lel_bin {binary} " +
                 "{loop}/{invocation}").format(root=ROOT, dump_dir=DIR,
                 binary=BINARY, loop=LOOP, invocation=INVOCATION))
