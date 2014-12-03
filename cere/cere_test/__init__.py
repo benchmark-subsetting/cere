@@ -12,10 +12,9 @@ import cere_replay
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
 def init_module(subparsers, cere_plugins):
-    cere_configure.init()
     cere_plugins["test"] = run
     profile_parser = subparsers.add_parser("test", help="Test the matching for a list of region")
-    profile_parser.add_argument("--regions", default="{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"]), help="The list of codelets to test")
+    profile_parser.add_argument("--regions", help="The list of codelets to test")
     profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
     profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
 
@@ -136,10 +135,14 @@ def dump_results(regions, max_error):
                 invocations_writer.writerow([region.region]+d)
 
 def run(args):
+    cere_configure.init()
     if not os.path.isfile(args.regions):
-        logging.critical("The default region file is not present:\n    Choose a file manually\n    Run cere filter or cere regions")
-        return False
-    with open(args.regions, 'r') as region_file:
+        if not os.path.isfile("{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])):
+            logging.critical("The default region file is not present:\n    Choose a file manually\n    Run cere filter or cere regions")
+            return False
+        else: region_file = "{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])
+    else: region_file = args.regions
+    with open(region_file, 'r') as region_file:
         regions = [region.strip() for region in region_file]
     err=False
     allRegions = []
