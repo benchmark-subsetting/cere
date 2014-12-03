@@ -77,7 +77,7 @@ FLINKFLAGS =
 #---------------------------------------------------------------------------
 # This is the C compiler used for MPI programs
 #---------------------------------------------------------------------------
-CC = clang
+CC = gcc
 # This links C programs; usually the same as ${CC}
 CLINK = clang
 

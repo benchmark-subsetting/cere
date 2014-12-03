@@ -13,7 +13,7 @@ ${PROGRAM}: ${OBJS}
 	${FLINK} ${MODE} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
 
 %.o: %.c
-	${CC} ${MODE} ${FLAGS} $<
+	${CC} ${MODE} ${FLAGS} -c $<
 
 clean:
 	- rm -f *.o *.s *.ll

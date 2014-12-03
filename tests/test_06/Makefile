@@ -18,10 +18,10 @@ ${PROGRAM}: ${OBJS}
 	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lm -lgfortran
 
 %.o: %.c
-	${CC} ${MODE} ${INSTRU} ${FLAGS} $<
+	${CC} ${MODE} ${INSTRU} ${FLAGS} -c $<
 
 .f.o:
-	${F77} ${MODE} ${INSTRU} ${FLAGS} $<
+	${F77} ${MODE} ${INSTRU} ${FLAGS} -c $<
 
 appft.o:	appft.f  global.h npbparams.h
 auxfnct.o:	auxfnct.f  global.h npbparams.h

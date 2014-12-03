@@ -22,7 +22,7 @@ ${PROGRAM}: ${OBJS}
 	${CLINK} ${MODE} ${INSTRU} ${INSTRU_OPTS} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 .c.o:
-	${CC} ${MODE} ${INSTRU} ${INSTRU_OPTS} ${FLAGS} $<
+	${CC} ${MODE} ${INSTRU} ${INSTRU_OPTS} ${FLAGS} -c $<
 
 is.o: is.c npbparams.h
 

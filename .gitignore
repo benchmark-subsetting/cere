@@ -3,6 +3,7 @@ libs/dragonegg.so
 **/*.a
 **/*.so
 **/*.ll
+**/*.pyc
 **/*.mod
 **/.*
 *.in

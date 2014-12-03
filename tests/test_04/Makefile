@@ -5,7 +5,7 @@ PROJECT_ROOT=../../
 include make.def
 CC=../../src/lec/lec
 F77=../../src/lec/lec
-FLINK=../../src/lel/lel
+FLINK=../../src/lec/lec
 FLAGS=-g
 
 OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
@@ -20,10 +20,10 @@ ${PROGRAM}: ${OBJS}
 	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lgfortran 
 
 %.o: %.c
-	${CC} ${MODE} ${INSTRU} ${FLAGS} $<
+	${CC} ${MODE} ${INSTRU} ${FLAGS} -c $<
 
 %.o: %.f
-	${F77} ${MODE} ${INSTRU} ${FLAGS} $<
+	${F77} ${MODE} ${INSTRU} ${FLAGS} -c $<
 
 clean:
 	- rm -f *.o *.s *.ll *~ mputil*

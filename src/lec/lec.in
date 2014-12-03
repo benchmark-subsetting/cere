@@ -3,7 +3,7 @@
 # (C) 2013 University of Versailles
 import os
 import argparse
-
+import tempfile
 
 #to ignore prefix matching
 class MyParser(argparse.ArgumentParser):
@@ -15,11 +15,15 @@ PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 LOOP_EXT = "/src/LoopExtractorAll/.libs/libLoopExtractorAll.so"
 LOOP_MANAGE = "/src/LoopManager/.libs/libLoopManager.so"
 LOOP_INSTR = "/src/LoopInstrumentation/.libs/libLoopInstrumentation.so"
+RDTSC = "/src/rdtsc/librdtsc.a"
+PROFILE_LIB = "-lprofiler"
+MEMORYDUMP = "/src/memory_dump/.libs/"
 VERSION = "@PACKAGE_VERSION@"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
 LD="gcc-4.7"
-
+SOURCE_EXTENSIONS=[".c", ".cpp", ".cc", ".f", ".f90", ".f77"]
+FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
 #Allowed options
 option_forbidden = set([("dump", "--trace"),
                        ("dump", "--instrument"),
@@ -31,7 +35,6 @@ option_forbidden = set([("dump", "--trace"),
                        ("replay", "--no-nested-regions"),
                        ("replay", "--instrument-app"),
                        ("original", "--invocation")])
-
 
 #Allowed option verification
 class OptAction(argparse.Action):
@@ -45,10 +48,8 @@ class OptAction(argparse.Action):
             else:
                 setattr(namespace, self.dest, values)
 
-
 def fail_lec(error_message):
     exit("Error {prog} : {cmd}".format(prog='lec', cmd=error_message))
-
 
 def safe_system(command, EXIT=True):
     '''
@@ -62,136 +63,213 @@ def safe_system(command, EXIT=True):
             print("Warning Error {prog} : safe_system -> {cmd}".format(
                   prog='lec', cmd=command))
 
+def user_main(FILE, LOOP, instrument):
+    # Define by default TIMEOUT_SECONDS to 60
+    TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
+    # Define by default CALL_COUNT to 11
+    INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
+    if (instrument):
+        temp = "rdtsc_markerInit();\n"
+    else:
+        temp=""
+    TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
+    template = TEMPLATE.read()
+    TEMPLATE.close()
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS, rdtsc=temp,
+               in_vitro_call_count=INVITRO_CALL_COUNT,
+               loop=LOOP.replace("-","_")))
 
-def dump_fun(mode_opt, BASE):
+def create_user_main(Instrument,LOOP):
+    safe_system("rm -f realmain.c")
+    MAIN=open('realmain.c','w')
+    user_main(MAIN, LOOP, Instrument)
+    MAIN.close()
+
+def compile_memory_dump_objects(DIR):
+    DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
+    safe_system("rm -f cere_dumps/objs.S")
+    OBJ=open("cere_dumps/objs.S",'w')
+    for FILE in os.listdir(DIR):
+        BASE, ext = os.path.splitext(FILE)
+        FILE = DIR+"/"+FILE
+        if (ext=='.memdump'):
+            OBJ.write((".section s{n}, \"aw\"\n" +
+                       ".incbin \"{m}\"\n").format(n=BASE,m=FILE))
+            DUMP_ARGS = (DUMP_ARGS +
+                        " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
+    OBJ.close()
+    safe_system(LD + " -c cere_dumps/objs.S")
+    return DUMP_ARGS
+
+def dump_fun(mode_opt, BASE, COMPIL_OPT, MODE):
     '''
     Dump mode
     Call LoopExtractor and LoopManager in dump mode on wanted loops
     by passing options like --invocation
+    In link mode: Call the linker and copy the original binary
     '''
-    temp = ""
-    print "Compiling dump mode"
-    if(mode_opt.region):
-        temp = temp+"--loop-to-dump="+mode_opt.region+" "
-        if(mode_opt.regions_file):
-            fail_lec("--regions-file and --region are incompatible")
+    if MODE=="compilation":
+        temp = ""
+        print "Compiling dump mode"
+        if(mode_opt.region):
+            temp = temp+"--loop-to-dump="+mode_opt.region+" "
+            if(mode_opt.regions_file):
+                fail_lec("--regions-file and --region are incompatible")
+        else:
+            if(mode_opt.regions_file):
+                temp = temp+"--loops-file="+mode_opt.regions_file+" "
+        if(mode_opt.invocation):
+            temp = temp+"--invocation="+mode_opt.invocation+" "
+        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
+                    "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                    LoopExt=LOOP_EXT, base=BASE), EXIT=False)
+        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
+                    "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                    LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
     else:
-        if(mode_opt.regions_file):
-            temp = temp+"--loops-file="+mode_opt.regions_file+" "
-    if(mode_opt.invocation):
-        temp = temp+"--invocation="+mode_opt.invocation+" "
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopExt=LOOP_EXT, base=BASE), EXIT=False)
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
-
+        safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
+                    "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BASE,
+                    opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
 
 #in replay mode
-def replay_fun(mode_opt, BASE):
+def replay_fun(mode_opt, BASE, COMPIL_OPT, MODE):
     '''
     Replay mode
     Call LoopExtractor and LoopManager in replay mode on wanted loop
     by passing options like --invocation
     '''
-    temp = ""
-    if (not (mode_opt.region)):
-        fail_lec("Need --region with replay mode")
-    print "Compiling replay mode"
-    if (mode_opt.invocation):
-        temp = temp + "--invocation=" + mode_opt.invocation + " "
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
-                "-isolate-loop={loop} {base}.ll -o {base}.ll").format(
-                llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
-                loop=mode_opt.region, base=BASE), EXIT=False)
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR,
-                    Root=PROJECT_ROOT, LoopMan=LOOP_MANAGE, opts=temp,
-                    base=BASE), EXIT=False)
-    if (mode_opt.instrument):
-        print "Instrumentation mode"
-        temp_instr = "--instrument-loop=" + mode_opt.region + " "
-        if(mode_opt.trace):
-            print "Trace mode"
-            temp_instr = (temp_instr + "--loop-to-trace="
-                          + mode_opt.region + " ")
-        safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
-                    llvm_bindir=LLVM_BINDIR,
-                    base=BASE), EXIT=False)
-        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                    "-vitro-loop-instrumentation {opts} {base}.ll " +
-                    "-o {base}.ll").format(
-                    llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                    LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
-                    EXIT=False)
-
+    if MODE=="compilation":
+        temp = ""
+        if (not (mode_opt.region)):
+            fail_lec("Need --region with replay mode")
+        print "Compiling replay mode"
+        if (mode_opt.invocation):
+            temp = temp + "--invocation=" + mode_opt.invocation + " "
+        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
+                    "-isolate-loop={loop} {base}.ll -o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
+                    loop=mode_opt.region, base=BASE), EXIT=False)
+        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
+                    "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR,
+                        Root=PROJECT_ROOT, LoopMan=LOOP_MANAGE, opts=temp,
+                        base=BASE), EXIT=False)
+        if (mode_opt.instrument):
+            print "Instrumentation mode"
+            temp_instr = "--instrument-loop=" + mode_opt.region + " "
+            if(mode_opt.trace):
+                print "Trace mode"
+                temp_instr = (temp_instr + "--loop-to-trace="
+                              + mode_opt.region + " ")
+            safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                        llvm_bindir=LLVM_BINDIR,
+                        base=BASE), EXIT=False)
+            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
+                        "-vitro-loop-instrumentation {opts} {base}.ll " +
+                        "-o {base}.ll").format(
+                        llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                        LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
+                        EXIT=False)
+    else:
+        LOOP=mode_opt.region
+        INVOCATION=mode_opt.invocation
+        if (mode_opt.instrument):
+            COMPIL_OPT = PROJECT_ROOT + RDTSC + " " + COMPIL_OPT
+        if(not INVOCATION):
+            INVOCATION=1
+        DIR="cere_dumps/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
+        # Check that dumps exists
+        if (not os.path.isdir(DIR)):
+            fail_lec("No dump for {loop} invocation {invocation}".format(loop=LOOP,
+                     invocation=INVOCATION))
+        # Compress the traces
+        safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
+        create_user_main(mode_opt.instrument,LOOP)
+        safe_system(LD + " -c realmain.c")
+        OPTS = compile_memory_dump_objects(DIR)
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(("{opts} -o {binary} objs.o realmain.o {args} " +
+                    "-L {Root}{libs} -lload -Wl," +
+                    "--rpath={Root}{libs} -ldl\n").format(
+                    ld=LD, opts=OPTS, binary=BASE, args=COMPIL_OPT,
+                    Root=PROJECT_ROOT,libs=MEMORYDUMP))
+            f.flush()
+            safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
+        safe_system(("{root}/staticpatcher.py {dump_dir}/lel_bin {binary} " +
+                    "{loop}/{invocation}").format(root=ROOT, dump_dir=DIR,
+                    binary=BASE, loop=LOOP, invocation=INVOCATION))
 
 #in original mode
-def original_fun(mode_opt, BASE):
+def original_fun(mode_opt, BASE, COMPIL_OPT, MODE):
     '''
     Original mode
     Call LoopInstrumentation on wanted loops
     by passing options like --invocation
     '''
-    instru_opts = ""
-    extract_opts = ""
-    print "Original mode"
-    if(mode_opt.region):
-        instru_opts = instru_opts + "--instrument-loop=" + mode_opt.region + " "
-        if(mode_opt.regions_file):
-            fail_lec("--regions-file and --region are incompatible")
-        if(mode_opt.trace):
-            print "Trace mode"
-            instru_opts = instru_opts + "--loop-to-trace=" + mode_opt.region + " "
-        if(mode_opt.instrument_app):
-            fail_lec("--instrument-app and --region are incompatible")
-    else:
-        if(mode_opt.regions_file):
-            instru_opts = instru_opts + "--loops-file=" + mode_opt.regions_file + " "
+    if MODE=="compilation":
+        instru_opts = ""
+        extract_opts = ""
+        if(mode_opt.region):
+            instru_opts = instru_opts + "--instrument-loop=" + mode_opt.region + " "
+            if(mode_opt.regions_file):
+                fail_lec("--regions-file and --region are incompatible")
+            if(mode_opt.trace):
+                print "Trace mode"
+                instru_opts = instru_opts + "--loop-to-trace=" + mode_opt.region + " "
             if(mode_opt.instrument_app):
-                fail_lec("--instrument-app and --region-files are incompatible")
+                fail_lec("--instrument-app and --region are incompatible")
         else:
-            if(mode_opt.instrument_app):
-                extract_opts = extract_opts + "--instrument-app "
+            if(mode_opt.regions_file):
+                instru_opts = instru_opts + "--loops-file=" + mode_opt.regions_file + " "
+                if(mode_opt.instrument_app):
+                    fail_lec("--instrument-app and --region-files are incompatible")
             else:
-                instru_opts = instru_opts + "--instrument-app "
-        if(mode_opt.trace):
-            fail_lec("trace only with --loop ")
-    if(mode_opt.nested_regions):
-        instru_opts = instru_opts + "--nested-loops=true "
-        if(mode_opt.no_nested_regions):
-            fail_lec("can't --nested-regions and --no-nested-regions")
-    else:
-        if(mode_opt.no_nested_regions):
-            instru_opts = instru_opts + "--nested-loops=false "
-    if(mode_opt.instrument):
-        if(mode_opt.instrument_app):
-            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all {opts} " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopExt=LOOP_EXT, opts=extract_opts, base=BASE), EXIT=False)
+                if(mode_opt.instrument_app):
+                    extract_opts = extract_opts + "--instrument-app "
+                else:
+                    instru_opts = instru_opts + "--instrument-app "
+            if(mode_opt.trace):
+                fail_lec("trace only with --loop ")
+        if(mode_opt.nested_regions):
+            instru_opts = instru_opts + "--nested-loops=true "
+            if(mode_opt.no_nested_regions):
+                fail_lec("can't --nested-regions and --no-nested-regions")
         else:
-            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                        "-vivo-loop-instrumentation {opts} {base}.ll " +
-                        "-o {base}.ll").format(
-                        llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                        LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
+            if(mode_opt.no_nested_regions):
+                instru_opts = instru_opts + "--nested-loops=false "
+        if(mode_opt.instrument):
+            if(mode_opt.instrument_app):
+                safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all {opts} " +
+                    "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                    LoopExt=LOOP_EXT, opts=extract_opts, base=BASE), EXIT=False)
+            else:
+                safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
+                            "-vivo-loop-instrumentation {opts} {base}.ll " +
+                            "-o {base}.ll").format(
+                            llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                            LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
+        else:
+            if(mode_opt.trace):
+                fail_lec("--trace requires --intrument")
     else:
-        if(mode_opt.trace):
-            fail_lec("--trace requires --intrument")
-
+        if(mode_opt.instrument_app):
+            safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
+                    binary=BASE, opts=COMPIL_OPT, libs=PROFILE_LIB))
+        elif(mode_opt.instrument):
+            safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
+                    binary=BASE, opts=COMPIL_OPT, libs=PROJECT_ROOT+RDTSC))
+        else:
+            safe_system(("{ld} -o {binary} {opts}").format(ld=LD,
+                    binary=BASE, opts=COMPIL_OPT))
 
 #Initialize Includes parser
 class IncludeAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         namespace.Inc = (namespace.Inc + [option_string + values])
 
-
 def init_parser_incl(parser, liste):
     parser.set_defaults(Inc=[])
     for j in liste:
         parser.add_argument(j, action=IncludeAction)
-
 
 # initialize subparsers
 def init_subpars(parser, region_required):
@@ -209,8 +287,8 @@ def init_subpars(parser, region_required):
     parser.add_argument('--instrument-app', action=OptAction, nargs=0,
                         const=True, default=False)
     parser.add_argument('-o')
-    #~ parser.add_argument('-c')
-
+    parser.add_argument('-c', action=OptAction, nargs=0,
+                        const=True, default=False)
 
 def init_parser_core(parser):
     '''
@@ -232,28 +310,24 @@ def init_parser_core(parser):
     init_subpars(parser_instrument, False)
     parser_instrument.set_defaults(func=original_fun)
 
-
-
 def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''
     First Compilation
     Detect source language (fortran or C/C++ for the moment)
     and compile SOURCE code
     '''
-    if ((ext == ".f") or (ext == ".f90") or (ext == ".F") or (ext == ".F90")):
+    if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
-            safe_system(("{ld} {opts} -O0 -g -c {includes} {source} -S " +
+            safe_system(("{ld} {opts} -O0 -g {includes} {source} -S " +
                         "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
                         ld=LD, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
                         Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
         else:
             fail_lec("fortran support disabled. Please reconfigure using --with-dragonegg.")
-
     else:
-        safe_system(("{llvm_bindir}/clang {opts} -O0 -g -c {includes} {source} -S -emit-llvm -o " +
+        safe_system(("{llvm_bindir}/clang {opts} -O0 -g {includes} {source} -S -emit-llvm -o " +
                     "{base}.ll").format(llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
                     source=SOURCE, base=BASE))
-
 
 def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     '''
@@ -267,7 +341,6 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
         safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {object}".format(
                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
                     source=SOURCE, base=BASE, object=OBJECT))
-
 
 def main():
     '''
@@ -284,22 +357,35 @@ def main():
     #Parse args
     args = parser.parse_known_args()
     args2 = incl_parser.parse_known_args(args[1])
-    if (len(args2[1]) == 0):
-        exit("Error:Need source file")
-    INCLUDES = args2[0].Inc
-    COMPIL_OPT = args2[1]
-    #~ if args[0].c:
-        #~ SOURCE = args[0].c
-    #~ else:
-    SOURCE = COMPIL_OPT[-1]
-    COMPIL_OPT.remove(SOURCE)
-    BASE, ext = os.path.splitext(SOURCE)
-    OBJECT = args[0].o if args[0].o else BASE + '.o'
-    first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT)
-    # call mode_function
-    args[0].func(args[0], BASE)
-    last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT)
 
+    #Source files must be detected better 
+    if args[0].c:
+        SOURCES = []
+        MODE = "compilation"
+        if (len(args2[1]) == 0):
+            exit("Error:Need source file")
+        INCLUDES = args2[0].Inc
+        COMPIL_OPT = []
+        for source in args2[1]:
+            if os.path.splitext(source)[1] in SOURCE_EXTENSIONS:
+                SOURCES.append(source)
+            else: COMPIL_OPT.append(source)
+
+        for SOURCE in SOURCES:
+            BASE, ext = os.path.splitext(SOURCE)
+            OBJECT = args[0].o if args[0].o else BASE + '.o'
+            # call mode_function
+            first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT)
+            args[0].func(args[0], BASE, "dummy_opt", MODE)
+            last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT)
+    else:
+        MODE = "link"
+        if (len(args[1]) == 0):
+            exit("Error:Need source file")
+        COMPIL_OPT = " ".join(args[1])
+        BINARY = args[0].o
+        # call mode_function
+        args[0].func(args[0], BINARY, COMPIL_OPT, MODE)
 
 if __name__ == "__main__":
     main()

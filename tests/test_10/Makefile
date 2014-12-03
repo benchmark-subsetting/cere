@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 PROJECT_ROOT=../../
 CC=../../src/lec/lec
-FLINK=../../src/lel/lel
+FLINK=../../src/lec/lec
 
 FLAGS=-g -O0
 
@@ -13,7 +13,7 @@ ${PROGRAM}: ${OBJS}
 	${FLINK} ${MODE} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
 
 %.o: %.c
-	${CC} ${MODE} ${FLAGS} $<
+	${CC} ${MODE} ${FLAGS} -c $<
 
 clean:
 	- rm -f *.o *.s *.ll

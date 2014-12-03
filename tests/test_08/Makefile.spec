@@ -18,13 +18,13 @@ FONESTEP=
 
 CC               = ../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
 COPTIMIZE        = -O3 -mcmodel=large
-CLD              = ../../src/lel/lel ${MODE} ${INSTRU}
+CLD              = ../../src/lec/lec ${MODE} ${INSTRU}
 CXX              = ../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
 CXXOPTIMIZE      = -O3 -mcmodel=large
-CXXLD            = ../../src/lel/lel ${MODE} ${INSTRU}
+CXXLD            = ../../src/lec/lec ${MODE} ${INSTRU}
 FC               = ../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
 FOPTIMIZE        = -O3 -mcmodel=medium
-FLD              = ../../src/lel/lel ${MODE} ${INSTRU}
+FLD              = ../../src/lec/lec ${MODE} ${INSTRU}
 EXTRA_LIBS       = -lm -lgfortran -mcmodel=medium
 FPBASE           = yes
 OS               = unix
