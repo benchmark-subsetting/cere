@@ -136,12 +136,15 @@ def dump_results(regions, max_error):
 
 def run(args):
     cere_configure.init()
-    if not os.path.isfile(args.regions):
+    if not args.regions:
         if not os.path.isfile("{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])):
             logging.critical("The default region file is not present:\n    Choose a file manually\n    Run cere filter or cere regions")
             return False
         else: region_file = "{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])
+    elif not os.path.isfile(args.region): 
+        logging.critical("{0} No such file".format(args.region))
     else: region_file = args.regions
+
     with open(region_file, 'r') as region_file:
         regions = [region.strip() for region in region_file]
     err=False

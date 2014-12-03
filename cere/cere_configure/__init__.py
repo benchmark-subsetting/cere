@@ -11,13 +11,11 @@ cere_config={}
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["configure"] = run
-    #~ ROOT_PATH = root_path
     configure_parser = subparsers.add_parser("configure", help="Configure CERE to works with your application")
     configure_parser.add_argument('--run_cmd', required=True, help="Set the command to run your application")
     configure_parser.add_argument('--build_cmd', required=True, help="Set the command to build the application")
     configure_parser.add_argument('--measures_path', default="cere_measures", help="Directory where to save CERE measures")
     configure_parser.add_argument('--dumps_path', default="cere_dumps", help="Directory where to save CERE regions dumps")
-    #~ configure_parser.add_argument('--cere_path', default=root_path, required=False, help="Root path of CERE")
 
 def run(args):
     global cere_config
@@ -25,11 +23,11 @@ def run(args):
     cere_config["run_cmd"] = args.run_cmd
     cere_config["cere_measures_path"] = args.measures_path
     cere_config["cere_dumps_path"] = args.dumps_path
-    #~ cere_config["cere_path"] = args.cere_path
 
     with open("cere.json", 'w') as config_file:
         json.dump(cere_config, config_file)
     logging.info("Configuration done")
+    return True
 
 def init():
     global cere_config
