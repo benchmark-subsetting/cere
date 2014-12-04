@@ -93,7 +93,7 @@ def update(binary_cmd, compile_cmd, error):
         save_graph(graph)
 
         if not newLoopsToTest: break
-        else:
-            os.system("~/loop_extractor/src/granularity/matching.sh . {0}/loops {1} {2}".format(cere_configure.default_measures_path, binary_cmd, compile_cmd))
+        #~ else:
+            #~ os.system("~/loop_extractor/src/granularity/matching.sh . {0}/loops {1} {2}".format(cere_configure.default_measures_path, binary_cmd, compile_cmd))
 
     return True

@@ -13,7 +13,7 @@ def init_module(subparsers, cere_plugins):
     cere_plugins["filter"] = run
     profile_parser = subparsers.add_parser("filter", help="Filter regions")
     profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
-    profile_parser.add_argument("--min_coverage", default=0.001, help="Minimum percentage of region execution time")
+    profile_parser.add_argument("--min_coverage", type=float, default=0.1, help="Minimum percentage of region execution time")
     profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
 
 def check_arguments(args):
@@ -34,7 +34,7 @@ def run(args):
         return False
     if not check_arguments(args):
         return False
-    if not create_graph(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], args.min_coverage, args.force):
+    if not create_graph(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], args.min_coverage/100, args.force):
         return False
     
     #~ #Find matching codelets

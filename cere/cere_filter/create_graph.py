@@ -124,11 +124,13 @@ def create_graph(run_cmd, build_cmd, min_coverage, force):
         logging.critical('No profiling file')
         return False
 
+    #regular expression to parse the gperf tool output
     regex_list = [r'(N.*)\s\[label\=\"(.*?)\\n([0-9]*)\s\((.*)\%\)\\rof\s(.*)\s\((.*)\%\)\\r',
                   r'(N.*)\s\[label\=\"(.*)\\n([0-9]*)\s\((.*)\%\)\\r',
                   r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,']
 
-    os.system("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd))
+    #Build again the application to be sure we give the right binary to pprof
+    logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
     cmd = subprocess.Popen("pprof -dot --edgefraction={0} {1} {2}".format(min_coverage, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
