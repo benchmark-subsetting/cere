@@ -22,17 +22,19 @@ def run(args):
         logging.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
         try:
             logging.debug(subprocess.check_output("{0} MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation), stderr=subprocess.STDOUT, shell=True))
-        except subprocess.CalledProcessError as e:
-            logging.critical(str(e))
+        except subprocess.CalledProcessError as err:
+            logging.critical(str(err))
+            logging.critical(err.output)
             logging.info("Compiling dump mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
             return False
         if not args.norun:
             logging.info("Dumping invocation {1} for region {0}".format(args.region, args.invocation))
             try:
                 logging.debug(subprocess.check_output("LD_BIND_NOW=1 " + cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
-            except subprocess.CalledProcessError as e:
+            except subprocess.CalledProcessError as err:
                 #even if the dump run fails, maybe the region is dumped.
-                logging.debug(str(e))
+                logging.debug(str(err))
+                logging.debug(err.output)
             if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
                 logging.critical("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
                 return False

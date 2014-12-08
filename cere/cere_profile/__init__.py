@@ -36,8 +36,9 @@ def measure_application(run_cmd, build_cmd, measures_path, force):
     try:
         logging.info(subprocess.check_output("{0} MODE=\"original --instrument\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
         logging.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True))
-    except subprocess.CalledProcessError as e:
-        logging.critical(str(e))
+    except subprocess.CalledProcessError as err:
+        logging.critical(str(err))
+        logging.critical(err.output)
     if not os.path.isfile("rdtsc_result.csv"):
         logging.critical('Measuring application failed: No output file')
         return False
@@ -59,8 +60,9 @@ def instrument_application(run_cmd, build_cmd, measures_path, force):
     try:
         logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
         logging.info(subprocess.check_output("CPUPROFILE={0}/app.prof {1}".format(measures_path, run_cmd), stderr=subprocess.STDOUT, shell=True))
-    except subprocess.CalledProcessError as e:
-        logging.critical(str(e))
+    except subprocess.CalledProcessError as err:
+        logging.critical(str(err))
+        logging.critical(err.output)
     if not os.path.isfile("{0}/app.prof".format(measures_path)):
         logging.critical("Instrumentation failed: No output file")
         return False

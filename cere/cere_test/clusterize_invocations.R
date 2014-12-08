@@ -153,7 +153,7 @@ while(1) {
     left = merged[[1]]
     right = merged[[2]]
     ClusterInfo = ClusterInfo[ClusterInfo$Cluster != right,]
-    cycles[cycles$Cluster==right,]$Cluster = left
+    allValues[allValues$Cluster==right,]$Cluster = left
 }
 
 #Compute for each invocation, the distance to its cluster centroid.

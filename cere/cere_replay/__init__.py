@@ -32,16 +32,18 @@ def run(args):
 
     try:
         logging.debug(subprocess.check_output("{0} MODE=\"replay --region={1} --invocation={2} {3}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd), stderr=subprocess.STDOUT, shell=True))
-    except subprocess.CalledProcessError as e:
-        logging.critical(str(e))
+    except subprocess.CalledProcessError as err:
+        logging.critical(str(err))
+        logging.critical(err.output)
         logging.info("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
         return False
     if not args.norun:
         logging.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
         try:
             logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
-        except subprocess.CalledProcessError as e:
-            logging.critical(str(e))
+        except subprocess.CalledProcessError as err:
+            logging.critical(str(err))
+            logging.critical(err.output)
             logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
             return False
         if not args.noinstrumentation:

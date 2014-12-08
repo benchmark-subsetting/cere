@@ -47,6 +47,7 @@ class Region():
                 logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
             except subprocess.CalledProcessError as err:
                 logging.critical(str(err))
+                logging.critical(err.output)
                 logging.critical("Trace failed for region {0}".format(self.region))
                 return False
             try:
@@ -72,6 +73,7 @@ class Region():
                 logging.info(subprocess.check_output("{0}/clusterize_invocations.R {2} {1}/{2}.csv {1}/{2}.bin".format(ROOT, cere_configure.cere_config["cere_measures_path"], self.region), stderr=subprocess.STDOUT, shell=True))
             except subprocess.CalledProcessError as err:
                 logging.critical(str(err))
+                logging.critical(err.output)
             if not os.path.isfile("{0}.invocations".format(self.region)):
                 logging.critical("Error for {0}: No clustering infos".format(self.region))
                 return False
