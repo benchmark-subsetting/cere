@@ -25,16 +25,25 @@ def run(args):
             return False
     if args.noinstrumentation:
         instru_cmd = ""
-        logging.info("Compiling replay mode invocation {0} for region {1} without instrumentation".format(args.region, args.invocation))
+        logging.info("Compiling replay mode for region {0} invocation {1} without instrumentation".format(args.region, args.invocation))
     else:
         instru_cmd = "--instrument"
-        logging.info("Compiling replay mode invocation {0} for region {1} with instrumentation".format(args.region, args.invocation))
+        logging.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, args.invocation))
 
-    logging.debug(subprocess.check_output("{0} MODE=\"replay --region={1} --invocation={2} {3}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd), stderr=subprocess.STDOUT, shell=True))
-
+    try:
+        logging.debug(subprocess.check_output("{0} MODE=\"replay --region={1} --invocation={2} {3}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd), stderr=subprocess.STDOUT, shell=True))
+    except subprocess.CalledProcessError as e:
+        logging.critical(str(e))
+        logging.info("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
+        return False
     if not args.norun:
         logging.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
-        logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+        try:
+            logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+        except subprocess.CalledProcessError as e:
+            logging.critical(str(e))
+            logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
+            return False
         if not args.noinstrumentation:
             if not os.path.isfile("rdtsc_result.csv"):
                 logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))

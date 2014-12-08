@@ -42,13 +42,19 @@ class Region():
         or self.force:
             #Measure invivo trace
             logging.info("Compiling trace mode for region {0}".format(self.region))
-            logging.debug(subprocess.check_output("{0} MODE=\"original --instrument --region={1} --trace\" -B".format(cere_configure.cere_config["build_cmd"], self.region), stderr=subprocess.STDOUT, shell=True))
-            logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+            try:
+                logging.debug(subprocess.check_output("{0} MODE=\"original --instrument --region={1} --trace\" -B".format(cere_configure.cere_config["build_cmd"], self.region), stderr=subprocess.STDOUT, shell=True))
+                logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+            except subprocess.CalledProcessError as err:
+                logging.critical(str(err))
+                logging.critical("Trace failed for region {0}".format(self.region))
+                return False
             try:
                 shutil.move("{0}.bin".format(self.region), "{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], self.region))
                 shutil.move("rdtsc_result.csv", "{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region))
             except IOError as err:
                 logging.critical(str(err))
+                logging.critical("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(self.region))
                 return False
         else:
             logging.info("Using previous trace results")
@@ -62,7 +68,10 @@ class Region():
     def clusterize_invocations(self):
         logging.info("Computing clustering info")
         if not os.path.isfile("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)) or self.force:
-            logging.info(subprocess.check_output("{0}/clusterize_invocations.R {2} {1}/{2}.csv {1}/{2}.bin".format(ROOT, cere_configure.cere_config["cere_measures_path"], self.region), stderr=subprocess.STDOUT, shell=True))
+            try:
+                logging.info(subprocess.check_output("{0}/clusterize_invocations.R {2} {1}/{2}.csv {1}/{2}.bin".format(ROOT, cere_configure.cere_config["cere_measures_path"], self.region), stderr=subprocess.STDOUT, shell=True))
+            except subprocess.CalledProcessError as err:
+                logging.critical(str(err))
             if not os.path.isfile("{0}.invocations".format(self.region)):
                 logging.critical("Error for {0}: No clustering infos".format(self.region))
                 return False
