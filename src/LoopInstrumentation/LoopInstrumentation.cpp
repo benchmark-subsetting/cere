@@ -342,10 +342,11 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
 
     //Get successor and predecessor loop basic block
     BasicBlock *PredBB = L->getLoopPredecessor();
-    BasicBlock *SuccBB = L->getExitBlock();
-    
-    if(PredBB == NULL || SuccBB == NULL)
+    SmallVector<BasicBlock*,8> exitblocks;
+    L->getExitBlocks(exitblocks);
+    if(PredBB == NULL || exitblocks.size() == 0)
     {
+        std::cerr << "Loop Preds or Succs not found\n";
         DEBUG(dbgs() << "Loop Preds or Succs not found\n");
         return false;
     }
@@ -354,7 +355,9 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
     std::vector<Value*> funcParameter = createFunctionParameters(mod, newFunctionName);
 
     CallInst::Create(func_start, funcParameter, "", &PredBB->back());
-    CallInst::Create(func_stop, funcParameter, "", &SuccBB->front());
-
+    for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(), E = exitblocks.end(); I != E; ++I)
+    {
+      CallInst::Create(func_stop, funcParameter, "", &((*I)->front()));
+    }
     return true;
 }
