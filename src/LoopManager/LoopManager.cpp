@@ -411,15 +411,19 @@ bool LoopManager::visitLoop(Loop *L, Module *mod)
         }
         //Get predecessor loop basic block
         BasicBlock *PredBB = L->getLoopPredecessor();
-        BasicBlock *SuccBB = L->getExitBlock();
+        SmallVector<BasicBlock*,8> exitblocks;
+        L->getExitBlocks(exitblocks);
 
-        if(PredBB == NULL || SuccBB == NULL) return false;
+        if(PredBB == NULL || exitblocks.size() == 0) return false;
 
         ++LoopCounter;
         std::vector<Value*> funcParameter = createDumpFunctionParameters(mod, currFunc, PredBB, Nloop);
 
         CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
-        CallInst::Create(func_after_dump, "", &SuccBB->front());
+        for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(), E = exitblocks.end(); I != E; ++I)
+        {
+          CallInst::Create(func_after_dump, "", &((*I)->front()));
+        }
     }
     else if (Mode == REPLAY) {
         //To be sure we are creating a wrapper for an isolated loop
