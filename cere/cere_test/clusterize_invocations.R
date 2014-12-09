@@ -122,7 +122,6 @@ total_kept_cycles = sum(allValues$cycles)
 #Clusterize data
 clusters = cluster(allValues)
 allValues = cbind(allValues, Cluster=clusters)
-
 #Compute centroids of each cluster
 Centroids <- sapply(sort(unique(allValues$Cluster)), clust.centroid, allValues$cycles, allValues$Cluster)
 
@@ -166,6 +165,7 @@ for (clust in unique(allValues$Cluster)) {
 
     tmp$DistToCentroid = abs(tmp$cycles - center)
     tmp <- tmp[order(tmp$DistToCentroid), ] #order first by distance to centroid
+
     #We select as representative the closest invocation to the centroid
     allValues[allValues$Cluster==clust, ]$is.representative =
       ifelse(allValues[allValues$Cluster==clust, ]$invocation == tmp[1, ]$invocation, T, F)
@@ -178,8 +178,18 @@ distances = rdist(ClusterInfo$Centroid)
 find_nearest_cluster <- function(clust, distances) {
     tmp_vec = distances[,clust]
     tmp_vec[[clust]] = Inf
-    nearest_clust = which.min(tmp_vec)
-    return(nearest_clust)
+    tmp_vec <- order(tmp_vec)
+    nearest_clust=tmp_vec[[1]]
+    i=1
+    while(nearest_clust != clust) {
+        #We have to check if that cluster has a representative > 2000 cycles
+        if (allValues[allValues$Cluster==clust & allValues$is.representative==T, ]$cycles >= 2000) {
+            return(nearest_clust)
+        }
+        i=i+1
+        nearest_clust = tmp_vec[[i]]
+    }
+    return(0)
 }
 
 #If a representative is below 2000 cycles, we search
@@ -187,11 +197,12 @@ find_nearest_cluster <- function(clust, distances) {
 if (nrow(ClusterInfo) != 1) {
     for (i in 1:nrow(ClusterInfo)) {
         clust=ClusterInfo[i,]$Cluster
-        if (allValues[allValues$Cluster==clust & allValues$is.representative==T, ]$cycles < 2000)
-        {
+        if (allValues[allValues$Cluster==clust & allValues$is.representative==T, ]$cycles < 2000) {
             nearest_clust = find_nearest_cluster(clust, distances)
-            allValues[allValues$Cluster==clust, ]$is.representative = F
-            allValues[allValues$Cluster==clust, ]$Cluster = nearest_clust
+            if(nearest_clust != 0) {
+                allValues[allValues$Cluster==clust, ]$is.representative = F
+                allValues[allValues$Cluster==clust, ]$Cluster = nearest_clust
+            }
         }
     }
 }

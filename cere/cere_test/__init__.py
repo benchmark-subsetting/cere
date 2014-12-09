@@ -36,6 +36,27 @@ class Region():
         self.error = 0.
         self.coverage = 0.
 
+    def compute_coverage(self):
+        #There is two way of computing coverage
+        #1) If we have gperftool results:
+        if os.path.isfile("{0}/graph.pkl".format(cere_configure.cere_config["cere_measures_path"])):
+            from cere_filter.graph_utils import load_graph
+            import networkx as nx
+            graph = load_graph()
+            if graph:
+                for n, d in graph.nodes(data=True):
+                    if d['_name'] == self.region.replace("invivo", "extracted"):
+                        self.coverage = float(d['_coverage'])
+                        return
+        #2) Compute the coverage manually
+        elif os.path.isfile("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])):
+            with open("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])) as app:
+                reader = csv.DictReader(app)
+                app_cycles = float(reader["CPU_CLK_UNHALTED_CORE"])
+            self.coverage = (self.invivo_cycles/app_cycles)*100
+        else:
+            logging.info("Canno't compute coverage for region {0}. Try to run cere profile".format(self.region.replace("invivo", "extracted")))
+
     def measure_trace(self):
         if not os.path.isfile("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region))\
         or not os.path.isfile("{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], self.region))\
@@ -168,6 +189,8 @@ def run(args):
         if not res: 
             err=True
             continue
+        #Compute the coverage of this region
+        region.compute_coverage()
         #We can clusterize invocations in performance classes
         res = region.clusterize_invocations()
         if not res:

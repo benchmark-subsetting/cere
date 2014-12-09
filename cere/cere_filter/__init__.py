@@ -5,9 +5,8 @@ import logging
 import cere_configure
 import os
 from create_graph import create_graph
-#~ from update_graph import update
-#~ from get_app_cycles import *
-#~ from granularity import *
+import cere_test
+from update_graph import update
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["filter"] = run
@@ -34,13 +33,15 @@ def run(args):
         return False
     if not check_arguments(args):
         return False
-    if not create_graph(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], args.min_coverage/100, args.force):
+    if not create_graph(args.min_coverage/100, args.force):
         return False
-    
-    #~ #Find matching codelets
-    #~ if not update(binary_cmd, compile_cmd, error):
-        #~ return False
+    args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
+    cere_test.run(args)
+    #Find matching codelets
+    if not update(args):
+        return False
     #~ #Select matching codelets with best coverage
-    #~ if not solve_with_best_granularity(error):
-        #~ return False
+    from granularity import *
+    if not solve_with_best_granularity(args.max_error):
+        return False
     return True

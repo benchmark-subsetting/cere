@@ -8,6 +8,7 @@ import networkx as nx
 import subprocess
 from graph_utils import *
 import cere_configure
+import cere_test
 import logging
 
 LIST_PREFIX = ["__invivo__","__extracted__"]
@@ -45,7 +46,12 @@ def suppr_prefix(name):
         name = name.replace(pre,"")
     return name
 
-def update(binary_cmd, compile_cmd, error):
+def update(args):
+    binary_cmd = cere_configure.cere_config["run_cmd"]
+    build_cmd = cere_configure.cere_config["build_cmd"]
+    error = args.max_error
+    args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
+
     logging.info("Start graph updating")
     graph = load_graph()
     if graph == None:
@@ -56,7 +62,7 @@ def update(binary_cmd, compile_cmd, error):
     while(1):
         step = step + 1
         #1) Something new?
-        lines = read_csv("{0}/matching_error.csv".format(cere_configure.default_measures_path))
+        lines = read_csv("{0}/matching_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
         graph = update_nodes(graph, lines, error)
 
         #2) rewind self to parents for invalid loops
@@ -66,34 +72,34 @@ def update(binary_cmd, compile_cmd, error):
             #if it's an invalid node (not matching or not extracted) or if it's too small
             if not graph.node[node]['_valid'] or graph.node[node]['_small']:
                 #if there is still a successor not tested, we do nothing.
-                for successor in graph.successors(node):
-                    if not graph.node[successor]['_tested']:
-                        cancel = True
-                if cancel: continue
-                in_degree = graph.in_degree(node, weight='weight')
+                #~ for successor in graph.successors(node):
+                    #~ if not graph.node[successor]['_tested']:
+                        #~ cancel = True
+                #~ if cancel: continue
+                #~ in_degree = graph.in_degree(node, weight='weight')
                 #transfer your self coverage to yours parents
-                for predecessor in graph.predecessors(node):
-                    part = float(graph.edge[predecessor][node]['weight'])/in_degree
-                    graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
+                #~ for predecessor in graph.predecessors(node):
+                    #~ part = float(graph.edge[predecessor][node]['weight'])/in_degree
+                    #~ graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
                     #Maybe this node is not small anymore
-                    if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
-                        graph.node[predecessor]['_small'] = False
-                if graph.predecessors(node):
-                    graph.node[node]['_self_coverage'] = 0
+                    #~ if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
+                        #~ graph.node[predecessor]['_small'] = False
+                #~ if graph.predecessors(node):
+                    #~ graph.node[node]['_self_coverage'] = 0
                 graph.node[node]['_tested'] = True
 
-        with open("{0}/loops".format(cere_configure.default_measures_path), 'w') as f:
-            newLoopsToTest = False
-            for n, d in graph.nodes(data=True):
-                if d['_valid'] and not d['_small'] and not d['_tested']:
-                    newLoopsToTest = True
-                    f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
+        #~ with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
+        newLoopsToTest = False
+            #~ for n, d in graph.nodes(data=True):
+                #~ if d['_valid'] and not d['_small'] and not d['_tested']:
+                    #~ newLoopsToTest = True
+                    #~ f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
 
         plot(graph, step)
         save_graph(graph)
 
         if not newLoopsToTest: break
         #~ else:
-            #~ os.system("~/loop_extractor/src/granularity/matching.sh . {0}/loops {1} {2}".format(cere_configure.default_measures_path, binary_cmd, compile_cmd))
+            #~ cere_test.run(args)
 
     return True

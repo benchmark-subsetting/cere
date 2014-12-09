@@ -3,6 +3,7 @@
 import networkx as nx
 import cPickle as pickle
 import logging
+import subprocess
 import cere_configure
 
 def plot(g, step):
@@ -18,8 +19,12 @@ def plot(g, step):
         d["label"] = d["weight"]
     logging.info("Plot graph_{0}.pdf".format(step))
     nx.write_dot(g,"{0}/graph_{1}.dot".format(cere_configure.cere_config["cere_measures_path"], step))
-
-    logging.info(subprocess.check_output("dot -Tpdf {0}/graph_{1}.dot -o {0}/graph_{1}.pdf".format(cere_configure.cere_config["cere_measures_path"], step), stderr=subprocess.STDOUT, shell=True))
+    try:
+        logging.info(subprocess.check_output("dot -Tpdf {0}/graph_{1}.dot -o {0}/graph_{1}.pdf".format(cere_configure.cere_config["cere_measures_path"], step), stderr=subprocess.STDOUT, shell=True))
+    except subprocess.CalledProcessError as err:
+        logging.debut("Canno't create the pdf")
+        logging.debug(str(err))
+        logging.debug(err.output)
 
 def load_graph():
     logging.info('Loading graph...')

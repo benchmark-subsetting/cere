@@ -52,7 +52,7 @@ def add_node(digraph, matchObj):
     else:
         valid = False
 
-    if float(matchObj.group(4)) >= 1:
+    if coverage >= 1:
         small = False
     else:
         small = True
@@ -84,7 +84,7 @@ def remove_cycles(digraph, cycle):
                 if successor not in cycle:
                     childs.append({'id' : successor, 'weight' : digraph.edge[node][successor]['weight']})
             #keep the node with the highest coverage
-            if digraph.node[node]['_self_coverage'] > digraph.node[toKeep]['_self_coverage']:
+            if digraph.node[node]['_coverage'] > digraph.node[toKeep]['_coverage']:
                 toKeep = node
         #Backup the node to keep
         replacer = digraph.node[toKeep]
@@ -107,7 +107,9 @@ def remove_cycles(digraph, cycle):
             digraph.add_edge(toKeep, child['id'], weight=w)
     return digraph
 
-def create_graph(run_cmd, build_cmd, min_coverage, force):
+def create_graph(min_coverage, force):
+    run_cmd = cere_configure.cere_config["run_cmd"]
+    build_cmd = cere_configure.cere_config["build_cmd"]
     logging.info('Start graph creation')
     if os.path.isfile("{0}/graph.pkl".format(cere_configure.cere_config["cere_measures_path"])):
         if not force:
@@ -130,7 +132,12 @@ def create_graph(run_cmd, build_cmd, min_coverage, force):
                   r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,']
 
     #Build again the application to be sure we give the right binary to pprof
-    logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+    try:
+        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+    except subprocess.CalledProcessError as err:
+        logging.critical(str(err))
+        logging.critical(err.output)
+        return False
     cmd = subprocess.Popen("pprof -dot --edgefraction={0} {1} {2}".format(min_coverage, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
@@ -150,6 +157,11 @@ def create_graph(run_cmd, build_cmd, min_coverage, force):
 
     plot(digraph, 0)
     save_graph(digraph)
+
+    with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
+        for n, d in digraph.nodes(data=True):
+            if d['_valid'] and not d['_small'] and not d['_tested']:
+                f.write(d['_name'].replace("extracted", "invivo")+"\n")
 
     logging.info('Create graph success')
     return True

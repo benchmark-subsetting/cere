@@ -18,8 +18,8 @@ Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              ".cpp":["clike/clike.js", "text/x-c++src"]}
 LIST_PREFIX = ["__invivo__","__extracted__"]
 ROOT = os.path.dirname(os.path.realpath(__file__))
-ROOT_MEASURE = "./measures"
-ROOT_GRAPHS = "./measures/plots"
+ROOT_MEASURE = "./cere_measures"
+ROOT_GRAPHS = "./cere_measures/plots"
 NAME_FILE = "regions.csv"
 CSV_DELIMITER = ','
 REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
@@ -71,7 +71,7 @@ class Region:
         self._name = region["Codelet Name"]
         self._invivo = "{:e}".format(float(region["Invivo"]))
         self._invitro = "{:e}".format(float(region["Invitro"]))
-        self._table = {"Exec Time (%)":percent(region["Exec Time"]), "Error (%)":percent(region["Error"]),
+        self._table = {"Exec Time (%)":float(region["Exec Time"]), "Error (%)":float(region["Error"]),
                        "Codelet Name":suppr_prefix(region["Codelet Name"])}
         self._inv_table = []
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
@@ -82,7 +82,7 @@ class Region:
         self.init_graph()
     
     def init_graph(self):
-        self._graph_clustering = encode_graph("/{region}_byPhase.png".format(region=self._name))
+        self._graph_clustering = encode_graph("/{region}_byPhase.png".format(region=self._name.replace("extracted", "invivo")))
         
     def set_callcount(self,callcount):
         self._callcount = callcount
@@ -90,7 +90,7 @@ class Region:
     def append_invocation_table(self,inv):
         self._inv_table = self._inv_table +[ {"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
                           "Part":inv["Part"], "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
-                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":percent(inv["Error"])}]
+                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":float(inv["Error"])}]
         
     def init_code(self, code_place):
         self._code = read_code(code_place)
