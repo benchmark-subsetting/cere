@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 PROJECT_ROOT=../../
-CC=../../src/lec/lec
-FLINK=../../src/lec/lec
+CC=../../src/ccc/ccc
+FLINK=../../src/ccc/ccc
 
 FLAGS=-g -O0
 

@@ -3,9 +3,9 @@ BENCHMARK=ft
 BENCHMARKU=FT
 PROJECT_ROOT=../../
 include make.def
-CC=../../src/lec/lec
-F77=../../src/lec/lec
-FLINK=../../src/lel/lel
+CC=../../src/ccc/ccc
+F77=../../src/ccc/ccc
+FLINK=../../src/ccc/ccc
 FLAGS=-g -mcmodel=large
 
 OBJS = appft.o auxfnct.o fft3d.o mainft.o verify.o \

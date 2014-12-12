@@ -3,9 +3,9 @@ BENCHMARK=bt
 BENCHMARKU=BT
 PROJECT_ROOT=../../
 include make.def
-CC=../../src/lec/lec
-F77=../../src/lec/lec
-FLINK=../../src/lec/lec
+CC=../../src/ccc/ccc
+F77=../../src/ccc/ccc
+FLINK=../../src/ccc/ccc
 
 FLAGS=-g
 

@@ -16,13 +16,13 @@ BENCHLANG=F
 ONESTEP=
 FONESTEP=
 
-CC               = ../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
+CC               = ../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
 COPTIMIZE        = -O3 -mcmodel=large
-CLD              = ../../src/lec/lec ${MODE} ${INSTRU}
-CXX              = ../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
+CLD              = ../../src/ccc/ccc ${MODE} ${INSTRU}
+CXX              = ../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
 CXXOPTIMIZE      = -O3 -mcmodel=large
-CXXLD            = ../../src/lec/lec ${MODE} ${INSTRU}
-FC               = ../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
+CXXLD            = ../../src/ccc/ccc ${MODE} ${INSTRU}
+FC               = ../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
 FOPTIMIZE        = -O3 -mcmodel=medium
 FLD              = ../../src/lec/lec ${MODE} ${INSTRU}
 EXTRA_LIBS       = -lm -lgfortran -mcmodel=medium

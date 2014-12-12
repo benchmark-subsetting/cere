@@ -1,0 +1,170 @@
+#!/usr/bin/env python
+# Loop Extractor Compiler
+# (C) 2013 University of Versailles
+import os
+import re
+import argparse
+import tempfile
+
+ROOT = os.path.dirname(os.path.realpath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
+RDTSC = "/rdtsc/librdtsc.a"
+PROFILE_LIB = "-lprofiler"
+MEMORYDUMP = "/memory_dump/.libs/"
+VERSION = "@PACKAGE_VERSION@"
+LD="gcc-4.7"
+
+def grep(path, regex):
+    regex=".*"+regex+".*"
+    regObj = re.compile(regex)
+    res = []
+    for root, dirs, fnames in os.walk(path):
+        for fname in fnames:
+            if fname.endswith(".ll"):
+                with open(fname, "r") as f:
+                    for line in f.readlines():
+                        if regObj.match(line):
+                            res.append(os.path.join(root, fname))
+    return res
+
+
+def fail_lel(error_message):
+    exit("Error {prog} : {cmd}".format(prog='lel', cmd=error_message))
+
+
+def safe_system(command):
+    '''
+    Try-catch system call
+    Verify system call and exit with appropriate error message
+    '''
+    if(os.system(command)):
+        fail_lel("safe_system -> " + command)
+
+
+def user_main(FILE, LOOP, instrument):
+    # Define by default TIMEOUT_SECONDS to 60
+    TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
+    # Define by default CALL_COUNT to 11
+    INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
+    if (instrument):
+        temp = "rdtsc_markerInit();\n"
+    else:
+        temp=""
+    TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
+    template = TEMPLATE.read()
+    TEMPLATE.close()
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS, rdtsc=temp,
+               in_vitro_call_count=INVITRO_CALL_COUNT,
+               loop=LOOP.replace("-","_")))
+
+
+def create_user_main(Instrument,LOOP):
+    safe_system("rm -f realmain.c")
+    MAIN=open('realmain.c','w')
+    user_main(MAIN, LOOP, Instrument)
+    MAIN.close()
+
+
+def compile_memory_dump_objects(DIR):
+    DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
+    safe_system("rm -f cere_dumps/objs.S")
+    OBJ=open("cere_dumps/objs.S",'w')
+    for FILE in os.listdir(DIR):
+        BASE, ext = os.path.splitext(FILE)
+        FILE = DIR+"/"+FILE
+        if (ext=='.memdump'):
+            OBJ.write((".section s{n}, \"aw\"\n" +
+                       ".incbin \"{m}\"\n").format(n=BASE,m=FILE))
+            DUMP_ARGS = (DUMP_ARGS +
+                        " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
+    OBJ.close()
+    safe_system(LD + " -c cere_dumps/objs.S")
+    return DUMP_ARGS
+
+
+def dump_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Dump mode
+    Call the linker and copy the original binary
+    '''
+    #~ if (mode_opt.region):
+        #~ LOOP=mode_opt.region
+        #~ if(not grep(".", LOOP)):
+            #~ print("No region {region} in .ll".format(region=LOOP))
+    #~ if (mode_opt.regions_file):
+        #~ error = 1
+        #~ with open(mode_opt.regions_file, "r") as f:
+            #~ for line in f.readlines():
+                #~ if(not grep(".", line[:-1])):
+                    #~ print("No region {region} in .ll".format(region=line[:-1]))
+                #~ else:
+                    #~ error = 0
+        #~ if (error):
+            #~ print("region in {f} are not found in .ll".format(f=mode_opt.regions_file))
+    safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
+                "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
+                opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
+
+#in replay mode
+def replay_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Replay mode
+    Create Realmain and call the linker
+    '''
+    LOOP=mode_opt.region
+    #~ if(not grep(".", LOOP)):
+        #~ print("No region {region} in .ll".format(region=LOOP))
+    INVOCATION=mode_opt.invocation
+    if (mode_opt.instrument):
+        COMPIL_OPT = PROJECT_ROOT + RDTSC + " " + COMPIL_OPT
+    if(not INVOCATION):
+        INVOCATION=1
+    DIR="cere_dumps/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
+    # Check that dumps exists
+    if (not os.path.isdir(DIR)):
+        fail_lel("No dump for {loop} invocation {invocation}".format(loop=LOOP,
+                 invocation=INVOCATION))
+    # Compress the traces
+    safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
+    create_user_main(mode_opt.instrument,LOOP)
+    safe_system(LD + " -c realmain.c")
+    OPTS = compile_memory_dump_objects(DIR)
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(("{opts} -o {binary} objs.o realmain.o {args} " +
+                "-L {Root}{libs} -lload -Wl," +
+                "--rpath={Root}{libs} -ldl\n").format(
+                ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT,
+                Root=PROJECT_ROOT,libs=MEMORYDUMP))
+        f.flush()
+        safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
+    safe_system(("{root}/staticpatcher.py {dump_dir}/lel_bin {binary} " +
+                "{loop}/{invocation}").format(root=ROOT, dump_dir=DIR,
+                binary=BINARY, loop=LOOP, invocation=INVOCATION))
+
+#in original mode
+def original_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Original mode
+    Only call the linker
+    '''
+    if(mode_opt.instrument_app):
+        safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
+    elif(mode_opt.instrument):
+        safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT, libs=PROJECT_ROOT+RDTSC))
+    else:
+        safe_system(("{ld} -o {binary} {opts}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT))
+
+def link(args):
+    function={}
+    function["replay_fun"] = replay_fun
+    function["dump_fun"] = dump_fun
+    function["original_fun"] = original_fun
+    if (len(args[1]) == 0):
+        exit("Error:Need source file")
+    COMPIL_OPT = " ".join(args[1])
+    BINARY = args[0].o
+    # call mode_function
+    function[args[0].func](args[0], BINARY, COMPIL_OPT)
