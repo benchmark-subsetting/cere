@@ -55,6 +55,7 @@ class Region():
                 app_cycles = float(reader["CPU_CLK_UNHALTED_CORE"])
             self.coverage = (self.invivo_cycles/app_cycles)*100
         else:
+            self.coverage = "NA"
             logging.info("Canno't compute coverage for region {0}. Try to run cere profile".format(self.region.replace("invivo", "extracted")))
 
     def measure_trace(self):
@@ -155,11 +156,11 @@ def dump_results(regions, max_error):
         regions_writer.writerow(regions_header)
         invocations_writer.writerow(invocations_header)
         for region in regions:
-            logging.info(region.region)
+            logging.info("Results for region: {0}".format(region.region))
             if region.error > max_error:
-                logging.info("  NOT MATCHING: In vitro = {0} & invivo = {1} (error = {2}%)".format(region.invitro_cycles, region.invivo_cycles, region.error))
+                logging.info("  NOT MATCHING: In vitro = {0} & invivo = {1} (error = {2}%, coverage = {3}%)".format(region.invitro_cycles, region.invivo_cycles, region.error, region.coverage))
             else:
-                logging.info("  MATCHING: In vitro = {0} & invivo = {1} (error = {2}%)".format(region.invitro_cycles, region.invivo_cycles, region.error))
+                logging.info("  MATCHING: In vitro = {0} & invivo = {1} (error = {2}%, coverage = {3}%)".format(region.invitro_cycles, region.invivo_cycles, region.error, region.coverage))
             regions_writer.writerow([region.region, region.invivo_cycles, region.invitro_cycles, region.error, region.coverage])
             for d in region.invocations_data:
                 logging.info("      Invocation {0}: In vitro cycles = {1} & in vivo cycles = {2} (error = {3}%)".format(d[0], d[3], d[4], d[5]))

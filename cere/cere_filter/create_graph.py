@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-#~ import sys
 import os
 import re
 import subprocess
@@ -46,7 +45,7 @@ def add_node(digraph, matchObj):
     else:
         valid = False
 
-    if coverage >= 1:
+    if coverage >= 1 or float(matchObj.group(4)) >=1:
         small = False
     else:
         small = True
