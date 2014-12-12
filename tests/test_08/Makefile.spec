@@ -24,7 +24,7 @@ CXXOPTIMIZE      = -O3 -mcmodel=large
 CXXLD            = ../../src/ccc/ccc ${MODE} ${INSTRU}
 FC               = ../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
 FOPTIMIZE        = -O3 -mcmodel=medium
-FLD              = ../../src/lec/lec ${MODE} ${INSTRU}
+FLD              = ../../src/ccc/ccc ${MODE} ${INSTRU}
 EXTRA_LIBS       = -lm -lgfortran -mcmodel=medium
 FPBASE           = yes
 OS               = unix

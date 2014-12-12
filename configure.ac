@@ -62,8 +62,6 @@ AC_CONFIG_FILES([Makefile
                  src/memory_dump/Makefile
                  tests/Makefile])
 
-AC_CONFIG_FILES([src/lec/lec], [chmod +x src/lec/lec])
-AC_CONFIG_FILES([src/lel/lel], [chmod +x src/lel/lel])
 AC_CONFIG_FILES([src/ccc/lec/lec.py], [chmod +x src/ccc/lec/lec.py])
 AC_CONFIG_FILES([src/ccc/lel/lel.py], [chmod +x src/ccc/lel/lel.py])
 AC_CONFIG_FILES([src/ccc/ccc], [chmod +x src/ccc/ccc])
