@@ -176,10 +176,7 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     
     test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(
                      llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT))
-    
-    print "{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT)
-    print "{llvm_bindir}/clang -c {opts} {includes} {source} -o {object}".format(llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),source=SOURCE, base=BASE, object=OBJECT)
-    
+        
     if (test):
         safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {object}".format(
                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
