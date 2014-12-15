@@ -164,7 +164,7 @@ def dump_results(regions, max_error):
                 logging.info("  MATCHING: In vitro = {0} & invivo = {1} (error = {2}%, coverage = {3}%)".format(region.invitro_cycles, region.invivo_cycles, region.error, region.coverage))
             regions_writer.writerow([region.region, region.invivo_cycles, region.invitro_cycles, region.error, region.coverage])
             for d in region.invocations_data:
-                logging.info("      Invocation {0}: In vitro cycles = {1} & in vivo cycles = {2} (error = {3}%)".format(d[0], d[3], d[4], d[5]))
+                logging.info("      Invocation {0}: In vitro cycles = {1} & in vivo cycles = {2} (error = {3}%, part = {4})".format(d[0], d[3], d[4], d[5], d[2]))
                 invocations_writer.writerow([region.region]+d)
 
 def run(args):
