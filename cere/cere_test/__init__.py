@@ -9,6 +9,7 @@ import csv
 import cere_configure
 import cere_dump
 import cere_replay
+import cere_trace
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
@@ -60,29 +61,9 @@ class Region():
             logging.info("Canno't compute coverage for region {0}. Try to run cere profile".format(self.region.replace("invivo", "extracted")))
 
     def measure_trace(self):
-        if not os.path.isfile("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region))\
-        or not os.path.isfile("{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], self.region))\
-        or self.force:
-            #Measure invivo trace
-            logging.info("Compiling trace mode for region {0}".format(self.region))
-            try:
-                logging.debug(subprocess.check_output("{0} MODE=\"original --instrument --region={1} --trace\" -B".format(cere_configure.cere_config["build_cmd"], self.region), stderr=subprocess.STDOUT, shell=True))
-                logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
-            except subprocess.CalledProcessError as err:
-                logging.critical(str(err))
-                logging.critical(err.output)
-                logging.critical("Trace failed for region {0}".format(self.region))
-                return False
-            try:
-                shutil.move("{0}.bin".format(self.region), "{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], self.region))
-                shutil.move("rdtsc_result.csv", "{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region))
-            except IOError as err:
-                logging.critical(str(err))
-                logging.critical("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(self.region))
-                return False
-        else:
-            logging.info("Using previous trace results")
-
+        res = cere_trace.run(self)
+        if not res:
+            return False
         with open("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region)) as invivo:
             reader = csv.DictReader(invivo)
             for row in reader:
@@ -124,14 +105,9 @@ class Region():
                 self.region = self.region.replace("invivo", "extracted")
                 self.invocation = infos[0]
                 res = cere_replay.run(self)
-                try:
-                    shutil.move("rdtsc_result.csv", "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation))
-                except IOError as err:
-                    logging.critical(str(err))
-                    err=True
-                    res = False
                 #Compute error between invivo and invitro cycles for this invocation
                 if not res:
+                    err=True
                     invitro_cycles = 0.
                 else:
                     with open("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)) as invitro:
