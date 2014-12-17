@@ -10,6 +10,7 @@ import cere_dump
 import cere_replay
 import cere_test
 import cere_filter
+import cere_trace
 
 import logging
 
@@ -30,6 +31,7 @@ cere_dump.init_module(subparsers, cere_plugins)
 cere_replay.init_module(subparsers, cere_plugins)
 cere_test.init_module(subparsers, cere_plugins)
 cere_filter.init_module(subparsers, cere_plugins)
+cere_trace.init_module(subparsers, cere_plugins)
 
 if __name__ == "__main__":
     args = parser.parse_args()

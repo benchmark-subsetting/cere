@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import logging
+import shutil
 import subprocess
 import cere_configure
 import cere_dump
@@ -47,7 +48,10 @@ def run(args):
             logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
             return False
         if not args.noinstrumentation:
-            if not os.path.isfile("rdtsc_result.csv"):
+            try:
+                shutil.move("rdtsc_result.csv", "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation))
+            except IOError as err:
+                logging.critical(str(err))
                 logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
                 return False
     return True

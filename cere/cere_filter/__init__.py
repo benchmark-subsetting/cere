@@ -40,7 +40,7 @@ def run(args):
     #Find matching codelets
     if not update(args):
         return False
-    #~ #Select matching codelets with best coverage
+    #Select matching codelets with best coverage
     from granularity import *
     if not solve_with_best_granularity(args.max_error):
         return False
