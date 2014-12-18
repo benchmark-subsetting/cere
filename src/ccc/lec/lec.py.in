@@ -174,9 +174,9 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     If Error compile with INCLUDES
     '''
     # Replay flag for matching
-    OPT="-early-cse"
-    os.system("{llvm_bindir}/opt -S {opts} {base}.ll -o {base}.ll".format(
-                     llvm_bindir=LLVM_BINDIR, opts=OPT, base=BASE))
+    #OPT="-early-cse"
+    #os.system("{llvm_bindir}/opt -S {opts} {base}.ll -o {base}.ll".format(
+    #                 llvm_bindir=LLVM_BINDIR, opts=OPT, base=BASE))
     
     test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(
                      llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT))
