@@ -306,24 +306,28 @@ std::string removeChar(std::string str, const char toReplace, const char replace
     return str;
 }
 
-//~ bool is_empty(std::fstream& pFile)
-//~ {
-    //~ return pFile.peek() == std::fstream::traits_type::eof();
-//~ }
-
+//This function find if the string 'newFunctionName' is present in the regions file
 bool CodeExtractorAll::is_region_in_file(std::string newFunctionName, std::fstream& loopstream) {
-    loopstream.seekg (0, std::ios::beg);
-    errs() << "\tlooking for region " << newFunctionName << " in file\n";
+    //save current position in file
+    std::streampos curr_put = loopstream.tellp();
+    std::streampos curr_get = loopstream.tellg();
+    //Go to the beginning of the file
+    loopstream.clear();
+    loopstream.seekg(0, std::ios::beg);
     std::string line;
-    //~ if ( is_empty(loopstream) ) {
-        //~ errs() << "\tFile is empty\n";
-        //~ return false;
-    //~ }
     while (getline(loopstream, line)) {
-        errs() << "Function name: " << newFunctionName << ", line: " << line << "\n";
-        if (line.find(newFunctionName) != std::string::npos)
+        if (line.find(newFunctionName, 0) != std::string::npos) {
+            //restore previous position
+            loopstream.clear();
+            loopstream.seekg(curr_get, std::ios::beg);
+            loopstream.seekp(curr_put, std::ios::beg);
             return true;
+        }
     }
+    //restore previous position
+    loopstream.clear();
+    loopstream.seekg(curr_get, std::ios::beg);
+    loopstream.seekp(curr_put, std::ios::beg);
     return false;
 }
 
@@ -333,18 +337,14 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
                                           std::string firstLine,
                                           std::string Original_location) {
     std::string header = "Region Name,File Name,Original Location,Function Name,Line";
-    std::ofstream loopstream(LoopFileInfos.c_str(), std::ios::app);
+    std::fstream loopstream(LoopFileInfos.c_str(), std::ios::in | std::ios::out | std::ios::app);
     if(loopstream.is_open()) {
-        //~ if ( !is_region_in_file(header, loopstream) ) {
-            //~ loopstream.seekp (0, std::ios::end);
-            //~ errs() << "\tHeader Added in "<< loopstream.tellp() << "\n";
-            //~ loopstream << header;
-        //~ }
-        //~ if ( !is_region_in_file(newFunctionName, loopstream) ) {
-            //~ loopstream.seekp (0, std::ios::end);
-            //~ errs() << "\tRegion " << newFunctionName << " added in " << loopstream.tellp() << "\n";
+        if ( !is_region_in_file(header, loopstream) ) {
+            loopstream << header+"\n";
+        }
+        if ( !is_region_in_file(newFunctionName, loopstream) ) {
             loopstream << newFunctionName+","+File+","+Original_location+","+oldFunction+","+firstLine+"\n";
-        //~ }
+        }
         loopstream.close();
     }
     else {
@@ -365,23 +365,27 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     DILocation firstLoc(firstN);
     oss << firstLoc.getLineNumber();
     std::string firstLine = oss.str();
-    std::string Original_location = removeExtension(firstLoc.getFilename().str());
-    std::string File = removeExtension(module_name);
-    if(File == Original_location) {
-        newFunctionName = "__extracted__" + File + separator + oldFunction->getName().str() + separator + firstLine;
-    }
-    else {
-        newFunctionName = "__extracted__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;
-    }
+    std::string Original_location = firstLoc.getFilename().str();
+    std::string File = module_name;
+    //~ if(remove_extension(File) == remove_extension(Original_location)) {
+    newFunctionName = "__extracted__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
+    //~ }
+    //~ else {
+        //~ newFunctionName = "__extracted__" + remove_extension(File) + separator + remove_extension(Original_location) + separator + oldFunction->getName().str() + separator + firstLine;
+    //~ }
+    newFunctionName = removeChar(newFunctionName, '-', '_');
+    newFunctionName = removeChar(newFunctionName, '/', '_');
+    newFunctionName = removeChar(newFunctionName, '+', '_');
+    newFunctionName = removeChar(newFunctionName, '.', '_');
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, Original_location);
   }
   else {
     newFunctionName = "__extracted__" + oldFunction->getName().str() + separator + header->getName().str();
+    newFunctionName = removeChar(newFunctionName, '-', '_');
+    newFunctionName = removeChar(newFunctionName, '/', '_');
+    newFunctionName = removeChar(newFunctionName, '+', '_');
+    newFunctionName = removeChar(newFunctionName, '.', '_');
   }
-  newFunctionName = removeChar(newFunctionName, '-', '_');
-  newFunctionName = removeChar(newFunctionName, '/', '_');
-  newFunctionName = removeChar(newFunctionName, '+', '_');
-  newFunctionName = removeChar(newFunctionName, '.', '_');
   return newFunctionName;
 }
 
