@@ -11,6 +11,7 @@ def init_module(subparsers, cere_plugins):
     cere_plugins["check"] = run
     check_parser = subparsers.add_parser("check", help="Compare for a given region, the assembly between original loop and replay loop")
     check_parser.add_argument('--region', required=True, help="Region to check")
+    check_parser.add_argument("--diff-asm", nargs='?', const=True, default=False, help="Run vimdiff between original and replay file")
 
 def compute_error(a, b):
     return (abs(a-b)/float(max(a, b)))*100
@@ -60,6 +61,9 @@ def run(args):
     original_lines = get_nlines(filename)
     if not original_lines:
         return False
+    #backup the original assembly file
+    if not run_shell_command("cp cere_tmp cere_original"):
+        return False
 
     #Compile replay mode
     #we accept that compilation fails because the dump does not have to be present.
@@ -72,9 +76,15 @@ def run(args):
     replay_lines = get_nlines(filename)
     if not replay_lines:
         return False
+    #backup the replay assembly file
+    if not run_shell_command("mv cere_tmp cere_replay"):
+        return False
+
     err = compute_error(original_lines, replay_lines)
     if err <= 15:
         logging.info("Assembly matching: Original lines = {0} && replay lines = {1} (error = {2})".format(original_lines, replay_lines, err))
     else:
         logging.info("Assembly not matching: Original lines = {0} && replay lines = {1} (error = {2})".format(original_lines, replay_lines, err))
+    if args.diff_asm:
+        subprocess.call("vimdiff cere_original cere_replay", shell=True)
     return True
