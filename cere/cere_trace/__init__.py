@@ -35,7 +35,7 @@ def run(args):
             except subprocess.CalledProcessError as err:
                 logging.critical(str(err))
                 logging.critical(err.output)
-                logging.critical("Trace failed for region {0}".format(args.region, args.invocation))
+                logging.critical("Trace failed for region {0}".format(args.region))
                 return False
             try:
                 shutil.move("{0}.bin".format(args.region), "{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], args.region))
