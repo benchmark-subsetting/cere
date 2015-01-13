@@ -78,10 +78,12 @@ def replay_fun(mode_opt, BASE):
     if (mode_opt.instrument):
         print "Instrumentation mode"
         temp_instr = "--instrument-loop=" + mode_opt.region + " "
+        if(mode_opt.tool):
+            print("Using {0} for instrumentation".format(mode_opt.tool))
+            temp_instr = temp_instr + "--tool=" + mode_opt.tool + " "
         if(mode_opt.trace):
             print "Trace mode"
-            temp_instr = (temp_instr + "--loop-to-trace="
-                          + mode_opt.region + " ")
+            temp_instr = (temp_instr + "--trace ")
         safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR,
                     base=BASE), EXIT=False)
@@ -110,8 +112,12 @@ def original_fun(mode_opt, BASE):
         if(mode_opt.regions_file):
             fail_lec("--regions-file and --region are incompatible")
         if(mode_opt.trace):
+            if(mode_opt.invocation):
+                fail_lec("--trace and --invocation are incompatible")
             print "Trace mode"
             instru_opts = instru_opts + "--loop-to-trace=" + mode_opt.region + " "
+        if(mode_opt.invocation):
+            instru_opts = instru_opts + "--invocation=" + mode_opt.invocation + " "
         if(mode_opt.instrument_app):
             fail_lec("--instrument-app and --region are incompatible")
     else:
@@ -119,27 +125,30 @@ def original_fun(mode_opt, BASE):
             instru_opts = instru_opts + "--loops-file=" + mode_opt.regions_file + " "
             if(mode_opt.instrument_app):
                 fail_lec("--instrument-app and --region-files are incompatible")
+            if(mode_opt.invocation):
+                fail_lec("--instrument-app and --invocation are incompatible")
         else:
             if(mode_opt.instrument_app):
                 extract_opts = extract_opts + "--instrument-app "
             else:
                 instru_opts = instru_opts + "--instrument-app "
-        if(mode_opt.trace):
-            fail_lec("trace only with --loop ")
-    if(mode_opt.nested_regions):
-        instru_opts = instru_opts + "--nested-loops=true "
-        if(mode_opt.no_nested_regions):
-            fail_lec("can't --nested-regions and --no-nested-regions")
-    else:
-        if(mode_opt.no_nested_regions):
-            instru_opts = instru_opts + "--nested-loops=false "
+        if(mode_opt.trace or mode_opt.invocation):
+            fail_lec("Can't trace or measure specific invocation with --regions-files")
     if(mode_opt.instrument):
+        instru_opts = instru_opts + "--tool=" + mode_opt.tool + " "
         if(mode_opt.instrument_app):
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, opts=extract_opts, base=BASE), EXIT=False)
         else:
+            #~ if(mode_opt.invocation):
+                #~ instru_opts = instru_opts + "--invocation=" + mode_opt.invocation + " "
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
+                        "-vivo-loop-instrumentation {opts} {base}.ll " +
+                        "-o {base}.ll").format(
+                        llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                        LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
+            print(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
                         "-vivo-loop-instrumentation {opts} {base}.ll " +
                         "-o {base}.ll").format(
                         llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,

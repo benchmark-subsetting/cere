@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <assert.h>
+
 void anti_dead_code_elimination(int n, ...) {{}}
 void sigcatch(int signal) {{
   fprintf(stderr, "Timeout...\n");
@@ -31,10 +32,11 @@ void real_main(int empty) {{
   int res = sigaction(SIGSEGV, &sa, NULL);
   assert(res != -1);
   signal(SIGALRM, sigcatch);
-  {rdtsc}
+  {instru_init}
   for(i=0; i<{in_vitro_call_count}; i++) {{
     alarm(max_seconds);
     run{loop}();
   }}
+  {instru_close}
   exit(0);
 }}
