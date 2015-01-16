@@ -13,6 +13,7 @@ def init_module(subparsers, cere_plugins):
     cere_plugins["check"] = run
     check_parser = subparsers.add_parser("check", help="Compare for a given region, the assembly between original loop and replay loop")
     check_parser.add_argument('--region', required=True, help="Region to check")
+    check_parser.add_argument('--path', help="Path of the object file")
     check_parser.add_argument("--diff-asm", nargs='?', const=True, default=False, help="Run vimdiff between original and replay file")
 
 def remove_prefix(name):
@@ -64,6 +65,9 @@ def run(args):
             if region in row["Region Name"]:
                 filename = row["File Name"]
                 break
+    if args.path:
+        filename = filename.rsplit('/', 1)
+        filename = args.path+"/"+filename[1]
     filename = filename.replace(os.path.splitext(filename)[1], ".o")
     print("The file is {0}".format(filename))
 
