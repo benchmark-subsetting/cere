@@ -335,6 +335,7 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
                                           std::string File,
                                           std::string oldFunction,
                                           std::string firstLine,
+                                          std::string path,
                                           std::string Original_location) {
     std::string header = "Region Name,File Name,Original Location,Function Name,Line";
     std::fstream loopstream(LoopFileInfos.c_str(), std::ios::in | std::ios::out | std::ios::app);
@@ -343,7 +344,7 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
             loopstream << header+"\n";
         }
         if ( !is_region_in_file(newFunctionName, loopstream) ) {
-            loopstream << newFunctionName+","+File+","+Original_location+","+oldFunction+","+firstLine+"\n";
+            loopstream << newFunctionName+","+path+"/"+File+","+Original_location+","+oldFunction+","+firstLine+"\n";
         }
         loopstream.close();
     }
@@ -367,6 +368,7 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc.getFilename().str();
     std::string File = module_name;
+    std::string path = firstLoc.getDirectory();
     //~ if(remove_extension(File) == remove_extension(Original_location)) {
     newFunctionName = "__extracted__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
     //~ }
@@ -377,7 +379,7 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     newFunctionName = removeChar(newFunctionName, '/', '_');
     newFunctionName = removeChar(newFunctionName, '+', '_');
     newFunctionName = removeChar(newFunctionName, '.', '_');
-    add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, Original_location);
+    add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, path, Original_location);
   }
   else {
     newFunctionName = "__extracted__" + oldFunction->getName().str() + separator + header->getName().str();

@@ -109,7 +109,7 @@ namespace llvm {
     /// significant impact on the cost however.
     void findInputsOutputs(ValueSet &Inputs, ValueSet &Outputs) const;
 
-    void add_region_to_file(std::string, std::string, std::string, std::string, std::string="");
+    void add_region_to_file(std::string, std::string, std::string, std::string, std::string, std::string="");
     bool is_region_in_file(std::string, std::fstream&);
 
   private:
