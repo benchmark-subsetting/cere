@@ -33,9 +33,9 @@ static cl::opt<std::string>
 LoopsFilename("loops-file", cl::init(""),
                   cl::value_desc("filename"),
                   cl::desc("File with regions to instrument"));
-static cl::opt<bool>
-TraceLoop("trace", cl::init(false),
-                  cl::value_desc("Boolean"),
+static cl::opt<std::string>
+TraceLoop("loop-to-trace", cl::init(""),
+                  cl::value_desc("String"),
                   cl::desc("instrumentation-mode allow to trace and record all invocations measures for specified region(s)"));
 static cl::opt<bool>
 AppMeasure("instrument-app", cl::init(false),
@@ -66,7 +66,7 @@ namespace {
     std::string separator;
     std::string Loopfile;
     std::string InstruTool;
-    bool LoopToTrace;
+    std::string LoopToTrace;
     int Mode;
     int invoc;
     bool readFromFile;
@@ -99,7 +99,7 @@ namespace {
     virtual bool runOnFunction(Function &F);
     std::string createFunctionName(Loop *L, Function *oldFunction);
     bool visitLoop(Loop *L, Module *mod);
-    std::vector<Value*> createFunctionParameters(Module* mod, std::string newFunctionName);
+    std::vector<Value*> createFunctionParameters(Module* mod, std::string newFunctionName, LoadInst* int32_38 = NULL);
     std::vector<Value*> createInitParameters(Module* mod);
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
@@ -135,6 +135,8 @@ FunctionType* createFunctionType(Module* mod)
     FuncTy_6_args.push_back(PointerTy_5); //char* for the regionName
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
+    FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 32)); //int
+    FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 32)); //global variable
     FunctionType* tmp = FunctionType::get(
     /*Result=*/Type::getVoidTy(mod->getContext()),
     /*Params=*/FuncTy_6_args,
@@ -142,50 +144,6 @@ FunctionType* createFunctionType(Module* mod)
     return tmp;
 }
 
-
-void print_api(Module* mod, BasicBlock *BB, LoadInst* int32_42)
-{
-    //~ LoadInst* int32_42 = new LoadInst(gvar_int32_count, "", false, BB);
-    //~ int32_42->setAlignment(4);
-    Constant *const_array_18 = ConstantDataArray::getString(mod->getContext(), "COUNT = %d\x0A", true);
-    ArrayType* ArrayTy_5 = ArrayType::get(IntegerType::get(mod->getContext(), 8), 12);
-    GlobalVariable* gvar_array__str3 = new GlobalVariable(/*Module=*/*mod, 
-    /*Type=*/ArrayTy_5,
-    /*isConstant=*/true,
-    /*Linkage=*/GlobalValue::PrivateLinkage,
-    /*Initializer=*/0, // has initializer, specified below
-    /*Name=*/".str3");
-    gvar_array__str3->setAlignment(1);
-    ConstantInt* const_int32_20 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-    std::vector<Constant*> const_ptr_24_indices;
-    const_ptr_24_indices.push_back(const_int32_20);
-    const_ptr_24_indices.push_back(const_int32_20);
-    Constant* const_ptr_24 = ConstantExpr::getGetElementPtr(gvar_array__str3, const_ptr_24_indices);
-    gvar_array__str3->setInitializer(const_array_18);
-    std::vector<Value*> int32_call_43_params;
-    int32_call_43_params.push_back(const_ptr_24);
-    int32_call_43_params.push_back(int32_42);
-    PointerType* PointerTy_8 = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
-    std::vector<Type*>FuncTy_10_args;
-    FuncTy_10_args.push_back(PointerTy_8);
-    FunctionType* FuncTy_10 = FunctionType::get(
-                        /*Result=*/IntegerType::get(mod->getContext(), 32),
-                        /*Params=*/FuncTy_10_args,
-                        /*isVarArg=*/true);
-    Function* func_printf = mod->getFunction("printf");
-    if (!func_printf) {
-        func_printf = Function::Create(
-        /*Type=*/FuncTy_10,
-        /*Linkage=*/GlobalValue::ExternalLinkage,
-        /*Name=*/"printf", mod); // (external, no body)
-        func_printf->setCallingConv(CallingConv::C);
-    }
-    CallInst* int32_call_43 = CallInst::Create(func_printf, int32_call_43_params, "call", BB);
-    int32_call_43->setCallingConv(CallingConv::C);
-    int32_call_43->setTailCall(false);
-    AttributeSet int32_call_43_PAL;
-    int32_call_43->setAttributes(int32_call_43_PAL);
-}
 /**Create a function "name" in the
  * current module. This function
  * takes no argument and return nothing
@@ -201,30 +159,10 @@ Function* createFunction(FunctionType* FuncTy_0, Module* mod, std::string name)
         /*Name=*/name, mod); 
         tmp->setCallingConv(CallingConv::C);
     }
-    //~ AttributeSet tmp_PAL;
-    //~ {
-        //~ SmallVector<AttributeSet, 5> Attrs;
-        //~ AttributeSet PAS;
-        //~ {
-            //~ AttrBuilder B;
-            //~ B.addAttribute(Attribute::ZExt);
-            //~ PAS = AttributeSet::get(mod->getContext(), 2U, B);
-        //~ }
-        //~ Attrs.push_back(PAS);
-        //~ {
-            //~ AttrBuilder B;
-            //~ B.addAttribute(Attribute::NoUnwind);
-            //~ B.addAttribute(Attribute::UWTable);
-            //~ PAS = AttributeSet::get(mod->getContext(), ~0U, B);
-        //~ }
-       //~ Attrs.push_back(PAS);
-       //~ tmp_PAL = AttributeSet::get(mod->getContext(), Attrs);
-    //~ }
-    //~ tmp->setAttributes(tmp_PAL);
     return tmp;
 }
 
-std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* mod, std::string newFunctionName)
+std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* mod, std::string newFunctionName, LoadInst* int32_38)
 {
     //Tool
     Constant *param_name_tool = ConstantDataArray::getString(mod->getContext(), InstruTool, true); //get Tool
@@ -260,12 +198,15 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
 
     //Set Trace boolean
     ConstantInt* const_int1_11;
-    if(LoopToTrace) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
+    if(newFunctionName == LoopToTrace) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
     else const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
 
     //Set global boolean
     ConstantInt* const_int;
     const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10)); //always false
+
+    //Store requested invocation
+    ConstantInt* const_int32_21 = ConstantInt::get(mod->getContext(), APInt(32, invoc, 10));
 
     // Global Variable Definitions
     gvar_array__str->setInitializer(param_name);
@@ -275,6 +216,13 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
     void_16_params.push_back(const_ptr_11); //LoopName
     void_16_params.push_back(const_int1_11); //Trace boolean
     void_16_params.push_back(const_int); //Global measure boolean
+    void_16_params.push_back(const_int32_21); //requested
+    if (int32_38 == NULL) { //current
+        void_16_params.push_back(ConstantInt::get(mod->getContext(), APInt(32, 0, 10)));
+    }
+    else {
+        void_16_params.push_back(int32_38);
+    }
     return void_16_params;
 }
 
@@ -332,9 +280,22 @@ std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldF
   return newFunctionName;
 }
 
+GlobalVariable* create_invocation_counter(Module *mod)
+{
+    GlobalVariable* gvar_int32_count = new GlobalVariable(/*Module=*/*mod, 
+    /*Type=*/IntegerType::get(mod->getContext(), 32),
+    /*isConstant=*/false,
+    /*Linkage=*/GlobalValue::InternalLinkage,
+    /*Initializer=*/0, // has initializer, specified below
+    /*Name=*/"cere_invocation_counter");
+    gvar_int32_count->setAlignment(4);
+    ConstantInt* const_int32_0 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
+    gvar_int32_count->setInitializer(const_int32_0);
+    return gvar_int32_count;
+}
+
 bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
 {
-    //~ errs() << "The tool is " << InstruTool << "\n";
     Module* mod = F.getParent();
     if(Mode == VIVO) { //Not replaying a loop so we have to insert init in main function
         std::vector<Type*>FuncTy_8_args;
@@ -360,13 +321,14 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                 if (isa<ReturnInst>(I->getTerminator())) ReturningBlocks.push_back(I);
             }
             if(measureAppli) {
+                GlobalVariable* gvar_int32_count = create_invocation_counter(mod);
                 FunctionType* FuncTy_0 = createFunctionType(mod);
                 std::vector<Value*> funcParameter = createFunctionParameters(mod, "main");
                 Function *startFunction = mod->getFunction("cere_markerStartRegion");
                 Function *stopFunction = mod->getFunction("cere_markerStopRegion");
                 if(!startFunction) {
                     Function* func_start = createFunction(FuncTy_0, mod, "cere_markerStartRegion");
-                    CallInst::Create(func_start, funcParameter, "", &firstBB->front());
+                    CallInst *start = CallInst::Create(func_start, funcParameter, "", &firstBB->front());
                 }
                 if(!stopFunction) {
                     Function* func_stop = createFunction(FuncTy_0, mod, "cere_markerStopRegion");
@@ -406,20 +368,6 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
             visitLoop(SubLoops[i], mod);
     }
     return true;
-}
-
-GlobalVariable* create_invocation_counter(Module *mod)
-{
-    GlobalVariable* gvar_int32_count = new GlobalVariable(/*Module=*/*mod, 
-    /*Type=*/IntegerType::get(mod->getContext(), 32),
-    /*isConstant=*/false,
-    /*Linkage=*/GlobalValue::InternalLinkage,
-    /*Initializer=*/0, // has initializer, specified below
-    /*Name=*/"cere_invocation_counter");
-    gvar_int32_count->setAlignment(4);
-    ConstantInt* const_int32_0 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-    gvar_int32_count->setInitializer(const_int32_0);
-    return gvar_int32_count;
 }
 
 bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
@@ -463,9 +411,7 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
     FunctionType* FuncTy_0 = createFunctionType(mod);
     Function* func_start = createFunction(FuncTy_0, mod, "cere_markerStartRegion");
     Function* func_stop = createFunction(FuncTy_0, mod, "cere_markerStopRegion");
-    //Create function parameter
-    std::vector<Value*> funcParameter = createFunctionParameters(mod, newFunctionName);
- 
+
     //Get successor and predecessor loop basic block
     BasicBlock *PredBB = L->getLoopPredecessor();
     SmallVector<BasicBlock*,8> exitblocks;
@@ -476,82 +422,24 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
         DEBUG(dbgs() << "Loop Preds or Succs not found\n");
         return false;
     }
-    if(invoc != 0) {
-        //Create basicBlock where we will insert the marker start
-        BasicBlock* label_if_then = BasicBlock::Create(mod->getContext(), "if.then",currFunc,0);
 
-        //Create invocation counter
-        GlobalVariable* gvar_int32_count = create_invocation_counter(mod);
+    //Create invocation counter
+    GlobalVariable* gvar_int32_count = create_invocation_counter(mod);
 
-        //Store requested invocation
-        ConstantInt* const_int32_21 = ConstantInt::get(mod->getContext(), APInt(32, invoc, 10));
-        AllocaInst* ptr_invocation = new AllocaInst(IntegerType::get(mod->getContext(), 32), "invocation", &PredBB->back());
-        ptr_invocation->setAlignment(4);
-        StoreInst* void_34 = new StoreInst(const_int32_21, ptr_invocation, false, &PredBB->back());
-        void_34->setAlignment(4);
+    LoadInst* int32_38 = new LoadInst(gvar_int32_count, "", false, &PredBB->back());
+    int32_38->setAlignment(4);
+    ConstantInt* const_int32_1 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
+    BinaryOperator* int32_inc = BinaryOperator::Create(Instruction::Add, int32_38, const_int32_1, "inc", &PredBB->back());
+    StoreInst* void_39 = new StoreInst(int32_inc, gvar_int32_count, false, &PredBB->back());
+    void_39->setAlignment(4);
 
-        //Load requested invocation and the current invocation and compare them
-        LoadInst* int32_34 = new LoadInst(ptr_invocation, "", false, &PredBB->back());
-        int32_34->setAlignment(4);
-        LoadInst* int32_38 = new LoadInst(gvar_int32_count, "", false, &PredBB->back());
-        int32_38->setAlignment(4);
-        ConstantInt* const_int32_1 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
-        BinaryOperator* int32_inc = BinaryOperator::Create(Instruction::Add, int32_38, const_int32_1, "inc", &PredBB->back());
-        StoreInst* void_39 = new StoreInst(int32_inc, gvar_int32_count, false, &PredBB->back());
-        void_39->setAlignment(4);
+    //Create function parameter
+    std::vector<Value*> funcParameter = createFunctionParameters(mod, newFunctionName, int32_38);
 
-        //Get the entry point of the loop
-        TerminatorInst *term = PredBB->getTerminator();
-        BasicBlock *succ = term->getSuccessor(0);
-
-        //If requested invocation equal the current invocation, jump to the marker start
-        //otherwise, just go to the loop
-        ICmpInst* int1_cmp = new ICmpInst(&PredBB->back(), ICmpInst::ICMP_EQ, int32_38, int32_34, "cmp");
-        BranchInst::Create(label_if_then, succ, int1_cmp, &PredBB->back());
-
-        //Remove old terminator instruction as we added our own branch condition
-        term->eraseFromParent();
-
-        // Block if.then (label_if_then)
-        //Call the marker start
-        CallInst::Create(func_start, funcParameter, "", label_if_then);
-        //Go to the loop
-        BranchInst::Create(succ, label_if_then);
-
-        //Update phinode of successor
-        if (isa<PHINode>(&succ->front()))
-        {
-            dyn_cast<PHINode>(&succ->front())->addIncoming( dyn_cast<PHINode>(&succ->front())->getIncomingValueForBlock(PredBB), label_if_then);
-        }
-
-        /*Also compare at the end of the loop, invocation and count to call the marker stop and 
-         * add the correct return instruction. Do it for each successor of the loop.
-        */
-        for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(), E = exitblocks.end(); I != E; ++I)
-        {
-            BasicBlock* label_if_else4 = BasicBlock::Create(mod->getContext(), "if.else",currFunc,0);
-            BasicBlock* label_if_then4 = BasicBlock::Create(mod->getContext(), "if.then",currFunc,0);
-
-            TerminatorInst *exitTerm = (*I)->getTerminator();
-            Instruction *test = exitTerm->clone();
-
-            label_if_else4->getInstList().push_back(test);
-            CallInst::Create(func_stop, funcParameter, "", label_if_then4);
-            Instruction *test2 = exitTerm->clone();
-            label_if_then4->getInstList().push_back(test2);
-
-            ICmpInst* int1_cmp3 = new ICmpInst(&((*I)->back()), ICmpInst::ICMP_EQ, int32_38, int32_34, "cmp3");
-            BranchInst::Create(label_if_then4, label_if_else4, int1_cmp3, &((*I)->back()));
-            exitTerm->eraseFromParent();
-        }
+    CallInst::Create(func_start, funcParameter, "", &PredBB->back());
+    for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(), E = exitblocks.end(); I != E; ++I)
+    {
+        CallInst::Create(func_stop, funcParameter, "", &((*I)->back()));
     }
-    else {
-        CallInst::Create(func_start, funcParameter, "", &PredBB->back());
-        for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(), E = exitblocks.end(); I != E; ++I)
-        {
-            CallInst::Create(func_stop, funcParameter, "", &((*I)->back()));
-        }
-    }
-
     return true;
 }
