@@ -43,7 +43,9 @@ def user_main(FILE, LOOP, mode_opt):
     # Define by default TIMEOUT_SECONDS to 60
     TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
     # Define by default CALL_COUNT to 11
-    INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
+    if (mode_opt.tool == "rdtsc"):
+        INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
+    else: INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 10)
     temp_init=""
     temp_close=""
     if (mode_opt.instrument):
