@@ -496,10 +496,16 @@ Function *CodeExtractorAll::constructFunction(const ValueSet &inputs,
   AttributeSet newParamAttr = AttributeSet().addAttribute(newFunction->getContext(), 0, Attribute::NoAlias);
 
   AI = newFunction->arg_begin();
-  for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI)
-      if (AI->getType()->isPointerTy())
-        AI->addAttr(newParamAttr);
-
+  for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI) {
+      if (AI->getType()->isPointerTy()) {
+        PointerType *pointerType = dyn_cast<PointerType>(AI->getType());
+        Type* elementType = pointerType->getElementType();
+        //Add no alias if it's not an array or a structure
+        if(!elementType->isArrayTy() && !elementType->isStructTy()) {
+          AI->addAttr(newParamAttr);
+        }
+      }
+  }
   // Set names for input and output arguments.
   if (!AggregateArgs) {
     AI = newFunction->arg_begin();
