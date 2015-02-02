@@ -54,7 +54,7 @@ class Region():
             with open("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])) as app:
                 reader = csv.DictReader(app)
                 for row in reader:
-                    app_cycles = float(reader["CPU_CLK_UNHALTED_CORE"])
+                    app_cycles = float(row["CPU_CLK_UNHALTED_CORE"])
             self.coverage = (self.invivo_cycles/app_cycles)*100
         else:
             self.coverage = "NA"
