@@ -248,17 +248,24 @@ ignore_handler(int sig, siginfo_t *si, void *unused)
 
 
 static void
-page_log_dump(void)
+flush_hot_pages_trace_to_disk(void)
 {
   char path[MAX_PATH];
+  char buf[14];
+
   snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], state.pagelog_suffix);
-  FILE * f = fopen(path, "w");
+  int out = syscall(SYS_open, path, O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
+  
+  assert(out > 0);
 
   /* Dump the trace */
   for (int i = 0; i <TRACE_SIZE; i++) {
       int c = (i + state.last_trace) % TRACE_SIZE;
       if (state.pages_trace[c] != 0) {
-          fprintf(f, "%lx\n", (off64_t)state.pages_trace[c]);
+          char * end = append_addr(buf, (off64_t)state.pages_trace[c]);
+          *end = '\n';
+          int wr = syscall(SYS_write, out, buf, end-buf+1);	
+          assert(wr>0);
       }
   }
 
@@ -266,13 +273,27 @@ page_log_dump(void)
   for (int i = 0; i <state.log_size; i++) {
       int c = (i + state.last_page) % state.log_size;
       if (state.pages_cache[c] != 0) {
-          bool result = dump_page((off64_t)state.pages_cache[c]);
-          //if (result)
-          fprintf(f, "%lx\n", (off64_t)state.pages_cache[c]);
+          char * end = append_addr(buf, (off64_t)state.pages_cache[c]);
+          *end = '\n';
+          int wr = syscall(SYS_write, out, buf, end-buf+1);	
+          assert(wr>0);
       }
   }
-  fclose(f);
+  syscall(SYS_close, out);
 }
+
+static void
+dump_unprotected_pages(void)
+{
+  /* Dump the unprotected pages before entering the codelet region. */
+  for (int i = 0; i <state.log_size; i++) {
+      int c = (i + state.last_page) % state.log_size;
+      if (state.pages_cache[c] != 0) {
+          bool result = dump_page((off64_t)state.pages_cache[c]);
+      }
+  }
+}
+
 
 static void
 page_ign_dump(void)
@@ -631,11 +652,8 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     assert(state.mtrace_active == false);
 
-    /* Dump hot pages log */
-    page_log_dump();
-
-    /* Dump ignored pages */
-    page_ign_dump();
+    /*Dump hotpages to disk*/
+    flush_hot_pages_trace_to_disk();
  
     /*Link to the original binary*/
     snprintf(lel_bin_path, sizeof(lel_bin_path), "%s/lel_bin", state.dump_path[state.stack_pos]);
@@ -659,6 +677,13 @@ void dump(char* loop_name, int invocation, int count, ...)
     }
     va_end(ap);
     dump_core(count, addresses);
+
+
+    /* Dump ignored pages */
+    page_ign_dump();
+        
+    /* Dump unprotected pages */
+    dump_unprotected_pages();
 
     /* set dump sa */
     set_dump();
