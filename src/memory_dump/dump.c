@@ -389,9 +389,11 @@ lock_mem(void)
 
   char *  addresses[512];
   char buf[BUFSIZ + 1];
+  
   size_t start, end;
   int counter = 0;
   char *start_of_stack, *end_of_stack;
+  off64_t errnol = (off64_t) round_to_page(__errno_location());
 
   int count = 0;
 
@@ -431,36 +433,57 @@ lock_mem(void)
          continue;
 
       char * page_start = round_to_page((char*)start);
+
+      /* syscall() and tracing SIGSEGV handler require access to errno.  We
+         must keep errno location unlocked to avoid trigering an infinite
+         segfault. */
+
+      if ((off64_t) page_start <= errnol && errnol < end) {
+          /* We split the range containing errnol into two segments */ 
+
+          /* If the left segment is non-empty, we must lock it */
+          if ((off64_t) page_start < errnol) {
+              assert(count < 512);
+              addresses[count++] = (char*) page_start;
+              addresses[count++] = (char*) errnol;
+          }
+
+          /* The errnol page is added to ignored, so it is still dumped 
+           * even if it's kept unlocked */
+          assert(state.last_ignored < MAX_IGNORE);
+          state.pages_ignored[state.last_ignored++] = (char *) errnol;
+
+          /* If the right segment is non-empty, we must lock it */
+          if (errnol+PAGESIZE < end) {
+              assert(count < 512);
+              addresses[count++] = (char*) (errnol+PAGESIZE);
+              addresses[count++] = (char*) end;
+          }
+          continue;
+      } 
+
       assert(count < 512);
       addresses[count++] = (char*) page_start;
       addresses[count++] = (char*) end;
   }
-  fclose(maps);
-
-  // On Core2 (tahiti) without this print test_07 segfaults
-  // during the mprotect call.
-  printf("DUMP: locking memory\n");
 
   while(count > 0) {
       char * end = addresses[--count];
       char * start = addresses[--count];
       int result = syscall(SYS_mprotect,start, end-start, PROT_NONE);
+      assert(result == 0);
   }
 
   /* Unprotect dump state */
   int result = syscall(SYS_mprotect,&state, sizeof(state), PROT_READ | PROT_WRITE);
-  assert(result != -1);
+  assert(result == 0);
 
-  // Our SIGSEGV handler will require access to errno and open functions
-  // memory.
-  // Access them now, while ignore_handler is active, to unlock the
-  // sensible regions and avoid a double SEGFAULT later on.
-  errno = 0;
-  //int fd = open("/dev/null", O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
-  //close(fd);
+  /* Closing maps file must be done after locking the memory. If this close is
+   * done before, it changes the memory mapping kept inside addresses making
+   * the above SYS_mprotect call fail */
+  fclose(maps);
 
   syscall(SYS_mprotect,start_of_stack, end_of_stack-start_of_stack, PROT_NONE);
-
 }
 
 static void
