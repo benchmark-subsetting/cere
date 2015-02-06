@@ -7,7 +7,7 @@ import jinja2
 import csv
 import base64
 from contextlib import contextmanager
-EXTENSIONS = [".c",".f",".f90",".C",".F",".F90",".cc",".cpp"]
+
 Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              "text/x-csrc"], ".f":["fortran/fortran.js", "text/x-Fortran"],
              ".F":["fortran/fortran.js", "text/x-fortran"],
@@ -364,7 +364,6 @@ def read_csv(File):
     Dict = csv.DictReader(FILE, delimiter=CSV_DELIMITER)
     return Dict
 
-
 def encode_graph(graph_name):
     '''
     Read graph and encode this graph in base 64.
@@ -376,10 +375,8 @@ def encode_graph(graph_name):
         raise MyError("Cannot find " + graph_name)
     return base64.standard_b64encode(graph)
 
-
 def percent(x):
     return (100 * float(x))
-
 
 def suppr_prefix(name):
     '''
@@ -389,7 +386,6 @@ def suppr_prefix(name):
         name = name.replace(pre,"")
     return name
 
-
 def read_code(code_place):
     '''
     Create Code Object with information in code place
@@ -398,24 +394,19 @@ def read_code(code_place):
     code_place[4] contains line of wanted region
     code_place[1] and code_place[3] are not used in Report
     '''
-    EXT = "__None__"
-    for ext in EXTENSIONS:
+    try:
+        FILE = open(code_place[2], "r")
+        code = FILE.readlines()
+        code = "".join(code)
         try:
-            FILE = open(code_place[2]+ext, "r")
-            code = FILE.readlines()
-            code = "".join(code)
-            try:
-                code.encode('utf-8')
-            except (UnicodeDecodeError):
-                return Code(".html", "ERROR UNICODE -> FILE:" +code_place[2]+ext , 1)
-            FILE.close()
-            EXT = ext
-        except (IOError):
-            pass
-    if (EXT == "__None__"):
+            code.encode('utf-8')
+        except (UnicodeDecodeError):
+            return Code(".html", "ERROR UNICODE -> FILE:" +code_place[2], 1)
+        FILE.close()
+    except (IOError):
         raise MyError("Can't open: "+code_place[2])
+        pass
     return Code(EXT, code, code_place[4])
-
 
 def main():
     '''
@@ -432,7 +423,6 @@ def main():
         bench = os.getcwd().split("/") [-1]
         REPORT = Report(bench,args.mincycles)
         REPORT.write_report()
-
 
 if __name__ == "__main__":
     main()
