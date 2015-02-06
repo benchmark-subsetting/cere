@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import shutil
 import argparse
 import logging
 import subprocess
@@ -20,6 +21,7 @@ def run(args):
     cere_configure.init()
     if(args.region):
         if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) or args.force:
+            shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation))
             logging.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
             try:
                 logging.debug(subprocess.check_output("{0} MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation), stderr=subprocess.STDOUT, shell=True))
