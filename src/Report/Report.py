@@ -394,6 +394,7 @@ def read_code(code_place):
     code_place[4] contains line of wanted region
     code_place[1] and code_place[3] are not used in Report
     '''
+    fileName, fileExtension = os.path.splitext(code_place[2])
     try:
         FILE = open(code_place[2], "r")
         code = FILE.readlines()
@@ -406,7 +407,7 @@ def read_code(code_place):
     except (IOError):
         raise MyError("Can't open: "+code_place[2])
         pass
-    return Code(EXT, code, code_place[4])
+    return Code(fileExtension, code, code_place[4])
 
 def main():
     '''
