@@ -37,9 +37,9 @@ def run_shell_command(command):
         return False
     return True
 
-def get_nlines(filename):
-    #Objdump the object file
-    if not run_shell_command("objdump -D {0} > cere_tmp".format(filename)):
+def get_nlines(filename, functionname):
+    #Objdump the function
+    if not run_shell_command("gdb -batch -ex 'file {0}' -ex 'disassemble {1}' > cere_tmp".format(filename, functionname)):
         return False
     #count the number of lines
     try:
@@ -58,23 +58,25 @@ def run(args):
         return False
     region = remove_prefix(args.region)
     filename = ""
+    functionname=""
     #Find the file where the region is
     with open("regions.csv") as regions_list:
         reader = csv.DictReader(regions_list)
         for row in reader:
             if region in row["Region Name"]:
                 filename = row["File Name"]
+                functionname = row["Function Name"]
                 break
     if args.path:
         filename = filename.rsplit('/', 1)
         filename = args.path+"/"+filename[1]
     filename = filename.replace(os.path.splitext(filename)[1], ".o")
-    print("The file is {0}".format(filename))
+    print("The file is {0} and the function is {1}".format(filename, functionname))
 
     #Now let's compile it in the orginal application
     if not run_shell_command("{0} MODE=original -B".format(cere_configure.cere_config["build_cmd"])):
         return False
-    original_lines = get_nlines(filename)
+    original_lines = get_nlines(filename, functionname)
     if not original_lines:
         return False
     #backup the original assembly file
@@ -89,7 +91,7 @@ def run(args):
         logging.debug(str(err))
         logging.debug(err.output)
         logging.debug("If the dump is not present, skip this error")
-    replay_lines = get_nlines(filename)
+    replay_lines = get_nlines(filename, "run__extracted__"+region)
     if not replay_lines:
         return False
     #backup the replay assembly file
