@@ -28,8 +28,8 @@
 #---------------------------------------------------------------------------
 
 
-F77 	= ../../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
-FLINK	= ../../../src/lel/lel ${MODE} ${INSTRU} ${INSTRU_OPTS}
+F77 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
+FLINK	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
 F_LIB    = -lgfortran -lm
 
 #---------------------------------------------------------------------------
@@ -67,8 +67,8 @@ FLINKFLAGS = -O3
 # linking is done with       $(CLINK) $(C_LIB) $(CLINKFLAGS)
 #---------------------------------------------------------------------------
 
-CC 	= ../../../src/lec/lec ${MODE} ${INSTRU} ${INSTRU_OPTS}
-CLINK	= ../../../src/lel/lel ${MODE} ${INSTRU} ${INSTRU_OPTS}
+CC 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
+CLINK	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
 
 #---------------------------------------------------------------------------
 # These macros are passed to the linker 
