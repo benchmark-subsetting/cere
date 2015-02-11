@@ -47,7 +47,7 @@ class Region():
             if graph:
                 for n, d in graph.nodes(data=True):
                     if d['_name'] == self.region.replace("invivo", "extracted"):
-                        self.coverage = float(d['_coverage'])
+                        self.coverage = float(d['_self_coverage'])
                         return
         #2) Compute the coverage manually
         elif os.path.isfile("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])):

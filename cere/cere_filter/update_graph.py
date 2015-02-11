@@ -72,34 +72,34 @@ def update(args):
             #if it's an invalid node (not matching or not extracted) or if it's too small
             if not graph.node[node]['_valid'] or graph.node[node]['_small']:
                 #if there is still a successor not tested, we do nothing.
-                #~ for successor in graph.successors(node):
-                    #~ if not graph.node[successor]['_tested']:
-                        #~ cancel = True
-                #~ if cancel: continue
-                #~ in_degree = graph.in_degree(node, weight='weight')
+                for successor in graph.successors(node):
+                    if not graph.node[successor]['_tested']:
+                        cancel = True
+                if cancel: continue
+                in_degree = graph.in_degree(node, weight='weight')
                 #transfer your self coverage to yours parents
-                #~ for predecessor in graph.predecessors(node):
-                    #~ part = float(graph.edge[predecessor][node]['weight'])/in_degree
-                    #~ graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
+                for predecessor in graph.predecessors(node):
+                    part = float(graph.edge[predecessor][node]['weight'])/in_degree
+                    graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
                     #Maybe this node is not small anymore
-                    #~ if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
-                        #~ graph.node[predecessor]['_small'] = False
-                #~ if graph.predecessors(node):
-                    #~ graph.node[node]['_self_coverage'] = 0
+                    if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
+                        graph.node[predecessor]['_small'] = False
+                if graph.predecessors(node):
+                    graph.node[node]['_self_coverage'] = 0
                 graph.node[node]['_tested'] = True
 
-        #~ with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
         newLoopsToTest = False
-            #~ for n, d in graph.nodes(data=True):
-                #~ if d['_valid'] and not d['_small'] and not d['_tested']:
-                    #~ newLoopsToTest = True
-                    #~ f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
+        with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
+            for n, d in graph.nodes(data=True):
+                if d['_valid'] and not d['_small'] and not d['_tested']:
+                    newLoopsToTest = True
+                    f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
 
         plot(graph, step)
         save_graph(graph)
 
         if not newLoopsToTest: break
-        #~ else:
-            #~ cere_test.run(args)
+        else:
+            cere_test.run(args)
 
     return True

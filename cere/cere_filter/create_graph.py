@@ -45,7 +45,7 @@ def add_node(digraph, matchObj):
     else:
         valid = False
 
-    if coverage >= 1 or float(matchObj.group(4)) >=1:
+    if float(matchObj.group(4)) >=1:
         small = False
     else:
         small = True
