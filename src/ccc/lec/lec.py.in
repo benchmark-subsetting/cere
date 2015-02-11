@@ -12,7 +12,7 @@ LLVM_BINDIR = "@LLVM_BINDIR@"
 DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
 LD="gcc-4.7"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
-SOURCE_EXTENSIONS=[".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
+SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
 
 def fail_lec(error_message):
     exit("Error {prog} : {cmd}".format(prog='lec', cmd=error_message))
