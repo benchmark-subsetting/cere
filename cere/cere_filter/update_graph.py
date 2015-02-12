@@ -77,7 +77,7 @@ def update(args):
                         cancel = True
                 if cancel: continue
                 in_degree = graph.in_degree(node, weight='weight')
-                #transfer your self coverage to yours parents
+                #if all my parent's sons are not matching, transfert my coverage
                 for predecessor in graph.predecessors(node):
                     part = float(graph.edge[predecessor][node]['weight'])/in_degree
                     graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
@@ -89,7 +89,7 @@ def update(args):
                 graph.node[node]['_tested'] = True
 
         newLoopsToTest = False
-        with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
+        with open(args.regions, 'w') as f:
             for n, d in graph.nodes(data=True):
                 if d['_valid'] and not d['_small'] and not d['_tested']:
                     newLoopsToTest = True

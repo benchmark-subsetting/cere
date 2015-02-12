@@ -151,10 +151,10 @@ def create_graph(min_coverage, force):
     plot(digraph, 0)
     save_graph(digraph)
 
-    with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
-        for n, d in digraph.nodes(data=True):
-            if d['_valid'] and not d['_small'] and not d['_tested']:
-                f.write(d['_name'].replace("extracted", "invivo")+"\n")
+    #~ with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
+        #~ for n, d in digraph.nodes(data=True):
+            #~ if d['_valid'] and not d['_small'] and not d['_tested']:
+                #~ f.write(d['_name'].replace("extracted", "invivo")+"\n")
 
     logging.info('Create graph success')
     return True

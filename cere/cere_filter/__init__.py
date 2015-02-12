@@ -35,8 +35,8 @@ def run(args):
         return False
     if not create_graph(args.min_coverage/100, args.force):
         return False
-    args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
-    cere_test.run(args)
+    #args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
+    #cere_test.run(args)
     #Find matching codelets
     if not update(args):
         return False

@@ -20,7 +20,7 @@ class Error_table:
     def complete_error_table(self, error, chosen, graph):
         coverage = 0
         for codelet in chosen:
-            coverage = coverage + graph.node[codelet]['_coverage']
+            coverage = coverage + graph.node[codelet]['_self_coverage']
         self.table = self.table + [[error,coverage]]
 
     def write_table(self):
@@ -53,10 +53,10 @@ def solve_under_coverage(graph, min_coverage=80):
             cat=LpInteger)
 
     # Objective function:
-    prob += lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)])
+    prob += lpSum([codelet_vars[n]*d['_self_coverage'] for n,d in graph.nodes(data=True)])
 
     # and with good coverage
-    prob += (lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)]) >= min_coverage)
+    prob += (lpSum([codelet_vars[n]*d['_self_coverage'] for n,d in graph.nodes(data=True)]) >= min_coverage)
 
     # selected codelets should match
     for n,d in graph.nodes(data=True):
@@ -130,5 +130,5 @@ def solve_with_best_granularity(error):
     output_tree(graph, target_error_chosen)
     table.write_table()
     for c in target_error_chosen:
-        print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_coverage'])
+        print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_self_coverage'])
     return True
