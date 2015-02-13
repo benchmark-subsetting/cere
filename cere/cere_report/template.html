@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+{% set NAME = "Codelet Name" %}
+
+<!-- if the node has a parent insert his parent -->
+{% macro parent(id) %}
+  {% if (not(id == "none")) %}
+    data-tt-parent-id={{id}}
+  {% endif %}
+{% endmacro %}
+
+<!-- if the region is selected print the row in blue and uppercase the text-->
+{% macro selected(select) %}
+  {% if (select == "true") %}
+    class="text-uppercase text-primary"
+  {% endif %}
+{% endmacro %}
+
+{% macro printable(toHide) %}
+  {% if (toHide == "false") %}
+    data-button="True"
+  {% endif %}
+{% endmacro %}
+
+<!-- In function of the error choose the color of error case -->
+{% macro class(prec, error, suiv) %}
+    {% if error <= 15 %}
+      {{prec}}success {{suiv}}
+    {% elif error <= 30 %}
+        {{prec}}warning {{suiv}}
+    {% else %}
+      {{prec}}danger {{suiv}}
+    {% endif %}
+{% endmacro %}
+
+<!-- Define the color of invocation Cluster -->
+{% macro color_cluster(Cluster) %}
+  <td> <span color={{Cluster}}>###</span> {{Cluster}} </td>
+{% endmacro %}
+
+<!-- Modify the text
+Print them in strong or remove the end if the text is too long -->
+{% macro strong(text, test, toHide) %}
+  {% if (test == "true") %}
+    <strong strong="y">
+  {% endif %}
+  {% if text is number %}
+    {% if (toHide == "false") %}
+      {{text}}
+    {% endif %}
+  {% elif text[40] is undefined %}
+    {{text}}
+  {% else %}
+    {{text[:39]}}...
+  {% endif %}
+  {% if (test == "true") %}
+    </strong>
+  {% endif %}
+{% endmacro %}
+
+
+<!-- Create the invocation table row by roW -->
+{% macro inv_table(fieldnames, tab) %}
+  <table  class="table table-bordered">
+  <tr>
+  {% for field in fieldnames %}
+    <th>{{field}}</th>
+  {% endfor %}
+  </tr>
+  {% for row in tab %}
+    <tr>
+    {% for column in fieldnames[:-1] %}
+      {% if (column == "Cluster") %}
+        {{color_cluster(row[column])}}
+      {% else %}
+        <td>{{row[column]}}</td>
+      {% endif %}
+    {% endfor %}
+      <td {{class("class=\"btn-",row[fieldnames[-1]], "btn-block\"")}}>{{row[fieldnames[-1]]}}</td>
+    </tr>
+  {% endfor %}
+  </table>
+{% endmacro %}
+
+<!-- Create the main table row by roW -->
+{% macro maintable(fieldnames, tree) %}
+  <table  class="table table-bordered">
+    <caption><h4 class="text-uppercase"> <strong>{{bench}}</strong> </h4></caption>
+  <tr>
+  {% for field in fieldnames %}
+    <th>{{field}}</th>
+  {% endfor %}
+  </tr>
+  {% for node in tree %}
+    <tr {{selected(node._selected)}} {{printable(node._region._tooSmall)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
+    {% for column in fieldnames[:-1] %}
+      <td>{{strong(node._region._table[column], node._selected, node._region._tooSmall)}}</td>
+    {% endfor %}
+    {% if (node._region._tooSmall == "false") %}
+    <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}>{{node._region._table[fieldnames[-1]]}}</td>
+    {% else %}
+      <td BGCOLOR=#BDBDBD></td>
+    {% endif %}
+    </tr>
+  {% endfor %}
+  </table>
+{% endmacro %}
+     
+     
+
+<!-- start html -->      
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <title>{{bench}} Report</title>
+    
+    <!-- Link -->
+    <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="http://cdnjs.cloudflare.com/ajax/libs/codemirror/4.3.0/codemirror.min.css" rel="stylesheet">
+    <link href="http://tahiti.prism.uvsq.fr/jquery.treetable.css" rel="stylesheet" type="text/css" />
+    <link href="http://tahiti.prism.uvsq.fr/jquery.treetable.theme.default.css" rel="stylesheet" type="text/css" />
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  
+  
+<!-- start body -->    
+  <body class="container-fluid">
+    <div class="row">
+      <br>
+      
+      <!--   left part    -->
+      <span id="Main" class="col-md-5">
+      
+      
+      <!--   Main table    -->
+        {{ maintable(regionfields, tree) }}
+        
+        
+        <h4>Exec Time : {{nb_cycles}} cycles</h4>
+        <h4>Matching : {{part}}%</h4>
+        <img class="img-responsive" alt="Responsive image" src="data:image/png;base64,{{graph_error}}">
+      </span>
+      
+      
+      <!--   right part    -->
+      <span id="Region" class="col-md-7">
+      
+        <!-- menu  -->
+        <div class="navbar navbar-default">
+          <div class="container" data-name="navbar">
+            <div class="collapse navbar-collapse">
+              <ul id="navbar" class="nav navbar-nav">
+                <li class="active"><a data-nav="Clustering">Clustering</a></li>
+                <!--<li><a data-nav="Invocation">Invocation</a></li>-->
+                <li><a data-nav="code">Code</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Region information 
+        We created a div for each region but they are printed one by one with javascript-->
+        {% for region in regionlist %}
+          <div id="{{regionlist[region]._name}}" data-nb-invoc="{{regionlist[region]._callcount}}">
+            
+            <!-- Code -->
+            <div data-name="code">
+              <textarea class="code" mode={{regionlist[region]._code._mode}} line={{regionlist[region]._code._line}}>
+                {{regionlist[region]._code._value}}
+              </textarea>
+            </div>
+            
+            
+            <!-- Clustering graph -->
+            <div data-name="Clustering">
+              <img class="img-responsive" alt="Responsive image" data={{regionlist[region]._graph_clustering}}>
+            </div>
+            
+            <!-- Invocation graph -->
+            <!--
+            <div data-name="Invocation">
+              <img class="img-responsive" alt="Responsive image" data={{regionlist[region]._graph_invoc}}>
+            </div>
+            -->
+            
+            <!-- General information -->
+            <div data-name="default">
+            
+              <!-- Region name -->
+              <h4><strong>
+                {{regionlist[region]._name}}
+              </strong></h4><br>
+              
+              <!-- Real Time - Predicted Time -->
+              <h4><span class={{class("bg-",regionlist[region]._table["Error (%)"])}}>
+                Real time: {{regionlist[region]._invivo}}  --  Predicted time: {{regionlist[region]._invitro}}
+              </span></h4>
+              
+              <!-- Callcount -->
+              <h4>
+                Callcount: {{regionlist[region]._callcount}}
+              </h4>
+            </div>
+            
+            <!-- Invocation table -->
+            <div data-name="default">
+              {{ inv_table(invocationfields, regionlist[region]._inv_table)}}
+            </div>
+          </div>
+        {% endfor %}
+      </span>
+    </div>
+
+    <!-- Javascript -->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/codemirror/4.3.0/codemirror.js"></script>
+    {% for mode in l_modes %}
+      <script src="http://cdnjs.cloudflare.com/ajax/libs/codemirror/4.3.0/mode/{{mode}}"></script>
+    {% endfor %}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.js"></script>
+    <script src="http://tahiti.prism.uvsq.fr/jquery.treetable.min.js""></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+    <script>
+    {{ report_js }}
+    </script>
+
+  </body>
+</html>

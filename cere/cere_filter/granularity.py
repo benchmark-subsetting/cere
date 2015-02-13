@@ -103,7 +103,7 @@ def output_tree(graph, chosen):
         # print header
         output.write("Id,Codelet Name,Selected,ParentId\n")
         # find roots
-        for n in graph.nodes():
+        for n, d in graph.nodes(data=True):
             if not graph.predecessors(n): #root
                 output_codelet(output, graph, chosen, n, "None", set())
 

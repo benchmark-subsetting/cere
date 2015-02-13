@@ -14,6 +14,7 @@ import cere_measure
 import cere_trace
 import cere_regions
 import cere_sanity_check
+import cere_report
 
 import logging
 
@@ -38,6 +39,7 @@ cere_measure.init_module(subparsers, cere_plugins)
 cere_trace.init_module(subparsers, cere_plugins)
 cere_sanity_check.init_module(subparsers, cere_plugins)
 cere_regions.init_module(subparsers, cere_plugins)
+cere_report.init_module(subparsers, cere_plugins)
 
 if __name__ == "__main__":
     args = parser.parse_args()

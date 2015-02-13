@@ -21,21 +21,45 @@ def read_csv(File):
     Dict = csv.DictReader(FILE, delimiter=',')
     return Dict
 
-def update_nodes(graph, lines, max_allowed_error):
-    matching = {}
-    for line in lines:
-        matching[suppr_prefix(line["Codelet Name"])] = float(line["Error"])
+def delete_useless_nodes():
+    graph = load_graph()
+    if graph == None:
+        logging.critical("No graph to load")
+        return False
+    parents=[]
+    childs=[]
+    for n, d in graph.nodes(data=True):
+        #We have to remove this node
+        if "__extracted__" not in d['_name']:
+            for successor in graph.successors(n):
+                for predecessor in graph.predecessors(n):
+                    graph.add_edge(predecessor, successor, weight=0)
+            graph.remove_node(n)
+    plot(graph, "final")
+    save_graph(graph)
+    return True
 
-    for region_name, error in matching.iteritems():
+def update_nodes(graph, lines, max_allowed_error):
+    invocations = read_csv("{0}/invocations_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+    for line in lines:
+
+        #for region_name, error in matching.iteritems():
         #find the node in the graph
         for n,d in graph.nodes(data=True):
-            if region_name in d['_name'] and not d['_tested']:
+            if suppr_prefix(line["Codelet Name"]) in d['_name'] and not d['_tested']:
+                d['_invivo'] = float(line["Invivo"])
+                d['_invitro'] = float(line["Invitro"])
                 d['_tested'] = True
-                if error <= max_allowed_error:
+                if float(line["Error"]) <= max_allowed_error:
                     d['_matching'] = True
                 else:
                     d['_valid'] = False
-                d['_error'] = float(error)
+                d['_error'] = float(line["Error"])
+                for inv in invocations:
+                    if suppr_prefix(inv["Codelet Name"]) in d['_name']:
+                        d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
+                          "Part":inv["Part"], "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
+                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":float(inv["Error"])})
     return graph
 
 def suppr_prefix(name):

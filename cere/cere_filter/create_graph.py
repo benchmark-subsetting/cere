@@ -58,6 +58,9 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_valid'] = valid
     digraph.node[_id]['_tested'] = tested
     digraph.node[_id]['_small'] = small
+    digraph.node[_id]['_invivo'] = 0.0
+    digraph.node[_id]['_invitro'] = 0.0
+    digraph.node[_id]['_invocations'] = []
     return digraph
 
 def remove_cycles(digraph, cycle):
