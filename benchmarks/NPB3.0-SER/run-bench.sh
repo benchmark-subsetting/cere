@@ -2,14 +2,17 @@
 
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CLASS=A
+export WARMUP_TYPE=1
+export INVITRO_CALL_COUNT=5
 
-for bench in BT CG FT EP IS LU MG SP; do
+for bench in LU CG EP FT IS MG SP BT; do
     echo "Benchmarking $bench"
     sbench=$( echo $bench | tr '[A-Z]' '[a-z]' )
     cd $BASEDIR/$bench
     RUN_COMMAND="numactl -C 1 ../bin/${sbench}.${CLASS}"
-    BUILD_COMMAND="make -j4 CLASS=${CLASS}"
-    ../../../src/granularity/coverage.sh "$RUN_COMMAND" "$BUILD_COMMAND"
-    ../../../src/granularity/matching.sh --force . "measures/loops" "$RUN_COMMAND" "$BUILD_COMMAND"
-    ../../../src/Report/Report.py ./
+    BUILD_COMMAND="make CLASS=${CLASS}"
+    python ../../../cere configure --build_cmd="$BUILD_COMMAND" --run_cmd="$RUN_COMMAND"
+    python ../../../cere profile
+    python ../../../cere filter
+    python ../../../cere report
 done
