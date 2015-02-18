@@ -110,7 +110,7 @@ def output_tree(graph, chosen):
 def solve_with_best_granularity(error):
     graph = load_graph()
     if graph == None:
-        print("Error: Can't load graph")
+        logging.critical("Granularity: Can't load graph")
         return False
 
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
