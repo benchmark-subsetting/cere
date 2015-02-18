@@ -75,8 +75,8 @@ def add_coverage(regions_file, new_regions_file, matchObj):
                 found=True
                 break
     if(found):
-        row.append(coverage)
         row.append(self_coverage)
+        row.append(coverage)
         with open(new_regions_file, 'ab') as tmp_regions:
             w = csv.writer(tmp_regions)
             w.writerow(row)
