@@ -113,6 +113,10 @@ def solve_with_best_granularity(error):
         logging.critical("Granularity: Can't load graph")
         return False
 
+    if( len(graph.nodes()) == 0):
+        logging.info('Graph is empty')
+        return True
+
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
 
     table = Error_table()

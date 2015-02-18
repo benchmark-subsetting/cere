@@ -238,6 +238,7 @@ class Report:
         '''
         self._tree = []
         tree = read_csv(cere_configure.cere_config["cere_measures_path"] + "/selected_codelets")
+        if not tree: return False
         for node in tree:
             try:
                 if (suppr_prefix(node["Codelet Name"]) in self._regions):
@@ -357,7 +358,8 @@ def read_csv(File):
     try:
         FILE = open(File, 'rb')
     except (IOError):
-        raise MyError("Can't read " + File + "-> Verify coverage and matching")
+        logging.critical("Can't read " + File + "-> Verify coverage and matching")
+        return False
     Dict = csv.DictReader(FILE, delimiter=CSV_DELIMITER)
     return Dict
 
