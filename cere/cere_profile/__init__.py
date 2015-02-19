@@ -22,10 +22,10 @@ def run(args):
         args.app = True
         args.regions = True
     if args.regions:
-        instrument_application(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], cere_configure.cere_config["cere_measures_path"], args.force)
+        res = instrument_application(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], cere_configure.cere_config["cere_measures_path"], args.force)
     if args.app:
-        measure_application(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], cere_configure.cere_config["cere_measures_path"], args.force)
-    return True
+        res = measure_application(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], cere_configure.cere_config["cere_measures_path"], args.force)
+    return res
 
 def measure_application(run_cmd, build_cmd, measures_path, force):
     logging.info('Measuring application cycles')
@@ -57,9 +57,10 @@ def instrument_application(run_cmd, build_cmd, measures_path, force):
         if not force:
             logging.info('Keeping previous instrumentation')
             return True
+    
     try:
         logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
-        logging.info(subprocess.check_output("LD_PRELOAD=\"/usr/local/lib/libprofiler.so\" CPUPROFILE={0}/app.prof {1}".format(measures_path, run_cmd), stderr=subprocess.STDOUT, shell=True))
+        logging.info(subprocess.check_output("CPUPROFILE={0}/app.prof {1}".format(measures_path, run_cmd), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logging.critical(str(err))
         logging.critical(err.output)
