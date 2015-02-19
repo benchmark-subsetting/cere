@@ -185,13 +185,16 @@ class Report:
         We read all files level_*.csv and for each region in each file we initialize his callcount with the value in the file
         '''
         for k,r in self._regions.iteritems():
-            infos = csv.reader(open(cere_configure.cere_config["cere_measures_path"]+"/__invivo__{0}.csv".format(k)))
-            line = infos.next()
-            line = infos.next()
+            try:
+                infos = csv.reader(open(cere_configure.cere_config["cere_measures_path"]+"/__invivo__{0}.csv".format(k)))
+                line = infos.next()
+                line = infos.next()
+            except (IOError):
+                pass
             try:
                 self._regions[k].set_callcount(line[1])
             except(KeyError):
-                logging.critical("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
+                logging.info("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
         
     def init_invocation_table(self, graph):
         '''
@@ -202,7 +205,7 @@ class Report:
             try:
                 self._regions[suppr_prefix(d['_name'])].append_invocation_table(d['_invocations'])
             except(KeyError):
-                logging.critical("INVOCATIONS: " + suppr_prefix(suppr_prefix(d['_name'])) + " not in graph")
+                logging.info("INVOCATIONS: " + suppr_prefix(suppr_prefix(d['_name'])) + " not in graph")
         
     def init_codes(self):
         '''
@@ -212,14 +215,14 @@ class Report:
         try:
             FILE = open(NAME_FILE, 'rb')
         except (IOError):
-            logging.critical("Can't read " + NAME_FILE + "-> Verify coverage and matching")
+            logging.info("Can't read " + NAME_FILE + "-> Verify coverage and matching")
         table = csv.reader(FILE, delimiter=CSV_DELIMITER)
         for code_place in table:
             try:
                 if (suppr_prefix(code_place[0]) in self._regions):
                     self._regions[suppr_prefix(code_place[0])].init_code(code_place)
             except(KeyError):
-                logging.critical("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error")
+                logging.info("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error")
         
     def init_liste_script(self):
         '''
@@ -246,7 +249,7 @@ class Report:
                     region.init_selected(node["Selected"])
                     self._tree = self._tree + [Node(node,region)]
             except(KeyError):
-                logging.critical("SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in selected codelets")
+                logging.info("SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in selected codelets")
         self.test_parent_tree()
         self.remove_loops()
         
@@ -258,7 +261,6 @@ class Report:
         if (len(self._tree) == 0):
             raise MyError("/selected_codelets empty")
         for node in self._tree:
-            print("Looking for {0} parent".format(node._region._name))
             if (node._parent is not "none"):
                 orphan = True
                 for parent in self._tree:
@@ -371,7 +373,7 @@ def encode_graph(graph_name):
         with open(cere_configure.cere_config["cere_measures_path"] + "/plots/" + graph_name, "rb") as f:
             graph = f.read()
     except (IOError):
-        logging.critical("Cannot find " + graph_name)
+        logging.info("Cannot find " + graph_name)
     else: return base64.standard_b64encode(graph)
 
 def percent(x):
