@@ -191,10 +191,11 @@ class Report:
                 line = infos.next()
             except (IOError):
                 pass
-            try:
-                self._regions[k].set_callcount(line[1])
-            except(KeyError):
-                logging.info("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
+            else:
+                try:
+                    self._regions[k].set_callcount(line[1])
+                except(KeyError):
+                    logging.info("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
         
     def init_invocation_table(self, graph):
         '''
