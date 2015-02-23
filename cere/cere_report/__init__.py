@@ -195,8 +195,8 @@ class Report:
                 try:
                     self._regions[k].set_callcount(line[1])
                 except(KeyError):
-                    logging.info("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
-        
+                    logging.debug("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
+
     def init_invocation_table(self, graph):
         '''
         Initialize the information about the different invocation of regions
@@ -206,7 +206,7 @@ class Report:
             try:
                 self._regions[suppr_prefix(d['_name'])].append_invocation_table(d['_invocations'])
             except(KeyError):
-                logging.info("INVOCATIONS: " + suppr_prefix(suppr_prefix(d['_name'])) + " not in graph")
+                logging.debug("INVOCATIONS: " + suppr_prefix(suppr_prefix(d['_name'])) + " not in graph")
         
     def init_codes(self):
         '''
@@ -223,7 +223,7 @@ class Report:
                 if (suppr_prefix(code_place[0]) in self._regions):
                     self._regions[suppr_prefix(code_place[0])].init_code(code_place)
             except(KeyError):
-                logging.info("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error")
+                logging.debug("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error")
         
     def init_liste_script(self):
         '''
@@ -284,13 +284,12 @@ class Report:
                 while node._parent != "none":
                     parent = self.get_node_by_id(node._parent, self._tree)
                     if parent._region._execError == "true":
-                        node = self.tmp_tree[node]
-                        granpa = self.get_node_by_id(parent._parent)
+                        granpa = self.get_node_by_id(parent._parent, self._tree)
                         node._parent = granpa._id if granpa != "none" else "none"
                     else:
                         node = parent
-                        if node not in self.tmp_tree: self.tmp_tree = self.tmp_tree + [node]
-                        else: break
+                    if node not in self.tmp_tree: self.tmp_tree = self.tmp_tree + [node]
+                    else:break
         self._tree = self.tmp_tree
 
     def get_node_by_id(self, _id, tree):
