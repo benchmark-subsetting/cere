@@ -40,9 +40,7 @@ def delete_useless_nodes():
     return True
 
 def update_nodes(graph, lines, max_allowed_error):
-    invocations = read_csv("{0}/invocations_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
     for line in lines:
-
         #for region_name, error in matching.iteritems():
         #find the node in the graph
         for n,d in graph.nodes(data=True):
@@ -55,6 +53,7 @@ def update_nodes(graph, lines, max_allowed_error):
                 else:
                     d['_valid'] = False
                 d['_error'] = float(line["Error"])
+                invocations = read_csv("{0}/invocations_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
                 for inv in invocations:
                     if suppr_prefix(inv["Codelet Name"]) in d['_name']:
                         d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],

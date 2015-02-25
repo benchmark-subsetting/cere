@@ -21,6 +21,7 @@ def init_module(subparsers, cere_plugins):
     profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
 
 def compute_error(n1, n2):
+    if n1 == 0 and n2 == 0: return 100
     return (abs(n1-n2)/max(n1, n2))*100
 
 class Region():
@@ -63,6 +64,7 @@ class Region():
     def measure_trace(self):
         res = cere_trace.run(self)
         if not res:
+            self.invivo_cycles = 0
             return False
         with open("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region)) as invivo:
             reader = csv.DictReader(invivo)
@@ -166,14 +168,14 @@ def run(args):
         res = region.measure_trace()
         if not res: 
             err=True
-            continue
+            #continue
         #Compute the coverage of this region
         region.compute_coverage()
         #We can clusterize invocations in performance classes
         res = region.clusterize_invocations()
         if not res:
             err=True
-            continue
+            #continue
         #Replay representative invocations
         res = region.replay_invocations()
         if not res: err=True

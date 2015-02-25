@@ -34,12 +34,11 @@ def parse_line(regex_list, line):
 def add_node(digraph, matchObj):
     _id = matchObj.group(1)
     name = matchObj.group(2)
-    tested = False
 
     try:
         coverage = float(matchObj.group(6))
     except IndexError:
-        coverage = 0.0
+        coverage = float(matchObj.group(4))
 
     if "__extracted__"  in name: valid = True
     else:
@@ -56,7 +55,7 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_matching'] = False
     digraph.node[_id]['_error'] = 100.0
     digraph.node[_id]['_valid'] = valid
-    digraph.node[_id]['_tested'] = tested
+    digraph.node[_id]['_tested'] = False
     digraph.node[_id]['_small'] = small
     digraph.node[_id]['_invivo'] = 0.0
     digraph.node[_id]['_invitro'] = 0.0

@@ -289,7 +289,7 @@ class Report:
                     else:
                         node = parent
                     if node not in self.tmp_tree: self.tmp_tree = self.tmp_tree + [node]
-                    else:break
+                    else: break
         self._tree = self.tmp_tree
 
     def get_node_by_id(self, _id, tree):
