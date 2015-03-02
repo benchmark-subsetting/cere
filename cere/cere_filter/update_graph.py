@@ -21,24 +21,6 @@ def read_csv(File):
     Dict = csv.DictReader(FILE, delimiter=',')
     return Dict
 
-def delete_useless_nodes():
-    graph = load_graph()
-    if graph == None:
-        logging.critical("No graph to load")
-        return False
-    parents=[]
-    childs=[]
-    for n, d in graph.nodes(data=True):
-        #We have to remove this node
-        if "__extracted__" not in d['_name']:
-            for successor in graph.successors(n):
-                for predecessor in graph.predecessors(n):
-                    graph.add_edge(predecessor, successor, weight=0)
-            graph.remove_node(n)
-    plot(graph, "final")
-    save_graph(graph)
-    return True
-
 def update_nodes(graph, lines, max_allowed_error):
     for line in lines:
         #for region_name, error in matching.iteritems():
@@ -59,6 +41,8 @@ def update_nodes(graph, lines, max_allowed_error):
                         d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
                           "Part":inv["Part"], "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
                           "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":float(inv["Error"])})
+                d['_tested'] = True
+                d['_to_test'] = False
     return graph
 
 def suppr_prefix(name):
@@ -102,20 +86,29 @@ def update(args):
                 in_degree = graph.in_degree(node, weight='weight')
                 #if all my parent's sons are not matching, transfert my coverage
                 for predecessor in graph.predecessors(node):
+                    for successor in graph.successors(predecessor):
+                        if graph.node[successor]['_matching'] or not graph.node[successor]['_tested']:
+                            cancel = True
+                            break
+                    if cancel or graph.node[node]['_transfered']: continue
                     part = float(graph.edge[predecessor][node]['weight'])/in_degree
                     graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
+                    graph.node[node]['_transfered'] = True
                     #Maybe this node is not small anymore
                     if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
                         graph.node[predecessor]['_small'] = False
-                if graph.predecessors(node):
-                    graph.node[node]['_self_coverage'] = 0
-                graph.node[node]['_tested'] = True
 
         newLoopsToTest = False
         with open(args.regions, 'w') as f:
             for n, d in graph.nodes(data=True):
+                cancel=False
                 if d['_valid'] and not d['_small'] and not d['_tested']:
+                    for successor in graph.successors(n):
+                        if not graph.node[successor]['_tested']:
+                            cancel = True
+                    if cancel: continue
                     newLoopsToTest = True
+                    d['_to_test']=True
                     f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
 
         plot(graph, step)

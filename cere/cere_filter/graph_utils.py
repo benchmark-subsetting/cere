@@ -11,10 +11,12 @@ def plot(g, step):
     for n,d in g.nodes(data=True):
         d["label"]="{} {} {} ({})".format(n, d['_name'], d['_self_coverage'], d['_coverage'])
         if not d['_valid'] or d['_small']: d["style"]="dotted"
-        else:
+        else: d["style"]="solid"
+        if d['_tested']:
             d["style"]="solid"
             if not d['_matching']: d['color']="red"
             else: d['color']="green"
+        if d['_to_test']: d['color']="orange"
     for u,v,d in g.edges(data=True):
         d["label"] = d["weight"]
     logging.info("Plot graph_{0}.pdf".format(step))

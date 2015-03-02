@@ -31,6 +31,25 @@ def parse_line(regex_list, line):
             break
     return matchObj, i
 
+def delete_useless_nodes(graph):
+    parents=[]
+    childs=[]
+    nodes = (list(reversed(nx.topological_sort(graph))))
+    step=0
+    for n in nodes:
+        #We have to remove this node
+        if not graph.node[n]['_valid']:
+            in_degree = graph.in_degree(n, weight='weight')
+            for predecessor in graph.predecessors(n):
+                part = float(graph.edge[predecessor][n]['weight'])/in_degree
+                graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[n]['_self_coverage'] * part
+                if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
+                    graph.node[predecessor]['_small'] = False
+                for successor in graph.successors(n):
+                    graph.add_edge(predecessor, successor, weight=graph.edge[predecessor][n]['weight']*(float(graph.edge[n][successor]['weight'])/in_degree))
+            graph.remove_node(n)
+    return True
+
 def add_node(digraph, matchObj):
     _id = matchObj.group(1)
     name = matchObj.group(2)
@@ -56,6 +75,8 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_error'] = 100.0
     digraph.node[_id]['_valid'] = valid
     digraph.node[_id]['_tested'] = False
+    digraph.node[_id]['_to_test'] = False
+    digraph.node[_id]['_transfered'] = False
     digraph.node[_id]['_small'] = small
     digraph.node[_id]['_invivo'] = 0.0
     digraph.node[_id]['_invitro'] = 0.0
@@ -150,13 +171,13 @@ def create_graph(min_coverage, force):
         digraph = remove_cycles(digraph, cycles[0])
         cycles = list(nx.simple_cycles(digraph))
 
+    plot(digraph, "original")
+
+    if not delete_useless_nodes(digraph):
+        return False
+
     plot(digraph, 0)
     save_graph(digraph)
-
-    #~ with open("{0}/loops".format(cere_configure.cere_config["cere_measures_path"]), 'w') as f:
-        #~ for n, d in digraph.nodes(data=True):
-            #~ if d['_valid'] and not d['_small'] and not d['_tested']:
-                #~ f.write(d['_name'].replace("extracted", "invivo")+"\n")
 
     logging.info('Create graph success')
     return True

@@ -6,7 +6,7 @@ import cere_configure
 import os
 from create_graph import create_graph
 import cere_test
-from update_graph import update, delete_useless_nodes
+from update_graph import update
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["filter"] = run
@@ -35,14 +35,10 @@ def run(args):
         return False
     if not create_graph(args.min_coverage/100, args.force):
         return False
-    #args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
-    #cere_test.run(args)
     #Find matching codelets
     if not update(args):
         return False
     #Select matching codelets with best coverage
-    if not delete_useless_nodes():
-        return False
     from granularity import *
     if not solve_with_best_granularity(args.max_error):
         return False
