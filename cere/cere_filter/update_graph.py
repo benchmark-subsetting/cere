@@ -103,7 +103,7 @@ def update(args):
                 if d['_valid'] and not d['_small'] and not d['_tested']:
                     for successor in graph.successors(n):
                         #if a successor is not tested yet, we don't test this region
-                        if not graph.node[successor]['_tested']:
+                        if not graph.node[successor]['_tested'] and not graph.node[successor]['_small']:
                             cancel = True
                     if cancel: continue
                     newLoopsToTest = True
