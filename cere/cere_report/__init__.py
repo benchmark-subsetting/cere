@@ -10,6 +10,7 @@ import argparse
 import jinja2
 import csv
 import base64
+import xmlrpclib 
 from contextlib import contextmanager
 
 CSV_DELIMITER = ','
@@ -81,8 +82,8 @@ class Region:
         self.init_graph()
     
     def init_graph(self):
-        self._graph_clustering = encode_graph("/{region}_byPhase.png".format(region=self._name.replace("extracted", "invivo")))
-        
+        self._graph_clustering = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/{region}_byPhase.png".format(region=self._name.replace("extracted", "invivo")))
+
     def set_callcount(self,callcount):
         self._callcount = callcount
         
@@ -134,6 +135,7 @@ class Report:
         self.init_tree()
         self.init_part()
         self.init_graph_error()
+        self.init_call_graph()
         self.init_javascript()
         
     def init_template(self):
@@ -253,7 +255,7 @@ class Report:
                 logging.info("SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in selected codelets")
         self.test_parent_tree()
         self.remove_loops()
-        
+
     def test_parent_tree(self):
         '''
         Verify for each child in tree that his parent is in the tree
@@ -312,7 +314,11 @@ class Report:
         '''
         Read bench_error.png
         '''
-        self._graph_error = encode_graph("/bench_error.png")
+        self._graph_error = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/bench_error.png")
+
+    def init_call_graph(self):
+        #self._call_graph = xmlrpclib.Binary( open(cere_configure.cere_config["cere_measures_path"] + "/graph_final.pdf").read() )
+        self._call_graph = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/graph_final.png")
 
     def init_javascript(self):
         '''
@@ -335,7 +341,7 @@ class Report:
         REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
                      regionlist=self._regions, regionfields=REGIONS_FIELDNAMES, tree = self._tree,
                      invocationfields=INVOCATION_FIELDNAMES, l_modes=self._liste_script,
-                     report_js=self.javascript, part=self._part, graph_error=self._graph_error))
+                     report_js=self.javascript, part=self._part, graph_error=self._graph_error, call_graph=self._call_graph))
         REPORT.close()
 
 @contextmanager
@@ -370,7 +376,7 @@ def encode_graph(graph_name):
     Read graph and encode this graph in base 64.
     '''
     try:
-        with open(cere_configure.cere_config["cere_measures_path"] + "/plots/" + graph_name, "rb") as f:
+        with open(graph_name, "rb") as f:
             graph = f.read()
     except (IOError):
         logging.info("Cannot find " + graph_name)

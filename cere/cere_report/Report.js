@@ -147,6 +147,3 @@ $("#navbar")[0].onclick = function (event) {
     change_view(event.target);
     change_view(event.target);
 }
-
-
- 

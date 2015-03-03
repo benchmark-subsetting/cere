@@ -127,10 +127,6 @@ def create_graph(min_coverage, force):
     run_cmd = cere_configure.cere_config["run_cmd"]
     build_cmd = cere_configure.cere_config["build_cmd"]
     logging.info('Start graph creation')
-    if os.path.isfile("{0}/graph.pkl".format(cere_configure.cere_config["cere_measures_path"])):
-        if not force:
-            logging.info('Keeping previous graph')
-            return True
 
     binary = which(run_cmd)
     if not binary:

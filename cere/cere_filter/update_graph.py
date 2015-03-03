@@ -58,6 +58,7 @@ def update(args):
     build_cmd = cere_configure.cere_config["build_cmd"]
     error = args.max_error
     args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
+    args.force = False
 
     logging.info("Start graph updating")
     graph = load_graph()
@@ -68,9 +69,10 @@ def update(args):
     step=0
     while(1):
         step = step + 1
-        #1) Something new?
-        lines = read_csv("{0}/matching_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
-        graph = update_nodes(graph, lines, error)
+        if step != 1:
+            #1) Something new?
+            lines = read_csv("{0}/matching_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+            graph = update_nodes(graph, lines, error)
 
         #2) rewind self to parents for invalid loops
         nodes = (list(reversed(nx.topological_sort(graph))))
@@ -85,18 +87,14 @@ def update(args):
                 if cancel: continue
                 in_degree = graph.in_degree(node, weight='weight')
                 #if all my parent's sons are not matching, transfert my coverage
+                if graph.node[node]['_transfered']: continue
                 for predecessor in graph.predecessors(node):
-                    for successor in graph.successors(predecessor):
-                        if graph.node[successor]['_matching'] or not graph.node[successor]['_tested']:
-                            cancel = True
-                            break
-                    if cancel or graph.node[node]['_transfered']: continue
                     part = float(graph.edge[predecessor][node]['weight'])/in_degree
                     graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
-                    graph.node[node]['_transfered'] = True
                     #Maybe this node is not small anymore
                     if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
                         graph.node[predecessor]['_small'] = False
+                graph.node[node]['_transfered'] = True
 
         newLoopsToTest = False
         with open(args.regions, 'w') as f:
@@ -104,6 +102,7 @@ def update(args):
                 cancel=False
                 if d['_valid'] and not d['_small'] and not d['_tested']:
                     for successor in graph.successors(n):
+                        #if a successor is not tested yet, we don't test this region
                         if not graph.node[successor]['_tested']:
                             cancel = True
                     if cancel: continue
@@ -111,11 +110,13 @@ def update(args):
                     d['_to_test']=True
                     f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
 
-        plot(graph, step)
-        save_graph(graph)
-
-        if not newLoopsToTest: break
+        if not newLoopsToTest:
+            plot(graph, "final")
+            save_graph(graph)
+            break
         else:
+            plot(graph, step)
+            save_graph(graph)
             cere_test.run(args)
 
     return True

@@ -39,7 +39,7 @@ def run(args):
     if not update(args):
         return False
     #Select matching codelets with best coverage
-    from granularity import *
+    from ilp_selector import *
     if not solve_with_best_granularity(args.max_error):
         return False
     return True

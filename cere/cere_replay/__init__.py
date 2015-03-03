@@ -16,10 +16,13 @@ def init_module(subparsers, cere_plugins):
     replay_parser.add_argument('--invocation', type=int, default=1, help="invocation to replay (Default 1)")
     replay_parser.add_argument('--noinstrumentation', type=bool, default=False, help="=If you don't want to instrument the region")
     replay_parser.add_argument('--norun', type=bool, default=False, help="=If you don't want to automatically run the region")
-    replay_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will re-dump any previous CERE dumps")
+    replay_parser.add_argument('--force', '-f', const=True, default=True, nargs='?', help="Will re-dump any previous CERE dumps")
 
 def run(args):
     cere_configure.init()
+    if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
+        logging.info("Keeping previous replay measures.")
+        return True
     if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) or args.force:
         #If the dump does not exist or we force the dump
         if not cere_dump.run(args):
