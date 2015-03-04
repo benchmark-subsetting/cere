@@ -50,6 +50,14 @@ def delete_useless_nodes(graph):
             graph.remove_node(n)
     return True
 
+def fix_self_coverage(graph, samples):
+    nodes = (list(reversed(nx.topological_sort(graph))))
+    for n in nodes:
+        in_degree = graph.in_degree(n, weight='weight')
+        out_degree = graph.out_degree(n, weight='weight')
+        graph.node[n]['_self_coverage'] = ((in_degree - out_degree)/float(samples))*100
+    return True
+
 def add_node(digraph, matchObj):
     _id = matchObj.group(1)
     name = matchObj.group(2)
@@ -141,7 +149,8 @@ def create_graph(min_coverage, force):
     #regular expression to parse the gperf tool output
     regex_list = [r'(N.*)\s\[label\=\"(.*?)\\n([0-9]*)\s\((.*)\%\)\\rof\s(.*)\s\((.*)\%\)\\r',
                   r'(N.*)\s\[label\=\"(.*)\\n([0-9]*)\s\((.*)\%\)\\r',
-                  r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,']
+                  r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,',
+                  r'Legend\s\[.*Total samples:\s([0-9]*).*\]']
 
     #Build again the application to be sure we give the right binary to pprof
     try:
@@ -153,12 +162,15 @@ def create_graph(min_coverage, force):
     cmd = subprocess.Popen("pprof -dot --edgefraction={0} {1} {2}".format(min_coverage, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
+    samples=0
     for line in cmd.stdout:
         matchObj, step = parse_line(regex_list, line)
-        if step < 2 :
+        if step < 2:
             digraph = add_node(digraph, matchObj)
-        elif step == 2 :
+        elif step == 2:
             digraph.add_edge(matchObj.group(1), matchObj.group(2), weight=int(matchObj.group(3)))
+        elif step == 3:
+            samples = int(matchObj.group(1))
         else:
             continue
 
@@ -170,6 +182,9 @@ def create_graph(min_coverage, force):
     plot(digraph, "original")
 
     if not delete_useless_nodes(digraph):
+        return False
+
+    if not fix_self_coverage(digraph, samples):
         return False
 
     plot(digraph, 0)
