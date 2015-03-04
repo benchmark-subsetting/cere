@@ -54,6 +54,7 @@ def fix_self_coverage(graph, samples):
     nodes = (list(reversed(nx.topological_sort(graph))))
     for n in nodes:
         in_degree = graph.in_degree(n, weight='weight')
+        if in_degree == 0: in_degree=samples
         out_degree = graph.out_degree(n, weight='weight')
         graph.node[n]['_self_coverage'] = ((in_degree - out_degree)/float(samples))*100
     return True
