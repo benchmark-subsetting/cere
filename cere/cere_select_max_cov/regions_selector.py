@@ -4,7 +4,7 @@ import sys
 import os
 import cPickle as pickle
 import networkx as nx
-from graph_utils import load_graph
+from common.graph_utils import load_graph
 import cere_configure
 import logging
 import csv

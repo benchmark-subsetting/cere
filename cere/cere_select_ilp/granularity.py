@@ -4,30 +4,30 @@ import sys
 import os
 import cPickle as pickle
 import networkx as nx
-from graph_utils import load_graph
+from common.graph_utils import load_graph
 import cere_configure
 import logging
 import csv
 from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, GLPK
 
-ROOT = os.path.dirname(os.path.realpath(__file__))
-ERROR_TABLE_FILENAME = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
+#~ ROOT = os.path.dirname(os.path.realpath(__file__))
+#~ ERROR_TABLE_FILENAME = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
 
-class Error_table:
-    def __init__(self):
-        self.table = []
-
-    def complete_error_table(self, error, chosen, graph):
-        coverage = 0
-        for codelet in chosen:
-            coverage = coverage + graph.node[codelet]['_self_coverage']
-        self.table = self.table + [[error,coverage]]
-
-    def write_table(self):
-        output = open(ERROR_TABLE_FILENAME,'w')
-        output.write("Error,Exec Time\n")
-        for c in self.table:
-            output.write(str(c[0]) + "," + str(c[1]) + "\n")
+#~ class Error_table:
+    #~ def __init__(self):
+        #~ self.table = []
+#~ 
+    #~ def complete_error_table(self, error, chosen, graph):
+        #~ coverage = 0
+        #~ for codelet in chosen:
+            #~ coverage = coverage + graph.node[codelet]['_coverage']
+        #~ self.table = self.table + [[error,coverage]]
+#~ 
+    #~ def write_table(self):
+        #~ output = open(ERROR_TABLE_FILENAME,'w')
+        #~ output.write("Error,Exec Time\n")
+        #~ for c in self.table:
+            #~ output.write(str(c[0]) + "," + str(c[1]) + "\n")
 
 class Unsolvable(Exception):
     pass
@@ -53,10 +53,10 @@ def solve_under_coverage(graph, min_coverage=80):
             cat=LpInteger)
 
     # Objective function:
-    prob += lpSum([codelet_vars[n]*d['_self_coverage'] for n,d in graph.nodes(data=True)])
+    prob += lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)])
 
     # and with good coverage
-    prob += (lpSum([codelet_vars[n]*d['_self_coverage'] for n,d in graph.nodes(data=True)]) >= min_coverage)
+    prob += (lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)]) >= min_coverage)
 
     # selected codelets should match
     for n,d in graph.nodes(data=True):
@@ -119,20 +119,20 @@ def solve_with_best_granularity(error):
 
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
 
-    table = Error_table()
+    #~ table = Error_table()
     target_error_chosen = set()
     try:
         chosen, coverage = solve(graph)
 
-        table.complete_error_table(error, chosen, graph)
+        #~ table.complete_error_table(error, chosen, graph)
         print >>sys.stderr, "Solved with coverage >= %s" % coverage
         target_error_chosen = chosen
     except(Unsolvable):
         print >>sys.stderr, "Solution impossible"
-        table.complete_error_table(error, set(), graph)
+        #~ table.complete_error_table(error, set(), graph)
 
     output_tree(graph, target_error_chosen)
-    table.write_table()
+    #~ table.write_table()
     for c in target_error_chosen:
-        print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_self_coverage'])
+        print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_coverage'])
     return True

@@ -5,6 +5,7 @@ import sys
 import cPickle as pickle
 import networkx as nx
 import cere_configure
+from common.graph_utils import *
 import logging
 import argparse
 import jinja2
@@ -415,13 +416,6 @@ def read_code(code_place):
         raise MyError("Can't open: "+code_place[2])
         pass
     return Code(fileExtension, code, code_place[4])
-
-def load_graph():
-    logging.info('Loading graph...')
-    graph = None
-    with open("{0}/graph.pkl".format(cere_configure.cere_config["cere_measures_path"]), 'rb') as input:
-        graph = pickle.load(input)
-    return graph
 
 def run(args):
     logging.info('CERE Report')

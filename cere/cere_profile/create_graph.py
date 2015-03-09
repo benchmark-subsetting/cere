@@ -8,7 +8,7 @@ import logging
 import cPickle as pickle
 import networkx as nx
 import matplotlib.pyplot as plt
-from graph_utils import plot, save_graph
+from common.graph_utils import plot, save_graph
 
 def which(program):
     def is_exe(fpath):
@@ -132,7 +132,7 @@ def remove_cycles(digraph, cycle):
             digraph.add_edge(toKeep, child['id'], weight=w)
     return digraph
 
-def create_graph(min_coverage, force):
+def create_graph(force):
     run_cmd = cere_configure.cere_config["run_cmd"]
     build_cmd = cere_configure.cere_config["build_cmd"]
     logging.info('Start graph creation')
@@ -160,7 +160,7 @@ def create_graph(min_coverage, force):
         logging.critical(str(err))
         logging.critical(err.output)
         return False
-    cmd = subprocess.Popen("pprof -dot --edgefraction={0} {1} {2}".format(min_coverage, binary, profile_file), shell=True, stdout=subprocess.PIPE)
+    cmd = subprocess.Popen("pprof -dot {0} {1}".format(binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
     samples=0
@@ -189,7 +189,7 @@ def create_graph(min_coverage, force):
         #return False
 
     plot(digraph, 0)
-    save_graph(digraph)
+    save_graph(digraph, "original")
 
     logging.info('Create graph success')
     return True

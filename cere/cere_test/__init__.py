@@ -42,7 +42,7 @@ class Region():
         #There is two way of computing coverage
         #1) If we have gperftool results:
         if os.path.isfile("{0}/graph.pkl".format(cere_configure.cere_config["cere_measures_path"])):
-            from cere_filter.graph_utils import load_graph
+            from common.graph_utils import load_graph
             import networkx as nx
             graph = load_graph()
             if graph:

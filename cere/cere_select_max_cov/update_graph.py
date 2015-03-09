@@ -6,7 +6,7 @@ import csv
 import cPickle as pickle
 import networkx as nx
 import subprocess
-from graph_utils import *
+from common.graph_utils import *
 import cere_configure
 import cere_test
 import logging
@@ -61,7 +61,7 @@ def update(args):
     args.force = False
 
     logging.info("Start graph updating")
-    graph = load_graph()
+    graph = load_graph("original")
     if graph == None:
         logging.critical("No graph to load")
         return False

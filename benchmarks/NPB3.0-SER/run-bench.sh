@@ -13,6 +13,6 @@ for bench in LU CG EP FT IS MG SP BT; do
     BUILD_COMMAND="make CLASS=${CLASS}"
     python ../../../cere configure --build_cmd="$BUILD_COMMAND" --run_cmd="$RUN_COMMAND"
     python ../../../cere profile
-    python ../../../cere filter
+    python ../../../cere select-max-cov
     python ../../../cere report
 done
