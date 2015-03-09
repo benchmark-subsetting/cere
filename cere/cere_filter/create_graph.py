@@ -185,8 +185,8 @@ def create_graph(min_coverage, force):
     if not delete_useless_nodes(digraph):
         return False
 
-    if not fix_self_coverage(digraph, samples):
-        return False
+    #if not fix_self_coverage(digraph, samples):
+        #return False
 
     plot(digraph, 0)
     save_graph(digraph)
