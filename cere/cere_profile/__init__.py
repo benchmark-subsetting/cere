@@ -7,6 +7,8 @@ import cere_configure
 import logging
 import shutil
 import argparse
+import common.variables as var
+from create_graph import create_graph
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["profile"] = run
@@ -34,7 +36,7 @@ def measure_application(run_cmd, build_cmd, measures_path, force):
             logging.info('Keeping previous application cycles')
             return True
     try:
-        logging.info(subprocess.check_output("{0} MODE=\"original --instrument\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --lib={1} --wrapper={2}\" -B".format(build_cmd, var.RDTSC_LIB, var.RDTSC_WRAPPER), stderr=subprocess.STDOUT, shell=True))
         logging.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logging.critical(str(err))
@@ -57,7 +59,6 @@ def instrument_application(run_cmd, build_cmd, measures_path, force):
         if not force:
             logging.info('Keeping previous instrumentation')
             return True
-    
     try:
         logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
         logging.info(subprocess.check_output("CPUPROFILE={0}/app.prof {1}".format(measures_path, run_cmd), stderr=subprocess.STDOUT, shell=True))
@@ -68,4 +69,5 @@ def instrument_application(run_cmd, build_cmd, measures_path, force):
         logging.critical("Instrumentation failed: No output file")
         return False
     logging.info('Instrumentation success')
+    create_graph(force)
     return True

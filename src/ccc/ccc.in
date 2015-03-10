@@ -6,6 +6,8 @@ import argparse
 from lec import lec
 from lel import lel
 
+#~ PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/.."))
+#~ RDTSC = PROJECT_ROOT + "/rdtsc/librdtsc.a"
 VERSION = "@PACKAGE_VERSION@"
 
 option_forbidden = set([("dump", "--trace"),
@@ -57,7 +59,8 @@ def init_subpars(parser, region_required):
                         const=True, default=False)
     parser.add_argument('--instrument-app', action=OptAction, nargs=0,
                         const=True, default=False)
-    parser.add_argument('--tool', action=OptAction, default="rdtsc")
+    parser.add_argument('--lib', action=OptAction, default="")
+    parser.add_argument('--wrapper', action=OptAction, default="")
     parser.add_argument('-o')
     parser.add_argument('-c', action=OptAction, nargs=0,
                         const=True, default=False)

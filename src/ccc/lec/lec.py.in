@@ -78,9 +78,6 @@ def replay_fun(mode_opt, BASE):
     if (mode_opt.instrument):
         print "Instrumentation mode"
         temp_instr = "--instrument-loop=" + mode_opt.region + " "
-        if(mode_opt.tool):
-            print("Using {0} for instrumentation".format(mode_opt.tool))
-            temp_instr = temp_instr + "--tool=" + mode_opt.tool + " "
         if(mode_opt.trace):
             print "Trace mode"
             temp_instr = (temp_instr + "--trace ")
@@ -135,7 +132,7 @@ def original_fun(mode_opt, BASE):
         if(mode_opt.trace or mode_opt.invocation):
             fail_lec("Can't trace or measure specific invocation with --regions-files")
     if(mode_opt.instrument):
-        instru_opts = instru_opts + "--tool=" + mode_opt.tool + " "
+        #~ instru_opts = instru_opts + "--tool=" + mode_opt.tool + " "
         if(mode_opt.instrument_app):
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,

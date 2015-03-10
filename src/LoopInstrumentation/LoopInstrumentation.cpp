@@ -22,10 +22,6 @@ enum{VIVO, VITRO};
 STATISTIC(LoopCounter, "Counts number of loops instrumented");
 
 static cl::opt<std::string>
-Tool("tool", cl::init("rdtsc"),
-                  cl::value_desc("String"),
-                  cl::desc("Tool name to instrument the region(rdtsc, likwid...)"));
-static cl::opt<std::string>
 IsolateLoop("instrument-loop", cl::init("all"),
                   cl::value_desc("loopname"),
                   cl::desc("loop-instrument will only instrument this region"));
@@ -65,7 +61,6 @@ namespace {
     std::string Loopname;
     std::string separator;
     std::string Loopfile;
-    std::string InstruTool;
     std::string LoopToTrace;
     int Mode;
     int invoc;
@@ -75,7 +70,7 @@ namespace {
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), InstruTool(Tool), LoopToTrace(TraceLoop), Mode(mode), invoc(Invocation), measureAppli(AppMeasure) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), invoc(Invocation), measureAppli(AppMeasure) {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -131,7 +126,6 @@ FunctionType* createFunctionType(Module* mod)
     PointerType* PointerTy_5 = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
  
     std::vector<Type*>FuncTy_6_args;
-    FuncTy_6_args.push_back(PointerTy_4); //char* for the instrumentation tool
     FuncTy_6_args.push_back(PointerTy_5); //char* for the regionName
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
@@ -164,22 +158,7 @@ Function* createFunction(FunctionType* FuncTy_0, Module* mod, std::string name)
 
 std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* mod, std::string newFunctionName, LoadInst* int32_39)
 {
-    //Tool
-    Constant *param_name_tool = ConstantDataArray::getString(mod->getContext(), InstruTool, true); //get Tool
-    GlobalVariable* gvar_array__str_tool = new GlobalVariable(/*Module=*/*mod,
-    /*Type=*/param_name_tool->getType(),
-    /*isConstant=*/true,
-    /*Linkage=*/GlobalValue::PrivateLinkage,
-    /*Initializer=*/0, // has initializer, specified below
-    /*Name=*/".str");
-    gvar_array__str_tool->setAlignment(1);
 
-    ConstantInt* const_int32_9 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-    std::vector<Constant*> const_ptr_10_indices;
-    const_ptr_10_indices.push_back(const_int32_9);
-    const_ptr_10_indices.push_back(const_int32_9);
-    Constant* const_ptr_10 = ConstantExpr::getGetElementPtr(gvar_array__str_tool, const_ptr_10_indices);
-    
     //LoopName
     Constant *param_name = ConstantDataArray::getString(mod->getContext(), newFunctionName, true); //get current function name
     GlobalVariable* gvar_array__str = new GlobalVariable(/*Module=*/*mod,
@@ -210,9 +189,8 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
 
     // Global Variable Definitions
     gvar_array__str->setInitializer(param_name);
-    gvar_array__str_tool->setInitializer(param_name_tool);
+
     std::vector<Value*> void_16_params;
-    void_16_params.push_back(const_ptr_10); //Tool
     void_16_params.push_back(const_ptr_11); //LoopName
     void_16_params.push_back(const_int1_11); //Trace boolean
     void_16_params.push_back(const_int); //Global measure boolean
@@ -221,30 +199,6 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
         void_16_params.push_back(const_int32_21);
     else
         void_16_params.push_back(int32_39);
-    return void_16_params;
-}
-
-std::vector<Value*> LoopRDTSCInstrumentation::createInitParameters(Module* mod)
-{
-    //Tool
-    Constant *param_name_tool = ConstantDataArray::getString(mod->getContext(), InstruTool, true); //get Tool
-    GlobalVariable* gvar_array__str_tool = new GlobalVariable(/*Module=*/*mod,
-    /*Type=*/param_name_tool->getType(),
-    /*isConstant=*/true,
-    /*Linkage=*/GlobalValue::PrivateLinkage,
-    /*Initializer=*/0, // has initializer, specified below
-    /*Name=*/".str");
-    gvar_array__str_tool->setAlignment(1);
-
-    ConstantInt* const_int32_9 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-    std::vector<Constant*> const_ptr_10_indices;
-    const_ptr_10_indices.push_back(const_int32_9);
-    const_ptr_10_indices.push_back(const_int32_9);
-    Constant* const_ptr_10 = ConstantExpr::getGetElementPtr(gvar_array__str_tool, const_ptr_10_indices);
-
-    gvar_array__str_tool->setInitializer(param_name_tool);
-    std::vector<Value*> void_16_params;
-    void_16_params.push_back(const_ptr_10); //Tool
     return void_16_params;
 }
 
@@ -298,8 +252,6 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
     if(Mode == VIVO) { //Not replaying a loop so we have to insert init in main function
         std::vector<Type*>FuncTy_8_args;
 
-        PointerType* PointerTy_0 = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
-        FuncTy_8_args.push_back(PointerTy_0);
         FunctionType* FuncTy_8 = FunctionType::get(
                         /*Result=*/Type::getVoidTy(mod->getContext()),
                         /*Params=*/FuncTy_8_args,
@@ -335,14 +287,14 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                     }
                 }
             }
-            std::vector<Value*> funcParameter = createInitParameters(mod);
+            //~ std::vector<Value*> funcParameter = createInitParameters(mod);
             Function *initFunction = mod->getFunction("cere_markerInit");
             if(!initFunction) {
                 Function *initFunction = Function::Create(FuncTy_8,
                                 GlobalValue::ExternalLinkage,
                                 "cere_markerInit",
                                 mod);
-                CallInst::Create(initFunction, funcParameter, "", &firstBB->front());
+                CallInst::Create(initFunction, "", &firstBB->front());
                 DEBUG(dbgs() << "Init successfuly inserted in main function\n");
             }
             Function *closeFunction = mod->getFunction("cere_markerClose");
@@ -352,7 +304,7 @@ bool LoopRDTSCInstrumentation::runOnFunction(Function &F)
                                 "cere_markerClose",
                                 mod);
                 for (std::vector<BasicBlock*>::iterator I = ReturningBlocks.begin(), E = ReturningBlocks.end(); I != E; ++I) {
-                    CallInst::Create(closeFunction, funcParameter, "", &(*I)->back());
+                    CallInst::Create(closeFunction, "", &(*I)->back());
                 }
                 DEBUG(dbgs() << "Close successfuly inserted in main function\n");
             }

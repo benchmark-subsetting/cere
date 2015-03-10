@@ -7,7 +7,7 @@ function do_test()
     LD_BIND_NOW=1 ./BT
 
     make clean
-    make -j4 INVITRO_CALL_COUNT=2 MODE="replay --region=__extracted__verify_verify__265" INSTRU="--instrument"
+    make -j4 INVITRO_CALL_COUNT=2 MODE="replay --region=__extracted__verify_verify__265 --instrument --lib=../../src/rdtsc/librdtsc.a --wrapper=../../src/ccc/lel/librdtsc_wrapper.a"
     ./BT
 
     rm -rf "$TMPDIR"

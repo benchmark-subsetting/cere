@@ -10,6 +10,7 @@ import cere_configure
 import cere_dump
 import cere_replay
 import cere_trace
+import common.variables as var
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
@@ -31,6 +32,8 @@ class Region():
         self.invocation=1
         self.norun = False
         self.noinstrumentation = False
+        self.lib=var.RDTSC_LIB
+        self.wrapper=var.RDTSC_WRAPPER
         self.force = f
         self.invocations_data = []
         self.invitro_cycles=0.
@@ -39,17 +42,16 @@ class Region():
         self.coverage = 0.
 
     def compute_coverage(self):
-        #There is two way of computing coverage
+        #There is two ways of computing coverage
         #1) If we have gperftool results:
-        if os.path.isfile("{0}/graph.pkl".format(cere_configure.cere_config["cere_measures_path"])):
-            from common.graph_utils import load_graph
-            import networkx as nx
-            graph = load_graph()
-            if graph:
-                for n, d in graph.nodes(data=True):
-                    if d['_name'] == self.region.replace("invivo", "extracted"):
-                        self.coverage = float(d['_self_coverage'])
-                        return
+        from common.graph_utils import load_graph
+        import networkx as nx
+        graph = load_graph()
+        if graph:
+            for n, d in graph.nodes(data=True):
+                if d['_name'] == self.region.replace("invivo", "extracted"):
+                    self.coverage = float(d['_self_coverage'])
+                    return
         #2) Compute the coverage manually
         elif os.path.isfile("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])):
             with open("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])) as app:
@@ -112,10 +114,19 @@ class Region():
                     err=True
                     invitro_cycles = 0.
                 else:
-                    with open("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)) as invitro:
-                        reader = csv.DictReader(invitro)
-                        for row in reader:
-                            invitro_cycles = float(row["CPU_CLK_UNHALTED_CORE"]) / float(row["Call Count"])
+                    try:
+                        if not os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)):
+                            shutil.move("rdtsc_result.csv", "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation))
+                    except IOError as err:
+                        logging.critical(str(err))
+                        logging.critical("No results file. Maybe replay failed for {0} invocation {1}".format(self.region, self.invocation))
+                        err=True
+                        invitro_cycles = 0.
+                    else:
+                        with open("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)) as invitro:
+                            reader = csv.DictReader(invitro)
+                            for row in reader:
+                                invitro_cycles = float(row["CPU_CLK_UNHALTED_CORE"]) / float(row["Call Count"])
                 matching_err = compute_error(invitro_cycles, float(infos[2]))
                 #Aggregate invocations cycles, needed to compute invitro measure for the codelet
                 self.invitro_cycles = self.invitro_cycles + invitro_cycles * float(infos[1])

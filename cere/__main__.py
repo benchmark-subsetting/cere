@@ -11,7 +11,7 @@ import cere_replay
 import cere_test
 import cere_select_max_cov
 import cere_select_ilp
-import cere_measure
+import cere_instrument
 import cere_trace
 import cere_regions
 import cere_sanity_check
@@ -37,7 +37,7 @@ cere_replay.init_module(subparsers, cere_plugins)
 cere_test.init_module(subparsers, cere_plugins)
 cere_select_max_cov.init_module(subparsers, cere_plugins)
 cere_select_ilp.init_module(subparsers, cere_plugins)
-cere_measure.init_module(subparsers, cere_plugins)
+cere_instrument.init_module(subparsers, cere_plugins)
 cere_trace.init_module(subparsers, cere_plugins)
 cere_sanity_check.init_module(subparsers, cere_plugins)
 cere_regions.init_module(subparsers, cere_plugins)

@@ -43,14 +43,12 @@ def user_main(FILE, LOOP, mode_opt):
     # Define by default TIMEOUT_SECONDS to 60
     TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
     # Define by default CALL_COUNT to 11
-    if (mode_opt.tool == "rdtsc"):
-        INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
-    else: INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 10)
+    INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 11)
     temp_init=""
     temp_close=""
     if (mode_opt.instrument):
-        temp_init = "cere_markerInit(\"{0}\");\n".format(mode_opt.tool)
-        temp_close = "cere_markerClose(\"{0}\");\n".format(mode_opt.tool)
+        temp_init = "cere_markerInit();\n"
+        temp_close = "cere_markerClose();\n"
     TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
     template = TEMPLATE.read()
     TEMPLATE.close()
@@ -63,35 +61,6 @@ def create_user_main(mode_opt,LOOP):
     MAIN=open('realmain.c','w')
     user_main(MAIN, LOOP, mode_opt)
     MAIN.close()
-
-def instrumentation(INSTRU, mode_opt):
-    cere_init=""
-    cere_close=""
-    cere_start=""
-    cere_stop=""
-    if (mode_opt.tool == "rdtsc"):
-        cere_init="rdtsc_markerInit();\n"
-        cere_close="rdtsc_markerClose();\n"
-        cere_start="rdtsc_markerStartRegion(regName, trace, global);\n"
-        cere_stop="rdtsc_markerStopRegion(regName, trace, global);\n"
-    elif(mode_opt.tool == "likwid"):
-        cere_init="likwid_markerInit();\n"
-        cere_close="likwid_markerClose();\n"
-        cere_start="likwid_markerStartRegion(regName);\n"
-        cere_stop="likwid_markerStopRegion(regName);\n"
-    else:
-        fail_lel("Unknown tool {0}".format(mode_opt.tool))
-    TEMPLATE = open("{root}/instrumentation_wrapper.c".format(root=ROOT), "r")
-    template = TEMPLATE.read()
-    TEMPLATE.close()
-    INSTRU.write(template.format(cere_init=cere_init, cere_close=cere_close,
-                        cere_start=cere_start, cere_stop=cere_stop))
-
-def create_instrumentation_wrapper(mode_opt):
-    safe_system("rm -f instrumentation_wrapper.c")
-    INSTRU=open('instrumentation_wrapper.c', 'w')
-    instrumentation(INSTRU, mode_opt)
-    INSTRU.close()
 
 def compile_memory_dump_objects(DIR):
     DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
@@ -126,17 +95,6 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
     LOOP=mode_opt.region
     INVOCATION=mode_opt.invocation
-    instru_wrapper=""
-    if (mode_opt.instrument):
-        create_instrumentation_wrapper(mode_opt)
-        if (mode_opt.tool == "rdtsc"):
-            COMPIL_OPT = COMPIL_OPT + " " + PROJECT_ROOT + RDTSC + " "
-        elif(mode_opt.tool == "likwid"):
-            COMPIL_OPT = COMPIL_OPT + " " + LIKWID + " "
-        else:
-            fail_lel("Unknown tool {0}".format(mode_opt.tool))
-        safe_system(LD + " -c instrumentation_wrapper.c")
-        instru_wrapper = "instrumentation_wrapper.o"
     if(not INVOCATION):
         INVOCATION=1
     DIR="cere_dumps/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
@@ -151,11 +109,11 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     safe_system(LD + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
-        f.write(("{opts} -o {binary} objs.o realmain.o {wrapper} {args} " +
+        f.write(("{opts} -o {binary} objs.o realmain.o {wrapper} {lib} {args} " +
                 "-L {Root}{libs} -lload -Wl," +
                 "--rpath={Root}{libs} -ldl\n").format(
-                ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT,
-                Root=PROJECT_ROOT,libs=MEMORYDUMP,wrapper=instru_wrapper))
+                ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
+                libs=MEMORYDUMP, lib=mode_opt.lib, wrapper=mode_opt.wrapper))
         f.flush()
         safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
     safe_system(("{root}/staticpatcher.py {dump_dir}/lel_bin {binary} " +
@@ -172,15 +130,8 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
         safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
     elif(mode_opt.instrument):
-        INSTRU=""
-        create_instrumentation_wrapper(mode_opt)
-        if (mode_opt.tool == "rdtsc"):
-            INSTRU = PROJECT_ROOT + RDTSC + " "
-        elif(mode_opt.tool == "likwid"):
-            INSTRU = LIKWID + " "
-        safe_system(LD + " -c instrumentation_wrapper.c")
-        safe_system(("{ld} -o {binary} instrumentation_wrapper.o {opts} {instru}").format(ld=LD,
-                binary=BINARY, opts=COMPIL_OPT, instru=INSTRU))
+        safe_system(("{ld} -o {binary} {opts} {wrapper} {lib}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT, lib=mode_opt.lib, wrapper=mode_opt.wrapper))
     else:
         safe_system(("{ld} -o {binary} {opts}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT))

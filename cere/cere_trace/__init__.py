@@ -7,6 +7,7 @@ import argparse
 import logging
 import subprocess
 import cere_configure
+import common.variables as var
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["trace"] = run
@@ -22,7 +23,7 @@ def run(args):
     or args.force:
         logging.info("Compiling trace mode for region {0}".format(args.region))
         try:
-            logging.debug(subprocess.check_output("{0} MODE=\"original --region={1} --instrument --trace\" -B".format(cere_configure.cere_config["build_cmd"], args.region), stderr=subprocess.STDOUT, shell=True))
+            logging.debug(subprocess.check_output("{0} MODE=\"original --region={1} --instrument --trace --lib={2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, var.RDTSC_LIB, var.RDTSC_WRAPPER), stderr=subprocess.STDOUT, shell=True))
         except subprocess.CalledProcessError as err:
             logging.critical(str(err))
             logging.critical(err.output)
