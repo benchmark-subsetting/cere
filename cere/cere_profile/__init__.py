@@ -58,6 +58,7 @@ def instrument_application(run_cmd, build_cmd, measures_path, force):
     if os.path.isfile("{0}/app.prof".format(measures_path)):
         if not force:
             logging.info('Keeping previous instrumentation')
+            create_graph(force)
             return True
     try:
         logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
