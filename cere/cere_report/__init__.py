@@ -53,7 +53,7 @@ class Code:
         return self._script
 
 class Region:
-    def __init__(self, region):
+    def __init__(self, region, graph):
         '''
         Initialize the Region
         name: Region name
@@ -78,21 +78,46 @@ class Region:
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
         self._callcount = 0
         self._selected = "false"
-        self._tooSmall = "false"
+        if region['_small']:
+            self._tooSmall = "true"
+        else: self._tooSmall = "false"
         self._execError = "false"
         self.init_graph()
-    
+        self.init_call_graph(graph)
+
+    def plot_call_graph(self, g):
+        for n,d in g.nodes(data=True):
+            d["label"]="{} {} {} ({})".format(n, d['_name'], d['_self_coverage'], d['_coverage'])
+            if not d['_valid'] or d['_small']: d["style"]="dotted"
+            else: d["style"]="solid"
+            if d['_tested']:
+                d["style"]="solid"
+                if not d['_matching']: d['color']="red"
+                else: d['color']="green"
+            if d['_to_test']: d['color']="orange"
+            if d['_name'] == self._name: d['style']="filled"
+        nx.write_dot(g,"{0}/plots/graph_{1}.dot".format(cere_configure.cere_config["cere_measures_path"], self._name))
+        try:
+            logging.info(subprocess.check_output("dot -Tpng {0}/plots/graph_{1}.dot -o {0}/plots/graph_{1}.png".format(cere_configure.cere_config["cere_measures_path"], self._name), stderr=subprocess.STDOUT, shell=True))
+        except subprocess.CalledProcessError as err:
+            logging.info("Can't create call graph fo region {0}".format(self._name))
+            logging.info(str(err))
+            logging.info(err.output)
+
     def init_graph(self):
-        self._graph_clustering = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/{region}_byPhase.png".format(region=self._name.replace("extracted", "invivo")))
+        if self._tooSmall == "false":
+            self._graph_clustering = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/{region}_byPhase.png".format(region=self._name.replace("extracted", "invivo")))
+
+    def init_call_graph(self, graph):
+        if self._tooSmall == "false":
+            self.plot_call_graph(graph)
+            self._call_graph = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/graph_{0}.png".format(self._name))
 
     def set_callcount(self,callcount):
         self._callcount = callcount
         
     def append_invocation_table(self,inv):
         self._inv_table = inv
-        #~ self._inv_table +[ {"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
-                          #~ "Part":inv["Part"], "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
-                          #~ "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":float(inv["Error"])}]
         
     def init_code(self, code_place):
         self._code = read_code(code_place)
@@ -136,7 +161,6 @@ class Report:
         self.init_tree()
         self.init_part()
         self.init_graph_error()
-        self.init_call_graph()
         self.init_javascript()
         
     def init_template(self):
@@ -174,7 +198,7 @@ class Report:
         '''
         self._regions = {}
         for n,d in graph.nodes(data=True):
-            self._regions[suppr_prefix(d['_name'])] = Region(d)
+            self._regions[suppr_prefix(d['_name'])] = Region(d, graph)
         self.init_callcount()
         for k,r in self._regions.iteritems():
             if r._table["Error (%)"] == 100:
@@ -317,10 +341,6 @@ class Report:
         '''
         self._graph_error = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/bench_error.png")
 
-    def init_call_graph(self):
-        #self._call_graph = xmlrpclib.Binary( open(cere_configure.cere_config["cere_measures_path"] + "/graph_final.pdf").read() )
-        self._call_graph = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/graph_final.png")
-
     def init_javascript(self):
         '''
         Read javascript file : Report/Report.js
@@ -329,7 +349,7 @@ class Report:
             with file(ROOT + '/Report.js') as jsf:
                 self.javascript=jsf.read()
         except (IOError):
-            raise MyError("Cannot find Report.js")
+            raise MyError("Can't find Report.js")
 
     def write_report(self):
         '''
@@ -338,11 +358,11 @@ class Report:
         try:
             REPORT=open(self._bench+'.html','w')
         except (IOError):
-            raise MyError("Cannot open "+ self._bench +".html")
+            raise MyError("Can't open "+ self._bench +".html")
         REPORT.write(self._template.render(bench=self._bench, root=ROOT, nb_cycles=self._nb_cycles,
                      regionlist=self._regions, regionfields=REGIONS_FIELDNAMES, tree = self._tree,
                      invocationfields=INVOCATION_FIELDNAMES, l_modes=self._liste_script,
-                     report_js=self.javascript, part=self._part, graph_error=self._graph_error, call_graph=self._call_graph))
+                     report_js=self.javascript, part=self._part, graph_error=self._graph_error))
         REPORT.close()
 
 @contextmanager
@@ -354,13 +374,16 @@ def context(DIR):
     TEMP_DIR = os.getcwd()
     if(os.chdir(DIR)):
         exit("Error Report -> Can't find " + DIR)
-    os.system(ROOT + "/../../src/granularity/graph_error.R")
+    if not os.path.isfile("{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])):
+        logging.info("Can't find {0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+    else:
+        os.system(ROOT + "/../../src/granularity/graph_error.R")
     #try:
     yield
     #except MyError as err:
     #    exit("Error Report -> " + err.value)
     #else:
-    print ("Report created")
+    logging.info("Report created")
     os.chdir(TEMP_DIR)
 
 def read_csv(File):
@@ -380,7 +403,7 @@ def encode_graph(graph_name):
         with open(graph_name, "rb") as f:
             graph = f.read()
     except (IOError):
-        logging.info("Cannot find " + graph_name)
+        logging.info("Can't find " + graph_name)
     else: return base64.standard_b64encode(graph)
 
 def percent(x):

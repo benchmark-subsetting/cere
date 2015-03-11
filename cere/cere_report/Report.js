@@ -25,7 +25,7 @@ function init() {
     //initialise the correspondant region
     first_call();
     //initialise the view
-    change_view("default");
+    change_view($('.nav li.active > a'));
 }
 
 //remove whitespace after and before text code
@@ -35,7 +35,8 @@ function suppr_whitespace(string) {
 
 function set_image(image,nb_invoc) {
     // if nb_invocation different of 1 initialise image
-    if (nb_invoc > 1) {
+    var tab = (image.parentNode.getAttribute('data-name'));
+    if (nb_invoc > 1 || tab == "Call_graph") {
         source = "data:image/png;base64," + image.getAttribute("data");
         image.setAttribute('src', source);
     }
@@ -94,17 +95,10 @@ function show_hidden () {
 //change view to the wanted tab
 function change_view(nav){
     var navs = $("#navbar > li");
-    if (nav =="default")
-        nav = navs[0].firstChild;
-    if (nav == navs[1].firstChild)
+    view = nav.attr('data-nav')
+    if (view == "Code") {
         center_code();
-    view = nav.getAttribute("data-nav");
-    navs.each(function() {
-        if(this == nav.parentNode)
-            this.className = "active";
-        else
-            this.className = "";
-    });
+    }
     show_hidden();
 }
 
@@ -136,14 +130,15 @@ table[0].onclick = function (event) {
             }
         $("tr.bg-info").removeClass("bg-info");
         $(row).toggleClass("bg-info");
-        change_view("default");
+        change_view($('.nav li.active > a'));
+        change_view($('.nav li.active > a'))
+        change_view($('.nav li.active > a'))
     }
 }
 
-//manage click on navigation menu
-$("#navbar")[0].onclick = function (event) {
-    change_view(event.target);
-    //Call 3 times this function fix graphics bug
-    change_view(event.target);
-    change_view(event.target);
-}
+$('.nav li').click(function(){
+    $(this).addClass('active').siblings().removeClass('active');
+    change_view($('.nav li.active > a'))
+    change_view($('.nav li.active > a'))
+    change_view($('.nav li.active > a'))
+})
