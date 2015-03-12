@@ -36,7 +36,8 @@ function suppr_whitespace(string) {
 function set_image(image,nb_invoc) {
     // if nb_invocation different of 1 initialise image
     var tab = (image.parentNode.getAttribute('data-name'));
-    if (nb_invoc > 1 || tab == "Call_graph") {
+    if (tab == "Call_graph") return;
+    if (nb_invoc > 1) {
         source = "data:image/png;base64," + image.getAttribute("data");
         image.setAttribute('src', source);
     }
