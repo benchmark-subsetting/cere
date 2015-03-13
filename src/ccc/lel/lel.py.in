@@ -3,7 +3,6 @@
 # (C) 2013-2015 University of Versailles
 import os
 import re
-import argparse
 import subprocess
 import tempfile
 
