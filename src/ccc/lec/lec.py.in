@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # Loop Extractor Compiler
-# (C) 2013 University of Versailles
+# (C) 2013-2015 University of Versailles
 import os
-import argparse
 
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 LOOP_EXT = "/LoopExtractorAll/.libs/libLoopExtractorAll.so"
@@ -94,6 +93,11 @@ def replay_fun(mode_opt, BASE):
     os.system("{llvm_bindir}/opt -S {opts} {base}.ll -o {base}.ll".format(
                    llvm_bindir=LLVM_BINDIR, opts="-early-cse", base=BASE))
 
+    #When inside the compilation unit that contains the replayable
+    #code internal symbols should be globalized XXX: An LLVM pass
+    #would be preferable than the ugly sed hack below.
+    if BASE in mode_opt.region:
+        os.system("sed -i 's/internal global/global/' {base}.ll".format(base=BASE))
 
 #in original mode
 def original_fun(mode_opt, BASE):

@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # Loop Extractor Compiler
-# (C) 2013 University of Versailles
+# (C) 2013-2015 University of Versailles
 import os
 import re
 import argparse
+import subprocess
 import tempfile
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
+OBJCOPY = "objcopy"
 RDTSC = "/rdtsc/librdtsc.a"
 LIKWID = "/usr/local/lib/liblikwid.a -lpthread -lm"
 PROFILE_LIB = "-lprofiler"
@@ -87,6 +89,87 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
                 "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
 
+
+def sysout(cmd):
+    return (subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+           .communicate()[0])
+
+def find_section_offset(addr, elfmap):
+    for s in elfmap:
+        start = elfmap[s]["addr"]
+        end = elfmap[s]["size"] + start
+        if addr >= start and addr < end:
+            return elfmap[s]["offset"]+(addr-elfmap[s]["addr"])
+
+def parse_sym(binary, elfmap):
+    sym_map = {}
+    elf = sysout("readelf -sW {0}".format(binary))
+    elf_lines = elf.split('\n')
+
+    for i, l in enumerate(elf_lines):
+        if ".symtab" in l:
+            start = i+2
+            break
+
+    for l in elf_lines[start:]:
+        fields = l.split()
+        if not fields: break
+        if fields[3] != "OBJECT": continue
+        if fields[5] != "DEFAULT": continue
+        name = fields[-1]
+        addr = int(fields[1],16)
+
+        # Ignore GLIBC objects
+        if "@@" in name:
+            continue
+
+        if fields[2].startswith('0x'):
+            size = int(fields[2], 16)
+        else:
+            size = int(fields[2])
+
+        off = find_section_offset(addr, elfmap)
+        if not off:
+            # ignore non static objs
+            continue
+        sym_map[name] = dict(addr=addr, offset=off, size=size)
+    return sym_map
+
+def parse_elf(binary):
+    elf_map = {}
+    elf = sysout("readelf -SW {0}".format(binary))
+    elf_lines = elf.split('\n')
+    for l in elf_lines:
+        l = l.strip()
+        # Only parse section lines
+        if not l.startswith('['): continue
+        # Keep everything after ]
+        cols = l.split(']')[1]
+        fields = cols.split()
+        name = fields[0]
+        # Ignore non static sections
+        if name not in [".data", ".fini_array", ".init_array", ".bss"]: continue
+        addr = int(fields[2],16)
+        offset = int(fields[3],16)
+        size = int(fields[4],16)
+        elf_map[name] = dict(addr=addr, offset=offset, size=size)
+    return elf_map
+
+def extract_symbols(DIR):
+    # get list of static names
+    original = DIR + "/lel_bin"
+    original_map = parse_sym(original, parse_elf(original))
+    with file(DIR + "/static.names", "w") as f:
+        for n in original_map:
+            f.write(n + "\n")
+
+    safe_system("{objcopy} --globalize-symbols={dump_dir}/static.names  {dump_dir}/lel_bin {dump_dir}/static.sym".format(
+        objcopy=OBJCOPY, dump_dir=DIR))
+
+    safe_system("{objcopy} -S --extract-symbol --keep-symbols={dump_dir}/static.names {dump_dir}/static.sym {dump_dir}/static.sym".format(
+        objcopy=OBJCOPY, dump_dir=DIR))
+
+
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
@@ -105,20 +188,31 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     # Compress the traces
     safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
     create_user_main(mode_opt,LOOP)
-    
+
+
+    # Extract symbol file
+
+    extract_symbols(DIR)
+
+    for f in COMPIL_OPT.split():
+        if f.endswith('.o'):
+            safe_system ("{objcopy}  --weaken-symbols={dump_dir}/static.names {f}".format(
+                objcopy=OBJCOPY, dump_dir=DIR, f=f))
+
+
+
     safe_system(LD + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
-        f.write(("{opts} -o {binary} objs.o realmain.o {wrapper} {lib} {args} " +
+        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {wrapper} {lib} {args} " +
                 "-L {Root}{libs} -lload -Wl," +
-                "--rpath={Root}{libs} -ldl\n").format(
+                 "--rpath={Root}{libs} -ldl\n").format(
                 ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
-                libs=MEMORYDUMP, lib=mode_opt.lib, wrapper=mode_opt.wrapper))
+                     libs=MEMORYDUMP, lib=mode_opt.lib, wrapper=mode_opt.wrapper, dump_dir=DIR))
+
         f.flush()
         safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
-    safe_system(("{root}/staticpatcher.py {dump_dir}/lel_bin {binary} " +
-                "{loop}/{invocation}").format(root=ROOT, dump_dir=DIR,
-                binary=BINARY, loop=LOOP, invocation=INVOCATION))
+
 
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):
