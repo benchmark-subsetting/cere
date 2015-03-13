@@ -255,7 +255,7 @@ flush_hot_pages_trace_to_disk(void)
 
   snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos], state.pagelog_suffix);
   int out = syscall(SYS_open, path, O_WRONLY|O_CREAT|O_EXCL,S_IRWXU);
-  
+
   assert(out > 0);
 
   /* Dump the trace */
@@ -264,7 +264,7 @@ flush_hot_pages_trace_to_disk(void)
       if (state.pages_trace[c] != 0) {
           char * end = append_addr(buf, (off64_t)state.pages_trace[c]);
           *end = '\n';
-          int wr = syscall(SYS_write, out, buf, end-buf+1);	
+          int wr = syscall(SYS_write, out, buf, end-buf+1);
           assert(wr>0);
       }
   }
@@ -275,7 +275,7 @@ flush_hot_pages_trace_to_disk(void)
       if (state.pages_cache[c] != 0) {
           char * end = append_addr(buf, (off64_t)state.pages_cache[c]);
           *end = '\n';
-          int wr = syscall(SYS_write, out, buf, end-buf+1);	
+          int wr = syscall(SYS_write, out, buf, end-buf+1);
           assert(wr>0);
       }
   }
@@ -389,7 +389,7 @@ lock_mem(void)
 
   char *  addresses[512];
   char buf[BUFSIZ + 1];
-  
+
   size_t start, end;
   int counter = 0;
   char *start_of_stack, *end_of_stack;
@@ -428,6 +428,10 @@ lock_mem(void)
       if (strstr(buf, "vdso") != NULL)
          continue;
 
+      /* Ignore vvar zone (cf. https://lkml.org/lkml/2015/3/12/602)*/
+      if (strstr(buf, "vvar") != NULL)
+         continue;
+
       /* Ignore alreay protected pages */
       if (strstr(buf, "---p") != NULL)
          continue;
@@ -439,7 +443,7 @@ lock_mem(void)
          segfault. */
 
       if ((off64_t) page_start <= errnol && errnol < end) {
-          /* We split the range containing errnol into two segments */ 
+          /* We split the range containing errnol into two segments */
 
           /* If the left segment is non-empty, we must lock it */
           if ((off64_t) page_start < errnol) {
@@ -448,7 +452,7 @@ lock_mem(void)
               addresses[count++] = (char*) errnol;
           }
 
-          /* The errnol page is added to ignored, so it is still dumped 
+          /* The errnol page is added to ignored, so it is still dumped
            * even if it's kept unlocked */
           assert(state.last_ignored < MAX_IGNORE);
           state.pages_ignored[state.last_ignored++] = (char *) errnol;
@@ -460,7 +464,7 @@ lock_mem(void)
               addresses[count++] = (char*) end;
           }
           continue;
-      } 
+      }
 
       assert(count < 512);
       addresses[count++] = (char*) page_start;
@@ -670,14 +674,14 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     if (mkdir(state.dump_path[sp], 0777) != 0)
         errx(EXIT_FAILURE, "dump %s already exists, stop\n", state.dump_path[sp]);
- 
+
     state.stack_pos = sp;
 
     assert(state.mtrace_active == false);
 
     /*Dump hotpages to disk*/
     flush_hot_pages_trace_to_disk();
- 
+
     /*Link to the original binary*/
     snprintf(lel_bin_path, sizeof(lel_bin_path), "%s/lel_bin", state.dump_path[state.stack_pos]);
     int res = syscall(SYS_link, "lel_bin", lel_bin_path);
@@ -704,7 +708,7 @@ void dump(char* loop_name, int invocation, int count, ...)
 
     /* Dump ignored pages */
     page_ign_dump();
-        
+
     /* Dump unprotected pages */
     dump_unprotected_pages();
 
