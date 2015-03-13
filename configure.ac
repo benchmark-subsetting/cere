@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([llvm-loop-extractor], [0.0.1], [llvm-loop-extractor@prism.uvsq.fr])
+AC_INIT([cere], [0.0.1], [cere@uvsq.fr])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
 AC_CONFIG_MACRO_DIR([m4])
@@ -23,7 +23,17 @@ AC_CHECK_LIB([gfortran], [exit])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([profiler], [ProfilerStart])
 
-# Checks for header files.
+# Check for common programs and tools
+AC_PATH_PROG(SED,  [sed],  [])
+AC_PATH_PROG(DOT,  [dot],  [])
+
+AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
+AC_CHECK_TOOL([READELF], [readelf], [])
+
+# Check for google-pprof
+AC_PATH_PROGS(PPROF, [pprof, google-pprof], []) 
+
+# Check for header files.
 AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/time.h unistd.h utime.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -49,8 +59,51 @@ AC_FUNC_MALLOC
 AC_FUNC_MKTIME
 AC_FUNC_REALLOC
 
-
 AC_CHECK_FUNCS([atexit floor gettimeofday memset mkdir pow sqrt strchr strdup strerror strrchr strstr strtoul tzset utime])
+
+# Check for Python 2.7
+
+AC_ARG_WITH([python],
+            [AS_HELP_STRING([--with-python], [path to python])],
+            [PYTHON="$withval"])
+
+if test -n "$PYTHON" && test -x "$PYTHON" ; then
+  AC_MSG_CHECKING([for python])
+  AC_MSG_RESULT([user defined: $with_python])
+else
+  if test -n "$PYTHON" ; then
+    AC_MSG_WARN([specified python ($PYTHON) is not usable, searching path])
+  fi
+
+  AC_PATH_PROG([PYTHON], [python python2 python27],
+               [AC_MSG_RESULT([not found])
+                AC_MSG_ERROR([could not find python 2.7 or higher])])
+fi
+
+AC_MSG_CHECKING([for python >= 2.7])
+ac_python_version=`$PYTHON -V 2>&1 | cut -d' ' -f2`
+ac_python_version_major=`echo $ac_python_version | cut -d'.' -f1`
+ac_python_version_minor=`echo $ac_python_version | cut -d'.' -f2`
+ac_python_version_patch=`echo $ac_python_version | cut -d'.' -f3`
+if test "$ac_python_version_major" -gt "2" || \
+   (test "$ac_python_version_major" -eq "2" && \
+    test "$ac_python_version_minor" -ge "7") ; then
+  AC_MSG_RESULT([$PYTHON ($ac_python_version)])
+else
+  AC_MSG_RESULT([not found])
+  AC_MSG_FAILURE([found python $ac_python_version ($PYTHON); required >= 2.7])
+fi
+
+# Check for Python 2 modules
+
+AX_PYTHON_MODULE(networkx, fatal)
+
+# The following modules are required for cere report
+
+AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
+AX_PYTHON_MODULE(jinja2, fatal)
+
+# Generate config files
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
@@ -62,6 +115,7 @@ AC_CONFIG_FILES([Makefile
                  src/memory_dump/Makefile
                  tests/Makefile])
 
+AC_CONFIG_FILES([cere/conf.py], [])
 AC_CONFIG_FILES([src/ccc/lec/lec.py], [chmod +x src/ccc/lec/lec.py])
 AC_CONFIG_FILES([src/ccc/lel/lel.py], [chmod +x src/ccc/lel/lel.py])
 AC_CONFIG_FILES([src/ccc/ccc], [chmod +x src/ccc/ccc])

@@ -3,11 +3,10 @@
 import os
 import re
 import subprocess
+import conf
 import cere_configure
 import logging
-import cPickle as pickle
 import networkx as nx
-import matplotlib.pyplot as plt
 from common.graph_utils import plot, save_graph
 
 def which(program):
@@ -160,7 +159,7 @@ def create_graph(force):
         logging.critical(str(err))
         logging.critical(err.output)
         return False
-    cmd = subprocess.Popen("pprof -dot {0} {1}".format(binary, profile_file), shell=True, stdout=subprocess.PIPE)
+    cmd = subprocess.Popen("{0} -dot {1} {2}".format(conf.PPROF, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
     samples=0
