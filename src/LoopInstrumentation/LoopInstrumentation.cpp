@@ -202,36 +202,6 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
     return void_16_params;
 }
 
-//~ std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
-  //~ //Get current module
-  //~ Module *mod = oldFunction->getParent();
-  //~ std::string module_name = mod->getModuleIdentifier();
-//~ 
-  //~ std::string newFunctionName;
-  //~ std::ostringstream oss;
-  //~ BasicBlock *firstBB = L->getBlocks()[0];
-//~ 
-  //~ if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    //~ DILocation firstLoc(firstN);
-    //~ oss << firstLoc.getLineNumber();
-    //~ std::string firstLine = oss.str();
-    //~ std::string Original_location = removeExtension(firstLoc.getFilename().str());
-    //~ std::string File = removeExtension(module_name);
-    //~ if(File == Original_location)
-        //~ newFunctionName = "__invivo__" + File + separator + oldFunction->getName().str() + separator + firstLine;
-    //~ else
-        //~ newFunctionName = "__invivo__" + File + separator + Original_location + separator + oldFunction->getName().str() + separator + firstLine;
-  //~ }
-  //~ else {
-    //~ newFunctionName = "__invivo__" + oldFunction->getName().str();
-  //~ }
-  //~ newFunctionName = removeChar(newFunctionName, '-', '_');
-  //~ newFunctionName = removeChar(newFunctionName, '/', '_');
-  //~ newFunctionName = removeChar(newFunctionName, '+', '_');
-  //~ newFunctionName = removeChar(newFunctionName, '.', '_');
-  //~ return newFunctionName;
-//~ }
-
 std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
     //Get current module
     Module *mod = oldFunction->getParent();
@@ -363,7 +333,6 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
     if (found == std::string::npos) newFunctionName = createFunctionName(L, currFunc);
     else newFunctionName = currFunc->getName();
 
-    errs() << "Loop to instrument " << Loopname << " and current loop is " << newFunctionName << "\n";
     //We are in replay mode, check if current loop is the loop we want to isntrument
     if (Loopname != "all" && Loopname != newFunctionName) {
         return false;
@@ -381,7 +350,6 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
         if(!found) return false;
     }
     DEBUG(dbgs() << "Loop to instrument " << Loopname << "\n");
-    errs() << "The invocation to measure is " << invoc << "\n";
 
     ++LoopCounter;
     //Create start and stop function
