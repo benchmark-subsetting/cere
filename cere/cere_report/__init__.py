@@ -29,7 +29,8 @@ Mode_dict = {".c":["clike/clike.js","text/x-csrc"], ".C":["clike/clike.js",
              ".F90":["fortran/fortran.js", "text/x-fortran"],
              ".html":["htmlmixed/htmlmixed.js", "text/htmlmixed"],
              ".cc":["clike/clike.js", "text/x-c++src"],
-             ".cpp":["clike/clike.js", "text/x-c++src"]}
+             ".cpp":["clike/clike.js", "text/x-c++src"],
+             ".h":["clike/clike.js","text/x-csrc"]}
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["report"] = run
@@ -250,7 +251,7 @@ class Report:
                 if (suppr_prefix(code_place[0]) in self._regions):
                     self._regions[suppr_prefix(code_place[0])].init_code(code_place)
             except(KeyError):
-                logging.debug("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not in matching error")
+                logging.debug("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not regions")
         
     def init_liste_script(self):
         '''
