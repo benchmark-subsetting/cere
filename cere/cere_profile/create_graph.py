@@ -50,12 +50,14 @@ def delete_useless_nodes(graph):
             graph.remove_node(n)
     return True
 
+#Fix the self coverage for leaves
 def fix_self_coverage(graph, samples):
     nodes = (list(reversed(nx.topological_sort(graph))))
     for n in nodes:
         in_degree = graph.in_degree(n, weight='weight')
-        if in_degree == 0: continue
         out_degree = graph.out_degree(n, weight='weight')
+        #If it's not a leaf, go to next node
+        if out_degree != 0: continue
         graph.node[n]['_self_coverage'] = ((in_degree - out_degree)/float(samples))*100
     return True
 
@@ -185,8 +187,8 @@ def create_graph(force):
     if not delete_useless_nodes(digraph):
         return False
 
-    #if not fix_self_coverage(digraph, samples):
-        #return False
+    if not fix_self_coverage(digraph, samples):
+        return False
 
     plot(digraph, 0)
     save_graph(digraph, "original")
