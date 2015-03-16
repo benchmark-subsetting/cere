@@ -31,7 +31,7 @@ AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
 AC_CHECK_TOOL([READELF], [readelf], [])
 
 # Check for google-pprof
-AC_PATH_PROGS(PPROF, [pprof, google-pprof], []) 
+AC_PATH_PROGS(PPROF, [pprof google-pprof], []) 
 
 # Check for header files.
 AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/time.h unistd.h utime.h])
