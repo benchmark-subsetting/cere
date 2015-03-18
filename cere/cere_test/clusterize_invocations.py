@@ -2,10 +2,15 @@
 from __future__ import print_function
 import csv
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn import cluster
 from sklearn.preprocessing import StandardScaler
 
 MAX_POINTS=50000
+
+PALETTE = ["red","blue","green","yellow","black","grey","pink",
+            "maroon","orange","purple","magenta","silver","golden",
+            "brown","cyan"]
 
 def parse_codelet_csv(csvfile, codelet):
     with open(csvfile) as f:
@@ -91,6 +96,20 @@ def clusterize_invocations(codelet, csvfile, tracefile):
                 weight = weights[i],
                 cycles = repcycles[i])
             output.write(line)
+
+    #plot clusters
+    for c, color in zip(clusters, PALETTE):
+        inside_cluster = (labels == c)
+        points = trace['cycles'][inside_cluster]
+        invocations = trace['invocations'][inside_cluster]
+
+        plt.plot(invocations, points, '.', markerfacecolor=color,
+                 markeredgecolor=color, markersize=10)
+
+    fig = plt.gcf()
+    fig.set_size_inches(10,4.16)
+    fig.savefig(codelet+'_byPhase.png', bbox_inches='tight', dpi=100)
+
 
 if __name__ == "__main__":
     import sys
