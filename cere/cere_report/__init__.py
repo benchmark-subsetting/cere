@@ -307,17 +307,8 @@ class Report:
             raise MyError("/selected_codelets empty")
         self.tmp_tree = []
         for node in self._tree:
-            if node._region._tooSmall == "false" and node._region._execError == "false" and node not in self.tmp_tree:
+            if node._region._tooSmall == "false" and node not in self.tmp_tree:
                 self.tmp_tree = self.tmp_tree + [node]
-                while node._parent != "none":
-                    parent = self.get_node_by_id(node._parent, self._tree)
-                    if parent._region._execError == "true":
-                        granpa = self.get_node_by_id(parent._parent, self._tree)
-                        node._parent = granpa._id if granpa != "none" else "none"
-                    else:
-                        node = parent
-                    if node not in self.tmp_tree: self.tmp_tree = self.tmp_tree + [node]
-                    else: break
         self._tree = self.tmp_tree
 
     def get_node_by_id(self, _id, tree):

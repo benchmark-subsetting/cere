@@ -387,7 +387,7 @@ lock_mem(void)
   if(!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
 
-  char *  addresses[512];
+  char *  addresses[65536];
   char buf[BUFSIZ + 1];
 
   size_t start, end;
@@ -447,7 +447,7 @@ lock_mem(void)
 
           /* If the left segment is non-empty, we must lock it */
           if ((off64_t) page_start < errnol) {
-              assert(count < 512);
+              assert(count < 65536);
               addresses[count++] = (char*) page_start;
               addresses[count++] = (char*) errnol;
           }
@@ -459,14 +459,14 @@ lock_mem(void)
 
           /* If the right segment is non-empty, we must lock it */
           if (errnol+PAGESIZE < end) {
-              assert(count < 512);
+              assert(count < 65536);
               addresses[count++] = (char*) (errnol+PAGESIZE);
               addresses[count++] = (char*) end;
           }
           continue;
       }
 
-      assert(count < 512);
+      assert(count < 65536);
       addresses[count++] = (char*) page_start;
       addresses[count++] = (char*) end;
   }

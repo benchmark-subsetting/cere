@@ -91,14 +91,14 @@ Print them in strong or remove the end if the text is too long -->
   {% endfor %}
   </tr>
   {% for node in tree %}
-    <tr {{selected(node._selected)}} {{printable(node._region._tooSmall)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
+    <tr {{selected(node._selected)}} {{printable(node._region._execError)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
     {% for column in fieldnames[:-1] %}
       <td>{{strong(node._region._table[column], node._selected, node._region._tooSmall)}}</td>
     {% endfor %}
-    {% if (node._region._tooSmall == "false") %}
+    {% if (node._region._execError == "false") %}
     <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}>{{node._region._table[fieldnames[-1]]}}</td>
     {% else %}
-      <td BGCOLOR=#BDBDBD></td>
+      <td BGCOLOR=#BDBDBD> Not Replayable </td>
     {% endif %}
     </tr>
   {% endfor %}
