@@ -64,7 +64,7 @@ def clusterize_invocations(codelet, csvfile, tracefile):
     labels = clusterize(trace)
 
     # take all clusters except 'noise' cluster
-    clusters = [ c for x in np.sort(np.unique(labels)) if x != 1 ]
+    clusters = [ c for c in np.sort(np.unique(labels)) if c != 1 ]
 
     # compute total weight for non-noise points
     total_weight = np.sum(trace['cycles'][labels != -1])
