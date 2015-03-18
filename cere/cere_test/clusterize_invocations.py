@@ -44,7 +44,7 @@ def subsample(trace, n):
     trace['cycles'] = trace['cycles'][samples,]
 
 def clusterize(trace):
-    min_samples = max(1,trace['size']/1000)
+    min_samples = max(1,trace['size']/100)
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
     cycles = StandardScaler().fit_transform(cycles)
     clusterer = cluster.DBSCAN(min_samples=min_samples)
@@ -114,7 +114,8 @@ def clusterize_invocations(codelet, csvfile, tracefile):
 
     fig = plt.gcf()
     fig.set_size_inches(10,4.16)
-    fig.savefig(codelet+'_byPhase.png', bbox_inches='tight', dpi=100)
+    fig.savefig('cere_measures/plots/' + codelet + '_byPhase.png',
+            bbox_inches='tight', dpi=100)
 
 
 if __name__ == "__main__":
