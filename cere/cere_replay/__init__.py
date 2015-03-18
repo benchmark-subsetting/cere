@@ -24,7 +24,7 @@ def init_module(subparsers, cere_plugins):
 def run(args):
     cere_configure.init()
     if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
-        logging.info("Keeping previous replay measures.")
+        logging.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
         return True
     #If the dump does not exist
     if not cere_dump.run(args):

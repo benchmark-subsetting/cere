@@ -111,9 +111,9 @@ def update(args):
                     d['_to_test']=True
                     f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
 
+        save_graph(graph)
         if not newLoopsToTest:
             plot(graph, "final")
-            save_graph(graph)
             break
         else:
             plot(graph, step)

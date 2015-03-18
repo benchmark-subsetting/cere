@@ -180,15 +180,16 @@ def create_graph(force):
         digraph = remove_cycles(digraph, cycles[0])
         cycles = list(nx.simple_cycles(digraph))
 
-    plot(digraph, "original")
+    plot(digraph, "debug")
 
     if not fix_self_coverage(digraph, samples):
         return False
     if not delete_useless_nodes(digraph):
         return False
 
-    plot(digraph, 0)
+    plot(digraph, "original")
     save_graph(digraph, "original")
+    save_graph(digraph)
 
     logging.info('Create graph success')
     return True

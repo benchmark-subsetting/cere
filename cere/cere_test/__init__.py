@@ -48,12 +48,14 @@ class Region():
         import networkx as nx
         graph = load_graph()
         if graph:
+            logging.info("Computing coverage using google perf tool")
             for n, d in graph.nodes(data=True):
                 if d['_name'] == self.region.replace("invivo", "extracted"):
                     self.coverage = float(d['_self_coverage'])
                     return
         #2) Compute the coverage manually
         elif os.path.isfile("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])):
+            logging.info("Computing coverage using rdtsc tool")
             with open("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])) as app:
                 reader = csv.DictReader(app)
                 for row in reader:

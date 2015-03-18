@@ -3,6 +3,7 @@
 import networkx as nx
 import cPickle as pickle
 import logging
+import os
 import subprocess
 import cere_configure
 
@@ -30,7 +31,7 @@ def plot(g, step):
 
 def load_graph(step=""):
     logging.info('Loading graph...')
-    graph = None
+    if not os.path.isfile("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step)): return None
     with open("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step), 'rb') as input:
         graph = pickle.load(input)
     return graph
