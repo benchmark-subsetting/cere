@@ -2,9 +2,12 @@
 from __future__ import print_function
 import csv
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from sklearn import cluster
 from sklearn.preprocessing import StandardScaler
+
+matplotlib.use('Agg')
 
 MAX_POINTS=50000
 
@@ -40,9 +43,10 @@ def subsample(trace, n):
     trace['cycles'] = trace['cycles'][samples,]
 
 def clusterize(trace):
+    min_samples = max(1,trace['size']/1000)
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
     cycles = StandardScaler().fit_transform(cycles)
-    clusterer = cluster.DBSCAN(min_samples=1)
+    clusterer = cluster.DBSCAN(min_samples=min_samples)
     clusterer.fit(cycles)
     return clusterer.labels_
 
@@ -56,13 +60,14 @@ def clusterize_invocations(codelet, csvfile, tracefile):
     if trace['size'] > MAX_POINTS:
         subsample(trace, MAX_POINTS)
 
-    # compute total weight
-    total_weight = np.sum(trace['cycles'])
-
     # label the data using DBSCAN clusterer
     labels = clusterize(trace)
 
-    clusters = np.sort(np.unique(labels))
+    # take all clusters except 'noise' cluster
+    clusters = [ c for x in np.sort(np.unique(labels)) if x != 1 ]
+
+    # compute total weight for non-noise points
+    total_weight = np.sum(trace['cycles'][labels != -1])
 
     representatives = []
     weights = []
