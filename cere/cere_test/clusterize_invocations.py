@@ -7,7 +7,7 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 from sklearn import cluster
-from sklearn.preprocessing import StandardScaler
+from sklearn import preprocessing
 
 
 MAX_POINTS=50000
@@ -46,7 +46,7 @@ def subsample(trace, n):
 def clusterize(trace):
     min_samples = max(1,trace['size']/1000)
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
-    cycles = StandardScaler().fit_transform(cycles)
+    cycles = preprocessing.scale(cycles)
     clusterer = cluster.DBSCAN(min_samples=min_samples, eps=.3)
     clusterer.fit(cycles)
     return clusterer.labels_
