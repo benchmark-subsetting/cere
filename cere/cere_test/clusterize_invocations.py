@@ -44,9 +44,16 @@ def subsample(trace, n):
     trace['cycles'] = trace['cycles'][samples,]
 
 def clusterize(trace):
-    min_samples = max(1,trace['size']/1000)
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
+
+    # If the variation is negligeable, a clustering is useless
+    if (np.max(cycles)-np.min(cycles))/np.max(cycles) < 0.05:
+        return np.ones(trace['size'])
+
+    # Normalize the distribution
     cycles = preprocessing.scale(cycles)
+
+    min_samples = max(1,trace['size']/1000)
     clusterer = cluster.DBSCAN(min_samples=min_samples, eps=.3)
     clusterer.fit(cycles)
     return clusterer.labels_
@@ -63,7 +70,6 @@ def clusterize_invocations(codelet, csvfile, tracefile):
 
     # label the data using DBSCAN clusterer
     labels = clusterize(trace)
-
 
     # take all clusters except 'noise' cluster
     clusters = [ c for c in np.sort(np.unique(labels)) if c >= 0 ]
