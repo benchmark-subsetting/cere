@@ -102,6 +102,8 @@ AX_PYTHON_MODULE(networkx, fatal)
 
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
 AX_PYTHON_MODULE(jinja2, fatal)
+AX_PYTHON_MODULE(sklearn, fatal)
+AX_PYTHON_MODULE(numpy, fatal)
 
 # Generate config files
 
