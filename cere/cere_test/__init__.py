@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 def init_module(subparsers, cere_plugins):
     cere_plugins["test"] = run
     profile_parser = subparsers.add_parser("test", help="Test the matching for a list of region")
-    profile_parser.add_argument("--regions", help="The list of codelets to test")
+    profile_parser.add_argument("--regions", help="The list of regions to test in a file")
     profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
     profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
 
@@ -167,7 +167,7 @@ def run(args):
             return False
         else: region_file = "{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])
     if not os.path.isfile(region_file): 
-        logging.critical("\"{0}\" No such file".format(region_file))
+        logging.critical("\"{0}\" No such file. Please check name or put the region name in a file".format(region_file))
         return False
 
     with open(region_file, 'r') as region_file:
@@ -176,7 +176,10 @@ def run(args):
     allRegions = []
     #For each region
     for r in regions:
+        if "__extracted__" in r:
+            r = r.replace("extracted", "invivo")
         region = Region(r, args.force)
+        print(region.region)
         #first we need the trace
         res = region.measure_trace()
         if not res: 
