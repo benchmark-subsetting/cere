@@ -44,10 +44,10 @@ def subsample(trace, n):
     trace['cycles'] = trace['cycles'][samples,]
 
 def clusterize(trace):
-    min_samples = max(1,trace['size']/100)
+    min_samples = max(1,trace['size']/1000)
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
     cycles = StandardScaler().fit_transform(cycles)
-    clusterer = cluster.DBSCAN(min_samples=min_samples)
+    clusterer = cluster.DBSCAN(min_samples=min_samples, eps=.3)
     clusterer.fit(cycles)
     return clusterer.labels_
 
@@ -64,11 +64,12 @@ def clusterize_invocations(codelet, csvfile, tracefile):
     # label the data using DBSCAN clusterer
     labels = clusterize(trace)
 
+
     # take all clusters except 'noise' cluster
-    clusters = [ c for c in np.sort(np.unique(labels)) if c != 1 ]
+    clusters = [ c for c in np.sort(np.unique(labels)) if c >= 0 ]
 
     # compute total weight for non-noise points
-    total_weight = np.sum(trace['cycles'][labels != -1])
+    total_weight = np.sum(trace['cycles'][labels >= 0])
 
     representatives = []
     weights = []
@@ -104,17 +105,25 @@ def clusterize_invocations(codelet, csvfile, tracefile):
             output.write(line)
 
     #plot clusters
+    f, ax = plt.subplots(1, figsize=(10, 4.16))
     for c, color in zip(clusters, PALETTE):
         inside_cluster = (labels == c)
         points = trace['cycles'][inside_cluster]
         invocations = trace['invocations'][inside_cluster]
 
-        plt.plot(invocations, points, '.', markerfacecolor=color,
-                 markeredgecolor=color, markersize=10)
+        ax.plot(invocations, points, 'o', markerfacecolor=color,
+                 markeredgecolor=color, markersize=4)
 
-    fig = plt.gcf()
-    fig.set_size_inches(10,4.16)
-    fig.savefig('cere_measures/plots/' + codelet + '_byPhase.png',
+    ax.plot(trace['invocations'][labels < 0],
+             trace['cycles'][labels < 0],
+             'x', markerfacecolor='lightgray',
+             markeredgecolor='lightgray', markersize=4)
+
+
+    ax.grid('on')
+    ax.set_ylabel('cycles')
+    ax.set_xlabel('invocation')
+    f.savefig('cere_measures/plots/' + codelet + '_byPhase.png',
             bbox_inches='tight', dpi=100)
 
 
