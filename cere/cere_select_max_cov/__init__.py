@@ -38,6 +38,6 @@ def run(args):
     if not update(args):
         return False
     #Select matching codelets with best coverage
-    if not solve_with_best_granularity(args.max_error):
+    if not solve_with_best_granularity(args):
         return False
     return True

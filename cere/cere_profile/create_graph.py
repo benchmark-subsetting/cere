@@ -56,7 +56,6 @@ def fix_self_coverage(graph, samples):
         in_degree = graph.in_degree(n, weight='weight')
         out_degree = graph.out_degree(n, weight='weight')
         #If it's not a leaf, go to next node
-        if out_degree != 0: continue
         graph.node[n]['_self_coverage'] = ((in_degree - out_degree)/float(samples))*100
     return True
 
@@ -183,10 +182,9 @@ def create_graph(force):
 
     plot(digraph, "original")
 
-    if not delete_useless_nodes(digraph):
-        return False
-
     if not fix_self_coverage(digraph, samples):
+        return False
+    if not delete_useless_nodes(digraph):
         return False
 
     plot(digraph, 0)

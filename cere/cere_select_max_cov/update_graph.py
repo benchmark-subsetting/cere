@@ -57,6 +57,7 @@ def update(args):
     binary_cmd = cere_configure.cere_config["run_cmd"]
     build_cmd = cere_configure.cere_config["build_cmd"]
     error = args.max_error
+    print("TESTING WITH ERROR = {0}".format(error))
     args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
     args.force = False
 
@@ -116,7 +117,6 @@ def update(args):
             break
         else:
             plot(graph, step)
-            save_graph(graph)
             cere_test.run(args)
 
     return True
