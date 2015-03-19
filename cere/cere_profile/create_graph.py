@@ -93,7 +93,7 @@ def add_node(digraph, matchObj):
     return digraph
 
 def remove_cycles(digraph, cycle):
-    if len(cycle) == 1:
+    if len(cycle) == 2:
         digraph.remove_edge(cycle[0],cycle[0])
     else:
         parents = []
