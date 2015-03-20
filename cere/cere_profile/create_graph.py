@@ -55,6 +55,8 @@ def fix_self_coverage(graph, samples):
     for n in nodes:
         in_degree = graph.in_degree(n, weight='weight')
         out_degree = graph.out_degree(n, weight='weight')
+        #Don't touch root because we don't know the real in_degree
+        if in_degree == 0: continue
         graph.node[n]['_self_coverage'] = ((in_degree - out_degree)/float(samples))*100
     return True
 
@@ -91,7 +93,7 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_invocations'] = []
     return digraph
 
-def remove_cycle(digraph, cycle):
+def remove_cycle(digraph, cycle, samples):
     #Avoid having the same node appears multiple times
     #i.e. For recursive calls
     cycle = list(set(cycle))
@@ -129,12 +131,16 @@ def remove_cycle(digraph, cycle):
         else:
             w = int( child['weight'])
         digraph.add_edge(toKeep, child['id'], weight=w)
+    #Update the coverage of the new node. We don't need to do it
+    #for self coverage as it will be updated by the fonction fix_self_coverage.
+    in_degree = digraph.in_degree(toKeep, weight='weight')
+    digraph.node[toKeep]['_coverage'] = ((in_degree)/float(samples))*100
     return digraph
 
-def remove_cycles(digraph):
+def remove_cycles(digraph, sample):
     cycles = list(nx.simple_cycles(digraph))
     while cycles:
-        digraph = remove_cycle(digraph, cycles[0])
+        digraph = remove_cycle(digraph, cycles[0], sample)
         cycles = list(nx.simple_cycles(digraph))
     return digraph
 
@@ -185,7 +191,7 @@ def create_graph(force):
     digraph = nx.DiGraph()
     samples, digraph = parse_gPerfTool(digraph, cmd, regex_list)
     plot(digraph, "debug")
-    digraph = remove_cycles(digraph)
+    digraph = remove_cycles(digraph, samples)
     if not fix_self_coverage(digraph, samples):
         return False
     if not delete_useless_nodes(digraph):
