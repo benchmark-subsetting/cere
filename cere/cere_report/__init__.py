@@ -73,7 +73,7 @@ class Region:
         self._name = region["_name"]
         self._invivo = "{:e}".format(float(region['_invivo']))
         self._invitro = "{:e}".format(float(region['_invitro']))
-        self._table = {"Exec Time (%)":float(region['_self_coverage']), "Error (%)":float(region["_error"]),
+        self._table = {"Exec Time (%)":round(float(region['_self_coverage']), 2), "Error (%)":round(float(region["_error"]), 2),
                        "Codelet Name":suppr_prefix(region["_name"])}
         self._inv_table = []
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)

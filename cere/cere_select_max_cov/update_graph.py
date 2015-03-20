@@ -39,8 +39,8 @@ def update_nodes(graph, lines, max_allowed_error):
                 for inv in invocations:
                     if suppr_prefix(inv["Codelet Name"]) in d['_name']:
                         d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
-                          "Part":inv["Part"], "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
-                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":float(inv["Error"])})
+                          "Part":round(float(inv["Part"]), 2), "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
+                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":round(float(inv["Error"]), 2)})
                 d['_tested'] = True
                 d['_to_test'] = False
     return graph
