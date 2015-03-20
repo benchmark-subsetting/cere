@@ -180,16 +180,20 @@ class Report:
         '''
         Read the nb_cycles value of application in app_cycles.csv
         '''
-        Dict = read_csv(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv')
-        try:
-            row = Dict.next()
-            self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
-            self._nb_cycles = "{:e}".format(int(self._nb_cycles))
-        except (StopIteration):
-            raise MyError("/app_cycles.csv empty")
-        except (KeyError):
-            raise MyError("error key: not CPU_CLK_UNHALTED_CORE in /app_cycles.csv ")
-        
+        if not os.path.isfile(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv'):
+            logging.error("Profile file missing. Please run cere profile")
+            self._nb_cycles = 0
+        else:
+            Dict = read_csv(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv')
+            try:
+                row = Dict.next()
+                self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
+                self._nb_cycles = "{:e}".format(int(self._nb_cycles))
+            except (StopIteration):
+                raise MyError("/app_cycles.csv empty")
+            except (KeyError):
+                raise MyError("error key: not CPU_CLK_UNHALTED_CORE in /app_cycles.csv ")
+
     def init_regions(self, graph, mincycles):
         '''
         Initialize the region list
