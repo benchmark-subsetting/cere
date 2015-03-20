@@ -19,7 +19,7 @@ def plot(g, step):
             else: d['color']="green"
         if d['_to_test']: d['color']="orange"
     for u,v,d in g.edges(data=True):
-        d["label"] = d["weight"]
+        d["label"] = round(d["weight"], 2)
     logging.info("Plot graph_{0}.pdf".format(step))
     nx.write_dot(g,"{0}/graph_{1}.dot".format(cere_configure.cere_config["cere_measures_path"], step))
     try:

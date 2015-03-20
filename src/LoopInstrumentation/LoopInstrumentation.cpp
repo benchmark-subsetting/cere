@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <errno.h>
 
 using namespace llvm;
 enum{VIVO, VITRO};
@@ -75,7 +76,8 @@ namespace {
         if (Loopfile.empty()) readFromFile = false;
         else {
             std::string line;
-            std::ifstream loopstream(Loopfile.c_str(), std::ios::in);
+            std::ifstream loopstream;
+            loopstream.open(Loopfile.c_str(), std::ios::in);
             if(loopstream.is_open()) {
                 while(getline(loopstream, line)) {
                     line = removeChar(line, '#', ' ');
@@ -85,7 +87,7 @@ namespace {
                 readFromFile = true;
             }
             else {
-                errs() << "Cannot open file >" << Loopfile << "<\n";
+                errs() << "Can't open file > " << Loopfile.c_str() << " : " << strerror(errno) << "\n";
                 readFromFile = false;
             }
         }

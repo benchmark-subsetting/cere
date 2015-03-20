@@ -40,12 +40,12 @@ def delete_useless_nodes(graph):
         if not graph.node[n]['_valid']:
             in_degree = graph.in_degree(n, weight='weight')
             for predecessor in graph.predecessors(n):
-                part = float(graph.edge[predecessor][n]['weight'])/in_degree
-                graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[n]['_self_coverage'] * part
+                part = round(float(graph.edge[predecessor][n]['weight'])/in_degree, 2)
+                graph.node[predecessor]['_self_coverage'] = round(graph.node[predecessor]['_self_coverage'] + graph.node[n]['_self_coverage'] * part, 2)
                 if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
                     graph.node[predecessor]['_small'] = False
                 for successor in graph.successors(n):
-                    graph.add_edge(predecessor, successor, weight=graph.edge[predecessor][n]['weight']*(float(graph.edge[n][successor]['weight'])/in_degree))
+                    graph.add_edge(predecessor, successor, weight=round(graph.edge[predecessor][n]['weight']*(float(graph.edge[n][successor]['weight'])/in_degree), 2))
             graph.remove_node(n)
     return True
 

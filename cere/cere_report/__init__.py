@@ -18,7 +18,7 @@ CSV_DELIMITER = ','
 LIST_PREFIX = ["__invivo__","__extracted__"]
 ROOT = os.path.dirname(os.path.realpath(__file__))
 NAME_FILE = "regions.csv"
-REGIONS_FIELDNAMES = ["Exec Time (%)", "Codelet Name", "Error (%)"]
+REGIONS_FIELDNAMES = ["Self (%)", "Cumulative (%)", "Codelet Name", "Error (%)"]
 INVOCATION_FIELDNAMES = ["Invocation", "Cluster", "Part", "Invitro (cycles)",
                          "Invivo (cycles)", "Error (%)"]
 
@@ -73,8 +73,8 @@ class Region:
         self._name = region["_name"]
         self._invivo = "{:e}".format(float(region['_invivo']))
         self._invitro = "{:e}".format(float(region['_invitro']))
-        self._table = {"Exec Time (%)":round(float(region['_self_coverage']), 2), "Error (%)":round(float(region["_error"]), 2),
-                       "Codelet Name":suppr_prefix(region["_name"])}
+        self._table = {"Self (%)":round(float(region['_self_coverage']), 2), "Error (%)":round(float(region["_error"]), 2),
+                       "Codelet Name":suppr_prefix(region["_name"]), "Cumulative (%)":round(float(region['_coverage']), 2)}
         self._inv_table = []
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
         self._callcount = 0
@@ -329,7 +329,7 @@ class Report:
         self._part = 0
         for region in self._regions:
             if(self._regions[region]._selected == "true"):
-                self._part = self._part + self._regions[region]._table["Exec Time (%)"]
+                self._part = self._part + self._regions[region]._table["Self (%)"]
 
     def init_graph_error(self):
         '''

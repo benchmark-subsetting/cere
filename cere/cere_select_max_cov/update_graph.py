@@ -90,8 +90,8 @@ def update(args):
                 #if all my parent's sons are not matching, transfert my coverage
                 if graph.node[node]['_transfered']: continue
                 for predecessor in graph.predecessors(node):
-                    part = float(graph.edge[predecessor][node]['weight'])/in_degree
-                    graph.node[predecessor]['_self_coverage'] = graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part
+                    part = round(float(graph.edge[predecessor][node]['weight'])/in_degree, 2)
+                    graph.node[predecessor]['_self_coverage'] = round(graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part, 2)
                     #Maybe this node is not small anymore
                     if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
                         graph.node[predecessor]['_small'] = False
