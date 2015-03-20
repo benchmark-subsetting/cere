@@ -57,7 +57,7 @@ def fix_self_coverage(graph, samples):
         out_degree = graph.out_degree(n, weight='weight')
         #Don't touch root because we don't know the real in_degree
         if in_degree == 0: continue
-        graph.node[n]['_self_coverage'] = ((in_degree - out_degree)/float(samples))*100
+        graph.node[n]['_self_coverage'] = round(((in_degree - out_degree)/float(samples))*100, 1)
     return True
 
 def add_node(digraph, matchObj):
@@ -134,7 +134,7 @@ def remove_cycle(digraph, cycle, samples):
     #Update the coverage of the new node. We don't need to do it
     #for self coverage as it will be updated by the fonction fix_self_coverage.
     in_degree = digraph.in_degree(toKeep, weight='weight')
-    digraph.node[toKeep]['_coverage'] = ((in_degree)/float(samples))*100
+    digraph.node[toKeep]['_coverage'] = round(((in_degree)/float(samples))*100, 1)
     return digraph
 
 def remove_cycles(digraph, sample):
