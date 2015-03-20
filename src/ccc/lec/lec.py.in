@@ -123,6 +123,7 @@ def original_fun(mode_opt, BASE):
             fail_lec("--instrument-app and --region are incompatible")
     else:
         if(mode_opt.regions_file):
+            print("INSTRUMENTATION FILE DETECTED")
             instru_opts = instru_opts + "--loops-file=" + mode_opt.regions_file + " "
             if(mode_opt.instrument_app):
                 fail_lec("--instrument-app and --region-files are incompatible")
@@ -134,7 +135,7 @@ def original_fun(mode_opt, BASE):
             else:
                 instru_opts = instru_opts + "--instrument-app "
         if(mode_opt.trace or mode_opt.invocation):
-            fail_lec("Can't trace or measure specific invocation with --regions-files")
+            fail_lec("Can't measure specific invocation with --regions-file")
     if(mode_opt.instrument):
         #~ instru_opts = instru_opts + "--tool=" + mode_opt.tool + " "
         if(mode_opt.instrument_app):
@@ -190,7 +191,7 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     
     test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(
                      llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT))
-        
+
     if (test):
         safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {object}".format(
                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
