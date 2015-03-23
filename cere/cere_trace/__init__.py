@@ -23,6 +23,42 @@ def trace_exists(region):
         return True
     else: return False
 
+def comment_traced_region(regions_file):
+    loops_to_trace = []
+    with open(regions_file, 'r+') as f:
+        regions = f.readlines()
+        f.seek(0)
+        f.truncate()
+        for region in regions:
+            if trace_exists(region.rstrip().replace('#', '')):
+                logging.info("Trace already exists for region {0}".format(region.rstrip().replace('#', '')))
+                if region.startswith('#'): f.write(region)
+                else: f.write("#" + region)
+            else:
+                if region.startswith('#'): f.write(region.replace('#', ''))
+                else: f.write(region)
+                loops_to_trace.append(region.rstrip().replace('#', ''))
+    return loops_to_trace
+
+def find_region_to_trace(args, graph):
+    loops_to_trace = []
+    region_node = get_region_id(args.region, graph)
+    trace_file = os.path.abspath("{0}/cere_loops_to_trace".format(cere_configure.cere_config["cere_measures_path"]))
+    f = open(trace_file, "w")
+    if not region_node:
+        logging.error("Can't measure multiple trace. Region {0} not found in the call graph".format(args.region))
+        return False
+    if not trace_exists(args.region) or args.force:
+        print(args.region, file=f)
+        loops_to_trace.append(args.region)
+    for n, d in graph.nodes(data=True):
+        if not nx.has_path(graph, n, region_node) and not nx.has_path(graph, region_node, n):
+            if not trace_exists(d['_name'].replace("extracted", "invivo")) or args.force:
+                print(d['_name'].replace("extracted", "invivo"), file=f)
+                loops_to_trace.append(d['_name'].replace("extracted", "invivo"))
+    f.close()
+    return loops_to_trace, trace_file
+
 def init_module(subparsers, cere_plugins):
     cere_plugins["trace"] = run
     trace_parser = subparsers.add_parser("trace", help="trace a region")
@@ -37,50 +73,24 @@ def run(args):
         return False
     cere_configure.init()
     region_input = ""
-    loops_to_trace= []
+    loops_to_trace = []
     #If we want to trace a list of regions
     if args.regions_file:
         #Comment region if we already measured its trace
         if not args.force:
-            with open(args.regions_file, 'r+') as f:
-                regions = f.readlines()
-                f.seek(0)
-                f.truncate()
-                for region in regions:
-                    if trace_exists(region.rstrip().replace('#', '')):
-                        logging.info("Trace already exists for region {0}".format(region.rstrip().replace('#', '')))
-                        if region.startswith('#'): f.write(region)
-                        else: f.write("#" + region)
-                    else:
-                        if region.startswith('#'): f.write(region.replace('#', ''))
-                        else: f.write(region)
-                        loops_to_trace.append(region.rstrip().replace('#', ''))
+            loops_to_trace = comment_traced_region(args.regions_file)
         region_input = "--regions-file={0}".format(args.regions_file)
         logging.info("Compiling trace mode for region(s) in file {0}".format(args.regions_file))
-    #If we want to trace a single region
+    #If we want to trace a single region and multiple trace activated
     elif cere_configure.cere_config["multiple_trace"]:
         #If the call graph is available, we can trace multiple regions at the same time
         #to improve the instrumentation time needed.
         graph = load_graph()
         if graph:
-            region_node = get_region_id(args.region, graph)
-            trace_file = os.path.abspath("{0}/cere_loops_to_trace".format(cere_configure.cere_config["cere_measures_path"]))
-            print(trace_file)
-            f = open(trace_file, "w")
-            if not region_node:
-                logging.error("Can't measure multiple trace. Region {0} not found in the call graph".format(args.region))
-                return False
-            if not trace_exists(args.region) or args.force:
-                print(args.region, file=f)
-                loops_to_trace.append(args.region)
-            for n, d in graph.nodes(data=True):
-                if not nx.has_path(graph, n, region_node) and not nx.has_path(graph, region_node, n):
-                    if not trace_exists(d['_name'].replace("extracted", "invivo")) or args.force:
-                        print(d['_name'].replace("extracted", "invivo"), file=f)
-                        loops_to_trace.append(d['_name'].replace("extracted", "invivo"))
-            f.close()
+            loops_to_trace, trace_file = find_region_to_trace(args, graph)
             region_input = "--regions-file={0}".format(trace_file)
             logging.info("Compiling trace mode for region(s) in file {0}".format(trace_file))
+        #No graph, we just trace the requested loop if the trace does not already exists
         elif not trace_exists(args.region) or args.force:
             region_input = "--region={0}".format(args.region)
             loops_to_trace.append(args.region)
@@ -88,6 +98,7 @@ def run(args):
         else:
             logging.info("Trace already exists for region {0}".format(args.region))
             return True
+    #If we want to trace a single region multiple trace not activated
     elif not trace_exists(args.region) or args.force:
         region_input = "--region={0}".format(args.region)
         loops_to_trace.append(args.region)
@@ -95,9 +106,11 @@ def run(args):
     else:
         logging.info("Trace already exists for region {0}".format(args.region))
         return True
+
     if len(loops_to_trace) == 0:
         logging.info("No loops to trace")
         return True
+
     err = False
     try:
         logging.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument --trace --lib={2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, var.RDTSC_LIB, var.RDTSC_WRAPPER), stderr=subprocess.STDOUT, shell=True))

@@ -41,12 +41,12 @@ def measure_application(run_cmd, build_cmd, measures_path, force):
     except subprocess.CalledProcessError as err:
         logging.critical(str(err))
         logging.critical(err.output)
-    if not os.path.isfile("rdtsc_result.csv"):
+    if not os.path.isfile("main.csv"):
         logging.critical('Measuring application failed: No output file')
         return False
     else:
         try:
-            shutil.move("rdtsc_result.csv", "{0}/app_cycles.csv".format(measures_path))
+            shutil.move("main.csv", "{0}/app_cycles.csv".format(measures_path))
         except IOError as err:
             logging.critical(str(err))
             return False
