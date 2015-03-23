@@ -31,6 +31,7 @@ class Region():
         self.status = True
         self.invocation=1
         self.norun = False
+        self.regions_file = None
         self.noinstrumentation = False
         self.lib=var.RDTSC_LIB
         self.wrapper=var.RDTSC_WRAPPER
@@ -118,7 +119,7 @@ class Region():
                 else:
                     try:
                         if not os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)):
-                            shutil.move("rdtsc_result.csv", "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation))
+                            shutil.move("{0}.csv".format(self.region), "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation))
                     except IOError as err:
                         logging.critical(str(err))
                         logging.critical("No results file. Maybe replay failed for {0} invocation {1}".format(self.region, self.invocation))

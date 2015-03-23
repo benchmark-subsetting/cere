@@ -11,7 +11,7 @@ function do_test()
     ./BT
 
     rm -rf "$TMPDIR"
-    if grep "__extracted__verify_verify__265,1" rdtsc_result.csv ; then
+    if grep "__extracted__verify_verify__265,1" __extracted__verify_verify__265.csv ; then
         return 0
     else
         return 1

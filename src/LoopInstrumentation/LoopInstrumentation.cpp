@@ -30,10 +30,10 @@ static cl::opt<std::string>
 LoopsFilename("loops-file", cl::init(""),
                   cl::value_desc("filename"),
                   cl::desc("File with regions to instrument"));
-static cl::opt<std::string>
-TraceLoop("loop-to-trace", cl::init(""),
-                  cl::value_desc("String"),
-                  cl::desc("instrumentation-mode allow to trace and record all invocations measures for specified region(s)"));
+static cl::opt<bool>
+TraceLoop("trace", cl::init(false),
+                  cl::value_desc("Boolean"),
+                  cl::desc("Enable the trace (For single or multiple regions"));
 static cl::opt<bool>
 AppMeasure("instrument-app", cl::init(false),
                   cl::value_desc("Boolean"),
@@ -62,16 +62,16 @@ namespace {
     std::string Loopname;
     std::string separator;
     std::string Loopfile;
-    std::string LoopToTrace;
     int Mode;
     int invoc;
     bool readFromFile;
     bool measureAppli;
+    bool trace;
     std::vector<std::string> loopsToInstrument;
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), LoopToTrace(TraceLoop), Mode(mode), invoc(Invocation), measureAppli(AppMeasure) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), Mode(mode), invoc(Invocation), measureAppli(AppMeasure), trace(TraceLoop) {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -80,7 +80,9 @@ namespace {
             loopstream.open(Loopfile.c_str(), std::ios::in);
             if(loopstream.is_open()) {
                 while(getline(loopstream, line)) {
-                    line = removeChar(line, '#', ' ');
+                    errs() << "LINE = " << line << "\n";
+                    if(line.find('#') == 0) continue;
+                    //line = removeChar(line, '#', ' ');
                     loopsToInstrument.push_back(line);
                 }
                 loopstream.close();
@@ -179,7 +181,7 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
 
     //Set Trace boolean
     ConstantInt* const_int1_11;
-    if(newFunctionName == LoopToTrace) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
+    if(trace) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
     else const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
 
     //Set global boolean

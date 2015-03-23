@@ -6,28 +6,28 @@ void calibrate_serialize_overhead()
 {
     int count = 10000;
     int i;
-	serialize();
-	unsigned long long start = rdtsc();
+    serialize();
+    unsigned long long start = rdtsc();
     for (i = 0; i < count; i++)
       serialize();
-	unsigned long long stop = rdtsc();
+    unsigned long long stop = rdtsc();
     serialize_overhead = (stop - start) / count;
 }
 
 void print_hash_table()
 {
-	struct htable_iter iter;
-	region *p;
-	for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
-	{
-		fprintf(stderr, "RDTSC: print_hash_table() %s\n", p->name);
-	}
+    struct htable_iter iter;
+    region *p;
+    for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
+    {
+        fprintf(stderr, "RDTSC: print_hash_table() %s\n", p->name);
+    }
 }
 
 // Comparison function.
 static bool streq(const void *e, void *string)
 {
-	return strcmp(((region *)e)->name, string) == 0;
+    return strcmp(((region *)e)->name, string) == 0;
 }
 
 // Comparison function.
@@ -46,30 +46,30 @@ static uint32_t hash_string(const char *string)
 
 static size_t rehash(const void *e, void *unused)
 {
-	return hash_string(((region *)e)->name);
+    return hash_string(((region *)e)->name);
 }
 
 static size_t rehash2(const void *e, void *unused)
 {
-	return hash_string(((global_region_call_count *)e)->name);
+    return hash_string(((global_region_call_count *)e)->name);
 }
 
 void push(char* new_region, char* call_stack)
 {
-	unsigned size = strlen(call_stack);
+    unsigned size = strlen(call_stack);
 
-	if (size == 0) {
-		strcpy(call_stack, new_region);
-	}
-	else if (size+strlen(new_region)+2 < CALL_STACK_SIZE) {
-		call_stack[size]='#';
-		call_stack[size+1]='\0';
-		strcat(call_stack, new_region);
-	}
-	else {
-		fprintf(stderr, "RDTSC: Call stack overflow, sorry...\n");
-		exit(EXIT_FAILURE);
-	}
+    if (size == 0) {
+        strcpy(call_stack, new_region);
+    }
+    else if (size+strlen(new_region)+2 < CALL_STACK_SIZE) {
+        call_stack[size]='#';
+        call_stack[size+1]='\0';
+        strcat(call_stack, new_region);
+    }
+    else {
+        fprintf(stderr, "RDTSC: Call stack overflow, sorry...\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void pop(char* call_stack)
@@ -86,59 +86,59 @@ void pop(char* call_stack)
 
 void dump_trace(region *r, int nbEltToDump)
 {
-	if(r->trace_results != NULL)
-	{
-		int i,j;
-		if(r->invivo) j=0;
-		else j=1;
+    if(r->trace_results != NULL)
+    {
+        int i,j;
+        if(r->invivo) j=0;
+        else j=1;
         for (i = j; i < nbEltToDump; i++) {
             double counter = (double) r->trace_counter[i];
             double count = (double) r->global_call_count[i];
             fwrite((const void*)(&counter), sizeof(double), 1, r->trace_results);
             fwrite((const void*)(&count), sizeof(double), 1, r->trace_results);
         }
-	}
+    }
 }
 
 void rdtsc_markerInit()
 {
-	calibrate_serialize_overhead();
-	htable_init(&regionHtab, rehash, NULL);
-	htable_init(&call_count_reminder, rehash2, NULL);
-	atexit(rdtsc_markerClose);
-	LEVEL=0;
-	INITIALIZED=true;
+    calibrate_serialize_overhead();
+    htable_init(&regionHtab, rehash, NULL);
+    htable_init(&call_count_reminder, rehash2, NULL);
+    atexit(rdtsc_markerClose);
+    LEVEL=0;
+    INITIALIZED=true;
 }
 
 void rdtsc_markerClose()
 {
-	while(strlen(call_stack) > 0) {
-		rdtsc_markerStopRegion(call_stack, 0, false);
-	}
-	struct htable_iter iter;
-	if (htable_first(&regionHtab,&iter) == NULL) return;
-	region *p=NULL;
-	FILE *result=NULL;
-	result = fopen("rdtsc_result.csv", "w");
-	if(result == NULL) {
-		fprintf(stderr, "RDTSC: Cannot open result file.\n");
-		exit(EXIT_FAILURE);
-	}
-	else {
-		fprintf(result, "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE\n");
-		for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
-		{
-			//Remove 1 to call count in invitro mode
-			if(!p->invivo && p->call_count > 1) p->call_count -= 1;
-			fprintf(result, "%s,%u,%llu\n", p->name, p->call_count, p->counter);
-			if(p->traced) {
-				dump_trace(p, p->call_count%TRACE_SIZE);
-				fclose(p->trace_results);
-			}
-		}
-		fclose(result);
-	}
-	htable_clear(&regionHtab);
+    while(strlen(call_stack) > 0) {
+        rdtsc_markerStopRegion(call_stack, 0, false);
+    }
+    struct htable_iter iter;
+    if (htable_first(&regionHtab,&iter) == NULL) return;
+    region *p=NULL;
+    for (p = htable_first(&regionHtab,&iter); p; p = htable_next(&regionHtab, &iter))
+    {
+        char *fileName = malloc((strlen(p->name)+5)*sizeof(char));
+        strcpy(fileName, p->name);
+        strcat(fileName, ".csv");
+        FILE *result = fopen(fileName, "w");
+        if(result == NULL) {
+            fprintf(stderr, "RDTSC: Cannot open result file for region %s.\n",p->name);
+            exit(EXIT_FAILURE);
+        }
+        fprintf(result, "Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE\n");
+        //Remove 1 to call count in invitro mode
+        if(!p->invivo && p->call_count > 1) p->call_count -= 1;
+        fprintf(result, "%s,%u,%llu\n", p->name, p->call_count, p->counter);
+        if(p->traced) {
+            dump_trace(p, p->call_count%TRACE_SIZE);
+            fclose(p->trace_results);
+        }
+        fclose(result);
+    }
+    htable_clear(&regionHtab);
 }
 
 /*find the region name in the hash table
@@ -146,130 +146,128 @@ void rdtsc_markerClose()
  * else record start counter
 */
 void rdtsc_markerStartRegion(char *reg, int trace, bool global) {
-	if(!INITIALIZED) return;
+    if(!INITIALIZED) return;
 
-	//Avoid measuring a son loop when we are not in global dump
-	LEVEL+=1;
-	if(!global && LEVEL!=1) return;
+    //Avoid measuring a son loop when we are not in global dump
+    LEVEL+=1;
+    if(!global && LEVEL!=1) return;
 
-	push(reg, call_stack);
-	char* regionName=call_stack;
-	region *r=NULL;
-	if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
-	{
-		if ((r = malloc(sizeof(region))) == NULL)
-		{
-			fprintf(stderr, "RDTSC: Unable to allocate new region %s\n", regionName);
-			exit(EXIT_FAILURE);
-		}
-		if ((r->name = malloc((strlen(regionName)+1)*sizeof(char))) == NULL)
-		{
-			fprintf(stderr, "RDTSC: Unable to allocate new region name %s\n", regionName);
-			exit(EXIT_FAILURE);
-		}
-		strcpy(r->name, regionName);
-		if(strstr(regionName, "__extracted__") != NULL) r->invivo = 0;
-		else r->invivo = 1;
-		r->traced = trace;
-		r->counter = 0;
-		r->call_count = 0;
-		r->trace_results=NULL;
-		htable_add(&regionHtab, hash_string(r->name), r);
-	}
+    push(reg, call_stack);
+    char* regionName=call_stack;
+    region *r=NULL;
+    if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
+    {
+        if ((r = malloc(sizeof(region))) == NULL)
+        {
+            fprintf(stderr, "RDTSC: Unable to allocate new region %s\n", regionName);
+            exit(EXIT_FAILURE);
+        }
+        if ((r->name = malloc((strlen(regionName)+1)*sizeof(char))) == NULL)
+        {
+            fprintf(stderr, "RDTSC: Unable to allocate new region name %s\n", regionName);
+            exit(EXIT_FAILURE);
+        }
+        strcpy(r->name, regionName);
+        if(strstr(regionName, "__extracted__") != NULL) r->invivo = 0;
+        else r->invivo = 1;
+        r->traced = trace;
+        r->counter = 0;
+        r->call_count = 0;
+        r->trace_results=NULL;
+        htable_add(&regionHtab, hash_string(r->name), r);
+    }
 
-	r->call_count += 1;
-	//If invitro, remove first measure
-	if(!r->invivo && r->call_count==2)
-		r->counter = 0;
-	if(r->traced) {
-		global_region_call_count *t=NULL;
-		if ((t = htable_get(&call_count_reminder, hash_string(reg), streq2, reg)) == NULL ) {
-			if ((t = malloc(sizeof(global_region_call_count))) == NULL)
-			{
-				fprintf(stderr, "RDTSC: Unable to allocate new region %s\n", reg);
-				exit(EXIT_FAILURE);
-			}
-			if ((t->name = malloc((strlen(reg)+1)*sizeof(char))) == NULL)
-			{
-				fprintf(stderr, "RDTSC: Unable to allocate new region name %s\n", reg);
-				exit(EXIT_FAILURE);
-			}
-			strcpy(t->name, reg);
-			t->val = 0;
-			htable_add(&call_count_reminder, hash_string(reg), t);
-		}
-		//Open binary trace file
-		if(r->call_count==1) {
-			char *fileName = malloc((strlen(r->name)+5)*sizeof(char));
-			strcpy(fileName, r->name);
-			strcat(fileName, ".bin");
+    r->call_count += 1;
+    //If invitro, remove first measure
+    if(!r->invivo && r->call_count==2)
+        r->counter = 0;
+    if(r->traced) {
+        global_region_call_count *t=NULL;
+        if ((t = htable_get(&call_count_reminder, hash_string(reg), streq2, reg)) == NULL ) {
+            if ((t = malloc(sizeof(global_region_call_count))) == NULL)
+            {
+                fprintf(stderr, "RDTSC: Unable to allocate new region %s\n", reg);
+                exit(EXIT_FAILURE);
+            }
+            if ((t->name = malloc((strlen(reg)+1)*sizeof(char))) == NULL)
+            {
+                fprintf(stderr, "RDTSC: Unable to allocate new region name %s\n", reg);
+                exit(EXIT_FAILURE);
+            }
+            strcpy(t->name, reg);
+            t->val = 0;
+            htable_add(&call_count_reminder, hash_string(reg), t);
+        }
+        //Open binary trace file
+        if(r->call_count==1) {
+            char *fileName = malloc((strlen(r->name)+5)*sizeof(char));
+            strcpy(fileName, r->name);
+            strcat(fileName, ".bin");
             r->trace_results = fopen(fileName, "ab");
             if(r->trace_results == NULL) {
                 perror("RDTSC: Cannot open Binary File!");
                 exit(EXIT_FAILURE);
             }
-		}
-		t->val += 1;
-		r->global_call_count[(r->call_count-1)%TRACE_SIZE] = t->val;
-	}
-	serialize();
-	r->start = rdtsc();
+        }
+        t->val += 1;
+        r->global_call_count[(r->call_count-1)%TRACE_SIZE] = t->val;
+    }
+    serialize();
+    r->start = rdtsc();
 }
 
 void rdtsc_markerStopRegion(char *reg, int trace, bool global) {
-	//serialize();
-	unsigned long long int stop = rdtsc();
-	unsigned long long int loop_cycles;
+    //serialize();
+    unsigned long long int stop = rdtsc();
+    unsigned long long int loop_cycles;
 
-	if(!INITIALIZED) return;
-	LEVEL-=1;
-	if(!global && LEVEL!=0) return;
+    if(!INITIALIZED) return;
+    LEVEL-=1;
+    if(!global && LEVEL!=0) return;
 
-	char* regionName = call_stack;
-	/* We must check that reg is base name of regionName */
-	region *r=NULL;
-	if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
-		fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", regionName);
-	else {
-		loop_cycles = stop - r->start;
+    char* regionName = call_stack;
+    /* We must check that reg is base name of regionName */
+    region *r=NULL;
+    if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
+        fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", regionName);
+    else {
+        loop_cycles = stop - r->start;
 
-		/*Uncomment to remove the cost of a serialize()*/
-		//if(loop_cycles > serialize_overhead) {
-			//loop_cycles -= serialize_overhead;
-		//} else {
-			//loop_cycles = 0;
-			//r->nb_invocation_skiped++;
-		//}
-		pop(call_stack);
-		r->counter += loop_cycles;
-		if(r->traced) {
-			r->trace_counter[(r->call_count-1)%TRACE_SIZE] = loop_cycles;
-			if(r->call_count%TRACE_SIZE == 0) {
-				dump_trace(r, TRACE_SIZE);
-			}
-		}
-	}
+        /*Uncomment to remove the cost of a serialize()*/
+        //if(loop_cycles > serialize_overhead) {
+            //loop_cycles -= serialize_overhead;
+        //} else {
+            //loop_cycles = 0;
+            //r->nb_invocation_skiped++;
+        //}
+        pop(call_stack);
+        r->counter += loop_cycles;
+        if(r->traced) {
+            r->trace_counter[(r->call_count-1)%TRACE_SIZE] = loop_cycles;
+            if(r->call_count%TRACE_SIZE == 0) {
+                dump_trace(r, TRACE_SIZE);
+            }
+        }
+    }
 }
 
 //For fortran code
 void rdtsc_markerstartregion_(char *regionName, int len, int trace, bool global)
 {
-	rdtsc_markerStartRegion( regionName, trace, global );
+    rdtsc_markerStartRegion( regionName, trace, global );
 }
 
 void rdtsc_markerstopregion_(char *regionName, int len, int trace, bool global)
 {
-	rdtsc_markerStopRegion( regionName, trace, global );
+    rdtsc_markerStopRegion( regionName, trace, global );
 }
 
 void rdtsc_markerinit_()
 {
-	rdtsc_markerInit();
+    rdtsc_markerInit();
 }
 
 void rdtsc_markerclose_()
 {
-	rdtsc_markerClose();
+    rdtsc_markerClose();
 }
-
-
