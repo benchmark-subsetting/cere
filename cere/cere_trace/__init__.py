@@ -40,24 +40,37 @@ def comment_traced_region(regions_file):
                 loops_to_trace.append(region.rstrip().replace('#', ''))
     return loops_to_trace
 
-def find_region_to_trace(args, graph):
+def find_region_to_trace(args, graph, trace_file):
     loops_to_trace = []
     region_node = get_region_id(args.region, graph)
-    trace_file = os.path.abspath("{0}/cere_loops_to_trace".format(cere_configure.cere_config["cere_measures_path"]))
     f = open(trace_file, "w")
     if not region_node:
         logging.error("Can't measure multiple trace. Region {0} not found in the call graph".format(args.region))
         return False
-    if not trace_exists(args.region) or args.force:
-        print(args.region, file=f)
-        loops_to_trace.append(args.region)
-    for n, d in graph.nodes(data=True):
-        if not nx.has_path(graph, n, region_node) and not nx.has_path(graph, region_node, n):
-            if not trace_exists(d['_name'].replace("extracted", "invivo")) or args.force:
-                print(d['_name'].replace("extracted", "invivo"), file=f)
-                loops_to_trace.append(d['_name'].replace("extracted", "invivo"))
+
+    #Find roots
+    roots = [n for n,d in graph.in_degree().items() if d==0]
+
+    #Compute for every nodes, the max distance from himself to each root
+    max_path_len = {}
+    for root in roots:
+        for n, d in graph.nodes(data=True):
+            if n not in max_path_len: max_path_len[n]=0
+            #Get every paths from the current root to the node
+            paths = list(nx.all_simple_paths(graph, root, n))
+            #Keep the max length path
+            for path in paths:
+                if len(path)-1 > max_path_len[n]:
+                    max_path_len[n] = len(path)-1
+    #Keep region which have the same depth than the requested region
+    for n, p in max_path_len.iteritems():
+        if p == max_path_len[region_node]:
+            if not trace_exists(graph.node[n]['_name'].replace("extracted", "invivo")) or args.force:
+                print(graph.node[n]['_name'].replace("extracted", "invivo"), file=f)
+                loops_to_trace.append(graph.node[n]['_name'].replace("extracted", "invivo"))
+                logging.info("Region {0} added to regions trace list".format(graph.node[n]['_name'].replace("extracted", "invivo")))
     f.close()
-    return loops_to_trace, trace_file
+    return loops_to_trace
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["trace"] = run
@@ -76,6 +89,10 @@ def run(args):
     loops_to_trace = []
     #If we want to trace a list of regions
     if args.regions_file:
+        if not os.path.isfile(args.regions_file):
+            logging.critical("No such file: {0}".format(args.regions_file))
+            return False
+        args.regions_file = os.path.abspath(args.regions_file)
         #Comment region if we already measured its trace
         if not args.force:
             loops_to_trace = comment_traced_region(args.regions_file)
@@ -87,7 +104,8 @@ def run(args):
         #to improve the instrumentation time needed.
         graph = load_graph()
         if graph:
-            loops_to_trace, trace_file = find_region_to_trace(args, graph)
+            trace_file = os.path.abspath("{0}/cere_loops_to_trace".format(cere_configure.cere_config["cere_measures_path"]))
+            loops_to_trace = find_region_to_trace(args, graph, trace_file)
             region_input = "--regions-file={0}".format(trace_file)
             logging.info("Compiling trace mode for region(s) in file {0}".format(trace_file))
         #No graph, we just trace the requested loop if the trace does not already exists

@@ -75,6 +75,7 @@ namespace {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
+            Loopname = "";
             std::string line;
             std::ifstream loopstream;
             loopstream.open(Loopfile.c_str(), std::ios::in);
@@ -82,7 +83,6 @@ namespace {
                 while(getline(loopstream, line)) {
                     errs() << "LINE = " << line << "\n";
                     if(line.find('#') == 0) continue;
-                    //line = removeChar(line, '#', ' ');
                     loopsToInstrument.push_back(line);
                 }
                 loopstream.close();
@@ -338,7 +338,7 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
     else newFunctionName = currFunc->getName();
 
     //We are in replay mode, check if current loop is the loop we want to isntrument
-    if (Loopname != "all" && Loopname != newFunctionName) {
+    if (Loopname != "all" && Loopname != newFunctionName && !readFromFile) {
         return false;
     }
     else if(readFromFile) {
