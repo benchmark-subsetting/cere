@@ -7,6 +7,7 @@ import shutil
 import argparse
 import logging
 import subprocess
+import common.utils as utils
 import cere_configure
 
 def init_module(subparsers, cere_plugins):
@@ -20,6 +21,9 @@ def init_module(subparsers, cere_plugins):
 def run(args):
     cere_configure.init()
     if(args.region):
+        if utils.is_invalid(args.region):
+            logging.error("{0} is invalid".format(args.region))
+            return False
         if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) or args.force:
             shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation), ignore_errors=True)
             logging.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
@@ -29,6 +33,7 @@ def run(args):
                 logging.critical(str(err))
                 logging.critical(err.output)
                 logging.info("Compiling dump mode for region {0} invocation {1} failed".format(args.region, args.invocation))
+                utils.mark_invalid(args.region)
                 return False
             if not args.norun:
                 logging.info("Dumping invocation {1} for region {0}".format(args.region, args.invocation))
@@ -40,6 +45,7 @@ def run(args):
                     logging.debug(err.output)
                 if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
                     logging.critical("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
+                    utils.mark_invalid(args.region)
                     return False
                 else:
                     logging.info("Invocation {1} succesfully dumped for region {0} ".format(args.region, args.invocation))

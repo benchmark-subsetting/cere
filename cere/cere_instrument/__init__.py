@@ -7,6 +7,7 @@ import argparse
 import logging
 import subprocess
 import common.variables as var
+import common.utils as utils
 import cere_configure
 
 def init_module(subparsers, cere_plugins):
@@ -20,6 +21,9 @@ def init_module(subparsers, cere_plugins):
 
 def run(args):
     cere_configure.init()
+    if utils.is_invalid(args.region):
+        logging.error("{0} is invalid".format())
+        return False
     lib = "--lib={0}".format(args.lib)
     wrap = "--wrapper={0}".format(args.wrapper)
     mode=""
@@ -43,5 +47,6 @@ def run(args):
             logging.critical(str(err))
             logging.critical(err.output)
             logging.critical("Instrumentation failed for region {0}".format(args.region))
+            utils.mark_invalid(args.region)
             return False
     return True

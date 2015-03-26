@@ -9,6 +9,7 @@ import subprocess
 import cere_configure
 import cere_dump
 import common.variables as var
+import common.utils as utils
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["replay"] = run
@@ -23,6 +24,9 @@ def init_module(subparsers, cere_plugins):
 
 def run(args):
     cere_configure.init()
+    if utils.is_invalid(args.region):
+        logging.error("{0} is invalid".format(args.region))
+        return False
     if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
         logging.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
         return True
@@ -46,6 +50,7 @@ def run(args):
         logging.critical(str(err))
         logging.critical(err.output)
         logging.info("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
+        utils.mark_invalid(args.region)
         return False
     if not args.norun:
         logging.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
@@ -55,5 +60,6 @@ def run(args):
             logging.critical(str(err))
             logging.critical(err.output)
             logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
+            utils.mark_invalid(args.region)
             return False
     return True

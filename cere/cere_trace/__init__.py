@@ -11,6 +11,7 @@ import cere_configure
 import networkx as nx
 from common.graph_utils import load_graph
 import common.variables as var
+import common.utils as utils
 
 def get_region_id(region, graph):
     for n, d in graph.nodes(data=True):
@@ -30,7 +31,7 @@ def comment_traced_region(regions_file):
         f.seek(0)
         f.truncate()
         for region in regions:
-            if trace_exists(region.rstrip().replace('#', '')):
+            if trace_exists(region.rstrip().replace('#', '')) or utils.is_invalid(region):
                 logging.info("Trace already exists for region {0}".format(region.rstrip().replace('#', '')))
                 if region.startswith('#'): f.write(region)
                 else: f.write("#" + region)
@@ -65,7 +66,7 @@ def find_region_to_trace(args, graph, trace_file):
     #Keep region which have the same depth than the requested region
     for n, p in max_path_len.iteritems():
         if p == max_path_len[region_node]:
-            if not trace_exists(graph.node[n]['_name'].replace("extracted", "invivo")) or args.force:
+            if (not trace_exists(graph.node[n]['_name'].replace("extracted", "invivo")) and not utils.is_invalid(graph.node[n]['_name'])) or args.force:
                 print(graph.node[n]['_name'].replace("extracted", "invivo"), file=f)
                 loops_to_trace.append(graph.node[n]['_name'].replace("extracted", "invivo"))
                 logging.info("Region {0} added to regions trace list".format(graph.node[n]['_name'].replace("extracted", "invivo")))
@@ -117,10 +118,13 @@ def run(args):
             logging.info("Trace already exists for region {0}".format(args.region))
             return True
     #If we want to trace a single region multiple trace not activated
-    elif not trace_exists(args.region) or args.force:
+    elif (not trace_exists(args.region) and not utils.is_invalid(args.region)) or args.force:
         region_input = "--region={0}".format(args.region)
         loops_to_trace.append(args.region)
         logging.info("Compiling trace mode for region {0}".format(args.region))
+    elif utils.is_invalid(args.region):
+        logging.error("{0} is invalid".format(args.region))
+        return False
     else:
         logging.info("Trace already exists for region {0}".format(args.region))
         return True
@@ -136,7 +140,6 @@ def run(args):
         logging.critical(str(err))
         logging.critical(err.output)
         logging.info("Compiling trace mode for {0} failed".format(region_input))
-        return False
     if not args.norun:
         logging.info("Tracing region {0}".format(region_input))
         try:
@@ -145,7 +148,6 @@ def run(args):
             logging.critical(str(err))
             logging.critical(err.output)
             logging.critical("Trace failed for {0}".format(region_input))
-            return False
         for region in loops_to_trace:
             try:
                 shutil.move("{0}.bin".format(region), "{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], region))
@@ -153,5 +155,6 @@ def run(args):
             except IOError as err:
                 logging.critical(str(err))
                 logging.critical("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))
+                utils.mark_invalid(region)
                 err = True
     return not err

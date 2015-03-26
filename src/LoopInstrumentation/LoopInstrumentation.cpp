@@ -81,7 +81,6 @@ namespace {
             loopstream.open(Loopfile.c_str(), std::ios::in);
             if(loopstream.is_open()) {
                 while(getline(loopstream, line)) {
-                    errs() << "LINE = " << line << "\n";
                     if(line.find('#') == 0) continue;
                     loopsToInstrument.push_back(line);
                 }

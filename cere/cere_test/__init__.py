@@ -180,22 +180,20 @@ def run(args):
         if "__extracted__" in r:
             r = r.replace("extracted", "invivo")
         region = Region(r, args.force)
-        print(region.region)
         #first we need the trace
         res = region.measure_trace()
-        if not res:
-            err=True
-            #continue
+        if not res: err=True
+
         #Compute the coverage of this region
         region.compute_coverage()
         #We can clusterize invocations in performance classes
         res = region.clusterize_invocations()
-        if not res:
-            err=True
-            #continue
+        if not res: err=True
+
         #Replay representative invocations
         res = region.replay_invocations()
         if not res: err=True
+
         #Compute error between invivo and in vitro
         res = region.check_region_matching()
         allRegions.append(region)
