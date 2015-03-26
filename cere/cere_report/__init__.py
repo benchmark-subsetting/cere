@@ -15,7 +15,6 @@ import xmlrpclib
 from contextlib import contextmanager
 
 CSV_DELIMITER = ','
-LIST_PREFIX = ["__invivo__","__extracted__"]
 ROOT = os.path.dirname(os.path.realpath(__file__))
 NAME_FILE = "regions.csv"
 REGIONS_FIELDNAMES = ["Self (%)", "Cumulative (%)", "Codelet Name", "Error (%)"]
@@ -74,7 +73,7 @@ class Region:
         self._invivo = "{:e}".format(float(region['_invivo']))
         self._invitro = "{:e}".format(float(region['_invitro']))
         self._table = {"Self (%)":round(float(region['_self_coverage']), 2), "Error (%)":round(float(region["_error"]), 2),
-                       "Codelet Name":suppr_prefix(region["_name"]), "Cumulative (%)":round(float(region['_coverage']), 2)}
+                       "Codelet Name":region["_name"], "Cumulative (%)":round(float(region['_coverage']), 2)}
         self._inv_table = []
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
         self._callcount = 0
@@ -203,7 +202,7 @@ class Report:
         '''
         self._regions = {}
         for n,d in graph.nodes(data=True):
-            self._regions[suppr_prefix(d['_name'])] = Region(d, graph)
+            self._regions[d['_name']] = Region(d, graph)
         self.init_callcount()
         for k,r in self._regions.iteritems():
             if r._table["Error (%)"] == 100:
@@ -218,7 +217,7 @@ class Report:
         '''
         for k,r in self._regions.iteritems():
             try:
-                infos = csv.reader(open(cere_configure.cere_config["cere_measures_path"]+"/__invivo__{0}.csv".format(k)))
+                infos = csv.reader(open(cere_configure.cere_config["cere_measures_path"]+"/{0}.csv".format(k)))
                 line = infos.next()
                 line = infos.next()
             except (IOError):
@@ -227,7 +226,7 @@ class Report:
                 try:
                     self._regions[k].set_callcount(line[1])
                 except(KeyError):
-                    logging.debug("CALL_COUNT: " + suppr_prefix(loop["Codelet Name"]) + " not in matching error")
+                    logging.debug("CALL_COUNT: " + loop["Codelet Name"] + " not in matching error")
 
     def init_invocation_table(self, graph):
         '''
@@ -236,9 +235,9 @@ class Report:
         '''
         for n, d in graph.nodes(data=True):
             try:
-                self._regions[suppr_prefix(d['_name'])].append_invocation_table(d['_invocations'])
+                self._regions[d['_name']].append_invocation_table(d['_invocations'])
             except(KeyError):
-                logging.debug("INVOCATIONS: " + suppr_prefix(suppr_prefix(d['_name'])) + " not in graph")
+                logging.debug("INVOCATIONS: " + d['_name'] + " not in graph")
         
     def init_codes(self):
         '''
@@ -252,10 +251,10 @@ class Report:
         table = csv.reader(FILE, delimiter=CSV_DELIMITER)
         for code_place in table:
             try:
-                if (suppr_prefix(code_place[0]) in self._regions):
-                    self._regions[suppr_prefix(code_place[0])].init_code(code_place)
+                if (code_place[0] in self._regions):
+                    self._regions[code_place[0]].init_code(code_place)
             except(KeyError):
-                logging.debug("CODE_PLACE: " + suppr_prefix(code_place[0]) + " not regions")
+                logging.debug("CODE_PLACE: " + code_place[0] + " not regions")
         
     def init_liste_script(self):
         '''
@@ -277,12 +276,12 @@ class Report:
         if not tree: return False
         for node in tree:
             try:
-                if (suppr_prefix(node["Codelet Name"]) in self._regions):
-                    region = self._regions[suppr_prefix(node["Codelet Name"])]
+                if (node["Codelet Name"] in self._regions):
+                    region = self._regions[node["Codelet Name"]]
                     region.init_selected(node["Selected"])
                     self._tree = self._tree + [Node(node,region)]
             except(KeyError):
-                logging.info("SELECTED_CODELETS: " + suppr_prefix(node["Codelet Name"]) + " not in selected codelets")
+                logging.info("SELECTED_CODELETS: " + node["Codelet Name"] + " not in selected codelets")
         self.remove_loops()
         self.test_parent_tree()
 
@@ -373,7 +372,7 @@ def context(DIR):
     if not os.path.isfile("{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])):
         logging.info("Can't find {0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
     else:
-        os.system(ROOT + "/../../src/granularity/graph_error.R")
+        os.system(ROOT + "/graph_error.R")
     #try:
     yield
     #except MyError as err:
@@ -404,14 +403,6 @@ def encode_graph(graph_name):
 
 def percent(x):
     return (100 * float(x))
-
-def suppr_prefix(name):
-    '''
-    Remove prefix of a region name
-    '''
-    for pre in LIST_PREFIX:
-        name = name.replace(pre,"")
-    return name
 
 def read_code(code_place):
     '''

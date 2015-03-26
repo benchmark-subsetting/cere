@@ -376,7 +376,7 @@ bool LoopManager::visitLoop(Loop *L, Module *mod)
 
     if(Mode == DUMP) {
         //To be sure we are dumping an isolated loop
-        std::size_t found = currFunc->getName().find("__extracted__");
+        std::size_t found = currFunc->getName().find("__cere__");
         if (found == std::string::npos) return false;
 
         //If we want to extract a particular loop, look if it's this one
@@ -427,7 +427,7 @@ bool LoopManager::visitLoop(Loop *L, Module *mod)
     }
     else if (Mode == REPLAY) {
         //To be sure we are creating a wrapper for an isolated loop
-        std::size_t found = currFunc->getName().find("__extracted__");
+        std::size_t found = currFunc->getName().find("__cere__");
         if (found == std::string::npos) return false;
 
         /*Create the wrapper function and add a basicBlock in it*/

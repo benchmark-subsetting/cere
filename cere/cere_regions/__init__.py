@@ -55,7 +55,7 @@ def add_column_to_header(regions_file, new_regions_file):
 
 def add_coverage(regions_file, new_regions_file, matchObj):
     name = matchObj.group(2)
-    if "__extracted__"  not in name: return
+    if "__cere__"  not in name: return
 
     try:
         coverage = float(matchObj.group(6))

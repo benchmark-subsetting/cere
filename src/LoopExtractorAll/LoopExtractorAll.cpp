@@ -84,7 +84,7 @@ bool LoopExtractorAll::runOnLoop(Loop *L, LPPassManager &LPM) {
 	bool ShouldExtractLoop = true;
 	Function* function = L->getHeader()->getParent();
 	std::string name = function->getName();
-	std::size_t found = name.find("__extracted__");
+	std::size_t found = name.find("__cere__");
     if (found != std::string::npos) { //means we are looking at an already extracted loop
         ShouldExtractLoop = false;
     }

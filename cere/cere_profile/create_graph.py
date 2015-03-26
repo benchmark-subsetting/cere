@@ -69,7 +69,7 @@ def add_node(digraph, matchObj):
     except IndexError:
         coverage = float(matchObj.group(4))
 
-    if "__extracted__"  in name: valid = True
+    if "__cere__"  in name: valid = True
     else:
         valid = False
 

@@ -7,22 +7,12 @@ import logging
 import csv
 import argparse
 
-LIST_PREFIX = ["__invivo__","__extracted__"]
-
 def init_module(subparsers, cere_plugins):
     cere_plugins["check"] = run
     check_parser = subparsers.add_parser("check", help="Compare for a given region, the assembly between original loop and replay loop")
     check_parser.add_argument('--region', required=True, help="Region to check")
     check_parser.add_argument('--path', help="Path of the object file")
     check_parser.add_argument("--diff-asm", nargs='?', const=True, default=False, help="Run vimdiff between original and replay file")
-
-def remove_prefix(name):
-    '''
-    Remove prefix of a region name
-    '''
-    for pre in LIST_PREFIX:
-        name = name.replace(pre,"")
-    return name
 
 def compute_error(a, b):
     return (abs(a-b)/float(max(a, b)))*100
@@ -56,7 +46,7 @@ def run(args):
     if not os.path.isfile("regions.csv"):
         logging.critical("Regions.csv file missing. Please run cere regions")
         return False
-    region = remove_prefix(args.region)
+    region = args.region
     filename = ""
     functionname=""
     #Find the file where the region is
@@ -91,7 +81,7 @@ def run(args):
         logging.debug(str(err))
         logging.debug(err.output)
         logging.debug("If the dump is not present, skip this error")
-    replay_lines = get_nlines(filename, "run__extracted__"+region)
+    replay_lines = get_nlines(filename, "run__cere__"+region)
     if not replay_lines:
         return False
     #backup the replay assembly file

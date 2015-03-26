@@ -15,7 +15,7 @@ import common.utils as utils
 
 def get_region_id(region, graph):
     for n, d in graph.nodes(data=True):
-        if d['_name'].replace("extracted", "invivo") == region: return n
+        if d['_name'] == region: return n
     return None
 
 def trace_exists(region):
@@ -66,10 +66,10 @@ def find_region_to_trace(args, graph, trace_file):
     #Keep region which have the same depth than the requested region
     for n, p in max_path_len.iteritems():
         if p == max_path_len[region_node]:
-            if (not trace_exists(graph.node[n]['_name'].replace("extracted", "invivo")) and not utils.is_invalid(graph.node[n]['_name'])) or args.force:
-                print(graph.node[n]['_name'].replace("extracted", "invivo"), file=f)
-                loops_to_trace.append(graph.node[n]['_name'].replace("extracted", "invivo"))
-                logging.info("Region {0} added to regions trace list".format(graph.node[n]['_name'].replace("extracted", "invivo")))
+            if (not trace_exists(graph.node[n]['_name']) and not utils.is_invalid(graph.node[n]['_name'])) or args.force:
+                print(graph.node[n]['_name'], file=f)
+                loops_to_trace.append(graph.node[n]['_name'])
+                logging.info("Region {0} added to regions trace list".format(graph.node[n]['_name']))
     f.close()
     return loops_to_trace
 

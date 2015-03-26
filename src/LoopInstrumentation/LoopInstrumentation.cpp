@@ -221,10 +221,10 @@ std::string LoopRDTSCInstrumentation::createFunctionName(Loop *L, Function *oldF
         std::string Original_location = firstLoc.getFilename().str();
         std::string File = module_name;
         std::string path = firstLoc.getDirectory();
-        newFunctionName = "__invivo__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
+        newFunctionName = "__cere__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
     }
     else {
-        newFunctionName = "__invivo__" + oldFunction->getName().str();
+        newFunctionName = "__cere__" + oldFunction->getName().str();
     }
     newFunctionName = removeChar(newFunctionName, '-', '_');
     newFunctionName = removeChar(newFunctionName, '/', '_');
@@ -332,7 +332,7 @@ bool LoopRDTSCInstrumentation::visitLoop(Loop *L, Module *mod)
     }
 
     std::string newFunctionName;
-    std::size_t found = currFunc->getName().find("__extracted__");
+    std::size_t found = currFunc->getName().find("__cere__");
     if (found == std::string::npos) newFunctionName = createFunctionName(L, currFunc);
     else newFunctionName = currFunc->getName();
 

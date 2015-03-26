@@ -11,8 +11,6 @@ import cere_configure
 import cere_test
 import logging
 
-LIST_PREFIX = ["__invivo__","__extracted__"]
-
 def read_csv(File):
     try:
         FILE = open(File, 'rb')
@@ -26,7 +24,7 @@ def update_nodes(graph, lines, max_allowed_error):
         #for region_name, error in matching.iteritems():
         #find the node in the graph
         for n,d in graph.nodes(data=True):
-            if suppr_prefix(line["Codelet Name"]) in d['_name'] and not d['_tested']:
+            if line["Codelet Name"] == d['_name'] and not d['_tested']:
                 d['_invivo'] = float(line["Invivo"])
                 d['_invitro'] = float(line["Invitro"])
                 d['_tested'] = True
@@ -37,21 +35,13 @@ def update_nodes(graph, lines, max_allowed_error):
                 d['_error'] = float(line["Error"])
                 invocations = read_csv("{0}/invocations_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
                 for inv in invocations:
-                    if suppr_prefix(inv["Codelet Name"]) in d['_name']:
+                    if inv["Codelet Name"] == d['_name']:
                         d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
                           "Part":round(float(inv["Part"]), 2), "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
                           "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":round(float(inv["Error"]), 2)})
                 d['_tested'] = True
                 d['_to_test'] = False
     return graph
-
-def suppr_prefix(name):
-    '''
-    Remove prefix of a region
-    '''
-    for pre in LIST_PREFIX:
-        name = name.replace(pre,"")
-    return name
 
 def update(args):
     binary_cmd = cere_configure.cere_config["run_cmd"]
@@ -108,7 +98,7 @@ def update(args):
                     if cancel: continue
                     newLoopsToTest = True
                     d['_to_test']=True
-                    f.write("__invivo__"+suppr_prefix(d['_name'])+"\n")
+                    f.write(d['_name']+"\n")
 
         save_graph(graph)
         if not newLoopsToTest:

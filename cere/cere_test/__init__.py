@@ -177,8 +177,6 @@ def run(args):
     allRegions = []
     #For each region
     for r in regions:
-        if "__extracted__" in r:
-            r = r.replace("extracted", "invivo")
         region = Region(r, args.force)
         #first we need the trace
         res = region.measure_trace()

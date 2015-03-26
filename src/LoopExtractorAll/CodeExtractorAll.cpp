@@ -370,7 +370,7 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     std::string File = module_name;
     std::string path = firstLoc.getDirectory();
     //~ if(remove_extension(File) == remove_extension(Original_location)) {
-    newFunctionName = "__extracted__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
+    newFunctionName = "__cere__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
     //~ }
     //~ else {
         //~ newFunctionName = "__extracted__" + remove_extension(File) + separator + remove_extension(Original_location) + separator + oldFunction->getName().str() + separator + firstLine;
@@ -382,7 +382,7 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, path, Original_location);
   }
   else {
-    newFunctionName = "__extracted__" + oldFunction->getName().str() + separator + header->getName().str();
+    newFunctionName = "__cere__" + oldFunction->getName().str() + separator + header->getName().str();
     newFunctionName = removeChar(newFunctionName, '-', '_');
     newFunctionName = removeChar(newFunctionName, '/', '_');
     newFunctionName = removeChar(newFunctionName, '+', '_');

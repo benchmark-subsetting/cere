@@ -168,8 +168,11 @@ void rdtsc_markerStartRegion(char *reg, int trace, bool global) {
             exit(EXIT_FAILURE);
         }
         strcpy(r->name, regionName);
-        if(strstr(regionName, "__extracted__") != NULL) r->invivo = 0;
-        else r->invivo = 1;
+        //~ if(strstr(regionName, "__cere__") != NULL) r->invivo = 0;
+        //~ else r->invivo = 1;
+        //We suppose its always an invivo measure until we found a cool way to
+        //determine if it's actually an invivo or a replay measure
+        r->invivo = 1;
         r->traced = trace;
         r->counter = 0;
         r->call_count = 0;

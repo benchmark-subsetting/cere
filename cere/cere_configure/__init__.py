@@ -40,38 +40,6 @@ def init():
         cere_config = json.load(config_file)
     if not setup_dir(cere_config["cere_measures_path"]): sys.exit(1)
 
-def query_yes_no(question, default="yes"):
-    """Ask a yes/no question via raw_input() and return their answer.
-
-    "question" is a string that is presented to the user.
-    "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
-        an answer is required of the user).
-
-    The "answer" return value is one of "yes" or "no".
-    """
-    valid = {"yes": True, "y": True, "ye": True,
-             "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
-
-    while True:
-        sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
-
 def setup_dir(measures_path):
     if not os.path.isdir(measures_path):
         try:
@@ -86,17 +54,3 @@ def setup_dir(measures_path):
             logging.critical(str(err))
             return False
     return True
-
-#~ def clean_dir(clean_measures, clean_dumps):
-    #~ if clean_measures:
-        #~ if os.path.isdir(default_measures_path):
-            #~ if query_yes_no("WARNING: Are you sure you want to remove CERE results?"):
-                #~ shutil.rmtree(default_measures_path)
-        #~ else:
-            #~ print("No previous CERE measures")
-    #~ if clean_dumps:
-        #~ if os.path.isdir(default_dumps_path):
-            #~ if query_yes_no("WARNING: Are you sure you want to remove CERE dumps?"):
-                #~ shutil.rmtree(default_dumps_path)
-        #~ else:
-            #~ print("No previous CERE dumps")
