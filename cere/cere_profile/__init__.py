@@ -36,7 +36,7 @@ def measure_application(run_cmd, build_cmd, measures_path, force):
             logging.info('Keeping previous application cycles')
             return True
     try:
-        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --lib={1} --wrapper={2}\" -B".format(build_cmd, var.RDTSC_LIB, var.RDTSC_WRAPPER), stderr=subprocess.STDOUT, shell=True))
+        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --wrapper={1}\" -B".format(build_cmd, var.RDTSC_WRAPPER), stderr=subprocess.STDOUT, shell=True))
         logging.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logging.critical(str(err))

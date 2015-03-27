@@ -15,7 +15,6 @@ def init_module(subparsers, cere_plugins):
     instrument_parser = subparsers.add_parser("instrument", help="Instrument a region in the original application")
     instrument_parser.add_argument('--region', required=True, help="Region to instrument")
     instrument_parser.add_argument('--regions-file', help="File containing the list of regions to instrument")
-    instrument_parser.add_argument('--lib', default=var.RDTSC_LIB, help="Library used to instrument the loop (Default rdtsc)")
     instrument_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library")
     instrument_parser.add_argument('--invocation', type=int, default=0, help="Invocation to measure (Default measures all)")
     instrument_parser.add_argument('--norun', const=True, default=False, nargs='?', help="=If you don't want to automatically run the measure")
@@ -40,7 +39,7 @@ def run(args):
     else:
         logging.info("Compiling instrumentation mode for {0}".format(region_input))
     try:
-        logging.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument {2} --lib={3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, mode, args.lib, args.wrapper), stderr=subprocess.STDOUT, shell=True))
+        logging.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument {2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, mode, args.wrapper), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logging.debug(str(err))
         logging.debug(err.output)

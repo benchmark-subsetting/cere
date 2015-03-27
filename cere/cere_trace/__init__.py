@@ -146,7 +146,6 @@ def run(args):
         logging.info("No loops to trace")
         return True
     args.invocation=0
-    args.lib = var.RDTSC_LIB
     args.wrapper = var.RDTSC_WRAPPER
     os.environ["CERE_TRACE"] = "1"
     cere_instrument.run(args)

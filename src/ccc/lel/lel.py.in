@@ -203,11 +203,11 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     safe_system(LD + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
-        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {wrapper} {lib} {args} " +
+        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {wrapper} {args} " +
                 "-L {Root}{libs} -lload -Wl," +
                  "--rpath={Root}{libs} -ldl\n").format(
                 ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
-                     libs=MEMORYDUMP, lib=mode_opt.lib, wrapper=mode_opt.wrapper, dump_dir=DIR))
+                     libs=MEMORYDUMP, wrapper=mode_opt.wrapper, dump_dir=DIR))
 
         f.flush()
         safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
@@ -223,8 +223,8 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
         safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
     elif(mode_opt.instrument):
-        safe_system(("{ld} -o {binary} {opts} {wrapper} {lib}").format(ld=LD,
-                binary=BINARY, opts=COMPIL_OPT, lib=mode_opt.lib, wrapper=mode_opt.wrapper))
+        safe_system(("{ld} -o {binary} {opts} {wrapper}").format(ld=LD,
+                binary=BINARY, opts=COMPIL_OPT, wrapper=mode_opt.wrapper))
     else:
         safe_system(("{ld} -o {binary} {opts}").format(ld=LD,
                 binary=BINARY, opts=COMPIL_OPT))

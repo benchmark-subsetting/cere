@@ -8,7 +8,7 @@ function do_test()
     LD_BIND_NOW=1 ./bwaves
 
     make clean
-    make -j4 INVITRO_CALL_COUNT=1 MODE="replay --region=__cere__block_solver_bi_cgstab_block__52 --invocation=6 --instrument --lib=../../src/rdtsc/librdtsc.a --wrapper=../../src/ccc/lel/librdtsc_wrapper.a"
+    make -j4 INVITRO_CALL_COUNT=1 MODE="replay --region=__cere__block_solver_bi_cgstab_block__52 --invocation=6 --instrument --wrapper=../../src/rdtsc/librdtsc.a"
     ./bwaves > $TMPDIR/test.replay.out 2>&1
 }
 

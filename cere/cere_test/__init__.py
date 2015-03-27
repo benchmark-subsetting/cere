@@ -33,7 +33,6 @@ class Region():
         self.norun = False
         self.regions_file = None
         self.noinstrumentation = False
-        self.lib=var.RDTSC_LIB
         self.wrapper=var.RDTSC_WRAPPER
         self.force = f
         self.invocations_data = []
