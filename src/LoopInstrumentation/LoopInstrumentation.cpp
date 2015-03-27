@@ -31,10 +31,6 @@ LoopsFilename("loops-file", cl::init(""),
                   cl::value_desc("filename"),
                   cl::desc("File with regions to instrument"));
 static cl::opt<bool>
-TraceLoop("trace", cl::init(false),
-                  cl::value_desc("Boolean"),
-                  cl::desc("Enable the trace (For single or multiple regions"));
-static cl::opt<bool>
 AppMeasure("instrument-app", cl::init(false),
                   cl::value_desc("Boolean"),
                   cl::desc("if True, application time will be measured"));
@@ -66,12 +62,11 @@ namespace {
     int invoc;
     bool readFromFile;
     bool measureAppli;
-    bool trace;
     std::vector<std::string> loopsToInstrument;
     LoopInfo *LI;  // The current loop information
 
     explicit LoopRDTSCInstrumentation(int mode = VITRO, unsigned numLoops = ~0, const std::string &loopname = "")
-    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), Mode(mode), invoc(Invocation), measureAppli(AppMeasure), trace(TraceLoop) {
+    : FunctionPass(ID), NumLoops(numLoops), Loopname(loopname), separator("_"), Loopfile(LoopsFilename), Mode(mode), invoc(Invocation), measureAppli(AppMeasure) {
         if (loopname.empty()) Loopname = IsolateLoop;
         if (Loopfile.empty()) readFromFile = false;
         else {
@@ -125,12 +120,10 @@ static RegisterPass<VivoLoopRDTSCInstrumentation> Y("vivo-loop-instrumentation",
 /**Create char* Type**/
 FunctionType* createFunctionType(Module* mod)
 {
-    PointerType* PointerTy_4 = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
     PointerType* PointerTy_5 = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
  
     std::vector<Type*>FuncTy_6_args;
     FuncTy_6_args.push_back(PointerTy_5); //char* for the regionName
-    FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 1)); //bool
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 32)); //int
     FuncTy_6_args.push_back(IntegerType::get(mod->getContext(), 32)); //global variable
@@ -178,14 +171,10 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
     const_ptr_11_indices.push_back(const_int32_10);
     Constant* const_ptr_11 = ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_11_indices);
 
-    //Set Trace boolean
+    //Set vivo/vitro boolean
     ConstantInt* const_int1_11;
-    if(trace) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
+    if(Mode == VIVO) const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("-1"), 10));
     else const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10));
-
-    //Set global boolean
-    ConstantInt* const_int;
-    const_int = ConstantInt::get(mod->getContext(), APInt(1, StringRef("0"), 10)); //always false
 
     //Store requested invocation
     ConstantInt* const_int32_21 = ConstantInt::get(mod->getContext(), APInt(32, invoc, 10));
@@ -195,8 +184,7 @@ std::vector<Value*> LoopRDTSCInstrumentation::createFunctionParameters(Module* m
 
     std::vector<Value*> void_16_params;
     void_16_params.push_back(const_ptr_11); //LoopName
-    void_16_params.push_back(const_int1_11); //Trace boolean
-    void_16_params.push_back(const_int); //Global measure boolean
+    void_16_params.push_back(const_int1_11); //Vivo/Vitro boolean
     void_16_params.push_back(const_int32_21); //requested
     if(invoc == 0)//We want to measure all invocations
         void_16_params.push_back(const_int32_21);

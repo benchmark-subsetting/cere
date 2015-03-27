@@ -8,7 +8,6 @@ unsigned long long int serialize_overhead;
 static struct htable regionHtab;
 static struct htable call_count_reminder;
 
-int LEVEL;
 bool INITIALIZED=false;
 
 typedef struct
@@ -48,10 +47,10 @@ static bool streq(const void*, void*);
 static size_t rehash(const void*, void*);
 void rdtsc_markerInit();
 void rdtsc_markerClose();
-void rdtsc_markerStartRegion(char*, int, bool);
-void rdtsc_markerStopRegion(char*, int, bool);
+void rdtsc_markerStartRegion(char*, bool);
+void rdtsc_markerStopRegion(char*, bool);
 
 void rdtsc_markerinit_();
 void rdtsc_markerclose_();
-void rdtsc_markerstartregion_(char*, int, int, bool);
-void rdtsc_markerstopregion_(char*, int, int, bool);
+void rdtsc_markerstartregion_(char*, int, bool);
+void rdtsc_markerstopregion_(char*, int, bool);

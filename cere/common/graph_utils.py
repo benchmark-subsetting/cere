@@ -30,14 +30,12 @@ def plot(g, step):
         logging.info(err.output)
 
 def load_graph(step=""):
-    logging.info('Loading graph...')
     if not os.path.isfile("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step)): return None
     with open("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step), 'rb') as input:
         graph = pickle.load(input)
     return graph
 
 def save_graph(g, step=""):
-    logging.info('Saving graph...')
     with open("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step), 'wb') as output:
         pickle.dump(g, output, pickle.HIGHEST_PROTOCOL)
     logging.info('Saving done')

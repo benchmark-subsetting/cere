@@ -111,6 +111,7 @@ class Region():
                 infos = line.strip().split()
                 self.region = self.region.replace("invivo", "extracted")
                 self.invocation = infos[0]
+                self.invitro_callcount = 10
                 res = cere_replay.run(self)
                 #Compute error between invivo and invitro cycles for this invocation
                 if not res:

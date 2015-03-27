@@ -77,9 +77,6 @@ def replay_fun(mode_opt, BASE):
     if (mode_opt.instrument):
         print "Instrumentation mode"
         temp_instr = "--instrument-loop=" + mode_opt.region + " "
-        if(mode_opt.trace):
-            print "Trace mode"
-            temp_instr = (temp_instr + "--trace ")
         safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR,
                     base=BASE), EXIT=False)
@@ -112,11 +109,6 @@ def original_fun(mode_opt, BASE):
         instru_opts = instru_opts + "--instrument-loop=" + mode_opt.region + " "
         if(mode_opt.regions_file):
             fail_lec("--regions-file and --region are incompatible")
-        if(mode_opt.trace):
-            if(mode_opt.invocation):
-                fail_lec("--trace and --invocation are incompatible")
-            print "Trace mode"
-            instru_opts = instru_opts + "--trace "
         if(mode_opt.invocation):
             instru_opts = instru_opts + "--invocation=" + mode_opt.invocation + " "
         if(mode_opt.instrument_app):
@@ -130,9 +122,6 @@ def original_fun(mode_opt, BASE):
                 fail_lec("--regions-file and --instrument-app are incompatible")
             if(mode_opt.invocation):
                 fail_lec("--regions-file and --invocation are incompatible")
-            if(mode_opt.trace):
-                print "Trace mode"
-                instru_opts = instru_opts + "--trace "
         else:
             if(mode_opt.instrument_app):
                 extract_opts = extract_opts + "--instrument-app "
@@ -154,9 +143,6 @@ def original_fun(mode_opt, BASE):
                         "-o {base}.ll").format(
                         llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                         LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
-    else:
-        if(mode_opt.trace):
-            fail_lec("--trace requires --intrument")
 
 def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''

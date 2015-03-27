@@ -106,14 +106,13 @@ void rdtsc_markerInit()
     htable_init(&regionHtab, rehash, NULL);
     htable_init(&call_count_reminder, rehash2, NULL);
     atexit(rdtsc_markerClose);
-    LEVEL=0;
     INITIALIZED=true;
 }
 
 void rdtsc_markerClose()
 {
     while(strlen(call_stack) > 0) {
-        rdtsc_markerStopRegion(call_stack, 0, false);
+        rdtsc_markerStopRegion(call_stack, 1);
     }
     struct htable_iter iter;
     if (htable_first(&regionHtab,&iter) == NULL) return;
@@ -145,12 +144,8 @@ void rdtsc_markerClose()
  * if does not exists, create it
  * else record start counter
 */
-void rdtsc_markerStartRegion(char *reg, int trace, bool global) {
+void rdtsc_markerStartRegion(char *reg, bool vivo) {
     if(!INITIALIZED) return;
-
-    //Avoid measuring a son loop when we are not in global dump
-    LEVEL+=1;
-    if(!global && LEVEL!=1) return;
 
     push(reg, call_stack);
     char* regionName=call_stack;
@@ -168,12 +163,10 @@ void rdtsc_markerStartRegion(char *reg, int trace, bool global) {
             exit(EXIT_FAILURE);
         }
         strcpy(r->name, regionName);
-        //~ if(strstr(regionName, "__cere__") != NULL) r->invivo = 0;
-        //~ else r->invivo = 1;
-        //We suppose its always an invivo measure until we found a cool way to
-        //determine if it's actually an invivo or a replay measure
-        r->invivo = 1;
-        r->traced = trace;
+        r->invivo = vivo;
+        char * ge = getenv("CERE_TRACE");
+        if(ge) r->traced = 1;
+        else r->traced = 0;
         r->counter = 0;
         r->call_count = 0;
         r->trace_results=NULL;
@@ -219,14 +212,12 @@ void rdtsc_markerStartRegion(char *reg, int trace, bool global) {
     r->start = rdtsc();
 }
 
-void rdtsc_markerStopRegion(char *reg, int trace, bool global) {
+void rdtsc_markerStopRegion(char *reg, bool vivo) {
     //serialize();
     unsigned long long int stop = rdtsc();
     unsigned long long int loop_cycles;
 
     if(!INITIALIZED) return;
-    LEVEL-=1;
-    if(!global && LEVEL!=0) return;
 
     char* regionName = call_stack;
     /* We must check that reg is base name of regionName */
@@ -255,14 +246,14 @@ void rdtsc_markerStopRegion(char *reg, int trace, bool global) {
 }
 
 //For fortran code
-void rdtsc_markerstartregion_(char *regionName, int len, int trace, bool global)
+void rdtsc_markerstartregion_(char *regionName, int len, bool vivo)
 {
-    rdtsc_markerStartRegion( regionName, trace, global );
+    rdtsc_markerStartRegion( regionName, vivo );
 }
 
-void rdtsc_markerstopregion_(char *regionName, int len, int trace, bool global)
+void rdtsc_markerstopregion_(char *regionName, int len, bool vivo)
 {
-    rdtsc_markerStopRegion( regionName, trace, global );
+    rdtsc_markerStopRegion( regionName, vivo );
 }
 
 void rdtsc_markerinit_()

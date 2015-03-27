@@ -10,8 +10,7 @@ from lel import lel
 #~ RDTSC = PROJECT_ROOT + "/rdtsc/librdtsc.a"
 VERSION = "@PACKAGE_VERSION@"
 
-option_forbidden = set([("dump", "--trace"),
-                       ("dump", "--instrument"),
+option_forbidden = set([("dump", "--instrument"),
                        ("dump", "--nested-regions"),
                        ("dump", "--no-nested-regions"),
                        ("dump", "--instrument-app"),
@@ -19,7 +18,6 @@ option_forbidden = set([("dump", "--trace"),
                        ("replay", "--nested-regions"),
                        ("replay", "--no-nested-regions"),
                        ("replay", "--instrument-app")])
-                       #~ ("original", "--invocation")])
 
 #to ignore prefix matching
 class MyParser(argparse.ArgumentParser):
@@ -53,8 +51,6 @@ def init_subpars(parser, region_required):
     parser.add_argument('--region', action=OptAction, required=region_required)
     parser.add_argument('--regions-file', action=OptAction)
     parser.add_argument('--invocation', action=OptAction)
-    parser.add_argument('--trace', action=OptAction, nargs=0,
-                        const=True, default=False)
     parser.add_argument('--instrument', action=OptAction, nargs=0,
                         const=True, default=False)
     parser.add_argument('--instrument-app', action=OptAction, nargs=0,

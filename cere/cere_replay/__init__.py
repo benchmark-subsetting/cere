@@ -16,6 +16,7 @@ def init_module(subparsers, cere_plugins):
     replay_parser = subparsers.add_parser("replay", help="replay a region")
     replay_parser.add_argument('--region', required=True, help="Region to replay")
     replay_parser.add_argument('--invocation', type=int, default=1, help="invocation to replay (Default 1)")
+    replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
     replay_parser.add_argument('--noinstrumentation', type=bool, const=True, default=False, nargs='?', help="=If you don't want to instrument the region")
     replay_parser.add_argument('--lib', default=var.RDTSC_LIB, help="Library used to instrument the loop (Default rdtsc)")
     replay_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library")
@@ -45,7 +46,7 @@ def run(args):
         logging.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, args.invocation))
 
     try:
-        logging.debug(subprocess.check_output("{0} MODE=\"replay --region={1} --invocation={2} {3} {4} {5}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd, lib, wrap), stderr=subprocess.STDOUT, shell=True))
+        logging.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={6} MODE=\"replay --region={1} --invocation={2} {3} {4} {5}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd, lib, wrap, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logging.critical(str(err))
         logging.critical(err.output)

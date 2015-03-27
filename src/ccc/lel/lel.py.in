@@ -44,7 +44,7 @@ def user_main(FILE, LOOP, mode_opt):
     # Define by default TIMEOUT_SECONDS to 60
     TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
     # Define by default CALL_COUNT to 10
-    INVITRO_CALL_COUNT=os.getenv('INVITRO_CALL_COUNT', 10)
+    INVITRO_CALL_COUNT=int(os.getenv('INVITRO_CALL_COUNT', 10))
     temp_init=""
     temp_close=""
     if (mode_opt.instrument):
@@ -54,7 +54,7 @@ def user_main(FILE, LOOP, mode_opt):
     template = TEMPLATE.read()
     TEMPLATE.close()
     FILE.write(template.format(time_out=TIMEOUT_SECONDS, instru_init=temp_init,
-               instru_close=temp_close, in_vitro_call_count=INVITRO_CALL_COUNT,
+               instru_close=temp_close, in_vitro_call_count=INVITRO_CALL_COUNT+1,
                loop=LOOP.replace("-","_")))
 
 def create_user_main(mode_opt,LOOP):
