@@ -6,7 +6,7 @@ import os
 
 def is_invalid(r):
     if not os.path.isfile("{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], var.INVALID_REGION_FILE)): return False
-    with open("{0}/invalid_loops".format(cere_configure.cere_config["cere_measures_path"]), 'r') as invalid_file:
+    with open("{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], var.INVALID_REGION_FILE), 'r') as invalid_file:
         for region in invalid_file:
             if r == region: return True
     return False
