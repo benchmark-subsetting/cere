@@ -1,4 +1,4 @@
-//===-- Transform/Utils/CodeExtractorAll.h - Code extraction util --*- C++ -*-===//
+//===-- Transform/Utils/RegionExtractor.h - Code extraction util --*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_TRANSFORMS_UTILS_CODE_EXTRACTOR_H
-#define LLVM_TRANSFORMS_UTILS_CODE_EXTRACTOR_H
+#ifndef LLVM_TRANSFORMS_UTILS_REGION_EXTRACTOR_H
+#define LLVM_TRANSFORMS_UTILS_REGION_EXTRACTOR_H
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SetVector.h"
@@ -48,14 +48,14 @@ namespace llvm {
     // Various bits of state computed on construction.
     DominatorTree *const DT;
     const bool AggregateArgs;
-    std::string separator;
+    std::string Separator;
     std::string LoopFileInfos;
 
     // Bits of intermediate state computed at various phases of extraction.
     SetVector<BasicBlock *> Blocks;
     unsigned NumExitBlocks;
-    std::string Loopname;
-    bool measureApp;
+    std::string RegionName;
+    bool ProfileApp;
     Type *RetTy;
 
   public:
@@ -78,7 +78,7 @@ namespace llvm {
     ///
     /// Behaves just like the generic code sequence constructor, but uses the
     /// block sequence of the loop.
-    CodeExtractorAll(DominatorTree &DT, Loop &L, std::string loopname = "", bool measureAppli = false, bool AggregateArgs = false);
+    CodeExtractorAll(DominatorTree &DT, Loop &L, std::string regionName = "", bool profileApp = false, bool AggregateArgs = false);
 
     /// \brief Create a code extractor for a region node.
     ///
@@ -117,6 +117,8 @@ namespace llvm {
     void splitReturnBlocks();
 
     std::string createFunctionName(Function *oldFunction, BasicBlock *header);
+    std::string removeExtension( const std::string &);
+    std::string removeChar(std::string str, const char toReplace, const char replacer);
 
     Function *constructFunction(const ValueSet &inputs,
                                 const ValueSet &outputs,

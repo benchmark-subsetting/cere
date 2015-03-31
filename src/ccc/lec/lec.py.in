@@ -4,7 +4,7 @@
 import os
 
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
-LOOP_EXT = "/LoopExtractorAll/.libs/libLoopExtractorAll.so"
+LOOP_EXT = "/RegionOutliner/.libs/libRegionOutliner.so"
 LOOP_MANAGE = "/LoopManager/.libs/libLoopManager.so"
 LOOP_INSTR = "/LoopInstrumentation/.libs/libLoopInstrumentation.so"
 LLVM_BINDIR = "@LLVM_BINDIR@"
@@ -46,7 +46,7 @@ def dump_fun(mode_opt, BASE):
             temp = temp+"--loops-file="+mode_opt.regions_file+" "
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -region-outliner " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, base=BASE), EXIT=False)
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
@@ -66,8 +66,8 @@ def replay_fun(mode_opt, BASE):
     print "Compiling replay mode"
     if (mode_opt.invocation):
         temp = temp + "--invocation=" + mode_opt.invocation + " "
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all " +
-                "-isolate-loop={loop} {base}.ll -o {base}.ll").format(
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -region-outliner " +
+                "-isolate-region={loop} {base}.ll -o {base}.ll").format(
                 llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
                 loop=mode_opt.region, base=BASE), EXIT=False)
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
@@ -129,7 +129,7 @@ def original_fun(mode_opt, BASE):
                 instru_opts = instru_opts + "--instrument-app "
     if(mode_opt.instrument):
         if(mode_opt.instrument_app):
-            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -loop-extract-all {opts} " +
+            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -region-outliner {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, opts=extract_opts, base=BASE), EXIT=False)
         else:

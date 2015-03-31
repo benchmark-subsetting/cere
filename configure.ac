@@ -109,7 +109,7 @@ AX_PYTHON_MODULE(numpy, fatal)
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
-                 src/LoopExtractorAll/Makefile
+                 src/RegionOutliner/Makefile
                  src/LoopInstrumentation/Makefile
                  src/LoopManager/Makefile
                  src/rdtsc/Makefile

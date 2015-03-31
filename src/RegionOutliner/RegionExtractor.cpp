@@ -13,36 +13,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "CodeExtractorAll.h"
-#include "llvm/ADT/SetVector.h"
+#include "RegionExtractor.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/StringExtras.h"
-#include "llvm/Analysis/Dominators.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/RegionInfo.h"
 #include "llvm/Analysis/RegionIterator.h"
 #include "llvm/Analysis/Verifier.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
-#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/DebugInfo.h"
-#include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/InstIterator.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/IR/Function.h"
 
-#include <algorithm>
 #include <sstream>
 #include <fstream>
-#include <iostream>
-#include <set>
+
 using namespace llvm;
 
 // Provide a command-line option to aggregate function arguments into a struct
@@ -125,24 +110,24 @@ buildExtractionBlockSet(const RegionNode &RN) {
 }
 
 CodeExtractorAll::CodeExtractorAll(BasicBlock *BB, bool AggregateArgs)
-  : DT(0), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
+  : DT(0), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(BB)), NumExitBlocks(~0U) {}
 
 CodeExtractorAll::CodeExtractorAll(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
                              bool AggregateArgs)
-  : DT(DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
+  : DT(DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(BBs)), NumExitBlocks(~0U) {}
 
 CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, Loop &L,
-                    std::string loopname, bool measureAppli, bool AggregateArgs)
-  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
-    Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U), Loopname(loopname), measureApp(measureAppli) {
-        if (loopname.empty()) Loopname = "all";
+                    std::string regionName, bool profileApp, bool AggregateArgs)
+  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
+    Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp) {
+        if (regionName.empty()) RegionName = "all";
     }
 
 CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, const RegionNode &RN,
                              bool AggregateArgs)
-  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), separator("_"), LoopFileInfos("regions.csv"),
+  : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(RN)), NumExitBlocks(~0U) {}
 
 /// definedInRegion - Return true if the specified value is defined in the
@@ -294,43 +279,46 @@ void CodeExtractorAll::splitReturnBlocks() {
     }
 }
 
-std::string removeExtension( const std::string &filename) {
+/// \brief Removes extension from \p filename.
+std::string CodeExtractorAll::removeExtension( const std::string &filename) {
     size_t lastdot = filename.find_last_of(".");
     if (lastdot == std::string::npos) return filename;
     return filename.substr(0, lastdot); 
 }
 
-std::string removeChar(std::string str, const char toReplace, const char replacer)
+/// \brief Removes character \p toReplace by \p replacer in \p str.
+std::string CodeExtractorAll::removeChar(std::string str, const char toReplace, const char replacer)
 {
     replace(str.begin(), str.end(), toReplace, replacer);
     return str;
 }
 
-//This function find if the string 'newFunctionName' is present in the regions file
+/// \brief This function find if the string \p newFunctionName is present in the regions file
 bool CodeExtractorAll::is_region_in_file(std::string newFunctionName, std::fstream& loopstream) {
-    //save current position in file
+    // Save current position in file
     std::streampos curr_put = loopstream.tellp();
     std::streampos curr_get = loopstream.tellg();
-    //Go to the beginning of the file
+    // Go to the beginning of the file
     loopstream.clear();
     loopstream.seekg(0, std::ios::beg);
     std::string line;
     while (getline(loopstream, line)) {
         if (line.find(newFunctionName, 0) != std::string::npos) {
-            //restore previous position
+            // Restore previous position
             loopstream.clear();
             loopstream.seekg(curr_get, std::ios::beg);
             loopstream.seekp(curr_put, std::ios::beg);
             return true;
         }
     }
-    //restore previous position
+    // Restore previous position
     loopstream.clear();
     loopstream.seekg(curr_get, std::ios::beg);
     loopstream.seekp(curr_put, std::ios::beg);
     return false;
 }
 
+/// \brief Add a new region in the regions file if not already present.
 void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
                                           std::string File,
                                           std::string oldFunction,
@@ -353,6 +341,8 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
     }
 }
 
+/// \brief Creates the CERE formated function name for the outlined region.
+/// The syntax is __cere__filename__functionName__firstLine
 std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlock *header) {
   //Get current module
   Module *mod = oldFunction->getParent();
@@ -369,25 +359,15 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
     std::string Original_location = firstLoc.getFilename().str();
     std::string File = module_name;
     std::string path = firstLoc.getDirectory();
-    //~ if(remove_extension(File) == remove_extension(Original_location)) {
-    newFunctionName = "__cere__" + removeExtension(File) + separator + oldFunction->getName().str() + separator + firstLine;
-    //~ }
-    //~ else {
-        //~ newFunctionName = "__extracted__" + remove_extension(File) + separator + remove_extension(Original_location) + separator + oldFunction->getName().str() + separator + firstLine;
-    //~ }
+    newFunctionName = "__cere__" + removeExtension(File) + Separator + oldFunction->getName().str() + Separator + firstLine;
+
     newFunctionName = removeChar(newFunctionName, '-', '_');
     newFunctionName = removeChar(newFunctionName, '/', '_');
     newFunctionName = removeChar(newFunctionName, '+', '_');
     newFunctionName = removeChar(newFunctionName, '.', '_');
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(), firstLine, path, Original_location);
   }
-  else {
-    newFunctionName = "__cere__" + oldFunction->getName().str() + separator + header->getName().str();
-    newFunctionName = removeChar(newFunctionName, '-', '_');
-    newFunctionName = removeChar(newFunctionName, '/', '_');
-    newFunctionName = removeChar(newFunctionName, '+', '_');
-    newFunctionName = removeChar(newFunctionName, '.', '_');
-  }
+
   return newFunctionName;
 }
 
@@ -456,8 +436,9 @@ Function *CodeExtractorAll::constructFunction(const ValueSet &inputs,
                                            newFunctionName,
                                            M);
 
-  // Always try to inline the outlined function
-  if (measureApp) newFunction->addFnAttr(Attribute::NoInline);
+  // Always try to inline the outlined function when we are not
+  // profiling the application.
+  if (ProfileApp) newFunction->addFnAttr(Attribute::NoInline);
   else newFunction->addFnAttr(Attribute::AlwaysInline);
 
   // If the old function is no-throw, so is the new one.
@@ -827,10 +808,10 @@ Function *CodeExtractorAll::extractCodeRegion() {
   Function *oldFunction = header->getParent();
   std::string newFunctionName = createFunctionName(oldFunction, header);
 
-  DEBUG(dbgs() << "Requested loop = " << Loopname << " & isolating " << newFunctionName << "\n");
+  DEBUG(dbgs() << "Requested loop = " << RegionName << " & isolating " << newFunctionName << "\n");
 
   //If we want to isolate a particular loop
-  if(Loopname != "all" && Loopname != newFunctionName) {
+  if(RegionName != "all" && RegionName != newFunctionName) {
     return 0;
   }
 

@@ -1,1 +1,1 @@
-SUBDIRS=rdtsc memory_dump cache_flush LoopExtractorAll LoopInstrumentation LoopManager 
+SUBDIRS=rdtsc memory_dump cache_flush RegionOutliner LoopInstrumentation LoopManager 
