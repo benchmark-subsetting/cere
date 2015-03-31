@@ -31,6 +31,7 @@ class Region():
         self.status = True
         self.invocation=1
         self.norun = False
+        self.read = False
         self.regions_file = None
         self.noinstrumentation = False
         self.wrapper=var.RDTSC_WRAPPER

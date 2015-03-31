@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <mm_malloc.h>
 #define PAGESIZE 4096
-#define round_to_page(addr) ((char *)(((long unsigned)(addr)) & ~(PAGESIZE-1))) 
+#define round_to_page(addr) ((char *)(((long unsigned)(addr)) & ~(PAGESIZE-1)))
 #define WIDTH 4096*10
 int loop(int *a, int size)
 {
@@ -40,14 +40,14 @@ int main(int argc, char **argv)
 
     system("cacheflush");
 
-    printf("a: %p -> %p\n", &a[0], &a[WIDTH]); 
-    printf("b: %p -> %p\n", &b[0], &b[WIDTH]); 
+    printf("a: %p -> %p\n", &a[0], &a[WIDTH]);
+    printf("b: %p -> %p\n", &b[0], &b[WIDTH]);
 
     fprintf(stderr, "ITERATION = 1\n");
     c += loop(a, WIDTH);
 
     fprintf(stderr, "ITERATION = 2\n");
-    c += loop(b, WIDTH); 
+    c += loop(b, WIDTH);
 
     fprintf(stderr, "ITERATION = 3\n");
     c += loop(a, WIDTH);

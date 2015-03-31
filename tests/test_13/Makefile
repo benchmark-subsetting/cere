@@ -13,12 +13,12 @@ ${PROGRAM}: ${OBJS}
 	${FLINK} ${MODE} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
 
 %.o: %.c
-	${CC} ${MODE} ${FLAGS} $<
+	${CC} ${MODE} -c ${FLAGS} $<
 
 clean:
 	- rm -f *.o *.s *.ll *.bin *.csv
 	- rm -f test
 
 veryclean: clean
-	- rm -rf cere_dumps/
+	- rm -rf cere_dumps/ cere_measures/
 	- rm -f *.o lel_bin realmain.c dump.c 

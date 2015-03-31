@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import shutil
-import argparse
 import logging
 import subprocess
 import common.variables as var
@@ -25,19 +21,19 @@ def run(args):
     if utils.is_invalid(args.region) and not args.force:
         logging.error("{0} is invalid".format(args.region))
         return False
-    region_input = ""
+
     if args.regions_file:
         region_input = "--regions-file={0}".format(args.regions_file)
-    elif cere_configure.cere_config["multiple_trace"] and args.trace_file:
-        region_input = "--regions-file={0}".format(args.trace_file)
     else:
         region_input = "--region={0}".format(args.region)
-    mode=""
+
     if args.invocation != 0 :
         logging.info("Compiling instrumentation mode for {0} invocation {1}".format(region_input, args.invocation))
         mode = " --invocation={0}".format(args.invocation)
     else:
         logging.info("Compiling instrumentation mode for {0}".format(region_input))
+        mode = ""
+
     try:
         logging.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument {2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, mode, args.wrapper), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
@@ -46,6 +42,7 @@ def run(args):
         logging.critical("Compiling instrumentation failed")
         utils.mark_invalid(args.region)
         return False
+
     if not args.norun:
         logging.info("Instrumentation for {0}".format(region_input))
         try:
