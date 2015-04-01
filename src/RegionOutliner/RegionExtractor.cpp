@@ -108,23 +108,23 @@ buildExtractionBlockSet(const RegionNode &RN) {
   return buildExtractionBlockSet(R.block_begin(), R.block_end());
 }
 
-CodeExtractorAll::CodeExtractorAll(BasicBlock *BB, bool AggregateArgs)
+RegionExtractor::RegionExtractor(BasicBlock *BB, bool AggregateArgs)
   : DT(0), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(BB)), NumExitBlocks(~0U) {}
 
-CodeExtractorAll::CodeExtractorAll(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
+RegionExtractor::RegionExtractor(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
                              bool AggregateArgs)
   : DT(DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(BBs)), NumExitBlocks(~0U) {}
 
-CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, Loop &L,
+RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
                     std::string regionName, bool profileApp, bool AggregateArgs)
   : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp) {
         if (regionName.empty()) RegionName = "all";
     }
 
-CodeExtractorAll::CodeExtractorAll(DominatorTree &DT, const RegionNode &RN,
+RegionExtractor::RegionExtractor(DominatorTree &DT, const RegionNode &RN,
                              bool AggregateArgs)
   : DT(&DT), AggregateArgs(AggregateArgs||AggregateArgsOpt), Separator("_"), LoopFileInfos("regions.csv"),
     Blocks(buildExtractionBlockSet(RN)), NumExitBlocks(~0U) {}
@@ -149,7 +149,7 @@ static bool definedInCaller(const SetVector<BasicBlock *> &Blocks, Value *V) {
   return false;
 }
 
-void CodeExtractorAll::findInputsOutputs(ValueSet &Inputs,
+void RegionExtractor::findInputsOutputs(ValueSet &Inputs,
                                       ValueSet &Outputs) const {
   for (SetVector<BasicBlock *>::const_iterator I = Blocks.begin(),
                                                E = Blocks.end();
@@ -178,7 +178,7 @@ void CodeExtractorAll::findInputsOutputs(ValueSet &Inputs,
 /// severSplitPHINodes - If a PHI node has multiple inputs from outside of the
 /// region, we need to split the entry block of the region so that the PHI node
 /// is easier to deal with.
-void CodeExtractorAll::severSplitPHINodes(BasicBlock *&Header) {
+void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
   unsigned NumPredsFromRegion = 0;
   unsigned NumPredsOutsideRegion = 0;
 
@@ -255,7 +255,7 @@ void CodeExtractorAll::severSplitPHINodes(BasicBlock *&Header) {
   }
 }
 
-void CodeExtractorAll::splitReturnBlocks() {
+void RegionExtractor::splitReturnBlocks() {
   for (SetVector<BasicBlock *>::iterator I = Blocks.begin(), E = Blocks.end();
        I != E; ++I)
     if (ReturnInst *RI = dyn_cast<ReturnInst>((*I)->getTerminator())) {
@@ -279,21 +279,21 @@ void CodeExtractorAll::splitReturnBlocks() {
 }
 
 /// \brief Removes extension from \p filename.
-std::string CodeExtractorAll::removeExtension( const std::string &filename) {
+std::string RegionExtractor::removeExtension( const std::string &filename) {
     size_t lastdot = filename.find_last_of(".");
     if (lastdot == std::string::npos) return filename;
     return filename.substr(0, lastdot); 
 }
 
 /// \brief Removes character \p toReplace by \p replacer in \p str.
-std::string CodeExtractorAll::removeChar(std::string str, const char toReplace, const char replacer)
+std::string RegionExtractor::removeChar(std::string str, const char toReplace, const char replacer)
 {
     replace(str.begin(), str.end(), toReplace, replacer);
     return str;
 }
 
 /// \brief This function find if the string \p newFunctionName is present in the regions file
-bool CodeExtractorAll::is_region_in_file(std::string newFunctionName, std::fstream& loopstream) {
+bool RegionExtractor::is_region_in_file(std::string newFunctionName, std::fstream& loopstream) {
     // Save current position in file
     std::streampos curr_put = loopstream.tellp();
     std::streampos curr_get = loopstream.tellg();
@@ -318,7 +318,7 @@ bool CodeExtractorAll::is_region_in_file(std::string newFunctionName, std::fstre
 }
 
 /// \brief Add a new region in the regions file if not already present.
-void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
+void RegionExtractor::add_region_to_file(std::string newFunctionName,
                                           std::string File,
                                           std::string oldFunction,
                                           std::string firstLine,
@@ -342,7 +342,7 @@ void CodeExtractorAll::add_region_to_file(std::string newFunctionName,
 
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
-std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlock *header) {
+std::string RegionExtractor::createFunctionName(Function *oldFunction, BasicBlock *header) {
   //Get current module
   Module *mod = oldFunction->getParent();
   std::string module_name = mod->getModuleIdentifier();
@@ -373,7 +373,7 @@ std::string CodeExtractorAll::createFunctionName(Function *oldFunction, BasicBlo
 /// constructFunction - make a function based on inputs and outputs, as follows:
 /// f(in0, ..., inN, out0, ..., outN)
 ///
-Function *CodeExtractorAll::constructFunction(const ValueSet &inputs,
+Function *RegionExtractor::constructFunction(const ValueSet &inputs,
                                            const ValueSet &outputs,
                                            BasicBlock *header,
                                            BasicBlock *newRootNode,
@@ -527,7 +527,7 @@ static BasicBlock* FindPhiPredForUseInBlock(Value* Used, BasicBlock* BB) {
 /// emitCallAndSwitchStatement - This method sets up the caller side by adding
 /// the call instruction, splitting any PHI nodes in the header block as
 /// necessary.
-void CodeExtractorAll::
+void RegionExtractor::
 emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
                            ValueSet &inputs, ValueSet &outputs) {
   // Emit a call to the new function, passing in: *pointer to struct (if
@@ -780,7 +780,7 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
   }
 }
 
-void CodeExtractorAll::moveCodeToFunction(Function *newFunction) {
+void RegionExtractor::moveCodeToFunction(Function *newFunction) {
   Function *oldFunc = (*Blocks.begin())->getParent();
   Function::BasicBlockListType &oldBlocks = oldFunc->getBasicBlockList();
   Function::BasicBlockListType &newBlocks = newFunction->getBasicBlockList();
@@ -795,7 +795,7 @@ void CodeExtractorAll::moveCodeToFunction(Function *newFunction) {
   }
 }
 
-Function *CodeExtractorAll::extractCodeRegion() {
+Function *RegionExtractor::extractCodeRegion() {
   if (!isEligible())
     return 0;
 

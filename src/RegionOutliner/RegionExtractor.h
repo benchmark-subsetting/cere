@@ -41,7 +41,7 @@ namespace llvm {
   ///    function to arguments.
   /// 3) Add allocas for any scalar outputs, adding all of the outputs' allocas
   ///    as arguments, and inserting stores to the arguments for any scalars.
-  class CodeExtractorAll {
+  class RegionExtractor {
     typedef SetVector<Value *> ValueSet;
 
     // Various bits of state computed on construction.
@@ -62,7 +62,7 @@ namespace llvm {
     ///
     /// In this formation, we don't require a dominator tree. The given basic
     /// block is set up for extraction.
-    CodeExtractorAll(BasicBlock *BB, bool AggregateArgs = false);
+    RegionExtractor(BasicBlock *BB, bool AggregateArgs = false);
 
     /// \brief Create a code extractor for a sequence of blocks.
     ///
@@ -70,20 +70,20 @@ namespace llvm {
     /// dominates the rest, prepare a code extractor object for pulling this
     /// sequence out into its new function. When a DominatorTree is also given,
     /// extra checking and transformations are enabled.
-    CodeExtractorAll(ArrayRef<BasicBlock *> BBs, DominatorTree *DT = 0,
+    RegionExtractor(ArrayRef<BasicBlock *> BBs, DominatorTree *DT = 0,
                   bool AggregateArgs = false);
 
     /// \brief Create a code extractor for a loop body.
     ///
     /// Behaves just like the generic code sequence constructor, but uses the
     /// block sequence of the loop.
-    CodeExtractorAll(DominatorTree &DT, Loop &L, std::string regionName = "", bool profileApp = false, bool AggregateArgs = false);
+    RegionExtractor(DominatorTree &DT, Loop &L, std::string regionName = "", bool profileApp = false, bool AggregateArgs = false);
 
     /// \brief Create a code extractor for a region node.
     ///
     /// Behaves just like the generic code sequence constructor, but uses the
     /// block sequence of the region node passed in.
-    CodeExtractorAll(DominatorTree &DT, const RegionNode &RN,
+    RegionExtractor(DominatorTree &DT, const RegionNode &RN,
                   bool AggregateArgs = false);
 
     /// \brief Perform the extraction, returning the new function.

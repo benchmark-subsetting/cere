@@ -30,13 +30,13 @@ static cl::opt<bool> AppMeasure(
     cl::desc("If you want to isolate regions to profile the application"));
 
 namespace {
-struct LoopExtractorAll : public LoopPass {
+struct RegionOutliner : public LoopPass {
   static char ID; // Pass identification, replacement for typeid
   unsigned NumLoops;
   bool ProfileApp;
   std::string RegionName;
 
-  explicit LoopExtractorAll(unsigned numLoops = ~0,
+  explicit RegionOutliner(unsigned numLoops = ~0,
                             const std::string &regionName = "")
       : LoopPass(ID), NumLoops(numLoops), ProfileApp(AppMeasure),
         RegionName(regionName) {
@@ -54,11 +54,11 @@ struct LoopExtractorAll : public LoopPass {
 };
 }
 
-char LoopExtractorAll::ID = 0;
-static RegisterPass<LoopExtractorAll> X("region-outliner", "Outline all loops",
+char RegionOutliner::ID = 0;
+static RegisterPass<RegionOutliner> X("region-outliner", "Outline all loops",
                                         false, false);
 
-bool LoopExtractorAll::runOnLoop(Loop *L, LPPassManager &LPM) {
+bool RegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // Only visit top-level loops.
   if (L->getParentLoop())
     return false;
@@ -85,7 +85,7 @@ bool LoopExtractorAll::runOnLoop(Loop *L, LPPassManager &LPM) {
     if (NumLoops == 0)
       return Changed;
     --NumLoops;
-    CodeExtractorAll Extractor(DT, *L, RegionName, ProfileApp);
+    RegionExtractor Extractor(DT, *L, RegionName, ProfileApp);
     if (Extractor.extractCodeRegion() != 0) {
       Changed = true;
       // After extraction, the loop is replaced by a function call, so
