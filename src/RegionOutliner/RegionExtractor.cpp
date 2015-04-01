@@ -1,14 +1,13 @@
-//===- CodeExtractorAll.cpp - Pull code region into a new function -----------===//
+//===- RegionExtractor.cpp - Pull code region into a new function ---------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// This file is distributed under the ... License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
 //
 // This file implements the interface to tear out a code region, such as an
-// individual loop or a parallel section, into a new function, replacing it with
+// individual loop, into a new function, replacing it with
 // a call to the new function.
 //
 //===----------------------------------------------------------------------===//
