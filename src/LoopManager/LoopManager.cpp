@@ -165,13 +165,6 @@ std::vector<Value*> createDumpFunctionParameters(Module* mod, Function* currFunc
                 ptr_args->setName(ss.str()+".addr");
             }
             params.push_back(ptr_args);
-            //~ std::string type_str;
-            //~ llvm::raw_string_ostream rso(type_str);
-            //~ ptr_args->getType()->print(rso);
-            //~ params.push_back(createStringValue(mod, rso.str()));
-            //~ std::string tmp = ptr_args->getName().str();
-            //~ params.push_back(createStringValue(mod, tmp));
-            //~ errs() << " Name: " << ptr_args->getName() << ", Type:" << *ptr_args->getType() << "\n";
         }
         else {
             Argument* ptr_args = args;
@@ -181,13 +174,6 @@ std::vector<Value*> createDumpFunctionParameters(Module* mod, Function* currFunc
                 ptr_args->setName(ss.str()+".addr");
             }
             params.push_back(ptr_args);
-            //~ std::string type_str;
-            //~ llvm::raw_string_ostream rso(type_str);
-            //~ ptr_args->getType()->print(rso);
-            //~ params.push_back(createStringValue(mod, rso.str()));
-            //~ std::string tmp = ptr_args->getName().str();
-            //~ params.push_back(createStringValue(mod, tmp));
-            //~ errs() << " Name: " << args->getName() << ", Type:" << *args->getType() << "\n";
         }
     }
     ConstantInt* nbParam = ConstantInt::get(mod->getContext(), APInt(32, params.size(), 10));

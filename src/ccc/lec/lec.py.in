@@ -6,7 +6,7 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 LOOP_EXT = "/RegionOutliner/.libs/libRegionOutliner.so"
 LOOP_MANAGE = "/LoopManager/.libs/libLoopManager.so"
-LOOP_INSTR = "/LoopInstrumentation/.libs/libLoopInstrumentation.so"
+LOOP_INSTR = "/RegionInstrumentation/.libs/libRegionInstrumentation.so"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
 LD="gcc-4.7"
@@ -43,7 +43,7 @@ def dump_fun(mode_opt, BASE):
             fail_lec("--regions-file and --region are incompatible")
     else:
         if(mode_opt.regions_file):
-            temp = temp+"--loops-file="+mode_opt.regions_file+" "
+            temp = temp+"--regions-file="+mode_opt.regions_file+" "
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -region-outliner " +
@@ -76,7 +76,7 @@ def replay_fun(mode_opt, BASE):
                     base=BASE), EXIT=False)
     if (mode_opt.instrument):
         print "Instrumentation mode"
-        temp_instr = "--instrument-loop=" + mode_opt.region + " "
+        temp_instr = "--instrument-region=" + mode_opt.region + " "
         safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR,
                     base=BASE), EXIT=False)
@@ -106,7 +106,7 @@ def original_fun(mode_opt, BASE):
     instru_opts = ""
     extract_opts = ""
     if(mode_opt.region):
-        instru_opts = instru_opts + "--instrument-loop=" + mode_opt.region + " "
+        instru_opts = instru_opts + "--instrument-region=" + mode_opt.region + " "
         if(mode_opt.regions_file):
             fail_lec("--regions-file and --region are incompatible")
         if(mode_opt.invocation):
@@ -117,7 +117,7 @@ def original_fun(mode_opt, BASE):
         if(mode_opt.invocation):
             fail_lec("Can't measure specific invocation with --regions-file")
         if(mode_opt.regions_file):
-            instru_opts = instru_opts + "--loops-file=" + mode_opt.regions_file + " "
+            instru_opts = instru_opts + "--regions-file=" + mode_opt.regions_file + " "
             if(mode_opt.instrument_app):
                 fail_lec("--regions-file and --instrument-app are incompatible")
             if(mode_opt.invocation):
