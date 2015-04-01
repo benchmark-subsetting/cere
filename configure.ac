@@ -6,16 +6,19 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AM_INIT_AUTOMAKE([subdir-objects silent-rules foreign])
-AC_PROG_LIBTOOL  
+AC_PROG_LIBTOOL
 
 LT_INIT
 AC_PROG_CXX
 AC_PROG_AWK
-AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+# Check for specific compilers
+AC_PROG_CC([gcc])
+AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path (for dragonegg and replay linking)])
+AC_SUBST(GCC_PATH, $CC)
 AX_LLVM([3.3],[all])
 
 AC_CHECK_LIB([c], [exit])
@@ -31,7 +34,7 @@ AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
 AC_CHECK_TOOL([READELF], [readelf], [])
 
 # Check for google-pprof
-AC_PATH_PROGS(PPROF, [pprof google-pprof], []) 
+AC_PATH_PROGS(PPROF, [pprof google-pprof], [])
 
 # Check for header files.
 AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/time.h unistd.h utime.h])

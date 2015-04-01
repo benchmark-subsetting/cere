@@ -14,7 +14,7 @@ LIKWID = "/usr/local/lib/liblikwid.a -lpthread -lm"
 PROFILE_LIB = "-lprofiler"
 MEMORYDUMP = "/memory_dump/.libs/"
 VERSION = "@PACKAGE_VERSION@"
-LD="gcc-4.7"
+GCC="@GCC_PATH@"
 
 def grep(path, regex):
     regex=".*"+regex+".*"
@@ -76,7 +76,7 @@ def compile_memory_dump_objects(DIR):
             DUMP_ARGS = (DUMP_ARGS +
                         " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
     OBJ.close()
-    safe_system(LD + " -c cere_dumps/objs.S")
+    safe_system(GCC + " -c cere_dumps/objs.S")
     return DUMP_ARGS
 
 def dump_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -84,8 +84,8 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Dump mode
     Call the linker and copy the original binary
     '''
-    safe_system(("{ld} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
-                "--rpath={Root}{libs} -ldl").format(ld=LD, binary=BINARY,
+    safe_system(("{gcc} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
+                "--rpath={Root}{libs} -ldl").format(gcc=GCC, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
 
 
@@ -200,17 +200,17 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
 
 
 
-    safe_system(LD + " -c realmain.c")
+    safe_system(GCC + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
         f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {wrapper} {args} " +
                 "-L {Root}{libs} -lload -Wl," +
                  "--rpath={Root}{libs} -ldl\n").format(
-                ld=LD, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
+                gcc=GCC, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
                      libs=MEMORYDUMP, wrapper=mode_opt.wrapper, dump_dir=DIR))
 
         f.flush()
-        safe_system(("{ld} @{tempfile}".format(tempfile=f.name, ld=LD)))
+        safe_system(("{gcc} @{tempfile}".format(tempfile=f.name, gcc=GCC)))
 
 
 #in original mode
@@ -220,13 +220,13 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Only call the linker
     '''
     if(mode_opt.instrument_app):
-        safe_system(("{ld} -o {binary} {opts} {libs}").format(ld=LD,
+        safe_system(("{gcc} -o {binary} {opts} {libs}").format(gcc=GCC,
                 binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
     elif(mode_opt.instrument):
-        safe_system(("{ld} -o {binary} {opts} {wrapper}").format(ld=LD,
+        safe_system(("{gcc} -o {binary} {opts} {wrapper}").format(gcc=GCC,
                 binary=BINARY, opts=COMPIL_OPT, wrapper=mode_opt.wrapper))
     else:
-        safe_system(("{ld} -o {binary} {opts}").format(ld=LD,
+        safe_system(("{gcc} -o {binary} {opts}").format(gcc=GCC,
                 binary=BINARY, opts=COMPIL_OPT))
 
 def link(args):
