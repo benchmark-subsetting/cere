@@ -9,7 +9,7 @@ LOOP_MANAGE = "/LoopManager/.libs/libLoopManager.so"
 LOOP_INSTR = "/RegionInstrumentation/.libs/libRegionInstrumentation.so"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
-LD="gcc-4.7"
+GCC="@GCC_PATH@"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
 SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
 
@@ -152,9 +152,9 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''
     if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
-            safe_system(("{ld} {opts} -O0 -g {includes} {source} -S " +
+            safe_system(("{gcc} {opts} -O0 -g {includes} {source} -S " +
                         "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
-                        ld=LD, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
+                        gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
                         Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
         else:
             fail_lec("fortran support disabled. Please reconfigure using --with-dragonegg.")
@@ -173,7 +173,7 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     #OPT="-early-cse"
     #os.system("{llvm_bindir}/opt -S {opts} {base}.ll -o {base}.ll".format(
     #                 llvm_bindir=LLVM_BINDIR, opts=OPT, base=BASE))
-    
+
     test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(
                      llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT))
 

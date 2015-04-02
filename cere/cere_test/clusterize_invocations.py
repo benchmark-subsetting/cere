@@ -10,7 +10,7 @@ from sklearn import cluster
 from sklearn import preprocessing
 
 
-MAX_POINTS=50000
+MAX_POINTS=10000
 
 PALETTE = ["red","blue","green","yellow","black","grey","pink",
             "maroon","orange","purple","magenta","silver","golden",
@@ -42,8 +42,10 @@ def subsample(trace, n):
     samples = np.random.choice(trace['size'], n)
     trace['invocations'] = trace['invocations'][samples,]
     trace['cycles'] = trace['cycles'][samples,]
+    trace['size'] = n
 
 def clusterize(trace):
+    assert(len(trace['cycles']) == trace['size'])
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
 
     # If the variation is negligeable, a clustering is useless
