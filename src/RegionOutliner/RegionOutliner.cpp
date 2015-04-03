@@ -37,7 +37,7 @@ struct RegionOutliner : public LoopPass {
   std::string RegionName;
 
   explicit RegionOutliner(unsigned numLoops = ~0,
-                            const std::string &regionName = "")
+                          const std::string &regionName = "")
       : LoopPass(ID), NumLoops(numLoops), ProfileApp(AppMeasure),
         RegionName(regionName) {
     if (regionName.empty())
@@ -56,7 +56,7 @@ struct RegionOutliner : public LoopPass {
 
 char RegionOutliner::ID = 0;
 static RegisterPass<RegionOutliner> X("region-outliner", "Outline all loops",
-                                        false, false);
+                                      false, false);
 
 bool RegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // Only visit top-level loops.
