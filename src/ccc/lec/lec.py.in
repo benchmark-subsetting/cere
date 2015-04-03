@@ -81,7 +81,7 @@ def replay_fun(mode_opt, BASE):
                     llvm_bindir=LLVM_BINDIR,
                     base=BASE), EXIT=False)
         safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                    "-vitro-loop-instrumentation {opts} {base}.ll " +
+                    "-region-instrumentation --replay {opts} {base}.ll " +
                     "-o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                     LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE),
@@ -134,12 +134,12 @@ def original_fun(mode_opt, BASE):
                 LoopExt=LOOP_EXT, opts=extract_opts, base=BASE), EXIT=False)
         else:
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                        "-vivo-loop-instrumentation {opts} {base}.ll " +
+                        "-region-instrumentation {opts} {base}.ll " +
                         "-o {base}.ll").format(
                         llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                         LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
             print(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                        "-vivo-loop-instrumentation {opts} {base}.ll " +
+                        "-region-instrumentation {opts} {base}.ll " +
                         "-o {base}.ll").format(
                         llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                         LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))

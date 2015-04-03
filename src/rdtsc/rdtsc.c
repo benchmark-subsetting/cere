@@ -105,7 +105,6 @@ void rdtsc_markerInit()
     calibrate_serialize_overhead();
     htable_init(&regionHtab, rehash, NULL);
     htable_init(&call_count_reminder, rehash2, NULL);
-    atexit(rdtsc_markerClose);
     INITIALIZED=true;
 }
 

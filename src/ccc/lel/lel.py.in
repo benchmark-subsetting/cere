@@ -9,7 +9,6 @@ import tempfile
 ROOT = os.path.dirname(os.path.realpath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 OBJCOPY = "objcopy"
-RDTSC = "/rdtsc/librdtsc.a"
 LIKWID = "/usr/local/lib/liblikwid.a -lpthread -lm"
 PROFILE_LIB = "-lprofiler"
 MEMORYDUMP = "/memory_dump/.libs/"
@@ -45,17 +44,12 @@ def user_main(FILE, LOOP, mode_opt):
     TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
     # Define by default CALL_COUNT to 10
     INVITRO_CALL_COUNT=int(os.getenv('INVITRO_CALL_COUNT', 10))
-    temp_init=""
-    temp_close=""
-    if (mode_opt.instrument):
-        temp_init = "cere_markerInit();\n"
-        temp_close = "cere_markerClose();\n"
     TEMPLATE = open("{root}/Template_realmain.c".format(root=ROOT), "r")
     template = TEMPLATE.read()
     TEMPLATE.close()
-    FILE.write(template.format(time_out=TIMEOUT_SECONDS, instru_init=temp_init,
-               instru_close=temp_close, in_vitro_call_count=INVITRO_CALL_COUNT+1,
-               loop=LOOP.replace("-","_")))
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS,
+                               in_vitro_call_count=INVITRO_CALL_COUNT+1,
+                               loop=LOOP))
 
 def create_user_main(mode_opt,LOOP):
     safe_system("rm -f realmain.c")
@@ -87,7 +81,6 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     safe_system(("{gcc} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
                 "--rpath={Root}{libs} -ldl").format(gcc=GCC, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
-
 
 def sysout(cmd):
     return (subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
@@ -168,7 +161,6 @@ def extract_symbols(DIR):
     safe_system("{objcopy} -S --extract-symbol --keep-symbols={dump_dir}/static.names {dump_dir}/static.sym {dump_dir}/static.sym".format(
         objcopy=OBJCOPY, dump_dir=DIR))
 
-
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
@@ -188,7 +180,6 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
     create_user_main(mode_opt,LOOP)
 
-
     # Extract symbol file
 
     extract_symbols(DIR)
@@ -198,20 +189,17 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
             safe_system ("{objcopy}  --weaken-symbols={dump_dir}/static.names {f}".format(
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
-
-
     safe_system(GCC + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
-        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {wrapper} {args} " +
+        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {args} " +
                 "-L {Root}{libs} -lload -Wl," +
-                 "--rpath={Root}{libs} -ldl\n").format(
+                 "--rpath={Root}{libs} -ldl {wrapper}\n").format(
                 gcc=GCC, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
                      libs=MEMORYDUMP, wrapper=mode_opt.wrapper, dump_dir=DIR))
 
         f.flush()
         safe_system(("{gcc} @{tempfile}".format(tempfile=f.name, gcc=GCC)))
-
 
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):
