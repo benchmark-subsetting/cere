@@ -21,7 +21,7 @@ def init_module(subparsers, cere_plugins):
 def run(args):
     cere_configure.init()
     if(args.region):
-        if utils.is_invalid(args.region):
+        if utils.is_invalid(args.region) and not args.force:
             logging.error("{0} is invalid".format(args.region))
             return False
         if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) or args.force:

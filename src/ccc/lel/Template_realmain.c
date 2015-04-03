@@ -32,11 +32,9 @@ void real_main(int empty) {{
   int res = sigaction(SIGSEGV, &sa, NULL);
   assert(res != -1);
   signal(SIGALRM, sigcatch);
-  {instru_init}
   for(i=0; i<{in_vitro_call_count}; i++) {{
     alarm(max_seconds);
     run{loop}();
   }}
-  {instru_close}
   exit(0);
 }}

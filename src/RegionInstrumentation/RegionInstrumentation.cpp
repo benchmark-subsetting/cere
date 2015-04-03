@@ -42,6 +42,10 @@ static cl::opt<bool>
 AppMeasure("instrument-app", cl::init(false),
     cl::value_desc("Boolean"),
     cl::desc("if True, application time will be measured (cycles)"));
+static cl::opt<bool>
+Replay("replay", cl::init(false),
+    cl::value_desc("Boolean"),
+    cl::desc("Specify if we are in replay or not"));
 static cl::opt<int>
 Invocation("invocation", cl::init(0),
     cl::value_desc("Integer"),
@@ -61,11 +65,12 @@ struct RegionInstrumentation : public FunctionPass {
   std::vector<std::string> LoopsToInstrument;
   LoopInfo *LI;  // The current loop information
 
-  explicit RegionInstrumentation(int mode = VITRO, unsigned numLoops = ~0,
-  const std::string &regionName = "")
-  : FunctionPass(ID), NumLoops(numLoops), RegionName(regionName),
-  Separator("_"), RegionFile(LoopsFilename), Mode(mode),
-  RequestedInvoc(Invocation), MeasureAppli(AppMeasure) {
+  explicit RegionInstrumentation(unsigned numLoops = ~0,
+                                 const std::string &regionName = "")
+  : FunctionPass(ID), NumLoops(numLoops), RegionName(regionName), Mode(VIVO),
+  Separator("_"), RegionFile(LoopsFilename), RequestedInvoc(Invocation),
+  MeasureAppli(AppMeasure) {
+    if (Replay) Mode = VITRO;
     if (regionName.empty()) RegionName = IsolateRegion;
       if (RegionFile.empty()) ReadFromFile = false;
       else {
@@ -108,23 +113,10 @@ struct RegionInstrumentation : public FunctionPass {
 }
 
 char RegionInstrumentation::ID = 0;
-static RegisterPass<RegionInstrumentation> X("vitro-loop-instrumentation",
-                                             "Instrument in-vitro regions",
+static RegisterPass<RegionInstrumentation> X("region-instrumentation",
+                                             "Instrument regions with probes",
                                              false,
                                              false);
-
-namespace {
-    struct VivoRegionInstrumentation: public RegionInstrumentation {
-        static char ID;
-        VivoRegionInstrumentation() : RegionInstrumentation(VIVO) {}
-    };
-}
-
-char VivoRegionInstrumentation::ID = 0;
-static RegisterPass<VivoRegionInstrumentation> Y("vivo-loop-instrumentation",
-                                                 "Instrument in-vivo regions",
-                                                 false,
-                                                 false);
 
 /// \brief Removes extension from \p filename.
 std::string removeExtension( const std::string &filename) {
@@ -176,10 +168,40 @@ Function* createFunction(FunctionType* FuncTy, Module* mod, std::string name) {
     tmp = Function::Create(
     /*Type=*/FuncTy,
     /*Linkage=*/GlobalValue::ExternalLinkage,
-    /*Name=*/name, mod); 
+    /*Name=*/name, mod);
     tmp->setCallingConv(CallingConv::C);
   }
   return tmp;
+}
+
+/// \brief Definition of atexit function
+Function* createAtexit(Module* mod) {
+
+  std::vector<Type*>FuncTy_01_args;
+  FunctionType* FuncTy_01 = FunctionType::get(
+    /*Result=*/Type::getVoidTy(mod->getContext()),
+    /*Params=*/FuncTy_01_args,
+    /*isVarArg=*/false);
+
+  PointerType* PointerTy_01 = PointerType::get(FuncTy_01, 0);
+
+  std::vector<Type*>FuncTy_02_args;
+  FuncTy_02_args.push_back(PointerTy_01);
+  FunctionType* FuncTy_02 = FunctionType::get(
+    /*Result=*/IntegerType::get(mod->getContext(), 32),
+    /*Params=*/FuncTy_02_args,
+    /*isVarArg=*/false);
+
+  //Create atexit definition
+  Function* func_atexit = mod->getFunction("atexit");
+  if (!func_atexit) {
+    func_atexit = Function::Create(
+    /*Type=*/FuncTy_02,
+    /*Linkage=*/GlobalValue::ExternalLinkage,
+    /*Name=*/"atexit", mod); // (external, no body)
+    func_atexit->setCallingConv(CallingConv::C);
+  }
+  return func_atexit;
 }
 
 /// Create a vector of parameter to fit the signature of cere start and stop
@@ -286,8 +308,7 @@ GlobalVariable* create_invocation_counter(Module *mod)
 /// the regions file
 bool RegionInstrumentation::runOnFunction(Function &F) {
   Module* mod = F.getParent();
-  //Not replaying a loop so we have to insert init in main function
-  if(Mode == VIVO) {
+
     std::vector<Type*>FuncTy_args;
 
     FunctionType* FuncTy_0 = FunctionType::get(
@@ -303,14 +324,14 @@ bool RegionInstrumentation::runOnFunction(Function &F) {
       Main = mod->getFunction("MAIN__");
 
     if (Main) {
-      // Get entry and exits basic blocks of the main function
+      //Get atexit function
+      Function* func_atexit = createAtexit(mod);
+
+      // Get entry basic block of the main function
       BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
-      std::vector<BasicBlock*> ReturningBlocks;
-      for(Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
-        if (isa<ReturnInst>(I->getTerminator())) ReturningBlocks.push_back(I);
-      }
+
       // If we want to measure the whole application cycle, insert start
-      // int the entry basic block and stop in each exit basic blocks.
+      // in the entry basic block and stop in each exit basic blocks.
       if(MeasureAppli) {
         FunctionType* FuncTy_1 = createFunctionType(mod);
         std::vector<Value*> funcParameter = createFunctionParameters(mod,
@@ -328,12 +349,8 @@ bool RegionInstrumentation::runOnFunction(Function &F) {
         if(!stopFunction) {
           Function* func_stop = createFunction(FuncTy_1, mod,
                                                "cere_markerStopRegion");
-          //We must insert stop probe in all exits blocks
-          for (std::vector<BasicBlock*>::iterator I = ReturningBlocks.begin(),
-                                                  E = ReturningBlocks.end();
-                                                  I != E; ++I) {
-            CallInst::Create(func_stop, funcParameter, "", &(*I)->back());
-          }
+          // Register stop probe with atexit
+          CallInst::Create(func_atexit, func_stop, "", &firstBB->front());
         }
       }
       // Add cere init as the first instruction of the entry basic block.
@@ -353,15 +370,11 @@ bool RegionInstrumentation::runOnFunction(Function &F) {
                                 GlobalValue::ExternalLinkage,
                                 "cere_markerClose",
                                 mod);
-        for (std::vector<BasicBlock*>::iterator I = ReturningBlocks.begin(),
-                                                E = ReturningBlocks.end();
-                                                I != E; ++I) {
-          CallInst::Create(closeFunction, "", &(*I)->back());
-        }
+        // Register close marker with atexit
+        CallInst::Create(func_atexit, closeFunction, "", &firstBB->front());
         DEBUG(dbgs() << "Close successfuly inserted in main function\n");
       }
     }
-  }
   // If we want to instrument a region, visit every loops.
   if(!MeasureAppli) {
     LoopInfo &LI = getAnalysis<LoopInfo>();

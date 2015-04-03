@@ -1,0 +1,1 @@
+{"build_cmd": "make -j2", "cere_dumps_path": "cere_dumps", "cere_measures_path": "cere_measures", "multiple_trace": false, "run_cmd": "./gromacs -silent -deffnm gromacs -nice 0"}
