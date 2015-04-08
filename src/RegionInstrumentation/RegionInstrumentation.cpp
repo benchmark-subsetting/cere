@@ -6,9 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file insert an init function at the beginning of programm and a close
-// at the end. It also inserts start and stop probes around a region. These
-// functin can be linked with any user library.
+// This file insert an init function at the beginning of programm. The close
+// function is registered through atexit. It also inserts start and stop probes
+// around a requested region. These functions can be linked with any user
+// library.
 //
 //===----------------------------------------------------------------------===//
 
@@ -309,72 +310,80 @@ GlobalVariable* create_invocation_counter(Module *mod)
 bool RegionInstrumentation::runOnFunction(Function &F) {
   Module* mod = F.getParent();
 
-    std::vector<Type*>FuncTy_args;
+  std::vector<Type*>FuncTy_args;
 
-    FunctionType* FuncTy_0 = FunctionType::get(
-                        /*Result=*/Type::getVoidTy(mod->getContext()),
-                        /*Params=*/FuncTy_args,
-                        /*isVarArg=*/false);
+  FunctionType* FuncTy_0 = FunctionType::get(
+                    /*Result=*/Type::getVoidTy(mod->getContext()),
+                    /*Params=*/FuncTy_args,
+                    /*isVarArg=*/false);
 
-    // No main, no instrumentation!
-    Function *Main = mod->getFunction("main");
+  // No main, no instrumentation!
+  Function *Main = mod->getFunction("main");
 
-    // Using fortran? ... this kind of works
-    if (!Main)
-      Main = mod->getFunction("MAIN__");
+  // Using fortran? ... this kind of works
+  if (!Main)
+    Main = mod->getFunction("MAIN__");
 
-    if (Main) {
-      //Get atexit function
-      Function* func_atexit = createAtexit(mod);
+  if (Main) {
+    //Get atexit function
+    Function* func_atexit = createAtexit(mod);
 
-      // Get entry basic block of the main function
-      BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
+    // Get entry basic block of the main function
+    BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
+    std::vector<BasicBlock*> ReturningBlocks;
+    for(Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
+      if (isa<ReturnInst>(I->getTerminator())) ReturningBlocks.push_back(I);
+    }
 
-      // If we want to measure the whole application cycle, insert start
-      // in the entry basic block and stop in each exit basic blocks.
-      if(MeasureAppli) {
-        FunctionType* FuncTy_1 = createFunctionType(mod);
-        std::vector<Value*> funcParameter = createFunctionParameters(mod,
-                                                                     "main");
-        Function *startFunction = mod->getFunction("cere_markerStartRegion");
-        Function *stopFunction = mod->getFunction("cere_markerStopRegion");
-        // Create start function if it does not exists yet
-        if(!startFunction) {
-          Function* func_start = createFunction(FuncTy_1, mod,
-                                                "cere_markerStartRegion");
-          CallInst *start = CallInst::Create(func_start, funcParameter, "",
+    // If we want to measure the whole application cycle, insert start
+    // in the entry basic block and stop in each exit basic blocks.
+    if(MeasureAppli) {
+      FunctionType* FuncTy_1 = createFunctionType(mod);
+      std::vector<Value*> funcParameter = createFunctionParameters(mod,
+                                                                   "main");
+      Function *startFunction = mod->getFunction("cere_markerStartRegion");
+      Function *stopFunction = mod->getFunction("cere_markerStopRegion");
+      // Create start function if it does not exists yet
+      if(!startFunction) {
+        Function* func_start = createFunction(FuncTy_1, mod,
+                                              "cere_markerStartRegion");
+        CallInst *start = CallInst::Create(func_start, funcParameter, "",
                                              &firstBB->front());
-        }
-        // Create stop function if it does not exists yet
-        if(!stopFunction) {
-          Function* func_stop = createFunction(FuncTy_1, mod,
-                                               "cere_markerStopRegion");
-          // Register stop probe with atexit
-          CallInst::Create(func_atexit, func_stop, "", &firstBB->front());
-        }
       }
-      // Add cere init as the first instruction of the entry basic block.
-      // Cere close must be added via atexit.
-      Function *initFunction = mod->getFunction("cere_markerInit");
-      if(!initFunction) {
-        Function *initFunction = Function::Create(FuncTy_0,
-                                GlobalValue::ExternalLinkage,
-                                "cere_markerInit",
-                                mod);
-        CallInst::Create(initFunction, "", &firstBB->front());
-        DEBUG(dbgs() << "Init successfuly inserted in main function\n");
-      }
-      Function *closeFunction = mod->getFunction("cere_markerClose");
-      if(!closeFunction) {
-        Function *closeFunction = Function::Create(FuncTy_0,
-                                GlobalValue::ExternalLinkage,
-                                "cere_markerClose",
-                                mod);
-        // Register close marker with atexit
-        CallInst::Create(func_atexit, closeFunction, "", &firstBB->front());
-        DEBUG(dbgs() << "Close successfuly inserted in main function\n");
+      // Create stop function if it does not exists yet
+      if(!stopFunction) {
+        Function* func_stop = createFunction(FuncTy_1, mod,
+                                             "cere_markerStopRegion");
+        //We must insert stop probe in all exits blocks
+        for (std::vector<BasicBlock*>::iterator I = ReturningBlocks.begin(),
+                                                E = ReturningBlocks.end();
+                                                I != E; ++I) {
+          CallInst::Create(func_stop, funcParameter, "", &(*I)->back());
+        }
       }
     }
+    // Add cere init as the first instruction of the entry basic block.
+    // Cere close must be added via atexit.
+    Function *initFunction = mod->getFunction("cere_markerInit");
+    if(!initFunction) {
+      Function *initFunction = Function::Create(FuncTy_0,
+                                                GlobalValue::ExternalLinkage,
+                                                "cere_markerInit",
+                                                mod);
+      CallInst::Create(initFunction, "", &firstBB->front());
+      DEBUG(dbgs() << "Init successfuly inserted in main function\n");
+    }
+    Function *closeFunction = mod->getFunction("cere_markerClose");
+    if(!closeFunction) {
+      Function *closeFunction = Function::Create(FuncTy_0,
+                                                 GlobalValue::ExternalLinkage,
+                                                 "cere_markerClose",
+                                                 mod);
+      // Register close marker with atexit
+      CallInst::Create(func_atexit, closeFunction, "", &firstBB->front());
+      DEBUG(dbgs() << "Close successfuly inserted in main function\n");
+    }
+  }
   // If we want to instrument a region, visit every loops.
   if(!MeasureAppli) {
     LoopInfo &LI = getAnalysis<LoopInfo>();
