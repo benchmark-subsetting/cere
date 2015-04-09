@@ -21,7 +21,7 @@ static void sigsegv_handler(int sig, siginfo_t *si, void *unused)
   printf("==========================\n");
   raise(SIGKILL);
 }}
-void real_main(int empty) {{
+void real_main() {{
   int i;
   //kill program after 10 minutes
   long long int max_seconds=10*{time_out};

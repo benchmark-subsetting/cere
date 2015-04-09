@@ -5,7 +5,8 @@ import os
 
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
 LOOP_EXT = "/RegionOutliner/.libs/libRegionOutliner.so"
-LOOP_MANAGE = "/LoopManager/.libs/libLoopManager.so"
+LOOP_DUMP = "/RegionDump/.libs/libRegionDump.so"
+LOOP_REPLAY = "/RegionReplay/.libs/libRegionReplay.so"
 LOOP_INSTR = "/RegionInstrumentation/.libs/libRegionInstrumentation.so"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
@@ -38,7 +39,7 @@ def dump_fun(mode_opt, BASE):
     temp = ""
     print "Compiling dump mode"
     if(mode_opt.region):
-        temp = temp+"--loop-to-dump="+mode_opt.region+" "
+        temp = " --region="+mode_opt.region+" "
         if(mode_opt.regions_file):
             fail_lec("--regions-file and --region are incompatible")
     else:
@@ -49,9 +50,12 @@ def dump_fun(mode_opt, BASE):
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} -region-outliner " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, base=BASE), EXIT=False)
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-dump {opts} " +
+    print(("{llvm_bindir}/opt -S -load {Root}{LoopMan} {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopMan=LOOP_MANAGE, opts=temp, base=BASE), EXIT=False)
+                LoopMan=LOOP_DUMP, opts=temp, base=BASE))
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -region-dump {opts} " +
+                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                LoopMan=LOOP_DUMP, opts=temp, base=BASE), EXIT=False)
 
 #in replay mode
 def replay_fun(mode_opt, BASE):
@@ -70,9 +74,9 @@ def replay_fun(mode_opt, BASE):
                 "-isolate-region={loop} {base}.ll -o {base}.ll").format(
                 llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
                 loop=mode_opt.region, base=BASE), EXIT=False)
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} -loop-replay {opts} " +
+    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} {opts} -region-replay -region={loop} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR,
-                    Root=PROJECT_ROOT, LoopMan=LOOP_MANAGE, opts=temp,
+                    Root=PROJECT_ROOT, LoopMan=LOOP_REPLAY, opts=temp, loop=mode_opt.region,
                     base=BASE), EXIT=False)
     if (mode_opt.instrument):
         print "Instrumentation mode"

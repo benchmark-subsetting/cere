@@ -114,7 +114,8 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/RegionOutliner/Makefile
                  src/RegionInstrumentation/Makefile
-                 src/LoopManager/Makefile
+                 src/RegionDump/Makefile
+                 src/RegionReplay/Makefile
                  src/rdtsc/Makefile
                  src/cache_flush/Makefile
                  src/memory_dump/Makefile
