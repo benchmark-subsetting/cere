@@ -68,8 +68,9 @@ def update(args):
         nodes = (list(reversed(nx.topological_sort(graph))))
         for node in nodes:
             cancel = False
+            if graph.node[node]['_self_coverage'] < 1: graph.node[predecessor]['_small'] = True
             #if it's an invalid node (not matching or not extracted) or if it's too small
-            if not graph.node[node]['_valid'] or graph.node[node]['_small']:
+            if not graph.node[node]['_valid'] or graph.node[predecessor]['_small']:
                 #if there is still a successor not tested, we do nothing.
                 for successor in graph.successors(node):
                     if not graph.node[successor]['_tested']:
@@ -81,19 +82,16 @@ def update(args):
                 for predecessor in graph.predecessors(node):
                     part = round(float(graph.edge[predecessor][node]['weight'])/in_degree, 2)
                     graph.node[predecessor]['_self_coverage'] = round(graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part, 2)
-                    #Maybe this node is not small anymore
-                    if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
-                        graph.node[predecessor]['_small'] = False
                 graph.node[node]['_transfered'] = True
 
         newLoopsToTest = False
         with open(args.regions, 'w') as f:
             for n, d in graph.nodes(data=True):
                 cancel=False
-                if d['_valid'] and not d['_small'] and not d['_tested']:
+                if d['_valid'] and not graph.node[predecessor]['_small'] and not d['_tested']:
                     for successor in graph.successors(n):
                         #if a successor is not tested yet, we don't test this region
-                        if not graph.node[successor]['_tested'] and not graph.node[successor]['_small']:
+                        if not graph.node[successor]['_tested'] and not graph.node[predecessor]['_small']:
                             cancel = True
                     if cancel: continue
                     newLoopsToTest = True

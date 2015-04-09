@@ -68,7 +68,8 @@ def update(args):
         with open(args.regions, 'w') as f:
             for n, d in graph.nodes(data=True):
                 cancel=False
-                if d['_valid'] and d['_coverage'] >= 1 and not d['_tested']:
+                if d['_coverage'] < 1: d['_small'] = True
+                if d['_valid'] and not d['_small'] and not d['_tested']:
                     newLoopsToTest = True
                     d['_to_test']=True
                     f.write(d['_name']+"\n")

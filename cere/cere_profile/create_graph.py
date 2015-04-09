@@ -42,8 +42,6 @@ def delete_useless_nodes(graph):
             for predecessor in graph.predecessors(n):
                 part = round(float(graph.edge[predecessor][n]['weight'])/in_degree, 2)
                 graph.node[predecessor]['_self_coverage'] = round(graph.node[predecessor]['_self_coverage'] + graph.node[n]['_self_coverage'] * part, 2)
-                if graph.node[predecessor]['_self_coverage'] >= 1 and graph.node[predecessor]['_small']:
-                    graph.node[predecessor]['_small'] = False
                 for successor in graph.successors(n):
                     graph.add_edge(predecessor, successor, weight=round(graph.edge[predecessor][n]['weight']*(float(graph.edge[n][successor]['weight'])/in_degree), 2))
             graph.remove_node(n)
@@ -73,11 +71,6 @@ def add_node(digraph, matchObj):
     else:
         valid = False
 
-    if float(matchObj.group(4)) >=1:
-        small = False
-    else:
-        small = True
-
     digraph.add_node(_id, _name = name)
     digraph.node[_id]['_self_coverage'] = float(matchObj.group(4))
     digraph.node[_id]['_coverage'] = coverage
@@ -87,7 +80,7 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_tested'] = False
     digraph.node[_id]['_to_test'] = False
     digraph.node[_id]['_transfered'] = False
-    digraph.node[_id]['_small'] = small
+    digraph.node[_id]['_small'] = False
     digraph.node[_id]['_invivo'] = 0.0
     digraph.node[_id]['_invitro'] = 0.0
     digraph.node[_id]['_invocations'] = []

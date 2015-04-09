@@ -11,7 +11,7 @@ def plot(g, step):
     import os
     for n,d in g.nodes(data=True):
         d["label"]="{} {} {} ({})".format(n, d['_name'], d['_self_coverage'], d['_coverage'])
-        if not d['_valid'] or d['_small']: d["style"]="dotted"
+        if not d['_valid'] or not d['_tested']: d["style"]="dotted"
         else: d["style"]="solid"
         if d['_tested']:
             d["style"]="solid"
