@@ -23,11 +23,11 @@ using namespace llvm;
 STATISTIC(NumExtracted, "Number of regions extracted");
 
 static cl::opt<std::string>
-    IsolateRegion("isolate-region", cl::init("all"), cl::value_desc("String"),
-                  cl::desc("RegionOutliner will only isolate this region"));
-static cl::opt<bool> AppMeasure(
-    "instrument-app", cl::init(false), cl::value_desc("Boolean"),
-    cl::desc("If you want to isolate regions to profile the application"));
+IsolateRegion("isolate-region", cl::init("all"), cl::value_desc("String"),
+              cl::desc("RegionOutliner will only isolate this region"));
+static cl::opt<bool>
+AppMeasure("instrument-app", cl::init(false), cl::value_desc("Boolean"),
+        cl::desc("If you want to isolate regions to profile the application"));
 
 namespace {
 struct RegionOutliner : public LoopPass {

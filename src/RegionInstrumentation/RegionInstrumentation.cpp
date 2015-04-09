@@ -413,6 +413,7 @@ bool RegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   if (found == std::string::npos) newFunctionName = createFunctionName(L,
                                                                     currFunc);
   else newFunctionName = currFunc->getName();
+  if(newFunctionName.empty()) return false;
 
   // If it's not the requested region, and we don't read regions from a file
   if (RegionName != "all" && RegionName != newFunctionName && !ReadFromFile) {

@@ -362,18 +362,18 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
                                                 BasicBlock *header) {
   //Get current module
   Module *mod = oldFunction->getParent();
-  std::string module_name = mod->getModuleIdentifier();
+  std::string File = mod->getModuleIdentifier();
 
   std::string newFunctionName;
   std::ostringstream oss;
   BasicBlock *firstBB = Blocks[0];
-
+  // If the function containing the loop does not have debug
+  // information, we can't outline the loop.
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
     DILocation firstLoc(firstN);
     oss << firstLoc.getLineNumber();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc.getFilename().str();
-    std::string File = module_name;
     std::string path = firstLoc.getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
@@ -382,6 +382,7 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
     newFunctionName = removeChar(newFunctionName, '/', '_');
     newFunctionName = removeChar(newFunctionName, '+', '_');
     newFunctionName = removeChar(newFunctionName, '.', '_');
+
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(),
                        firstLine, path, Original_location);
   }
@@ -827,6 +828,7 @@ Function *RegionExtractor::extractCodeRegion() {
   BasicBlock *header = *Blocks.begin();
   Function *oldFunction = header->getParent();
   std::string newFunctionName = createFunctionName(oldFunction, header);
+  if (newFunctionName.empty()) return 0;
 
   DEBUG(dbgs() << "Requested loop = " << RegionName << " & isolating "
                << newFunctionName << "\n");
