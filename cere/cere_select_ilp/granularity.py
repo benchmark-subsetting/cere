@@ -10,30 +10,29 @@ import logging
 import csv
 from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, GLPK
 
-#~ ROOT = os.path.dirname(os.path.realpath(__file__))
-#~ ERROR_TABLE_FILENAME = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
+tolerated_error = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99.9]
 
-#~ class Error_table:
-    #~ def __init__(self):
-        #~ self.table = []
-#~ 
-    #~ def complete_error_table(self, error, chosen, graph):
-        #~ coverage = 0
-        #~ for codelet in chosen:
-            #~ coverage = coverage + graph.node[codelet]['_coverage']
-        #~ self.table = self.table + [[error,coverage]]
-#~ 
-    #~ def write_table(self):
-        #~ output = open(ERROR_TABLE_FILENAME,'w')
-        #~ output.write("Error,Exec Time\n")
-        #~ for c in self.table:
-            #~ output.write(str(c[0]) + "," + str(c[1]) + "\n")
+class Error_table:
+    def __init__(self):
+        self.table = []
+
+    def complete_error_table(self, error, coverage):
+        self.table = self.table + [[error,coverage]]
+
+    def write_table(self, error_file):
+        output = open(error_file,'w')
+        output.write("Error,Exec Time\n")
+        for c in self.table:
+            output.write(str(c[0]) + "," + str(c[1]) + "\n")
 
 class Unsolvable(Exception):
     pass
 
-def solve(graph, max_coverage=100, step=5):
+def solve(graph, err, max_coverage=100, step=5):
     coverage = max_coverage
+    for n,d in graph.nodes(data=True):
+        d['_matching'] = True
+        if d['_error'] > err: d['_matching'] = False
     while(coverage > 0):
         try:
             s = list(solve_under_coverage(graph, coverage))
@@ -64,10 +63,12 @@ def solve_under_coverage(graph, min_coverage=80):
             prob += codelet_vars[n] == 0
 
     # Finally we should never include both the children and the parents
-    for node in graph.nodes():
-        for predecessor in graph.predecessors(node):
+    for dad in graph.nodes():
+        for son in graph.nodes():
+            if not dad in nx.ancestors(graph, son):
+                continue
             # We cannot select dad and son at the same time
-            prob += codelet_vars[node] + codelet_vars[predecessor] <= 1
+            prob += codelet_vars[dad] + codelet_vars[son] <= 1
 
     #prob.solve(GLPK())
     prob.solve()
@@ -108,6 +109,9 @@ def output_tree(graph, chosen):
                 output_codelet(output, graph, chosen, n, "None", set())
 
 def solve_with_best_granularity(error):
+    target_error = error
+    assert(target_error in tolerated_error)
+
     graph = load_graph()
     if graph == None:
         logging.critical("Granularity: Can't load graph")
@@ -116,23 +120,26 @@ def solve_with_best_granularity(error):
     if( len(graph.nodes()) == 0):
         logging.info('Graph is empty')
         return True
-
+    error_filename = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
 
-    #~ table = Error_table()
+    table = Error_table()
     target_error_chosen = set()
-    try:
-        chosen, coverage = solve(graph)
+    for err in tolerated_error:
+        try:
+            chosen, coverage = solve(graph, err)
 
-        #~ table.complete_error_table(error, chosen, graph)
-        print >>sys.stderr, "Solved with coverage >= %s" % coverage
-        target_error_chosen = chosen
-    except(Unsolvable):
-        print >>sys.stderr, "Solution impossible"
-        #~ table.complete_error_table(error, set(), graph)
+            table.complete_error_table(err, coverage)
+            if(err == target_error):
+                print >>sys.stderr, "Solved with coverage >= %s" % coverage
+                target_error_chosen = chosen
+        except(Unsolvable):
+            if(err == target_error):
+                print >>sys.stderr, "Solution impossible"
+            table.complete_error_table(err, coverage)
 
     output_tree(graph, target_error_chosen)
-    #~ table.write_table()
+    table.write_table(error_filename)
     for c in target_error_chosen:
         print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_coverage'])
     return True

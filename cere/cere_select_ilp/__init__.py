@@ -10,7 +10,7 @@ from update_graph import update
 def init_module(subparsers, cere_plugins):
     cere_plugins["select-ilp"] = run
     profile_parser = subparsers.add_parser("select-ilp", help="Select matching regions")
-    profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
+    profile_parser.add_argument("--max_error", default=15, type=int, help="Maximum tolerated error between invivo and invitro regions")
     profile_parser.add_argument("--min_coverage", type=float, default=0.1, help="Minimum percentage of region execution time")
     profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
 
