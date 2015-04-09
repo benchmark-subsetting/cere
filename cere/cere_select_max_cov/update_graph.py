@@ -82,6 +82,8 @@ def update(args):
                 for predecessor in graph.predecessors(node):
                     part = round(float(graph.edge[predecessor][node]['weight'])/in_degree, 2)
                     graph.node[predecessor]['_self_coverage'] = round(graph.node[predecessor]['_self_coverage'] + graph.node[node]['_self_coverage'] * part, 2)
+                    if graph.node[predecessor]['_self_coverage'] >= 1:
+                        graph.node[predecessor]['_small'] = False
                 graph.node[node]['_transfered'] = True
 
         newLoopsToTest = False
