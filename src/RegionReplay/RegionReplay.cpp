@@ -206,7 +206,6 @@ std::vector<Value*> createLoopParameters(Function* currFunc, Module* mod, Alloca
 /**Called on each function int the current Module**/
 bool RegionReplay::runOnFunction(Function &F)
 {
-  errs() << "HELLO\n";
   Module* mod = F.getParent();
 
   // No main, no instrumentation!

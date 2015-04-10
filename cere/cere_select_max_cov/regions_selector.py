@@ -4,7 +4,7 @@ import sys
 import os
 import cPickle as pickle
 import networkx as nx
-from common.graph_utils import load_graph
+from common.graph_utils import *
 import cere_configure
 import update_graph
 import logging
@@ -91,6 +91,9 @@ def solve_with_best_granularity(args):
     else:
         print >>sys.stderr, "Solved with coverage >= %s" % coverage
 
+    graph.graph['coverage'] = 0
     for c in chosen:
+        graph.graph['coverage'] = graph.graph['coverage'] + graph.node[c]['_self_coverage']
         print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_self_coverage'])
+    save_graph(graph)
     return True

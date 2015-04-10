@@ -4,7 +4,7 @@ import sys
 import os
 import cPickle as pickle
 import networkx as nx
-from common.graph_utils import load_graph
+from common.graph_utils import *
 import cere_configure
 import logging
 import csv
@@ -125,13 +125,14 @@ def solve_with_best_granularity(error):
 
     table = Error_table()
     target_error_chosen = set()
+    graph.graph['coverage'] = 0
     for err in tolerated_error:
         try:
             chosen, coverage = solve(graph, err)
 
             table.complete_error_table(err, coverage)
             if(err == target_error):
-                print >>sys.stderr, "Solved with coverage >= %s" % coverage
+                target_coverage = coverage
                 target_error_chosen = chosen
         except(Unsolvable):
             if(err == target_error):
@@ -140,6 +141,9 @@ def solve_with_best_granularity(error):
 
     output_tree(graph, target_error_chosen)
     table.write_table(error_filename)
+    print >>sys.stderr, "Solved with coverage >= %s" % target_coverage
     for c in target_error_chosen:
+        graph.graph['coverage'] = graph.graph['coverage'] + graph.node[c]['_coverage']
         print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_coverage'])
+    save_graph(graph)
     return True

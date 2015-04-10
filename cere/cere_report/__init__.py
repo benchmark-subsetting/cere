@@ -154,12 +154,12 @@ class Report:
         javascript: main script javascript for report
         '''
         self._bench = bench
+        self._part = graph.graph['coverage']
         self.init_template()
         self.init_nb_cycles()
         self.init_regions(graph, mincycles)
         self.init_liste_script()
         self.init_tree()
-        self.init_part()
         self.init_graph_error()
         self.init_javascript()
         
@@ -319,16 +319,6 @@ class Report:
             if node._id == _id:
                 return node
         return "none"
-
-    def init_part(self):
-        '''
-        Compute coverage of selected regions 
-        See all region and add region's coverage if the region is selected
-        '''
-        self._part = 0
-        for region in self._regions:
-            if(self._regions[region]._selected == "true"):
-                self._part = self._part + self._regions[region]._table["Self (%)"]
 
     def init_graph_error(self):
         '''
