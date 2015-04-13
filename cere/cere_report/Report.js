@@ -26,6 +26,8 @@ function init() {
     first_call();
     //initialise the view
     change_view($('.nav li.active > a'));
+    change_view($('.nav li.active > a'))
+    change_view($('.nav li.active > a'))
 }
 
 //remove whitespace after and before text code

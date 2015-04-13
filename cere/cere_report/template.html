@@ -26,9 +26,11 @@
     {% if error <= 15 %}
       {{prec}}success {{suiv}}
     {% elif error <= 30 %}
-        {{prec}}warning {{suiv}}
-    {% else %}
+      {{prec}}warning {{suiv}}
+    {% elif error < 100 %}
       {{prec}}danger {{suiv}}
+    {% else %}
+      BGCOLOR=#BDBDBD
     {% endif %}
 {% endmacro %}
 
@@ -93,12 +95,14 @@ Print them in strong or remove the end if the text is too long -->
   {% for node in tree %}
     <tr {{selected(node._selected)}} {{printable(node._region._execError)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
     {% for column in fieldnames[:-1] %}
-      <td>{{strong(node._region._table[column], node._selected, node._region._tooSmall)}}</td>
+      <td>{{strong(node._region._table[column], node._selected, "false")}}</td>
     {% endfor %}
     {% if (node._region._execError == "false") %}
-    <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}>{{node._region._table[fieldnames[-1]]}}</td>
+      <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}>{{node._region._table[fieldnames[-1]]}}</td>
+    {% elif (node._region._tooSmall == "true") %}
+      <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}> Too small </td>
     {% else %}
-      <td BGCOLOR=#BDBDBD> Not Replayable </td>
+      <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}> Not Replayable </td>
     {% endif %}
     </tr>
   {% endfor %}

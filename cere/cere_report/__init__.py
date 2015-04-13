@@ -282,7 +282,7 @@ class Report:
                     self._tree = self._tree + [Node(node,region)]
             except(KeyError):
                 logging.info("SELECTED_CODELETS: " + node["Codelet Name"] + " not in selected codelets")
-        self.remove_loops()
+        #~self.remove_loops()
         self.test_parent_tree()
 
     def test_parent_tree(self):
