@@ -156,6 +156,14 @@ def create_graph(force):
     build_cmd = cere_configure.cere_config["build_cmd"]
     logging.info('Start graph creation')
 
+    #Build again the application to be sure we give the right binary to pprof
+    try:
+        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+    except subprocess.CalledProcessError as err:
+        logging.critical(str(err))
+        logging.critical(err.output)
+        return False
+
     binary = which(run_cmd)
     if not binary:
         logging.critical("Can't find the binary")
@@ -172,13 +180,6 @@ def create_graph(force):
                   r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,',
                   r'Legend\s\[.*Total samples:\s([0-9]*).*\]']
 
-    #Build again the application to be sure we give the right binary to pprof
-    try:
-        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
-    except subprocess.CalledProcessError as err:
-        logging.critical(str(err))
-        logging.critical(err.output)
-        return False
     cmd = subprocess.Popen("{0} -dot {1} {2}".format(conf.PPROF, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()

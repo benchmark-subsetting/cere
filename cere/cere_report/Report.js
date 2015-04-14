@@ -59,7 +59,6 @@ function set_image(image,nb_invoc) {
 function first_call () {
     //initialise codemirror editor
     var code = $("#"+id_region+" .code")[0];
-    code.value = suppr_whitespace(code.value);
     editor[id_region] = CodeMirror.fromTextArea(code, {
                         mode:code.getAttribute("mode"), indentUnit:4,
                         autofocus:true, lineNumbers:true, readOnly:true});
