@@ -93,7 +93,7 @@ Print them in strong or remove the end if the text is too long -->
   {% endfor %}
   </tr>
   {% for node in tree %}
-    <tr {{selected(node._selected)}} {{printable(node._region._execError)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
+    <tr {{selected(node._selected)}} {{printable(node._region._tooSmall)}} data-region="{{node._region._name}}"  data-tt-id="{{node._id}}" data-selected="{{node._selected}}" {{parent(node._parent)}}>
     {% for column in fieldnames[:-1] %}
       <td>{{strong(node._region._table[column], node._selected, "false")}}</td>
     {% endfor %}
