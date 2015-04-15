@@ -11,6 +11,7 @@ import cere_dump
 import cere_replay
 import cere_trace
 import common.variables as var
+import common.utils as utils
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
@@ -64,7 +65,7 @@ class Region():
             self.coverage = (self.invivo_cycles/app_cycles)*100
         else:
             self.coverage = "NA"
-            logging.info("Canno't compute coverage for region {0}. Try to run cere profile".format(self.region.replace("invivo", "extracted")))
+            logging.info("Cannot compute coverage for region {0}. Try to run cere profile".format(self.region.replace("invivo", "extracted")))
 
     def measure_trace(self):
         res = cere_trace.run(self)
@@ -79,6 +80,9 @@ class Region():
 
     def clusterize_invocations(self):
         logging.info("Computing clustering info")
+        if not utils.trace_exists(self.region):
+            logging.error("No trace, Cannot clusterize invocation for region {0}".format(self.region))
+            return False
         if not os.path.isfile("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)) or self.force:
             try:
                 logging.info(subprocess.check_output("{0}/clusterize_invocations.py {2} {1}/{2}.csv {1}/{2}.bin".format(ROOT, cere_configure.cere_config["cere_measures_path"], self.region), stderr=subprocess.STDOUT, shell=True))

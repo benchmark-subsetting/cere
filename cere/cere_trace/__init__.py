@@ -37,10 +37,6 @@ def get_region_id(region, graph):
         if d['_name'] == region: return n
     return None
 
-def trace_exists(region):
-    return (os.path.isfile("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], region))
-            and os.path.isfile("{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], region)))
-
 def check_arguments(args):
     """
     Check arguments
@@ -69,6 +65,8 @@ def check_arguments(args):
     if args.region and utils.is_invalid(args.region):
         logging.error("{0} is invalid".format(args.region))
         return False
+
+    return True
 
 def find_same_level_regions(region):
     # Load graph
@@ -131,7 +129,7 @@ def need_to_measure(region):
     if utils.is_invalid(region):
         return False
 
-    if trace_exists(region):
+    if utils.trace_exists(region):
         return False
 
     return True
@@ -155,7 +153,8 @@ def launch_trace(args, regions):
 def run(args):
     cere_configure.init()
 
-    check_arguments(args)
+    if not check_arguments(args):
+        return False
 
     # Find loops to trace
     regions = find_regions_to_trace(args)
@@ -185,7 +184,7 @@ def run(args):
                 result = False
 
     # If read is used, read given invocation from trace file
-    if args.read and trace_exists(args.region):
+    if args.read and utils.trace_exists(args.region):
         base_name = "{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], args.region)
         trace = parse_trace_file(base_name + '.bin')
         cycles = int(trace['cycles'][trace['invocations'] == args.read])
