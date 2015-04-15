@@ -30,11 +30,6 @@ function init() {
     change_view($('.nav li.active > a'))
 }
 
-//remove whitespace after and before text code
-function suppr_whitespace(string) {
-    return string.replace(/\s+/,"").replace(/\s+$/,"");
-}
-
 function set_image(image,nb_invoc) {
     // if nb_invocation different of 1 initialise image
     var tab = (image.parentNode.getAttribute('data-name'));

@@ -14,4 +14,4 @@ def is_invalid(r):
 def mark_invalid(r):
     with open("{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], var.INVALID_REGION_FILE), 'a') as invalid_file:
         if not is_invalid(r):
-            invalid_file.write(r)
+            invalid_file.write(r+"\n")
