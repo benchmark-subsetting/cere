@@ -10,6 +10,8 @@ import update_graph
 import logging
 import csv
 
+logger = logging.getLogger('Max-Cov selector')
+
 class Error_table:
     def __init__(self):
         self.table = []
@@ -60,11 +62,11 @@ def output_tree(graph, chosen):
 def solve_with_best_granularity(args):
     graph = load_graph()
     if graph == None:
-        logging.critical("Granularity: Can't load graph")
+        logger.critical("Can't load graph. did you run cere profile?")
         return False
 
     if( len(graph.nodes()) == 0):
-        logging.info('Graph is empty')
+        logger.info('Graph is empty, nothing to select')
         return True
 
     #Compute coverage for different error
@@ -72,11 +74,13 @@ def solve_with_best_granularity(args):
     table = Error_table()
     args.max_error = 100
     while args.max_error >= 5:
+        logger.info("Computing matching with a maximum error of {0}%".format(args.max_error))
         update_graph.update(args)
         graph = load_graph()
         table_chosen, table_coverage = solve(graph)
         table.complete_error_table(args.max_error, table_coverage)
         args.max_error = args.max_error-5
+        logger.setLevel(logging.INFO)
     table.write_table(error_filename)
 
     args.max_error = 15
@@ -87,9 +91,9 @@ def solve_with_best_granularity(args):
     output_tree(graph, chosen)
 
     if coverage == 0:
-        print >>sys.stderr, "Solution impossible"
+        logger.error("Solution impossible")
     else:
-        print >>sys.stderr, "Solved with coverage >= %s" % coverage
+        logger.info("Solved with coverage >= {0}".format(coverage))
 
     graph.graph['coverage'] = 0
     for c in chosen:

@@ -10,6 +10,8 @@ import logging
 import shutil
 import argparse
 
+logger = logging.getLogger('Regions')
+
 def init_module(subparsers, cere_plugins):
     cere_plugins["regions"] = run
     profile_parser = subparsers.add_parser("regions", help="List extractible loops")
@@ -82,35 +84,43 @@ def add_coverage(regions_file, new_regions_file, matchObj):
             w.writerow(row)
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
     profile_file = "{0}/app.prof".format(cere_configure.cere_config["cere_measures_path"])
     regions_file = "regions.csv"
     new_regions_file = "tmp.csv"
 
-    logging.info("Removing previous regions list")
+    logger.info("Removing previous regions list")
     if os.path.isfile(regions_file):
         os.remove(regions_file)
     if(args.static):
         mydump = Dump()
         res = cere_dump.run(mydump)
-        logging.info("Regions list dumped in regions.csv file")
+        logger.info("Regions list dumped in regions.csv file")
         if not res:
-            logging.critical("Regions listing encountered and error: list may be incomplete or empty")
-            return False
+            logger.warning("Regions listing encountered and error: list may be incomplete or empty")
     if(args.dynamic):
         if not os.path.isfile(profile_file):
-            logging.critical('No profiling file. Please run cere profile --regions')
+            logger.critical('No profiling file. Please run cere profile')
             return False
         if not os.path.isfile(regions_file):
-            logging.critical('Regions file does not exists. Please re-run cere regions with static enabled.')
+            logger.critical('Regions file does not exists. Please re-run cere regions with static enabled.')
             return False
 
         build_cmd = cere_configure.cere_config["build_cmd"]
         run_cmd = cere_configure.cere_config["run_cmd"]
 
+        #Build again the application to be sure we give the right binary to pprof
+        try:
+            logger.debug(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+        except subprocess.CalledProcessError as err:
+            logger.error(str(err))
+            logger.error(err.output)
+            return False
+
         binary = which(run_cmd)
         if not binary:
-            logging.critical("Can't find the binary")
+            logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary")
             return False
 
         add_column_to_header(regions_file, new_regions_file)
@@ -120,13 +130,6 @@ def run(args):
                   r'(N.*)\s\[label\=\"(.*)\\n([0-9]*)\s\((.*)\%\)\\r',
                   r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,']
 
-        #Build again the application to be sure we give the right binary to pprof
-        try:
-            logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
-        except subprocess.CalledProcessError as err:
-            logging.critical(str(err))
-            logging.critical(err.output)
-            return False
         cmd = subprocess.Popen("pprof -dot {0} {1}".format(binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
         for line in cmd.stdout:
@@ -138,6 +141,7 @@ def run(args):
         try:
             shutil.move(new_regions_file, regions_file)
         except IOError as err:
-            logging.critical(str(err))
+            logger.critical(str(err))
+            logger.error(err.output)
             return False
     return True

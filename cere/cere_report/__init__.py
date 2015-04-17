@@ -14,6 +14,8 @@ import base64
 import xmlrpclib 
 from contextlib import contextmanager
 
+logger = logging.getLogger('Report')
+
 CSV_DELIMITER = ','
 ROOT = os.path.dirname(os.path.realpath(__file__))
 NAME_FILE = "regions.csv"
@@ -98,11 +100,11 @@ class Region:
             if d['_name'] == self._name: d['style']="filled"
         nx.write_dot(g,"{0}/plots/graph_{1}.dot".format(cere_configure.cere_config["cere_measures_path"], self._name))
         try:
-            logging.info(subprocess.check_output("dot -Tpng {0}/plots/graph_{1}.dot -o {0}/plots/graph_{1}.png".format(cere_configure.cere_config["cere_measures_path"], self._name), stderr=subprocess.STDOUT, shell=True))
+            subprocess.check_output("dot -Tpng {0}/plots/graph_{1}.dot -o {0}/plots/graph_{1}.png".format(cere_configure.cere_config["cere_measures_path"], self._name), stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as err:
-            logging.info("Can't create call graph fo region {0}".format(self._name))
-            logging.info(str(err))
-            logging.info(err.output)
+            logger.error(str(err))
+            logger.error(err.output)
+            logger.warning("Can't create call graph fo region {0}".format(self._name))
 
     def init_graph(self):
         if self._tooSmall == "false":
@@ -170,7 +172,7 @@ class Report:
         try:
             TEMPLATE=open(ROOT + "/template.html", 'r')
         except (IOError) as err:
-            logging.critical("Can't open template.html: {0}",err)
+            logger.critical("Cannot open template.html: {0}", str(err))
             sys.exit(1)
         self._template = jinja2.Template(TEMPLATE.read())
         TEMPLATE.close()
@@ -180,7 +182,7 @@ class Report:
         Read the nb_cycles value of application in app_cycles.csv
         '''
         if not os.path.isfile(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv'):
-            logging.error("Profile file missing. Please run cere profile")
+            logger.error("Profile file missing. Please run cere profile")
             self._nb_cycles = 0
         else:
             Dict = read_csv(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv')
@@ -226,7 +228,7 @@ class Report:
                 try:
                     self._regions[k].set_callcount(line[1])
                 except(KeyError):
-                    logging.debug("CALL_COUNT: " + loop["Codelet Name"] + " not in matching error")
+                    logger.warning("CALL_COUNT: " + loop["Codelet Name"] + " not in matching error")
 
     def init_invocation_table(self, graph):
         '''
@@ -237,7 +239,7 @@ class Report:
             try:
                 self._regions[d['_name']].append_invocation_table(d['_invocations'])
             except(KeyError):
-                logging.debug("INVOCATIONS: " + d['_name'] + " not in graph")
+                logger.warning("INVOCATIONS: " + d['_name'] + " not in graph")
         
     def init_codes(self):
         '''
@@ -247,14 +249,14 @@ class Report:
         try:
             FILE = open(NAME_FILE, 'rb')
         except (IOError):
-            logging.info("Can't read " + NAME_FILE + "-> Verify coverage and matching")
+            logger.error("Can't read " + NAME_FILE + "-> Verify coverage and matching")
         table = csv.reader(FILE, delimiter=CSV_DELIMITER)
         for code_place in table:
             try:
                 if (code_place[0] in self._regions):
                     self._regions[code_place[0]].init_code(code_place)
             except(KeyError):
-                logging.debug("CODE_PLACE: " + code_place[0] + " not regions")
+                logger.warning("CODE_PLACE: " + code_place[0] + " not regions")
         
     def init_liste_script(self):
         '''
@@ -281,7 +283,7 @@ class Report:
                     region.init_selected(node["Selected"])
                     self._tree = self._tree + [Node(node,region)]
             except(KeyError):
-                logging.info("SELECTED_CODELETS: " + node["Codelet Name"] + " not in selected codelets")
+                logger.warning("SELECTED_CODELETS: " + node["Codelet Name"] + " not in selected codelets")
         #~self.remove_loops()
         self.test_parent_tree()
 
@@ -360,7 +362,7 @@ def context(DIR):
     if(os.chdir(DIR)):
         exit("Error Report -> Can't find " + DIR)
     if not os.path.isfile("{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])):
-        logging.info("Can't find {0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+        logger.warning("Can't find {0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
     else:
         os.system(ROOT + "/graph_error.R")
     #try:
@@ -368,14 +370,13 @@ def context(DIR):
     #except MyError as err:
     #    exit("Error Report -> " + err.value)
     #else:
-    logging.info("Report created")
     os.chdir(TEMP_DIR)
 
 def read_csv(File):
     try:
         FILE = open(File, 'rb')
     except (IOError):
-        logging.critical("Can't read " + File + "-> Verify coverage and matching")
+        logger.error("Can't read " + File + "-> Verify coverage and matching")
         return False
     Dict = csv.DictReader(FILE, delimiter=CSV_DELIMITER)
     return Dict
@@ -388,7 +389,7 @@ def encode_graph(graph_name):
         with open(graph_name, "rb") as f:
             graph = f.read()
     except (IOError):
-        logging.info("Can't find " + graph_name)
+        logger.warning("Can't find " + graph_name)
     else: return base64.standard_b64encode(graph)
 
 def percent(x):
@@ -418,15 +419,17 @@ def read_code(code_place):
     return Code(fileExtension, code, code_place[4])
 
 def run(args):
-    logging.info('CERE Report')
-    cere_configure.init()
+    logger.info('Start report')
+    if not cere_configure.init():
+        return False
     graph = load_graph()
     if graph == None:
-        logging.critical("Can't load graph. Did you run cere filter?")
+        logger.critical("Can't load graph. Did you run cere profile?")
         return False
 
     with context(args.path):
         bench = os.getcwd().split("/") [-1]
         REPORT = Report(bench, graph, args.mincycles)
         REPORT.write_report()
+    logger.info("Report created")
     return True

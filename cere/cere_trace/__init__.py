@@ -13,6 +13,8 @@ from common.graph_utils import load_graph
 import common.variables as var
 import common.utils as utils
 
+logger = logging.getLogger('Trace')
+
 def init_module(subparsers, cere_plugins):
     cere_plugins["trace"] = run
     trace_parser = subparsers.add_parser("trace", help="produce or read a region trace")
@@ -43,27 +45,27 @@ def check_arguments(args):
     """
 
     if not (args.region or args.regions_file):
-        logging.critical("No region specified, use at least one of the following: --region, --regions-file")
+        logger.critical("No region specified, use at least one of the following: --region, --regions-file")
         return False
 
     if (args.regions_file and args.region):
-        logging.critical("--region and --regions-file are exclusive")
+        logger.critical("--region and --regions-file are exclusive")
         return False
 
     if (args.read and not args.region):
-        logging.critical("--read can only be used with --region")
+        logger.critical("--read can only be used with --region")
         return False
 
     if args.regions_file:
         if not os.path.isfile(args.regions_file):
-            logging.critical("No such file: {0}".format(args.regions_file))
+            logger.critical("No such file: {0}".format(args.regions_file))
             return False
         else:
             # Make regions_file path absolute
             args.regions_file = os.path.abspath(args.regions_file)
 
     if args.region and utils.is_invalid(args.region):
-        logging.error("{0} is invalid".format(args.region))
+        logger.error("{0} is invalid. Skipping trace".format(args.region))
         return False
 
     return True
@@ -72,7 +74,7 @@ def find_same_level_regions(region):
     # Load graph
     graph = load_graph()
     if not graph:
-        logging.error("Can't trace multiple region: Region call graph not available.\n\
+        logger.error("Can't trace multiple regions: Region call graph not available.\n\
                       Run cere profile.\n\
                       Tracing region {0}".format(region))
         return
@@ -167,7 +169,7 @@ def run(args):
 
     # Are there any regions to trace ?
     if len(regions) == 0:
-        logging.info("No regions to trace")
+        logger.info("No regions to trace")
     else:
         result = launch_trace(args, regions)
 
@@ -178,8 +180,9 @@ def run(args):
                 shutil.move("{0}.bin".format(region), cere_configure.cere_config["cere_measures_path"])
                 shutil.move("{0}.csv".format(region), cere_configure.cere_config["cere_measures_path"])
             except IOError as err:
-                logging.critical(str(err))
-                logging.critical("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))
+                logger.error(str(err))
+                logger.error(err.output)
+                logger.error("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))
                 utils.mark_invalid(region)
                 result = False
 

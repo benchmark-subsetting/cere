@@ -9,6 +9,8 @@ import logging
 import networkx as nx
 from common.graph_utils import plot, save_graph
 
+logger = logging.getLogger('Profile')
+
 def which(program):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -154,24 +156,24 @@ def parse_gPerfTool(digraph, cmd, regex_list):
 def create_graph(force):
     run_cmd = cere_configure.cere_config["run_cmd"]
     build_cmd = cere_configure.cere_config["build_cmd"]
-    logging.info('Start graph creation')
+    logger.info('Start call graph creation')
 
     #Build again the application to be sure we give the right binary to pprof
     try:
-        logging.info(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
-        logging.critical(str(err))
-        logging.critical(err.output)
+        logger.error(str(err))
+        logger.error(err.output)
         return False
 
     binary = which(run_cmd)
     if not binary:
-        logging.critical("Can't find the binary")
+        logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary")
         return False
 
     profile_file = "{0}/app.prof".format(cere_configure.cere_config["cere_measures_path"])
     if not os.path.isfile(profile_file):
-        logging.critical('No profiling file')
+        logger.critical("No profiling file. Please run cere profile")
         return False
 
     #regular expression to parse the gperf tool output
@@ -195,5 +197,5 @@ def create_graph(force):
     save_graph(digraph, "original")
     save_graph(digraph)
 
-    logging.info('Create graph success')
+    logger.info('Call graph creation successefull')
     return True

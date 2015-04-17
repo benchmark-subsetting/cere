@@ -10,67 +10,69 @@ import subprocess
 import common.utils as utils
 import cere_configure
 
+logger = logging.getLogger('Dump')
+
 def init_module(subparsers, cere_plugins):
     cere_plugins["dump"] = run
-    dump_parser = subparsers.add_parser("dump", help="dump a region")
+    dump_parser = subparsers.add_parser("dump", help="Dump a region")
     dump_parser.add_argument('--region', help="Region to dump")
-    dump_parser.add_argument('--invocation', type=int, default=1, help="invocation to dump (Default 1)")
-    dump_parser.add_argument('--norun', type=bool, default=False, help="=If you don't want to automatically run the dump")
-    dump_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will re-dump any previous CERE dumps")
+    dump_parser.add_argument('--invocation', type=int, default=1, help="Invocation to dump (Default: 1)")
+    dump_parser.add_argument('--norun', type=bool, default=False, help="Only build the dump and do not run the dump")
+    dump_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="To re-dump any previous CERE dumps")
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
     if(args.region):
         if utils.is_invalid(args.region) and not args.force:
-            logging.error("{0} is invalid".format(args.region))
+            logger.warning("{0} is invalid. Skipping dump".format(args.region))
             return False
         if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) or args.force:
             shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation), ignore_errors=True)
-            logging.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
+            logger.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
             try:
-                logging.debug(subprocess.check_output("{0} MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation), stderr=subprocess.STDOUT, shell=True))
+                logger.debug(subprocess.check_output("{0} MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation), stderr=subprocess.STDOUT, shell=True))
             except subprocess.CalledProcessError as err:
-                logging.critical(str(err))
-                logging.critical(err.output)
-                logging.info("Compiling dump mode for region {0} invocation {1} failed".format(args.region, args.invocation))
+                logger.error(str(err))
+                logger.error(err.output)
+                logger.error("Compiling dump mode for region {0} invocation {1} failed".format(args.region, args.invocation))
                 utils.mark_invalid(args.region)
                 return False
             if not args.norun:
-                logging.info("Dumping invocation {1} for region {0}".format(args.region, args.invocation))
+                logger.info("Dumping invocation {1} for region {0}".format(args.region, args.invocation))
                 try:
-                    logging.debug(subprocess.check_output("LD_BIND_NOW=1 " + cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+                    logger.info(subprocess.check_output("LD_BIND_NOW=1 " + cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
                 except subprocess.CalledProcessError as err:
                     #even if the dump run fails, maybe the region is dumped.
-                    logging.debug(str(err))
-                    logging.debug(err.output)
+                    logger.error(str(err))
+                    logger.error(err.output)
                 if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
-                    logging.critical("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
+                    logger.error("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
                     utils.mark_invalid(args.region)
                     return False
                 else:
-                    logging.info("Invocation {1} succesfully dumped for region {0} ".format(args.region, args.invocation))
+                    logger.info("Invocation {1} succesfully dumped for region {0} ".format(args.region, args.invocation))
         else:
-            logging.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
+            logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
     #Global dump
     else:
-        logging.info("Compiling dump mode for all regions")
+        logger.info("Compiling dump mode for all regions")
         try:
-            logging.debug(subprocess.check_output("{0} MODE=\"dump\" -B".format(cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True))
+            logger.debug(subprocess.check_output("{0} MODE=\"dump\" -B".format(cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True))
         except subprocess.CalledProcessError as err:
-            logging.critical(str(err))
-            logging.critical(err.output)
-            logging.info("Compiling dump mode for all regions failed")
+            logger.error(str(err))
+            logger.error(err.output)
+            logger.info("Compiling dump mode for all regions failed")
             return False
         if not args.norun:
-            logging.info("Dumping all regions")
+            logger.info("Dumping all regions")
             try:
-                logging.debug(subprocess.check_output("LD_BIND_NOW=1 " + cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+                logger.debug(subprocess.check_output("LD_BIND_NOW=1 " + cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
             except subprocess.CalledProcessError as err:
-                #even if the dump run fails, maybe the region is dumped.
-                logging.debug(str(err))
-                logging.debug(err.output)
-                logging.critical("Dumping all regions failed")
+                logger.error(str(err))
+                logger.error(err.output)
+                logger.error("Dumping all regions failed")
                 return False
             else:
-                logging.info("All regions succesfully dumped")
+                logger.info("All regions succesfully dumped")
     return True

@@ -11,50 +11,64 @@ import cere_dump
 import common.variables as var
 import common.utils as utils
 
+logger = logging.getLogger('Replay')
+
 def init_module(subparsers, cere_plugins):
     cere_plugins["replay"] = run
     replay_parser = subparsers.add_parser("replay", help="replay a region")
     replay_parser.add_argument('--region', required=True, help="Region to replay")
     replay_parser.add_argument('--invocation', type=int, default=1, help="invocation to replay (Default 1)")
     replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
-    replay_parser.add_argument('--noinstrumentation', type=bool, const=True, default=False, nargs='?', help="=If you don't want to instrument the region")
+    replay_parser.add_argument('--noinstrumentation', type=bool, const=True, default=False, nargs='?', help="=Replay without instrumentation")
     replay_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library")
-    replay_parser.add_argument('--norun', type=bool, default=False, help="=If you don't want to automatically run the region")
+    replay_parser.add_argument('--norun', type=bool, default=False, help="=If you don't want to automatically run the replay")
     replay_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will re-dump any previous CERE dumps")
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
     if utils.is_invalid(args.region):
-        logging.error("{0} is invalid".format(args.region))
+        logger.warning("{0} is invalid. Skipping replay".format(args.region))
         return False
     if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
-        logging.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
+        logger.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
         return True
     #If the dump does not exist
+    if args.force:
+        logger.warning("Ignoring --force for the dump, if you really want to re-dump the region, directly use cere dump")
+        args.force=False
     if not cere_dump.run(args):
         return False
     if args.noinstrumentation:
         instru_cmd = ""
-        logging.info("Compiling replay mode for region {0} invocation {1} without instrumentation".format(args.region, args.invocation))
+        logger.info("Compiling replay mode for region {0} invocation {1} without instrumentation".format(args.region, args.invocation))
     else:
         instru_cmd = "--instrument"
-        logging.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, args.invocation))
+        logger.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, args.invocation))
     try:
-        logging.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd, args.wrapper, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd, args.wrapper, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
-        logging.critical(str(err))
-        logging.critical(err.output)
-        logging.info("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
+        logger.error(str(err))
+        logger.error(err.output)
+        logger.error("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
         utils.mark_invalid(args.region)
         return False
     if not args.norun:
-        logging.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
+        logger.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
         try:
-            logging.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+            logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
         except subprocess.CalledProcessError as err:
-            logging.critical(str(err))
-            logging.critical(err.output)
-            logging.critical("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
+            logger.error(str(err))
+            logger.error(err.output)
+            logger.error("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
             utils.mark_invalid(args.region)
             return False
+        if os.path.isfile("{0}_{1}.csv".format(args.region, args.invocation)):
+            try:
+                shutil.move("{0}_{1}.csv".format(args.region, args.invocation), "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation))
+            except IOError as err:
+                logger.error(str(err))
+                logger.error(err.output)
+                logger.error("Cannot move {1}_{2}.csv to {0}/{1}_{2}.csv.".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation))
+                return False
     return True

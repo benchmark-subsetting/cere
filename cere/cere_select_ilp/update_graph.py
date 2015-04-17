@@ -11,6 +11,8 @@ import cere_configure
 import cere_test
 import logging
 
+logger = logging.getLogger('ILP selector')
+
 def read_csv(File):
     try:
         FILE = open(File, 'rb')
@@ -50,10 +52,10 @@ def update(args):
     args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
     args.force = False
 
-    logging.info("Start graph updating")
+    logger.info("Start graph updating")
     graph = load_graph("original")
     if graph == None:
-        logging.critical("No graph to load")
+        logger.critical("No graph to load. Did you run cere profile?")
         return False
 
     step=0

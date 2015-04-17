@@ -17,12 +17,26 @@ import cere_sanity_check
 import cere_report
 
 import logging
+logger = logging.getLogger('CERE')
 
 cere_plugins = {}
 
 def start_log():
-    logging.basicConfig(format='%(levelname)s %(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S', level=logging.DEBUG)
-    logging.info('CERE start')
+    logging.basicConfig(format='%(levelname)s %(asctime)s %(name)s : %(message)s',
+                        datefmt='%m/%d/%Y %H:%M:%S',
+                        level=logging.DEBUG,
+                        filename='cere.log',
+                        filemode='w')
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    # set the same format for the console logger
+    formatter = logging.Formatter('%(levelname)s %(asctime)s %(name)s : %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    # add the handler to the root logger
+    logging.getLogger('').addHandler(console)
+    logger.info("Start")
 
 parser = argparse.ArgumentParser(description="CERE command line")
 subparsers = parser.add_subparsers(help="Call CERE modules", dest="mode")
@@ -44,11 +58,12 @@ cere_report.init_module(subparsers, cere_plugins)
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    status = 0
 
     if not cere_plugins[args.mode](args):
-        print("An error occured, see cere.log for more detailed information")
-        logging.info('CERE stop')
-        sys.exit(1)
-    else:
-        logging.info('CERE stop')
-        sys.exit(0)
+        logger.error("An error occured, see cere.log for more detailed information")
+        status = 1
+
+    logger.info("Stop")
+    logging.shutdown()
+    sys.exit(status)

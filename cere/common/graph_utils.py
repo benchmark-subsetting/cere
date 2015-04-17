@@ -7,6 +7,8 @@ import os
 import subprocess
 import cere_configure
 
+logger = logging.getLogger('Graph utils')
+
 def plot(g, step):
     import os
     for n,d in g.nodes(data=True):
@@ -20,14 +22,13 @@ def plot(g, step):
         if d['_to_test']: d['color']="orange"
     for u,v,d in g.edges(data=True):
         d["label"] = round(d["weight"], 2)
-    logging.info("Plot graph_{0}.pdf".format(step))
     nx.write_dot(g,"{0}/graph_{1}.dot".format(cere_configure.cere_config["cere_measures_path"], step))
     try:
-        logging.info(subprocess.check_output("dot -Tpdf {0}/graph_{1}.dot -o {0}/graph_{1}.pdf".format(cere_configure.cere_config["cere_measures_path"], step), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("dot -Tpdf {0}/graph_{1}.dot -o {0}/graph_{1}.pdf".format(cere_configure.cere_config["cere_measures_path"], step), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
-        logging.info("Canno't create the pdf")
-        logging.info(str(err))
-        logging.info(err.output)
+        logger.error(str(err))
+        logger.error(err.output)
+        logger.error("Cannot create the pdf")
 
 def load_graph(step=""):
     if not os.path.isfile("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step)): return None
@@ -38,4 +39,3 @@ def load_graph(step=""):
 def save_graph(g, step=""):
     with open("{0}/graph_{1}.pkl".format(cere_configure.cere_config["cere_measures_path"], step), 'wb') as output:
         pickle.dump(g, output, pickle.HIGHEST_PROTOCOL)
-    logging.info('Saving done')

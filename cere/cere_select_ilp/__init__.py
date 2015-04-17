@@ -6,6 +6,9 @@ import cere_configure
 import os
 import cere_test
 from update_graph import update
+from granularity import *
+
+logger = logging.getLogger('ILP selector')
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["select-ilp"] = run
@@ -22,13 +25,13 @@ def check_dependancies(args):
     profile_file = "{0}/app.prof".format(cere_configure.cere_config["cere_measures_path"])
     graph = "{0}/graph_original.pkl".format(cere_configure.cere_config["cere_measures_path"])
     if not os.path.isfile(profile_file) or not os.path.isfile(graph):
-        logging.critical('No profiling file or graph not created')
-        logging.info('Run: cere profile --regions')
+        logger.critical('No profiling file or graph not created. Run: cere profile')
         return False
     return True
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
     if not check_dependancies(args):
         return False
     if not check_arguments(args):
@@ -37,7 +40,6 @@ def run(args):
     if not update(args):
         return False
     #Select matching codelets with best coverage
-    from granularity import *
     if not solve_with_best_granularity(args.max_error):
         return False
     return True

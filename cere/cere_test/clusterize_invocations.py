@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from sklearn import cluster
 from sklearn import preprocessing
 
-
 MAX_POINTS=10000
 
 PALETTE = ["red","blue","green","yellow","black","grey","pink",

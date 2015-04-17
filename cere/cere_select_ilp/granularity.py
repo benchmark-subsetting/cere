@@ -10,6 +10,7 @@ import logging
 import csv
 from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, GLPK
 
+logger = logging.getLogger('ILP selector')
 tolerated_error = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99.9]
 
 class Error_table:
@@ -114,11 +115,11 @@ def solve_with_best_granularity(error):
 
     graph = load_graph()
     if graph == None:
-        logging.critical("Granularity: Can't load graph")
+        logger.critical("Cannot load graph. Did you run cere profile?")
         return False
 
     if( len(graph.nodes()) == 0):
-        logging.info('Graph is empty')
+        logger.info('Graph is empty, nothing to select')
         return True
     error_filename = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
@@ -137,11 +138,11 @@ def solve_with_best_granularity(error):
     try:
         target_error_chosen, target_coverage = solve(graph, target_error)
     except(Unsolvable):
-        print >>sys.stderr, "Solution impossible"
+        logger.error("Solution impossible")
 
     output_tree(graph, target_error_chosen)
     table.write_table(error_filename)
-    print >>sys.stderr, "Solved with coverage >= %s" % target_coverage
+    logger.info("Solved with coverage >= {0}".format(target_coverage))
     for c in target_error_chosen:
         graph.graph['coverage'] = graph.graph['coverage'] + graph.node[c]['_coverage']
         print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_coverage'])
