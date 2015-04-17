@@ -80,7 +80,6 @@ def solve_with_best_granularity(args):
         table_chosen, table_coverage = solve(graph)
         table.complete_error_table(args.max_error, table_coverage)
         args.max_error = args.max_error-5
-        logger.setLevel(logging.INFO)
     table.write_table(error_filename)
 
     args.max_error = 15
