@@ -337,8 +337,8 @@ bool RegionExtractor::is_region_in_file(std::string newFunctionName,
 void RegionExtractor::add_region_to_file(
     std::string newFunctionName, std::string File, std::string oldFunction,
     std::string firstLine, std::string path, std::string Original_location) {
-  std::string header =
-      "Region Name,File Name,Original Location,Function Name,Line";
+  std::string header = "Region Name,File Name,Original Location,\
+                       Function Name,Line,Coverage (self),Coverage";
   std::fstream loopstream(LoopFileInfos.c_str(),
                           std::ios::in | std::ios::out | std::ios::app);
   if (loopstream.is_open()) {
@@ -346,9 +346,9 @@ void RegionExtractor::add_region_to_file(
       loopstream << header + "\n";
     }
     if (!is_region_in_file(newFunctionName, loopstream)) {
-      loopstream
-          << newFunctionName + "," + path + "/" + File + "," +
-                 Original_location + "," + oldFunction + "," + firstLine + "\n";
+      loopstream << newFunctionName + "," + path + "/" + File + "," +
+                    Original_location + "," + oldFunction + "," + firstLine +
+                    "\n";
     }
     loopstream.close();
   } else {

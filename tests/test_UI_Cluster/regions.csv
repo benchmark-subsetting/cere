@@ -33,3 +33,6 @@ __cere__fft3d_fftxyz__112,/home/cakel/loop_extractor/tests/test_UI_Cluster//fft3
 __cere__verify_verify__126,/home/cakel/loop_extractor/tests/test_UI_Cluster//verify.ll,verify.f,verify_,126
 __cere__randi8_vranlc__69,/home/cakel/loop_extractor/tests/test_UI_Cluster//randi8.ll,randi8.f,vranlc_,69
 __cere__print_results_print_results__30,/home/cakel/loop_extractor/tests/test_UI_Cluster//print_results.ll,print_results.f,print_results_,30
+Region Name,File Name,Original Location,                       Function Name,Line,Coverage (self),Coverage
+Region Name,File Name,Original Location,                       Function Name,Line,Coverage (self),Coverage
+Region Name,File Name,Original Location,                       Function Name,Line,Coverage (self),Coverage

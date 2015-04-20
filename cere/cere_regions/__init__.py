@@ -14,9 +14,9 @@ logger = logging.getLogger('Regions')
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["regions"] = run
-    profile_parser = subparsers.add_parser("regions", help="List extractible loops")
-    profile_parser.add_argument("--static", nargs='?', const=True, default=True, help="List loops")
-    profile_parser.add_argument("--dynamic", nargs='?', const=True, default=False, help="List loops with coverage")
+    profile_parser = subparsers.add_parser("regions", help="List extractible regions")
+    profile_parser.add_argument("--static", nargs='?', const=True, default=False, help="List regions.")
+    profile_parser.add_argument("--dynamic", nargs='?', const=True, default=False, help="List executed regions with coverage")
 
 class Dump():
     def __init__(self):
@@ -45,12 +45,10 @@ def parse_line(regex_list, line):
             break
     return matchObj, i
 
-def add_column_to_header(regions_file, new_regions_file):
+def add_header(regions_file, new_regions_file):
     with open(regions_file, 'rb') as regions:
         r = csv.reader(regions)
         header = r.next()
-        header.append('Coverage (self)')
-        header.append('Coverage')
     with open(new_regions_file, 'wb') as tmp_regions:
         w = csv.writer(tmp_regions)
         w.writerow(header)
@@ -62,12 +60,12 @@ def add_coverage(regions_file, new_regions_file, matchObj):
     try:
         coverage = float(matchObj.group(6))
     except IndexError:
-        coverage = 0.0
+        coverage = "NA"
 
     try:
         self_coverage = float(matchObj.group(4))
     except IndexError:
-        self_coverage = 0.0
+        self_coverage = "NA"
 
     with open(regions_file, 'rb') as regions:
         r = csv.reader(regions)
@@ -93,6 +91,12 @@ def run(args):
     logger.info("Removing previous regions list")
     if os.path.isfile(regions_file):
         os.remove(regions_file)
+
+    if args.dynamic: args.static = True
+    if not args.static and not args.dynamic:
+        args.static = True
+        args.dynamic = True
+
     if(args.static):
         mydump = Dump()
         res = cere_dump.run(mydump)
@@ -123,7 +127,7 @@ def run(args):
             logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary")
             return False
 
-        add_column_to_header(regions_file, new_regions_file)
+        add_header(regions_file, new_regions_file)
 
         #regular expression to parse the gperf tool output
         regex_list = [r'(N.*)\s\[label\=\"(.*?)\\n([0-9]*)\s\((.*)\%\)\\rof\s(.*)\s\((.*)\%\)\\r',

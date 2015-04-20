@@ -27,7 +27,7 @@ def init_module(subparsers, cere_plugins):
 def run(args):
     if not cere_configure.init():
         return False
-    if utils.is_invalid(args.region):
+    if utils.is_invalid(args.region) and not args.force:
         logger.warning("{0} is invalid. Skipping replay".format(args.region))
         return False
     if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
@@ -63,12 +63,4 @@ def run(args):
             logger.error("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
             utils.mark_invalid(args.region)
             return False
-        if os.path.isfile("{0}_{1}.csv".format(args.region, args.invocation)):
-            try:
-                shutil.move("{0}_{1}.csv".format(args.region, args.invocation), "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation))
-            except IOError as err:
-                logger.error(str(err))
-                logger.error(err.output)
-                logger.error("Cannot move {1}_{2}.csv to {0}/{1}_{2}.csv.".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation))
-                return False
     return True
