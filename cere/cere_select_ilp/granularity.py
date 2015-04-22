@@ -8,23 +8,11 @@ from common.graph_utils import *
 import cere_configure
 import logging
 import csv
+import common.utils as utils
 from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, GLPK
 
 logger = logging.getLogger('ILP selector')
 tolerated_error = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99.9]
-
-class Error_table:
-    def __init__(self):
-        self.table = []
-
-    def complete_error_table(self, error, coverage):
-        self.table = self.table + [[error,coverage]]
-
-    def write_table(self, error_file):
-        output = open(error_file,'w')
-        output.write("Error,Exec Time\n")
-        for c in self.table:
-            output.write(str(c[0]) + "," + str(c[1]) + "\n")
 
 class Unsolvable(Exception):
     pass
@@ -101,7 +89,7 @@ def solve_with_best_granularity(error):
     error_filename = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
 
-    table = Error_table()
+    table = utils.Error_table()
     target_error_chosen = set()
     graph.graph['coverage'] = 0
 
