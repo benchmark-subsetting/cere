@@ -83,6 +83,7 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_to_test'] = False
     digraph.node[_id]['_transfered'] = False
     digraph.node[_id]['_small'] = False
+    digraph.node[_id]['_selected'] = False
     digraph.node[_id]['_invivo'] = 0.0
     digraph.node[_id]['_invitro'] = 0.0
     digraph.node[_id]['_invocations'] = []

@@ -141,6 +141,13 @@ class Node:
         self._selected = node["Selected"]
         self._id = node["Id"]
 
+unique_id = 0
+
+def get_uid():
+    global unique_id
+    unique_id += 1
+    return str(unique_id)
+
 class Report:
     def __init__(self, bench, graph, mincycles):
         '''
@@ -161,6 +168,7 @@ class Report:
         self.init_nb_cycles()
         self.init_regions(graph, mincycles)
         self.init_liste_script()
+        self.output_tree(graph)
         self.init_tree()
         self.init_graph_error()
         self.init_javascript()
@@ -267,7 +275,27 @@ class Report:
         for region in self._regions:
             self._liste_script = self._liste_script + [self._regions[region]._code._script]
         self._liste_script = set(self._liste_script)
-        
+
+    def output_codelet(self, output, graph, chosen, node, direct_parent_id, parents):
+        selected = "true" if node in chosen else "false"
+        codelet_id =  get_uid()
+        output.write(",".join([codelet_id, graph.node[node]['_name'], selected, direct_parent_id]) + "\n")
+        for child_name in graph.successors(node):
+            if child_name not in parents:
+                self.output_codelet(output, graph, chosen, child_name, codelet_id, parents | set([node]))
+
+    def output_tree(self, graph):
+        chosen=[]
+        for n, d in graph.nodes(data=True):
+            if d["_selected"]: chosen.append(n)
+        with open("{0}/selected_codelets".format(cere_configure.cere_config["cere_measures_path"]), 'w') as output:
+            # print header
+            output.write("Id,Codelet Name,Selected,ParentId\n")
+            # find roots
+            for n, d in graph.nodes(data=True):
+                if not graph.predecessors(n): #root
+                    self.output_codelet(output, graph, chosen, n, "None", set())
+
     def init_tree(self):
         '''
         Initialize the tree given by selected_codelets

@@ -33,6 +33,7 @@ def solve(graph, err, max_coverage=100, step=5):
     coverage = max_coverage
     for n,d in graph.nodes(data=True):
         d['_matching'] = True
+        d["_selected"] = False
         if d['_error'] > err: d['_matching'] = False
     while(coverage > 0):
         try:
@@ -82,32 +83,8 @@ def solve_under_coverage(graph, min_coverage=80):
 
             for n,d in graph.nodes(data=True):
                 if ("codelet_"+str(n)) == v.name:
+                    d["_selected"] = True
                     yield n
-
-unique_id = 0
-
-def get_uid():
-    global unique_id
-    unique_id += 1
-    return str(unique_id)
-
-
-def output_codelet(output, graph, chosen, node, direct_parent_id, parents):
-    selected = "true" if node in chosen else "false"
-    codelet_id =  get_uid()
-    output.write(",".join([codelet_id, graph.node[node]['_name'], selected, direct_parent_id]) + "\n")
-    for child_name in graph.successors(node):
-        if child_name not in parents:
-            output_codelet(output, graph, chosen, child_name, codelet_id, parents | set([node]))
-
-def output_tree(graph, chosen):
-    with open("{0}/selected_codelets".format(cere_configure.cere_config["cere_measures_path"]), 'w') as output:
-        # print header
-        output.write("Id,Codelet Name,Selected,ParentId\n")
-        # find roots
-        for n, d in graph.nodes(data=True):
-            if not graph.predecessors(n): #root
-                output_codelet(output, graph, chosen, n, "None", set())
 
 def solve_with_best_granularity(error):
     target_error = error
@@ -129,6 +106,7 @@ def solve_with_best_granularity(error):
     graph.graph['coverage'] = 0
 
     for err in tolerated_error:
+        logger.info("Computing matching with a maximum error of {0}%".format(err))
         try:
             chosen, coverage = solve(graph, err)
             table.complete_error_table(err, coverage)
@@ -140,7 +118,6 @@ def solve_with_best_granularity(error):
     except(Unsolvable):
         logger.error("Solution impossible")
 
-    output_tree(graph, target_error_chosen)
     table.write_table(error_filename)
     logger.info("Solved with coverage >= {0}".format(target_coverage))
     for c in target_error_chosen:

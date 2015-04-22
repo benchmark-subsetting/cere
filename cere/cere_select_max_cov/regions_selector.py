@@ -29,35 +29,12 @@ def solve(graph):
     coverage = 0
     nodes = []
     for n, d in graph.nodes(data=True):
+        d["_selected"] = False
         if d['_matching']:
             coverage = coverage + d['_self_coverage']
             nodes.append(n)
+            d["_selected"] = True
     return nodes, coverage
-
-unique_id = 0
-
-def get_uid():
-    global unique_id
-    unique_id += 1
-    return str(unique_id)
-
-
-def output_codelet(output, graph, chosen, node, direct_parent_id, parents):
-    selected = "true" if node in chosen else "false"
-    codelet_id =  get_uid()
-    output.write(",".join([codelet_id, graph.node[node]['_name'], selected, direct_parent_id]) + "\n")
-    for child_name in graph.successors(node):
-        if child_name not in parents:
-            output_codelet(output, graph, chosen, child_name, codelet_id, parents | set([node]))
-
-def output_tree(graph, chosen):
-    with open("{0}/selected_codelets".format(cere_configure.cere_config["cere_measures_path"]), 'w') as output:
-        # print header
-        output.write("Id,Codelet Name,Selected,ParentId\n")
-        # find roots
-        for n, d in graph.nodes(data=True):
-            if not graph.predecessors(n): #root
-                output_codelet(output, graph, chosen, n, "None", set())
 
 def solve_with_best_granularity(args):
     graph = load_graph()
@@ -87,7 +64,6 @@ def solve_with_best_granularity(args):
     graph = load_graph()
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
     chosen, coverage = solve(graph)
-    output_tree(graph, chosen)
 
     if coverage == 0:
         logger.error("Solution impossible")
