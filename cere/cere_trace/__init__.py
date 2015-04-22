@@ -45,27 +45,27 @@ def check_arguments(args):
     """
 
     if not (args.region or args.regions_file):
-        logger.critical("No region specified, use at least one of the following: --region, --regions-file")
+        logger.error("No region specified, use at least one of the following: --region, --regions-file")
         return False
 
     if (args.regions_file and args.region):
-        logger.critical("--region and --regions-file are exclusive")
+        logger.error("--region and --regions-file are exclusive")
         return False
 
     if (args.read and not args.region):
-        logger.critical("--read can only be used with --region")
+        logger.error("--read can only be used with --region")
         return False
 
     if args.regions_file:
         if not os.path.isfile(args.regions_file):
-            logger.critical("No such file: {0}".format(args.regions_file))
+            logger.error("No such file: {0}".format(args.regions_file))
             return False
         else:
             # Make regions_file path absolute
             args.regions_file = os.path.abspath(args.regions_file)
 
     if args.region and utils.is_invalid(args.region):
-        logger.error("{0} is invalid. Skipping trace".format(args.region))
+        logger.warning("{0} is invalid. Skipping trace".format(args.region))
         return False
 
     return True

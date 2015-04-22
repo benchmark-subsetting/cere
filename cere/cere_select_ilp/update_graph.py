@@ -50,7 +50,6 @@ def update(args):
     build_cmd = cere_configure.cere_config["build_cmd"]
     error = args.max_error
     args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
-    args.force = False
 
     logger.info("Start graph updating")
     graph = load_graph("original")

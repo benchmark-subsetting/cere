@@ -33,12 +33,6 @@ def run(args):
     if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
         logger.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
         return True
-    #If the dump does not exist
-    if args.force:
-        logger.warning("Ignoring --force for the dump, if you really want to re-dump the region, directly use cere dump")
-        args.force=False
-    if not cere_dump.run(args):
-        return False
     if args.noinstrumentation:
         instru_cmd = ""
         logger.info("Compiling replay mode for region {0} invocation {1} without instrumentation".format(args.region, args.invocation))

@@ -34,6 +34,7 @@ def solve_with_best_granularity(args):
         logger.info('Graph is empty, nothing to select')
         return True
 
+    args.force=False
     #Compute coverage for different error
     error_filename = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
     table = utils.Error_table()

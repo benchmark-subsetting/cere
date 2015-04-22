@@ -21,14 +21,15 @@ def init_module(subparsers, cere_plugins):
     profile_parser = subparsers.add_parser("test", help="Test the matching for a list of region")
     profile_parser.add_argument("--regions", help="The list of regions to test in a file")
     profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
-    profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
+    profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will force replay of regions.\
+                                                                                             Force is ignored for dumps and traces.")
 
 def compute_error(n1, n2):
     if n1 == 0 and n2 == 0: return 100
     return (abs(n1-n2)/max(n1, n2))*100
 
 class Region():
-    def __init__(self, r, f):
+    def __init__(self, r):
         self.region = r
         self.status = True
         self.invocation=1
@@ -37,7 +38,7 @@ class Region():
         self.regions_file = None
         self.noinstrumentation = False
         self.wrapper=var.RDTSC_WRAPPER
-        self.force = f
+        self.force = False
         self.invocations_data = []
         self.invitro_cycles=0.
         self.invivo_cycles=0.
@@ -53,7 +54,7 @@ class Region():
         if graph:
             logger.info("Computing coverage using google perf tool")
             for n, d in graph.nodes(data=True):
-                if d['_name'] == self.region.replace("invivo", "extracted"):
+                if d['_name'] == self.region:
                     self.coverage = float(d['_self_coverage'])
                     return
         #2) Compute the coverage manually
@@ -66,7 +67,7 @@ class Region():
             self.coverage = (self.invivo_cycles/app_cycles)*100
         else:
             self.coverage = "NA"
-            logger.warning("Cannot compute coverage for region {0}. Try to run cere profile".format(self.region.replace("invivo", "extracted")))
+            logger.warning("Cannot compute coverage for region {0}. Try to run cere profile".format(self.region))
 
     def measure_trace(self):
         res = cere_trace.run(self)
@@ -104,7 +105,7 @@ class Region():
             logger.info("Using previous clustering infos")
         return True
 
-    def replay_invocations(self):
+    def replay_invocations(self, force):
         if not os.path.isfile("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)):
             logger.error("No invocation file for region {0}".format(self.region))
             return False
@@ -112,15 +113,17 @@ class Region():
         clust=0
         with open("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)) as invocation_file:
             for line in invocation_file:
+                self.force = False
                 res=True
                 clust = clust + 1
                 infos = line.strip().split()
-                self.region = self.region.replace("invivo", "extracted")
                 self.invocation = infos[0]
                 self.invitro_callcount = 10
-                res = cere_replay.run(self)
-                #Compute error between invivo and invitro cycles for this invocation
-                if not res:
+                #Dump the required invocation
+                cere_dump.run(self)
+                #Replay it and compute error between invivo and invitro cycles for this invocation
+                self.force = force
+                if not cere_replay.run(self):
                     err=True
                     invitro_cycles = 0.
                 else:
@@ -168,7 +171,8 @@ def dump_results(regions, max_error):
                 invocations_writer.writerow([region.region]+d)
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
     region_file = args.regions
     if not region_file:
         if not os.path.isfile("{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])):
@@ -185,7 +189,7 @@ def run(args):
     allRegions = []
     #For each region
     for r in regions:
-        region = Region(r, args.force)
+        region = Region(r)
         #first we need the trace
         res = region.measure_trace()
         if not res: err=True
@@ -197,11 +201,11 @@ def run(args):
         if not res: err=True
 
         #Replay representative invocations
-        res = region.replay_invocations()
+        res = region.replay_invocations(args.force)
         if not res: err=True
 
         #Compute error between invivo and in vitro
-        res = region.check_region_matching()
+        region.check_region_matching()
         allRegions.append(region)
 
     dump_results(allRegions, args.max_error)
