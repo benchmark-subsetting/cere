@@ -1,0 +1,14 @@
+'Re  	 Pr'
+1d5 	.72d0
+'nx	ny	nz'
+33      33	16
+'CFL	nuim	 nuex2 	nuex4'
+2.d0 	0.1d0	 0.1d0	 0.05d0
+'Method: explicit(0)  Implicit(1)'
+1
+'Configuration: cubuc(0)  sphere(1)'
+0
+'Number of Time Steps'
+   25
+
+

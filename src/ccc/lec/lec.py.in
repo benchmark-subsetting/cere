@@ -142,11 +142,6 @@ def original_fun(mode_opt, BASE):
                         "-o {base}.ll").format(
                         llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                         LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
-            print(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                        "-region-instrumentation {opts} {base}.ll " +
-                        "-o {base}.ll").format(
-                        llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                        LoopInstr=LOOP_INSTR, opts=instru_opts, base=BASE, EXIT=False))
 
 def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''

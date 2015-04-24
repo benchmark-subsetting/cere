@@ -9,6 +9,7 @@ import logging
 import subprocess
 import common.utils as utils
 import cere_configure
+import cere_io_checker
 
 logger = logging.getLogger('Dump')
 
@@ -23,6 +24,14 @@ def init_module(subparsers, cere_plugins):
 def run(args):
     if not cere_configure.init():
         return False
+
+    #We must backup the current force flag because the io_checker will
+    #set it to True
+    my_force = args.force
+    if not cere_io_checker.run(args):
+        logger.warning("Checking IOs failed")
+    args.force = my_force
+
     if(args.region):
         if utils.is_invalid(args.region) and not args.force:
             logger.warning("{0} is invalid. Skipping dump".format(args.region))

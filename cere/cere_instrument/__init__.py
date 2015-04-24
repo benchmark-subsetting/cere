@@ -19,7 +19,8 @@ def init_module(subparsers, cere_plugins):
     instrument_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will force the CERE instrumentation")
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
     if utils.is_invalid(args.region) and not args.force:
         logger.error("{0} is invalid. Skipping instrumentation".format(args.region))
         return False

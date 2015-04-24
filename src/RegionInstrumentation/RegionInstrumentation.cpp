@@ -42,7 +42,7 @@ LoopsFilename("regions-file", cl::init(""),
 static cl::opt<bool>
 AppMeasure("instrument-app", cl::init(false),
     cl::value_desc("Boolean"),
-    cl::desc("if True, application time will be measured (cycles)"));
+    cl::desc("Put instrumentation at the beginning and the end of the application"));
 static cl::opt<bool>
 Replay("replay", cl::init(false),
     cl::value_desc("Boolean"),
@@ -250,7 +250,7 @@ std::vector<Value*> RegionInstrumentation::createFunctionParameters(Module* mod,
   std::vector<Value*> void_params;
   void_params.push_back(const_ptr_0); //LoopName
   void_params.push_back(const_int1); //Vivo/Vitro boolean
-  void_params.push_back(const_int32_0); //requested
+  void_params.push_back(const_int32_1); //requested
   if(RequestedInvoc == 0)//We want to measure all invocations
     void_params.push_back(const_int32_1);
   else
