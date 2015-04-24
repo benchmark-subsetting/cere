@@ -12,12 +12,12 @@ logger = logging.getLogger('Configure')
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["configure"] = run
-    configure_parser = subparsers.add_parser("configure", help="Configure CERE to work with your application")
-    configure_parser.add_argument('--run_cmd', required=True, help="Set the command to run your application")
-    configure_parser.add_argument('--build_cmd', required=True, help="Set the command to build the application")
-    configure_parser.add_argument('--measures_path', default="cere_measures", help="Directory where to save CERE measures (Default: cere_measures)")
-    configure_parser.add_argument('--dumps_path', default="cere_dumps", help="Directory where to save CERE regions dumps (Default: cere_dumps)")
-    configure_parser.add_argument('--multiple_trace', const=True, default=False, nargs='?', help="Enable tracing multiple region at the same time (Default: False)")
+    configure_parser = subparsers.add_parser("configure", help="Configure CERE to build and run an application")
+    configure_parser.add_argument('--build_cmd', required=True, help="Sets the command to build the application")
+    configure_parser.add_argument('--run_cmd', required=True, help="Sets the command used to run the application")
+    configure_parser.add_argument('--measures_path', default="cere_measures", help="Directory where to save CERE measures")
+    configure_parser.add_argument('--dumps_path', default="cere_dumps", help="Directory where to save CERE regions dumps")
+    configure_parser.add_argument('--multiple_trace', action='store_true', help="Enables tracing multiple regions in a single run. (default false)")
 
 def run(args):
     global cere_config
@@ -58,3 +58,4 @@ def setup_dir(measures_path):
             logger.error(str(err))
             return False
     return True
+

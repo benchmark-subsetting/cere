@@ -33,6 +33,9 @@ AC_PATH_PROG(DOT,  [dot],  [])
 AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
 AC_CHECK_TOOL([READELF], [readelf], [])
 
+# Check for ronn, used to generate man pages
+AC_PATH_PROGS(RONN, [ronn], [])
+
 # Check for google-pprof
 AC_PATH_PROGS(PPROF, [pprof google-pprof], [])
 
@@ -111,6 +114,7 @@ AX_PYTHON_MODULE(numpy, fatal)
 # Generate config files
 
 AC_CONFIG_FILES([Makefile
+                 doc/Makefile
                  src/Makefile
                  src/RegionOutliner/Makefile
                  src/RegionInstrumentation/Makefile

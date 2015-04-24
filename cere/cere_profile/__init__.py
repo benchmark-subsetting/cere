@@ -14,10 +14,10 @@ logger = logging.getLogger('Profile')
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["profile"] = run
-    profile_parser = subparsers.add_parser("profile", help="Profile an application")
-    profile_parser.add_argument("--app", nargs='?', const=True, default=False, help="Measure application cycles")
-    profile_parser.add_argument("--regions", nargs='?', const=True, default=False, help="Instrument regions and generates call graph")
-    profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures")
+    profile_parser = subparsers.add_parser("profile", help="Profiles an application")
+    profile_parser.add_argument("--app", action='store_true', help="measures application cycles")
+    profile_parser.add_argument("--regions", action="store_true", help="instruments regions and generates a call graph")
+    profile_parser.add_argument('--force', '-f', action="store_true", help="overwrites any previous CERE measures. (default False)")
 
 def run(args):
     if not cere_configure.init():

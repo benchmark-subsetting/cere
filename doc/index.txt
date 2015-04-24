@@ -1,0 +1,11 @@
+# CERE Manual
+cere-configure(1) cere-configure.1.ronn
+cere-trace(1) cere-trace.1.ronn
+cere-dump(1) cere-dump.1.ronn
+cere-replay(1) cere-replay.1.ronn
+cere-test(1) cere-test.1.ronn
+cere-report(1) cere-report.1.ronn
+
+# External links
+atexit(3) http://man.cx/atexit(3)
+google-pprof(1) http://man.cx/google-pprof(1)
