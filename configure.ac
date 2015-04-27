@@ -26,6 +26,20 @@ AC_CHECK_LIB([gfortran], [exit])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([profiler], [ProfilerStart])
 
+# Check that the selected GCC is compatible with the selected dragonegg
+AC_MSG_CHECKING([if gcc can compile fortran with dragonegg])
+cat <<EOF >conftest.f90
+module conftest_module
+end module conftest_module
+EOF
+doit='$CC -S -fplugin=$DRAGONEGG_PATH -fplugin-arg-dragonegg-emit-ir conftest.f90'
+if AC_TRY_EVAL(doit); then
+AC_MSG_RESULT([yes])
+else
+AC_MSG_RESULT([no])
+AC_MSG_ERROR([Your gcc version ($CC) cannot compile Fortran programs with your dragonegg plugin ($DRAGONEGG_PATH)])
+fi
+
 # Check for common programs and tools
 AC_PATH_PROG(SED,  [sed],  [])
 AC_PATH_PROG(DOT,  [dot],  [])
