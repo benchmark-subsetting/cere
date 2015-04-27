@@ -110,6 +110,7 @@ AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
 AX_PYTHON_MODULE(jinja2, fatal)
 AX_PYTHON_MODULE(sklearn, fatal)
 AX_PYTHON_MODULE(numpy, fatal)
+AX_PYTHON_MODULE(pulp, fatal)
 
 # Generate config files
 
