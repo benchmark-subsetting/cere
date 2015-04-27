@@ -26,6 +26,12 @@
 #include <sstream>
 #include <errno.h>
 
+#undef LLVM_BINDIR 
+#include "config.h"
+#if LLVM_VERSION_MINOR == 4
+#include "llvm/IR/Constants.h"
+#endif
+
 using namespace llvm;
 enum{VIVO, VITRO};
 

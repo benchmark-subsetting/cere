@@ -23,9 +23,14 @@
 #include "llvm/DebugInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-
 #include <sstream>
 #include <fstream>
+
+#undef LLVM_BINDIR 
+#include "config.h"
+#if LLVM_VERSION_MINOR == 4
+#include "llvm/IR/Constants.h"
+#endif
 
 using namespace llvm;
 

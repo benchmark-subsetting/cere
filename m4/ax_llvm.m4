@@ -59,6 +59,12 @@ AC_DEFUN([AX_LLVM],
   LLVM_VERSION=`$LLVM_CONFIG --version`
   AC_DEFINE_UNQUOTED([LLVM_VERSION], ["$LLVM_VERSION"], [The llvm version])
 
+  LLVM_VERSION_MAJOR=`$LLVM_CONFIG --version |cut -d'.' -f1`
+  AC_DEFINE_UNQUOTED([LLVM_VERSION_MAJOR], [$LLVM_VERSION_MAJOR], [The llvm major version])
+
+  LLVM_VERSION_MINOR=`$LLVM_CONFIG --version |cut -d'.' -f2`
+  AC_DEFINE_UNQUOTED([LLVM_VERSION_MINOR], [$LLVM_VERSION_MINOR], [The llvm minor version]) 
+
   if test -n "$1"; then
     AC_MSG_CHECKING([for LLVM version])
     AC_MSG_RESULT([$LLVM_VERSION])
