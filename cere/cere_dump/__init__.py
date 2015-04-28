@@ -26,18 +26,21 @@ def run(args):
         return False
 
     if(args.region):
-        if utils.is_invalid(args.region) and not args.force:
-            logger.warning("{0} is invalid. Skipping dump".format(args.region))
-            return False
-        if os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) and not args.force:
-            logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
-            return True
+        if not args.force:
+            if os.path.isfile("{0}/{1}/{2}/core.map".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
+                logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
+                return True
 
-        #Check IOs
-        if not cere_io_checker.run(args):
-            logger.warning("Checking IOs failed")
+            #Check IOs
+            if not cere_io_checker.run(args):
+                logger.warning("Checking IOs failed")
 
-        shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation), ignore_errors=True)
+            if utils.is_invalid(args.region):
+                logger.warning("{0} is invalid. Skipping dump".format(args.region))
+                return False
+        else:
+            shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation), ignore_errors=True)
+
         logger.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
         try:
             logger.debug(subprocess.check_output("{0} MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation), stderr=subprocess.STDOUT, shell=True))
@@ -55,7 +58,7 @@ def run(args):
                 #even if the dump run fails, maybe the region is dumped.
                 logger.error(str(err))
                 logger.error(err.output)
-            if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
+            if not os.path.isfile("{0}/{1}/{2}/core.map".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
                 logger.error("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
                 utils.mark_invalid(args.region)
                 return False
