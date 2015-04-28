@@ -153,7 +153,8 @@ def launch_trace(args, regions):
         return result
 
 def run(args):
-    cere_configure.init()
+    if not cere_configure.init():
+        return False
 
     if not check_arguments(args):
         return False

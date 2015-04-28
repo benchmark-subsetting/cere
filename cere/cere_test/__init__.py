@@ -132,7 +132,6 @@ class Region():
                             shutil.move("{0}.csv".format(self.region), "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation))
                     except IOError as err:
                         logger.error(str(err))
-                        logger.error(err.output)
                         logger.error("No results file. Maybe replay failed for {0} invocation {1}".format(self.region, self.invocation))
                         err=True
                         invitro_cycles = 0.

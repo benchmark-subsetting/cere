@@ -3,6 +3,7 @@
 import os
 import logging
 import subprocess
+import copy
 import common.variables as var
 import common.utils as utils
 import cere_configure
@@ -17,12 +18,14 @@ def init_module(subparsers, cere_plugins):
     io_checker_parser.add_argument('--invocation', type=int, default=1, help="Invocation to measure (Default measures all)")
 
 def run(args):
-    args.wrapper = var.IO_CHECKER_LIB
-    args.regions_file = None
-    args.norun = False
-    args.force = True
+    # Make a local copy of args
+    io_checker_args = copy.copy(args)
+    io_checker_args.wrapper = var.IO_CHECKER_LIB
+    io_checker_args.regions_file = None
+    io_checker_args.norun = False
+    io_checker_args.force = True
 
-    if not cere_instrument.run(args):
+    if not cere_instrument.run(io_checker_args):
         return False
 
     #If strace has not generated a trace file it means there is no IO
@@ -38,7 +41,7 @@ def run(args):
             # Writes on stdout and stderr are tolerated
             if (op_type == "write" and fd != 1 and fd != 2) \
             or (op_type == "read"):
-                logger.info("Region {0}, invocation {1} is invalid because it does IOs".format(args.region, args.invocation))
+                logger.info("Region {0}, invocation {1} is invalid because it does IOs".format(io_checker_args.region, io_checker_args.invocation))
                 utils.mark_invalid(args.region)
                 return True
     return True

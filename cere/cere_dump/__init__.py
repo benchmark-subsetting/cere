@@ -25,13 +25,6 @@ def run(args):
     if not cere_configure.init():
         return False
 
-    #We must backup the current force flag because the io_checker will
-    #set it to True
-    my_force = args.force
-    if not cere_io_checker.run(args):
-        logger.warning("Checking IOs failed")
-    args.force = my_force
-
     if(args.region):
         if utils.is_invalid(args.region) and not args.force:
             logger.warning("{0} is invalid. Skipping dump".format(args.region))
@@ -39,6 +32,11 @@ def run(args):
         if os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)) and not args.force:
             logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
             return True
+
+        #Check IOs
+        if not cere_io_checker.run(args):
+            logger.warning("Checking IOs failed")
+
         shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation), ignore_errors=True)
         logger.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
         try:
