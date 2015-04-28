@@ -10,6 +10,7 @@ import cere_configure
 import cere_instrument
 
 logger = logging.getLogger('Io_checker')
+tolerated_fd = [1,2]
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["io-checker"] = run
@@ -37,9 +38,9 @@ def run(args):
     for line in content:
         if line.startswith("read") or line.startswith("write"):
             op_type, expr_left = line.split("(", 1)
-            fd, useless = expr_left.split(",", 1)
+            fd  = int(expr_left.split(",", 1)[0])
             # Writes on stdout and stderr are tolerated
-            if (op_type == "write" and fd != 1 and fd != 2) \
+            if (op_type == "write" and (fd not in tolerated_fd)) \
             or (op_type == "read"):
                 logger.info("Region {0}, invocation {1} is invalid because it does IOs".format(io_checker_args.region, io_checker_args.invocation))
                 utils.mark_invalid(args.region)
