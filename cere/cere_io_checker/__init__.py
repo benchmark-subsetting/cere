@@ -28,23 +28,23 @@ def run(args):
         return True
 
     # If the IO trace already exists, we can skip the test
-    dump_dir = os.path.join(cere_configure.cere_config["cere_dumps_path"], args.region, str(args.invocation))
-    if os.path.isfile("{0}/io_detection_trace".format(dump_dir)) and not args.force:
-        logger.info("IO detection already done")
-        return True
-
-    # Create the dump dir
-    if not os.path.isdir(dump_dir):
-        try:
-            os.makedirs(dump_dir)
-        except (OSError) as err:
-            logger.error(str(err))
-            logger.err("Cannot create {0}".format(dump_dir))
-            return False
-    try:
-        os.remove("{0}/io_detection_trace".format(dump_dir))
-    except OSError:
-        pass
+    #~dump_dir = os.path.join(cere_configure.cere_config["cere_dumps_path"], args.region, str(args.invocation))
+    #~if os.path.isfile("{0}/io_detection_trace".format(dump_dir)) and not args.force:
+        #~logger.info("IO detection already done")
+        #~return True
+#~
+    #~# Create the dump dir
+    #~if not os.path.isdir(dump_dir):
+        #~try:
+            #~os.makedirs(dump_dir)
+        #~except (OSError) as err:
+            #~logger.error(str(err))
+            #~logger.err("Cannot create {0}".format(dump_dir))
+            #~return False
+    #~try:
+        #~os.remove("{0}/io_detection_trace".format(dump_dir))
+    #~except OSError:
+        #~pass
 
     # Make a local copy of args
     io_checker_args = copy.copy(args)
@@ -60,11 +60,11 @@ def run(args):
     if not os.path.isfile("io_detection_trace"):
         return True
 
-    # Move the IO trace to the dump dir
-    shutil.move("io_detection_trace", dump_dir)
+    #~# Move the IO trace to the dump dir
+    #~shutil.move("io_detection_trace", dump_dir)
 
     # Parse the IO trace, if a read or write is detected, the region is invalid.
-    with open("{0}/io_detection_trace".format(dump_dir), 'r') as io_trace:
+    with open("io_detection_trace", 'r') as io_trace:
         content = io_trace.readlines()
     for line in content:
         if line.startswith("read") or line.startswith("write"):

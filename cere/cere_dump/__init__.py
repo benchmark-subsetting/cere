@@ -27,7 +27,7 @@ def run(args):
 
     if(args.region):
         if not args.force:
-            if os.path.isfile("{0}/{1}/{2}/core.map".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
+            if os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
                 logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
                 return True
 
@@ -58,7 +58,7 @@ def run(args):
                 #even if the dump run fails, maybe the region is dumped.
                 logger.error(str(err))
                 logger.error(err.output)
-            if not os.path.isfile("{0}/{1}/{2}/core.map".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
+            if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
                 logger.error("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
                 utils.mark_invalid(args.region)
                 return False

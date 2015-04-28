@@ -55,7 +55,6 @@ struct dump_state {
   char hs[PAGESIZE + BUFSIZ];
   bool dump_active[MAX_STACK];
   char dump_path[MAX_STACK][MAX_PATH];
-  char core_path[MAX_PATH];
   char *pages_cache[LOG_SIZE];
   char *pages_trace[TRACE_SIZE];
   char *pages_ignored[MAX_IGNORE];

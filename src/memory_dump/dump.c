@@ -629,10 +629,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]), "%s/%s/%d",
            state.dump_prefix, loop_name, invocation);
 
-  mkdir(state.dump_path[sp], 0777);
-
-  snprintf(state.core_path, sizeof(state.core_path), "%s/%s", state.dump_path[sp], state.core_suffix);
-  if (access( state.core_path, F_OK ) != -1 )
+  if (mkdir(state.dump_path[sp], 0777) != 0)
     errx(EXIT_FAILURE, "dump %s already exists, stop\n", state.dump_path[sp]);
 
   state.stack_pos = sp;
