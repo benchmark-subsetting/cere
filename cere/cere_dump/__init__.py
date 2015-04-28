@@ -15,11 +15,11 @@ logger = logging.getLogger('Dump')
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["dump"] = run
-    dump_parser = subparsers.add_parser("dump", help="Dump a region")
-    dump_parser.add_argument('--region', help="Region to dump")
-    dump_parser.add_argument('--invocation', type=int, default=1, help="Invocation to dump (Default: 1)")
-    dump_parser.add_argument('--norun', type=bool, default=False, help="Only build the dump and do not run the dump")
-    dump_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="To re-dump any previous CERE dumps")
+    dump_parser = subparsers.add_parser("dump", help="captures a region")
+    dump_parser.add_argument('--region', help="region to capture")
+    dump_parser.add_argument('--invocation', type=int, default=1, help="invocation to capture (default 1)")
+    dump_parser.add_argument('--norun', action='store_true', help="builds the capture-instrumented binary without running it")
+    dump_parser.add_argument('--force', '-f', action='store_true', help="overwrites previous existing dump (default False)")
 
 def run(args):
     if not cere_configure.init():

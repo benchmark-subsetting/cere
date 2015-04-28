@@ -2,6 +2,7 @@
 cere-configure(1) cere-configure.1.ronn
 cere-trace(1) cere-trace.1.ronn
 cere-dump(1) cere-dump.1.ronn
+cere-regions(1) cere-regions.1.ronn
 cere-replay(1) cere-replay.1.ronn
 cere-test(1) cere-test.1.ronn
 cere-report(1) cere-report.1.ronn
