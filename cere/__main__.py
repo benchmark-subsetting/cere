@@ -16,6 +16,7 @@ import cere_regions
 import cere_sanity_check
 import cere_report
 import cere_io_checker
+import cere_selectinv
 
 import logging
 logger = logging.getLogger('CERE')
@@ -57,6 +58,7 @@ cere_sanity_check.init_module(subparsers, cere_plugins)
 cere_regions.init_module(subparsers, cere_plugins)
 cere_report.init_module(subparsers, cere_plugins)
 cere_io_checker.init_module(subparsers, cere_plugins)
+cere_selectinv.init_module(subparsers, cere_plugins)
 
 if __name__ == "__main__":
     args = parser.parse_args()

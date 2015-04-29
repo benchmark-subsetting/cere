@@ -5,6 +5,7 @@ import logging
 import cere_configure
 import os
 import cere_test
+import common.variables as var
 from update_graph import update
 from regions_selector import *
 
@@ -22,8 +23,8 @@ def check_arguments(args):
 
 def check_dependancies(args):
     #Check if the profiling file is present
-    profile_file = "{0}/app.prof".format(cere_configure.cere_config["cere_measures_path"])
-    graph = "{0}/graph_original.pkl".format(cere_configure.cere_config["cere_measures_path"])
+    profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
+    graph = "{0}/graph_original.pkl".format(var.CERE_PROFILE_PATH)
     if not os.path.isfile(profile_file) or not os.path.isfile(graph):
         logger.critical('No profiling file or graph not created. Run: cere profile')
         return False

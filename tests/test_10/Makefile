@@ -20,5 +20,5 @@ clean:
 	- rm test
 
 veryclean: clean
-	- rm -rf cere_dumps/
-	- rm -f *.o lel_bin realmain.c dump.c
+	- rm -rf .cere/
+	- rm -f *.o realmain.c

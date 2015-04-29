@@ -2,7 +2,7 @@
 
 function do_test()
 {
-    rm -rf cere_dumps/ *.ll
+    rm -rf .cere/ *.ll
     make clean
     make -j4 MODE="dump --region=__cere__block_solver_bi_cgstab_block__52 --invocation=6"
     LD_BIND_NOW=1 ./bwaves

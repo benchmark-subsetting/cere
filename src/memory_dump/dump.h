@@ -34,6 +34,7 @@ struct dump_state {
   void *(*real_realloc)(void *ptr, size_t size);
   void *(*real_memalign)(size_t alignment, size_t size);
   char *dump_prefix;
+  char *dump_root;
   char *pagelog_suffix;
   char *core_suffix;
   struct sigaction sa;

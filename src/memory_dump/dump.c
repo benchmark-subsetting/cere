@@ -477,7 +477,16 @@ static void create_dump_dir(void) {
   /* Check that dump exists or try to create it, then enter it */
   if (stat(state.dump_prefix, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
     if (mkdir(state.dump_prefix, 0777) != 0)
-      errx(EXIT_FAILURE, "Could not create dump directory");
+      errx(EXIT_FAILURE, "Could not create %s %s", state.dump_prefix, strerror(errno));
+  }
+
+  char dump_root[MAX_PATH];
+  snprintf(dump_root, sizeof(dump_root), "%s/%s",
+           state.dump_prefix, state.dump_root);
+
+  if (stat(dump_root, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
+    if (mkdir(dump_root, 0777) != 0)
+        errx(EXIT_FAILURE, "Could not create %s: %s", dump_root, strerror(errno));
   }
 }
 
@@ -492,7 +501,8 @@ void dump_init(bool global_dump) {
 
   state.global_dump = global_dump;
 
-  state.dump_prefix = strdup("cere_dumps");
+  state.dump_prefix = strdup(".cere");
+  state.dump_root = strdup("dumps");
   state.pagelog_suffix = strdup("hotpages.map");
   state.core_suffix = strdup("core.map");
 
@@ -621,13 +631,13 @@ void dump(char *loop_name, int invocation, int count, ...) {
   int sp = state.stack_pos + 1;
 
   /* Ensure that the dump directory exists */
-  snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]), "%s/%s/",
-           state.dump_prefix, loop_name);
+  snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]), "%s/%s/%s",
+           state.dump_prefix, state.dump_root, loop_name);
 
   mkdir(state.dump_path[sp], 0777);
 
-  snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]), "%s/%s/%d",
-           state.dump_prefix, loop_name, invocation);
+  snprintf(state.dump_path[sp], sizeof(state.dump_path[sp]), "%s/%s/%s/%d",
+           state.dump_prefix, state.dump_root, loop_name, invocation);
 
   if (mkdir(state.dump_path[sp], 0777) != 0)
     errx(EXIT_FAILURE, "dump %s already exists, stop\n", state.dump_path[sp]);

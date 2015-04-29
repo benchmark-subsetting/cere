@@ -30,7 +30,7 @@ def run(args):
     if utils.is_invalid(args.region) and not args.force:
         logger.warning("{0} is invalid. Skipping replay".format(args.region))
         return False
-    if os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], args.region, args.invocation)) and not args.force:
+    if os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, args.region, args.invocation)) and not args.force:
         logger.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
         return True
     if args.noinstrumentation:

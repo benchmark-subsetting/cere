@@ -12,14 +12,14 @@ function do_test()
     ./test 2> $TMPDIR/test.replay.out
     cat $TMPDIR/test.replay.out
 
-    cat $TMPDIR/test.dump.out | grep "&a" | head -n1 > $TMPDIR/test.a
-    cat $TMPDIR/test.replay.out | grep "&a" | head -n1 > $TMPDIR/test.b
+    cat $TMPDIR/test.dump.out | grep "&a" | head -n1 > test.a
+    cat $TMPDIR/test.replay.out | grep "&a" | head -n1 > test.b
     
-    if [ ! -s $TMPDIR/test.a ]; then
+    if [ ! -s test.a ]; then
         return 1
     fi
 
-    diff $TMPDIR/test.a $TMPDIR/test.b
+    diff test.a test.b
 }
 
 source ../source.sh

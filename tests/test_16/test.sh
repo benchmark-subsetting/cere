@@ -3,8 +3,9 @@ set -e
 
 function do_test()
 {
-     ../../cere/cere_test/clusterize_invocations.py __invivo__randi8_vranlc__69 cere_measures/__invivo__randi8_vranlc__69.csv cere_measures/__invivo__randi8_vranlc__69.bin
-    exit 0
+    python ../../cere configure --run_cmd="" --build_cmd=""
+    python ../../cere selectinv --region=__cere__randi8_vranlc__69
+    exit $?
 }
 
 source ../source.sh

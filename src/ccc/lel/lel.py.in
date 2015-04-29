@@ -14,6 +14,7 @@ PROFILE_LIB = "-lprofiler"
 MEMORYDUMP = "/memory_dump/.libs/"
 VERSION = "@PACKAGE_VERSION@"
 GCC="@GCC_PATH@"
+DUMPS_DIR = ".cere/dumps/"
 
 def grep(path, regex):
     regex=".*"+regex+".*"
@@ -59,8 +60,8 @@ def create_user_main(mode_opt,LOOP):
 
 def compile_memory_dump_objects(DIR):
     DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
-    safe_system("rm -f cere_dumps/objs.S")
-    OBJ=open("cere_dumps/objs.S",'w')
+    safe_system("rm -f {0}/objs.S".format(DUMPS_DIR))
+    OBJ=open("{0}/objs.S".format(DUMPS_DIR),'w')
     for FILE in os.listdir(DIR):
         BASE, ext = os.path.splitext(FILE)
         FILE = DIR+"/"+FILE
@@ -70,7 +71,7 @@ def compile_memory_dump_objects(DIR):
             DUMP_ARGS = (DUMP_ARGS +
                         " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
     OBJ.close()
-    safe_system(GCC + " -c cere_dumps/objs.S")
+    safe_system(GCC + " -c {0}/objs.S".format(DUMPS_DIR))
     return DUMP_ARGS
 
 def dump_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -171,7 +172,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     INVOCATION=mode_opt.invocation
     if(not INVOCATION):
         INVOCATION=1
-    DIR="cere_dumps/{loop}/{invocation}".format(loop=LOOP,invocation=INVOCATION)
+    DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=DUMPS_DIR, loop=LOOP, invocation=INVOCATION)
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
         fail_lel("No dump for {loop} invocation {invocation}".format(loop=LOOP,

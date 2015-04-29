@@ -7,6 +7,7 @@ import conf
 import cere_configure
 import logging
 import networkx as nx
+import common.variables as var
 from common.graph_utils import plot, save_graph
 
 logger = logging.getLogger('Profile')
@@ -172,7 +173,7 @@ def create_graph(force):
         logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary")
         return False
 
-    profile_file = "{0}/app.prof".format(cere_configure.cere_config["cere_measures_path"])
+    profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
     if not os.path.isfile(profile_file):
         logger.critical("No profiling file. Please run cere profile")
         return False

@@ -9,6 +9,7 @@ import cere_dump
 import logging
 import shutil
 import argparse
+import common.variables as var
 
 logger = logging.getLogger('Regions')
 
@@ -84,7 +85,7 @@ def add_coverage(regions_file, new_regions_file, matchObj):
 def run(args):
     if not cere_configure.init():
         return False
-    profile_file = "{0}/app.prof".format(cere_configure.cere_config["cere_measures_path"])
+    profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
     regions_file = "regions.csv"
     new_regions_file = "tmp.csv"
 

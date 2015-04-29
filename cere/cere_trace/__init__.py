@@ -178,8 +178,8 @@ def run(args):
     if not args.norun:
         for region in regions:
             try:
-                shutil.move("{0}.bin".format(region), cere_configure.cere_config["cere_measures_path"])
-                shutil.move("{0}.csv".format(region), cere_configure.cere_config["cere_measures_path"])
+                shutil.move("{0}.bin".format(region), var.CERE_TRACES_PATH)
+                shutil.move("{0}.csv".format(region), var.CERE_TRACES_PATH)
             except IOError as err:
                 logger.error(str(err))
                 logger.error(err.output)
@@ -189,7 +189,7 @@ def run(args):
 
     # If read is used, read given invocation from trace file
     if args.read and utils.trace_exists(args.region):
-        base_name = "{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], args.region)
+        base_name = "{0}/{1}".format(var.CERE_TRACES_PATH, args.region)
         trace = parse_trace_file(base_name + '.bin')
         cycles = int(trace['cycles'][trace['invocations'] == args.read])
         print(cycles)

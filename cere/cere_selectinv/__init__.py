@@ -1,19 +1,33 @@
 #!/usr/bin/env python
+
 from __future__ import print_function
+import os
+import logging
+import shutil
+import subprocess
+import common.variables as var
+import common.utils as utils
+import cere_configure
 import csv
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
-
 import matplotlib.pyplot as plt
 from sklearn import cluster
 from sklearn import preprocessing
 
+logger = logging.getLogger('selectinv')
 MAX_POINTS=10000
 
 PALETTE = ["red","blue","green","yellow","black","grey","pink",
             "maroon","orange","purple","magenta","silver","golden",
             "brown","cyan"]
+
+def init_module(subparsers, cere_plugins):
+    cere_plugins["selectinv"] = run
+    selectinv = subparsers.add_parser("selectinv", help="select representatives invocations from region trace")
+    selectinv.add_argument('--region', required=True, help="region to select representatives")
+    selectinv.add_argument('--force', '-f', action='store_true', help="Will force the CERE invocations selection")
 
 def parse_codelet_csv(csvfile, codelet):
     with open(csvfile) as f:
@@ -130,15 +144,28 @@ def clusterize_invocations(codelet, csvfile, tracefile):
     ax.grid('on')
     ax.set_ylabel('cycles')
     ax.set_xlabel('invocation')
-    f.savefig('cere_measures/plots/' + codelet + '_byPhase.png',
+    f.savefig(os.path.join(var.CERE_PLOTS_PATH, codelet + '_byPhase.png'),
             bbox_inches='tight', dpi=100)
 
+def run(args):
+    if not cere_configure.init():
+        return False
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 4:
-        print("usage: clusterize_invocations.py <codelet_name> <csv> <bin>",
-              file=sys.stderr)
-        sys.exit(1)
+    invocation_file = os.path.join(var.CERE_TRACES_PATH, args.region+".invocations")
 
-    clusterize_invocations(sys.argv[1], sys.argv[2], sys.argv[3])
+    if os.path.isfile(invocation_file) and not args.force:
+        logger.info("Invocations already selected for {0}. If you want to reselect use -f".format(args.region, invocation_file))
+        return True
+    if not utils.trace_exists(args.region):
+        logger.error("No trace for {0}. Please first run cere trace --region={0}".format(args.region))
+        return False
+    bin_file = os.path.join(var.CERE_TRACES_PATH, args.region+".bin")
+    csv_file = os.path.join(var.CERE_TRACES_PATH, args.region+".csv")
+
+    clusterize_invocations(args.region, csv_file, bin_file)
+    try:
+        shutil.move("{0}.invocations".format(args.region), "{0}/{1}.invocations".format(var.CERE_TRACES_PATH, args.region))
+    except IOError as err:
+        logger.error(str(err))
+        return False
+    return True

@@ -11,7 +11,8 @@ import argparse
 import jinja2
 import csv
 import base64
-import xmlrpclib 
+import xmlrpclib
+import common.variables as var
 from contextlib import contextmanager
 
 logger = logging.getLogger('Report')
@@ -98,9 +99,9 @@ class Region:
                 else: d['color']="green"
             if d['_to_test']: d['color']="orange"
             if d['_name'] == self._name: d['style']="filled"
-        nx.write_dot(g,"{0}/plots/graph_{1}.dot".format(cere_configure.cere_config["cere_measures_path"], self._name))
+        nx.write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PLOTS_PATH, self._name))
         try:
-            subprocess.check_output("dot -Tpng {0}/plots/graph_{1}.dot -o {0}/plots/graph_{1}.png".format(cere_configure.cere_config["cere_measures_path"], self._name), stderr=subprocess.STDOUT, shell=True)
+            subprocess.check_output("dot -Tpng {0}/graph_{1}.dot -o {0}/graph_{1}.png".format(var.CERE_PLOTS_PATH, self._name), stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as err:
             logger.error(str(err))
             logger.error(err.output)
@@ -108,12 +109,12 @@ class Region:
 
     def init_graph(self):
         if self._tooSmall == "false":
-            self._graph_clustering = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/{region}_byPhase.png".format(region=self._name.replace("extracted", "invivo")))
+            self._graph_clustering = encode_graph("{0}/{1}_byPhase.png".format(var.CERE_PLOTS_PATH, self._name))
 
     def init_call_graph(self, graph):
         if self._tooSmall == "false":
             self.plot_call_graph(graph)
-            self._call_graph = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/graph_{0}.png".format(self._name))
+            self._call_graph = encode_graph("{0}/graph_{1}.png".format(var.CERE_PLOTS_PATH, self._name))
 
     def set_callcount(self,callcount):
         self._callcount = callcount
@@ -189,11 +190,11 @@ class Report:
         '''
         Read the nb_cycles value of application in app_cycles.csv
         '''
-        if not os.path.isfile(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv'):
+        if not os.path.isfile("{0}/app_cycles.csv".format(var.CERE_PROFILE_PATH)):
             logger.error("Profile file missing. Please run cere profile")
             self._nb_cycles = 0
         else:
-            Dict = read_csv(cere_configure.cere_config["cere_measures_path"] + '/app_cycles.csv')
+            Dict = read_csv("{0}/app_cycles.csv".format(var.CERE_PROFILE_PATH))
             try:
                 row = Dict.next()
                 self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
@@ -227,7 +228,7 @@ class Report:
         '''
         for k,r in self._regions.iteritems():
             try:
-                infos = csv.reader(open(cere_configure.cere_config["cere_measures_path"]+"/{0}.csv".format(k)))
+                infos = csv.reader(open("{0}/{1}.csv".format(var.CERE_TRACES_PATH, k)))
                 line = infos.next()
                 line = infos.next()
             except (IOError):
@@ -288,7 +289,7 @@ class Report:
         chosen=[]
         for n, d in graph.nodes(data=True):
             if d["_selected"]: chosen.append(n)
-        with open("{0}/selected_codelets".format(cere_configure.cere_config["cere_measures_path"]), 'w') as output:
+        with open("{0}/selected_codelets".format(var.CERE_REPORT_PATH), 'w') as output:
             # print header
             output.write("Id,Codelet Name,Selected,ParentId\n")
             # find roots
@@ -302,7 +303,7 @@ class Report:
         For each line of selected_codelets create a Node object with the region and node information
         '''
         self._tree = []
-        tree = read_csv(cere_configure.cere_config["cere_measures_path"] + "/selected_codelets")
+        tree = read_csv("{0}/selected_codelets".format(var.CERE_REPORT_PATH))
         if not tree: return False
         for node in tree:
             try:
@@ -354,7 +355,7 @@ class Report:
         '''
         Read bench_error.png
         '''
-        self._graph_error = encode_graph(cere_configure.cere_config["cere_measures_path"] + "/plots/bench_error.png")
+        self._graph_error = encode_graph("{0}/bench_error.png".format(var.CERE_PLOTS_PATH))
 
     def init_javascript(self):
         '''
@@ -389,8 +390,8 @@ def context(DIR):
     TEMP_DIR = os.getcwd()
     if(os.chdir(DIR)):
         exit("Error Report -> Can't find " + DIR)
-    if not os.path.isfile("{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])):
-        logger.warning("Can't find {0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+    if not os.path.isfile("{0}/table_error.csv".format(var.CERE_REPORT_PATH)):
+        logger.warning("Can't find {0}/table_error.csv".format(var.CERE_REPORT_PATH))
     else:
         os.system(ROOT + "/graph_error.R")
     #try:

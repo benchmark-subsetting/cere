@@ -10,6 +10,7 @@ import cere_configure
 import cere_dump
 import cere_replay
 import cere_trace
+import cere_selectinv
 import common.variables as var
 import common.utils as utils
 
@@ -58,9 +59,9 @@ class Region():
                     self.coverage = float(d['_self_coverage'])
                     return
         #2) Compute the coverage manually
-        elif os.path.isfile("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])):
+        elif os.path.isfile("{0}/app_cycles.csv".format(var.CERE_PROFILE_PATH)):
             logger.info("Computing coverage using rdtsc tool")
-            with open("{0}/app_cycles.csv".format(cere_configure.cere_config["cere_measures_path"])) as app:
+            with open("{0}/app_cycles.csv".format(var.CERE_PROFILE_PATH)) as app:
                 reader = csv.DictReader(app)
                 for row in reader:
                     app_cycles = float(row["CPU_CLK_UNHALTED_CORE"])
@@ -74,44 +75,19 @@ class Region():
         if not res:
             self.invivo_cycles = 0
             return False
-        with open("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region)) as invivo:
+        with open("{0}/{1}.csv".format(var.CERE_TRACES_PATH, self.region)) as invivo:
             reader = csv.DictReader(invivo)
             for row in reader:
                 self.invivo_cycles = float(row["CPU_CLK_UNHALTED_CORE"])
         return True
 
-    def clusterize_invocations(self):
-        logger.info("Computing clustering info")
-        if not utils.trace_exists(self.region):
-            logger.error("No trace, Cannot clusterize invocation for region {0}".format(self.region))
-            return False
-        if not os.path.isfile("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)) or self.force:
-            try:
-                logger.debug(subprocess.check_output("{0}/clusterize_invocations.py {2} {1}/{2}.csv {1}/{2}.bin".format(ROOT, cere_configure.cere_config["cere_measures_path"], self.region), stderr=subprocess.STDOUT, shell=True))
-            except subprocess.CalledProcessError as err:
-                logger.error(str(err))
-                logger.error(err.output)
-            if not os.path.isfile("{0}.invocations".format(self.region)):
-                logger.critical("Error for {0}: No clustering infos".format(self.region))
-                return False
-            else:
-                try:
-                    shutil.move("{0}.invocations".format(self.region), "{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region))
-                except IOError as err:
-                    logger.error(str(err))
-                    logger.error(err.output)
-                    return False
-        else:
-            logger.info("Using previous clustering infos")
-        return True
-
     def replay_invocations(self, force):
-        if not os.path.isfile("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)):
+        if not os.path.isfile("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, self.region)):
             logger.error("No invocation file for region {0}".format(self.region))
             return False
         err=False
         clust=0
-        with open("{0}/{1}.invocation".format(cere_configure.cere_config["cere_measures_path"], self.region)) as invocation_file:
+        with open("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, self.region)) as invocation_file:
             for line in invocation_file:
                 self.force = False
                 res=True
@@ -128,15 +104,15 @@ class Region():
                     invitro_cycles = 0.
                 else:
                     try:
-                        if not os.path.isfile("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)):
-                            shutil.move("{0}.csv".format(self.region), "{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation))
+                        if not os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, self.region, self.invocation)):
+                            shutil.move("{0}.csv".format(self.region), "{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, self.region, self.invocation))
                     except IOError as err:
                         logger.error(str(err))
                         logger.error("No results file. Maybe replay failed for {0} invocation {1}".format(self.region, self.invocation))
                         err=True
                         invitro_cycles = 0.
                     else:
-                        with open("{0}/{1}_{2}.csv".format(cere_configure.cere_config["cere_measures_path"], self.region, self.invocation)) as invitro:
+                        with open("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, self.region, self.invocation)) as invitro:
                             reader = csv.DictReader(invitro)
                             for row in reader:
                                 invitro_cycles = float(row["CPU_CLK_UNHALTED_CORE"]) / float(row["Call Count"])
@@ -150,8 +126,8 @@ class Region():
         self.error = compute_error(self.invivo_cycles, self.invitro_cycles)
 
 def dump_results(regions, max_error):
-    with open("{0}/matching_error.csv".format(cere_configure.cere_config["cere_measures_path"]), 'w') as regions_file, \
-         open("{0}/invocations_error.csv".format(cere_configure.cere_config["cere_measures_path"]), 'w') as invocations_file:
+    with open("{0}/matching_error.csv".format(var.CERE_REPLAY_PATH), 'w') as regions_file, \
+         open("{0}/invocations_error.csv".format(var.CERE_REPLAY_PATH), 'w') as invocations_file:
         regions_header = ["Codelet Name", "Invivo", "Invitro", "Error", "Exec Time"]
         invocations_header = ["Codelet Name", "Invocation", "Cluster", "Part", "Invitro", "Invivo", "Error"]
         regions_writer = csv.writer(regions_file)
@@ -174,10 +150,10 @@ def run(args):
         return False
     region_file = args.regions
     if not region_file:
-        if not os.path.isfile("{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])):
-            logger.critical("The default region file is not present ({0}/selected_regions):\n    Choose a file manually with --regions=[file]\n    Run cere filter or cere regions".format(cere_configure.cere_config["cere_measures_path"]))
+        if not os.path.isfile("{0}/selected_regions".format(var.CERE_REPLAY_PATH)):
+            logger.critical("The default region file is not present ({0}/selected_regions):\n    Choose a file manually with --regions=[file]\n    Run cere filter or cere regions".format(var.CERE_REPLAY_PATH))
             return False
-        else: region_file = "{0}/selected_regions".format(cere_configure.cere_config["cere_measures_path"])
+        else: region_file = "{0}/selected_regions".format(var.CERE_REPLAY_PATH)
     if not os.path.isfile(region_file):
         logger.critical("\"{0}\" No such file. Please check name or put the region name in a file".format(region_file))
         return False
@@ -196,7 +172,7 @@ def run(args):
         #Compute the coverage of this region
         region.compute_coverage()
         #We can clusterize invocations in performance classes
-        res = region.clusterize_invocations()
+        res = cere_selectinv.run(region)
         if not res: err=True
 
         #Replay representative invocations

@@ -5,11 +5,11 @@ import os
 import cPickle as pickle
 import networkx as nx
 from common.graph_utils import *
-import cere_configure
 import update_graph
 import logging
 import csv
 import common.utils as utils
+import common.variables as var
 
 logger = logging.getLogger('Max-Cov selector')
 
@@ -36,7 +36,7 @@ def solve_with_best_granularity(args):
 
     args.force=False
     #Compute coverage for different error
-    error_filename = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
+    error_filename = "{0}/table_error.csv".format(var.CERE_REPORT_PATH)
     table = utils.Error_table()
     args.max_error = 100
     while args.max_error >= 5:

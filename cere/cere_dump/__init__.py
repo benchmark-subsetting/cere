@@ -8,6 +8,7 @@ import argparse
 import logging
 import subprocess
 import common.utils as utils
+import common.variables as var
 import cere_configure
 import cere_io_checker
 
@@ -27,7 +28,7 @@ def run(args):
 
     if(args.region):
         if not args.force:
-            if os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
+            if os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, args.invocation)):
                 logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
                 return True
 
@@ -39,7 +40,7 @@ def run(args):
                 logger.warning("{0} is invalid. Skipping dump".format(args.region))
                 return False
         else:
-            shutil.rmtree("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation), ignore_errors=True)
+            shutil.rmtree("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, args.invocation), ignore_errors=True)
 
         logger.info("Compiling dump mode for region {0} invocation {1}".format(args.region, args.invocation))
         try:
@@ -58,7 +59,7 @@ def run(args):
                 #even if the dump run fails, maybe the region is dumped.
                 logger.error(str(err))
                 logger.error(err.output)
-            if not os.path.isdir("{0}/{1}/{2}".format(cere_configure.cere_config["cere_dumps_path"], args.region, args.invocation)):
+            if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, args.invocation)):
                 logger.error("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
                 utils.mark_invalid(args.region)
                 return False

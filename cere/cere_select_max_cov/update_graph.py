@@ -10,6 +10,7 @@ from common.graph_utils import *
 import cere_configure
 import cere_test
 import logging
+import common.variables as var
 
 logger = logging.getLogger('Max-Cov selector')
 
@@ -35,7 +36,7 @@ def update_nodes(graph, lines, max_allowed_error):
                 else:
                     d['_valid'] = False
                 d['_error'] = float(line["Error"])
-                invocations = read_csv("{0}/invocations_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+                invocations = read_csv("{0}/invocations_error.csv".format(var.CERE_REPLAY_PATH))
                 for inv in invocations:
                     if inv["Codelet Name"] == d['_name']:
                         d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
@@ -49,7 +50,7 @@ def update(args):
     binary_cmd = cere_configure.cere_config["run_cmd"]
     build_cmd = cere_configure.cere_config["build_cmd"]
     error = args.max_error
-    args.regions = "{0}/loops".format(cere_configure.cere_config["cere_measures_path"])
+    args.regions = "{0}/loops".format(var.CERE_REPLAY_PATH)
 
     logger.info("Start graph updating")
     graph = load_graph("original")
@@ -62,7 +63,7 @@ def update(args):
         step = step + 1
         if step != 1:
             #1) Something new?
-            lines = read_csv("{0}/matching_error.csv".format(cere_configure.cere_config["cere_measures_path"]))
+            lines = read_csv("{0}/matching_error.csv".format(var.CERE_REPLAY_PATH))
             graph = update_nodes(graph, lines, error)
 
         #2) rewind self to parents for invalid loops

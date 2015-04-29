@@ -67,7 +67,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   }
 
   /* Load adresses */
-  snprintf(path, sizeof(path), "cere_dumps/%s/%d/core.map", loop_name,
+  snprintf(path, sizeof(path), ".cere/dumps/%s/%d/core.map", loop_name,
            invocation);
   FILE *core_map = fopen(path, "r");
   if (!core_map)
@@ -83,7 +83,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
   if (!loaded) {
     /* load hotpages adresses */
-    snprintf(path, sizeof(path), "cere_dumps/%s/%d/hotpages.map", loop_name,
+    snprintf(path, sizeof(path), ".cere/dumps/%s/%d/hotpages.map", loop_name,
              invocation);
     FILE *hot_map = fopen(path, "r");
     if (!hot_map)
@@ -118,7 +118,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char filename[1024];
   int total_readed_bytes = 0;
 
-  snprintf(path, sizeof(path), "cere_dumps/%s/%d/", loop_name, invocation);
+  snprintf(path, sizeof(path), ".cere/dumps/%s/%d/", loop_name, invocation);
   if ((dir = opendir(path)) == NULL) {
     /* could not open directory */
     fprintf(stderr, "REPLAY: Could not open %s", path);
@@ -130,7 +130,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     if (strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
       continue;
 
-    snprintf(filename, sizeof(filename), "cere_dumps/%s/%d/%s", loop_name,
+    snprintf(filename, sizeof(filename), ".cere/dumps/%s/%d/%s", loop_name,
              invocation, ent->d_name);
     if (stat(filename, &st) != 0) {
       fprintf(stderr, "Could not get size for file %s: %s\n", filename,

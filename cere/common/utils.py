@@ -1,24 +1,23 @@
 #!/usr/bin/env python
 
-import cere_configure
 import variables as var
 import os
 
 def is_invalid(r):
-    if not os.path.isfile("{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], var.INVALID_REGION_FILE)): return False
-    with open("{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], var.INVALID_REGION_FILE), 'r') as invalid_file:
+    if not os.path.isfile("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE)): return False
+    with open("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE), 'r') as invalid_file:
         for region in invalid_file:
             if r == region.rstrip(): return True
     return False
 
 def mark_invalid(r):
-    with open("{0}/{1}".format(cere_configure.cere_config["cere_measures_path"], var.INVALID_REGION_FILE), 'a') as invalid_file:
+    with open("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE), 'a') as invalid_file:
         if not is_invalid(r):
             invalid_file.write(r+"\n")
 
 def trace_exists(region):
-    return (os.path.isfile("{0}/{1}.csv".format(cere_configure.cere_config["cere_measures_path"], region))
-            and os.path.isfile("{0}/{1}.bin".format(cere_configure.cere_config["cere_measures_path"], region)))
+    return (os.path.isfile("{0}/{1}.csv".format(var.CERE_TRACES_PATH, region))
+            and os.path.isfile("{0}/{1}.bin".format(var.CERE_TRACES_PATH, region)))
 
 class Error_table:
     def __init__(self):

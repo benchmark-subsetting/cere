@@ -5,7 +5,7 @@ import os
 import cPickle as pickle
 import networkx as nx
 from common.graph_utils import *
-import cere_configure
+import common.variables as var
 import logging
 import csv
 import common.utils as utils
@@ -86,7 +86,7 @@ def solve_with_best_granularity(error):
     if( len(graph.nodes()) == 0):
         logger.info('Graph is empty, nothing to select')
         return True
-    error_filename = "{0}/table_error.csv".format(cere_configure.cere_config["cere_measures_path"])
+    error_filename = "{0}/table_error.csv".format(var.CERE_REPORT_PATH)
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
 
     table = utils.Error_table()

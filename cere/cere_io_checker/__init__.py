@@ -5,9 +5,9 @@ import shutil
 import logging
 import subprocess
 import copy
+import cere_configure
 import common.variables as var
 import common.utils as utils
-import cere_configure
 import cere_instrument
 
 logger = logging.getLogger('Io_checker')
