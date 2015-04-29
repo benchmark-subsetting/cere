@@ -50,6 +50,7 @@ def setup_dir():
             os.makedirs(var.CERE_REPLAY_PATH)
             os.makedirs(var.CERE_REPORT_PATH)
             os.makedirs(var.CERE_TRACES_PATH)
+            os.makedirs(var.CERE_IO_TRACES_PATH)
         except OSError as err:
             logger.error(str(err))
             return False
