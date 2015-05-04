@@ -13,7 +13,7 @@ LIKWID = "/usr/local/lib/liblikwid.a -lpthread -lm"
 PROFILE_LIB = "-lprofiler"
 MEMORYDUMP = "/memory_dump/.libs/"
 VERSION = "@PACKAGE_VERSION@"
-GCC="@GCC_PATH@"
+CLANG = os.path.join("@LLVM_BINDIR@","clang")
 DUMPS_DIR = ".cere/dumps/"
 
 def grep(path, regex):
@@ -71,7 +71,7 @@ def compile_memory_dump_objects(DIR):
             DUMP_ARGS = (DUMP_ARGS +
                         " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
     OBJ.close()
-    safe_system(GCC + " -c {0}/objs.S".format(DUMPS_DIR))
+    safe_system(CLANG + " -c {0}/objs.S".format(DUMPS_DIR))
     return DUMP_ARGS
 
 def dump_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -79,8 +79,8 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Dump mode
     Call the linker and copy the original binary
     '''
-    safe_system(("{gcc} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
-                "--rpath={Root}{libs} -ldl").format(gcc=GCC, binary=BINARY,
+    safe_system(("{link} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
+                "--rpath={Root}{libs} -ldl").format(link=CLANG, binary=BINARY,
                 opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
 
 def sysout(cmd):
@@ -190,17 +190,17 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
             safe_system ("{objcopy}  --weaken-symbols={dump_dir}/static.names {f}".format(
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
-    safe_system(GCC + " -c realmain.c")
+    safe_system(CLANG + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
         f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {args} " +
                 "-L {Root}{libs} -lload -Wl," +
                  "--rpath={Root}{libs} -ldl {wrapper}\n").format(
-                gcc=GCC, opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
+                opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
                      libs=MEMORYDUMP, wrapper=mode_opt.wrapper, dump_dir=DIR))
 
         f.flush()
-        safe_system(("{gcc} @{tempfile}".format(tempfile=f.name, gcc=GCC)))
+        safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))
 
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -209,13 +209,13 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Only call the linker
     '''
     if(mode_opt.instrument_app):
-        safe_system(("{gcc} -o {binary} {opts} {libs}").format(gcc=GCC,
+        safe_system(("{link} -o {binary} {opts} {libs}").format(link=CLANG,
                 binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
     elif(mode_opt.instrument):
-        safe_system(("{gcc} -o {binary} {opts} {wrapper}").format(gcc=GCC,
+        safe_system(("{link} -o {binary} {opts} {wrapper}").format(link=CLANG,
                 binary=BINARY, opts=COMPIL_OPT, wrapper=mode_opt.wrapper))
     else:
-        safe_system(("{gcc} -o {binary} {opts}").format(gcc=GCC,
+        safe_system(("{link} -o {binary} {opts}").format(link=CLANG,
                 binary=BINARY, opts=COMPIL_OPT))
 
 def link(args):
