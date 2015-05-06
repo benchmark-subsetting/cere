@@ -43,7 +43,6 @@ def run(args):
         logger.error(str(err))
         logger.error(err.output)
         logger.error("Compiling instrumentation failed")
-        utils.mark_invalid(args.region)
         return False
 
     if not args.norun:
@@ -54,6 +53,5 @@ def run(args):
             logger.error(str(err))
             logger.error(err.output)
             logger.error("Instrumentation failed")
-            utils.mark_invalid(args.region)
             return False
     return True

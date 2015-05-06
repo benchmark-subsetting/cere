@@ -12,6 +12,7 @@ import tempfile
 from common.graph_utils import load_graph
 import common.variables as var
 import common.utils as utils
+import common.errors as cere_error
 
 logger = logging.getLogger('Trace')
 
@@ -184,7 +185,7 @@ def run(args):
                 logger.error(str(err))
                 logger.error(err.output)
                 logger.error("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))
-                utils.mark_invalid(region, "Trace failed")
+                utils.mark_invalid(region, cere_error.ETRACE)
                 result = False
 
     # If read is used, read given invocation from trace file
