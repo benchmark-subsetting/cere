@@ -183,7 +183,6 @@ def run(args):
                 shutil.move("{0}.csv".format(region), var.CERE_TRACES_PATH)
             except IOError as err:
                 logger.error(str(err))
-                logger.error(err.output)
                 logger.error("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))
                 utils.mark_invalid(region, cere_error.ETRACE)
                 result = False
