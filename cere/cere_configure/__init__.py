@@ -42,16 +42,11 @@ def init():
     return True
 
 def setup_dir():
-    if not os.path.isdir(var.CERE_DIR):
-        try:
-            os.makedirs(var.CERE_DUMPS_PATH)
-            os.makedirs(var.CERE_PLOTS_PATH)
-            os.makedirs(var.CERE_PROFILE_PATH)
-            os.makedirs(var.CERE_REPLAY_PATH)
-            os.makedirs(var.CERE_REPORT_PATH)
-            os.makedirs(var.CERE_TRACES_PATH)
-            os.makedirs(var.CERE_IO_TRACES_PATH)
-        except OSError as err:
-            logger.error(str(err))
-            return False
+    for path in var.CERE_DIRECTORIES:
+        if not os.path.isdir(path):
+            try:
+                os.makedirs(path)
+            except OSError as err:
+                logger.error(str(err))
+                return False
     return True
