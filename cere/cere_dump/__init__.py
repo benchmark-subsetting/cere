@@ -49,7 +49,7 @@ def run(args):
             logger.error(str(err))
             logger.error(err.output)
             logger.error("Compiling dump mode for region {0} invocation {1} failed".format(args.region, args.invocation))
-            utils.mark_invalid(args.region)
+            utils.mark_invalid(args.region, "Dump failed")
             return False
         if not args.norun:
             logger.info("Dumping invocation {1} for region {0}".format(args.region, args.invocation))
@@ -61,7 +61,7 @@ def run(args):
                 logger.error(err.output)
             if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, args.invocation)):
                 logger.error("Dump failed for region {0} invocation {1}".format(args.region, args.invocation))
-                utils.mark_invalid(args.region)
+                utils.mark_invalid(args.region, "Dump failed")
                 return False
             else:
                 logger.info("Invocation {1} succesfully dumped for region {0} ".format(args.region, args.invocation))

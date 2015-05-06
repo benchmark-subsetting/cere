@@ -45,7 +45,7 @@ def run(args):
         logger.error(str(err))
         logger.error(err.output)
         logger.error("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
-        utils.mark_invalid(args.region)
+        utils.mark_invalid(args.region, "Replay failed")
         return False
     if not args.norun:
         logger.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
@@ -55,6 +55,6 @@ def run(args):
             logger.error(str(err))
             logger.error(err.output)
             logger.error("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
-            utils.mark_invalid(args.region)
+            utils.mark_invalid(args.region, "Replay failed")
             return False
     return True

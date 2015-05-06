@@ -11,6 +11,7 @@ import cere_configure
 import cere_test
 import logging
 import common.variables as var
+import common.utils as utils
 
 logger = logging.getLogger('ILP selector')
 
@@ -36,6 +37,8 @@ def update_nodes(graph, lines, max_allowed_error):
                 else:
                     d['_valid'] = False
                 d['_error'] = float(line["Error"])
+                if utils.is_invalid(d['_name']):
+                    d['_error_message'] = utils.get_error_message(d['_name'])
                 invocations = read_csv("{0}/invocations_error.csv".format(var.CERE_REPLAY_PATH))
                 for inv in invocations:
                     if inv["Codelet Name"] == d['_name']:
