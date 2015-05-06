@@ -7,7 +7,7 @@ def is_invalid(r):
     if not os.path.isfile("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE)): return False
     with open("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE), 'r') as invalid_file:
         for line in invalid_file:
-            region, message = line.split()
+            region, message = line.split(" ", 1)
             if r == region.strip(): return True
     return False
 
@@ -20,7 +20,7 @@ def get_error_message(r):
     if not os.path.isfile("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE)): return "Unknown Error"
     with open("{0}/{1}".format(var.CERE_REPLAY_PATH, var.INVALID_REGION_FILE), 'r') as invalid_file:
         for line in invalid_file:
-            region, message = line.split()
+            region, message = line.split(" ", 1)
             if r == region.strip(): return message
     return "Unknown Error"
 
