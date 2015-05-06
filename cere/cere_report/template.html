@@ -102,7 +102,7 @@ Print them in strong or remove the end if the text is too long -->
     {% elif (node._region._tooSmall == "true") %}
       <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}> Too small </td>
     {% else %}
-      <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}> Not Replayable </td>
+      <td {{class("class=\"btn-", node._region._table["Error (%)"], "btn-block\"")}}> {{node._region._table["Error message"]}} </td>
     {% endif %}
     </tr>
   {% endfor %}

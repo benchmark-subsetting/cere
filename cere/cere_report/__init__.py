@@ -76,7 +76,7 @@ class Region:
         self._invivo = "{:e}".format(float(region['_invivo']))
         self._invitro = "{:e}".format(float(region['_invitro']))
         self._table = {"Self (%)":round(float(region['_self_coverage']), 2), "Error (%)":round(float(region["_error"]), 2),
-                       "Codelet Name":region["_name"], "Cumulative (%)":round(float(region['_coverage']), 2)}
+                       "Codelet Name":region["_name"], "Cumulative (%)":round(float(region['_coverage']), 2), "Error message":region['_error_message']}
         self._inv_table = []
         self._code = Code(".html", "CODE NOT FOUND -> THIS CODELET NOT IN regions.csv?", 1)
         self._callcount = 0

@@ -184,7 +184,7 @@ def run(args):
                 logger.error(str(err))
                 logger.error(err.output)
                 logger.error("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))
-                utils.mark_invalid(region)
+                utils.mark_invalid(region, "Trace failed")
                 result = False
 
     # If read is used, read given invocation from trace file

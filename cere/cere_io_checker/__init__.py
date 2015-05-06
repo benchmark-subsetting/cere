@@ -74,6 +74,6 @@ def run(args):
             if (op_type == "write" and (fd not in tolerated_fd)) \
             or (op_type == "read"):
                 logger.info("Region {0}, invocation {1} is invalid because it does IOs".format(io_checker_args.region, io_checker_args.invocation))
-                utils.mark_invalid(args.region)
+                utils.mark_invalid(args.region, "IO")
                 return True
     return True
