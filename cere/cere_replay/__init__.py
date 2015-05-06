@@ -10,6 +10,7 @@ import cere_configure
 import cere_dump
 import common.variables as var
 import common.utils as utils
+import common.errors as cere_error
 
 logger = logging.getLogger('Replay')
 
@@ -45,7 +46,7 @@ def run(args):
         logger.error(str(err))
         logger.error(err.output)
         logger.error("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
-        utils.mark_invalid(args.region, "Replay failed")
+        utils.mark_invalid(args.region, cere_error.EREPLAY)
         return False
     if not args.norun:
         logger.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
@@ -55,6 +56,6 @@ def run(args):
             logger.error(str(err))
             logger.error(err.output)
             logger.error("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
-            utils.mark_invalid(args.region, "Replay failed")
+            utils.mark_invalid(args.region, cere_error.EREPLAY)
             return False
     return True

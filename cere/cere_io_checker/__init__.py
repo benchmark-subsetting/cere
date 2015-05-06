@@ -8,6 +8,7 @@ import copy
 import cere_configure
 import common.variables as var
 import common.utils as utils
+import common.errors as cere_error
 import cere_instrument
 
 logger = logging.getLogger('Io_checker')
@@ -74,6 +75,6 @@ def run(args):
             if (op_type == "write" and (fd not in tolerated_fd)) \
             or (op_type == "read"):
                 logger.info("Region {0}, invocation {1} is invalid because it does IOs".format(io_checker_args.region, io_checker_args.invocation))
-                utils.mark_invalid(args.region, "IO")
+                utils.mark_invalid(args.region, cere_error.EIO)
                 return True
     return True
