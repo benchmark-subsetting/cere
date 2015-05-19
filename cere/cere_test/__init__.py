@@ -11,6 +11,7 @@ import cere_dump
 import cere_replay
 import cere_trace
 import cere_selectinv
+import cere_io_checker
 import common.variables as var
 import common.utils as utils
 
@@ -35,6 +36,7 @@ class Region():
         self.status = True
         self.invocation=1
         self.norun = False
+        self.no_io_trace = True
         self.read = False
         self.regions_file = None
         self.noinstrumentation = False
@@ -145,6 +147,25 @@ def dump_results(regions, max_error):
                 logger.info("      Invocation {0}: In vitro cycles = {1} & in vivo cycles = {2} (error = {3}%, part = {4})".format(d[0], d[3], d[4], d[5], d[2]))
                 invocations_writer.writerow([region.region]+d)
 
+def create_region_to_trace_file(regions):
+    trace_filename = os.path.join(var.CERE_IO_TRACES_PATH, "regions_to_trace")
+    with open(trace_filename, 'w') as trace_file:
+        for r in regions:
+            if not os.path.isfile("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, r)):
+                logger.warning("Can't trace region {0}".format(r))
+                continue
+            trace_file.write(r)
+            with open("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, r)) as invocation_file:
+                for line in invocation_file:
+                    infos = line.strip().split()
+                    invocation = infos[0]
+                    trace_file.write(" "+invocation)
+                trace_file.write("\n")
+    return trace_filename
+
+def run_io_checker(trace_filename):
+    cere_io_checker.run_io_checker(None, trace_filename, 0, False)
+
 def run(args):
     if not cere_configure.init():
         return False
@@ -164,24 +185,27 @@ def run(args):
     allRegions = []
     #For each region
     for r in regions:
-        region = Region(r)
+        allRegions.append(Region(r))
         #first we need the trace
-        res = region.measure_trace()
+        res = allRegions[-1].measure_trace()
         if not res: err=True
 
         #Compute the coverage of this region
-        region.compute_coverage()
+        allRegions[-1].compute_coverage()
         #We can clusterize invocations in performance classes
-        res = cere_selectinv.run(region)
+        res = cere_selectinv.run(allRegions[-1])
         if not res: err=True
 
+    trace_filename = create_region_to_trace_file(regions)
+    run_io_checker(trace_filename)
+
+    for idx, region in enumerate(allRegions):
         #Replay representative invocations
-        res = region.replay_invocations(args.force)
+        res = allRegions[idx].replay_invocations(args.force)
         if not res: err=True
 
         #Compute error between invivo and in vitro
-        region.check_region_matching()
-        allRegions.append(region)
+        allRegions[idx].check_region_matching()
 
     dump_results(allRegions, args.max_error)
     return not err

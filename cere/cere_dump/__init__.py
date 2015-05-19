@@ -6,6 +6,7 @@ import sys
 import shutil
 import argparse
 import logging
+import copy
 import subprocess
 import common.utils as utils
 import common.variables as var
@@ -21,6 +22,7 @@ def init_module(subparsers, cere_plugins):
     dump_parser.add_argument('--region', help="region to capture")
     dump_parser.add_argument('--invocation', type=int, default=1, help="invocation to capture (default 1)")
     dump_parser.add_argument('--norun', action='store_true', help="builds the capture-instrumented binary without running it")
+    dump_parser.add_argument('--no-io-trace', action='store_true', help="do not check ios")
     dump_parser.add_argument('--force', '-f', action='store_true', help="overwrites previous existing dump (default False)")
 
 def run(args):
@@ -33,9 +35,10 @@ def run(args):
                 logger.info("Dump already exists for region {0} invocation {1}".format(args.region, args.invocation))
                 return True
 
-            #Check IOs
-            if not cere_io_checker.run(args):
-                logger.warning("Checking IOs failed")
+            if not args.no_io_trace:
+                #Check IOs
+                if not cere_io_checker.run_io_checker(args.region, None, args.invocation, args.force):
+                    utils.mark_invalid(args.region, "Failed to run IO checker")
 
             if utils.is_invalid(args.region):
                 logger.warning("{0} is invalid. Skipping dump".format(args.region))

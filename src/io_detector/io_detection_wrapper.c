@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-void cere_markerInit() {
-    init_io_detection();
+void cere_markerInit(char* filename) {
+    init_io_detection(filename);
 }
 
 void cere_markerClose() {
@@ -11,13 +11,9 @@ void cere_markerClose() {
 }
 
 void cere_markerStartRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc) {
-    if ( requested_invoc == curr_invoc ) {
-        start_io_detection();
-    }
+    start_io_detection(regName);
 }
 
 void cere_markerStopRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc) {
-    if ( requested_invoc == curr_invoc ) {
-        stop_io_detection();
-    }
+    stop_io_detection(regName);
 }

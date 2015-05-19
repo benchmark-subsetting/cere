@@ -264,6 +264,39 @@ std::vector<Value*> RegionInstrumentation::createFunctionParameters(Module* mod,
   return void_params;
 }
 
+/// Create a vector of parameter to fit the signature of cere init and close
+/// probes. (char*)
+std::vector<Value*> RegionInstrumentation::createInitParameters(Module* mod) {
+
+  // Get region filename
+  Constant *param_name = ConstantDataArray::getString(mod->getContext(),
+                                                      RegionFile,
+                                                      true);
+  GlobalVariable* gvar_array__str = new GlobalVariable(/*Module=*/*mod,
+  /*Type=*/param_name->getType(),
+  /*isConstant=*/true,
+  /*Linkage=*/GlobalValue::PrivateLinkage,
+  /*Initializer=*/0,
+  /*Name=*/".str");
+  gvar_array__str->setAlignment(1);
+
+  ConstantInt* const_int32_0 = ConstantInt::get(mod->getContext(),
+                                                APInt(32, StringRef("0"), 10));
+  std::vector<Constant*> const_ptr_indices;
+  const_ptr_indices.push_back(const_int32_0);
+  const_ptr_indices.push_back(const_int32_0);
+  Constant* const_ptr_0 = ConstantExpr::getGetElementPtr(gvar_array__str,
+                                                         const_ptr_indices);
+
+  // Global Variable Definitions
+  gvar_array__str->setInitializer(param_name);
+
+  std::vector<Value*> void_params;
+  void_params.push_back(const_ptr_0); //Region filename
+
+  return void_params;
+}
+
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
 std::string RegionInstrumentation::createFunctionName(Loop *L,
@@ -317,8 +350,15 @@ bool RegionInstrumentation::runOnFunction(Function &F) {
   Module* mod = F.getParent();
 
   std::vector<Type*>FuncTy_args;
+  FunctionType* FuncTy_Close = FunctionType::get(
+                    /*Result=*/Type::getVoidTy(mod->getContext()),
+                    /*Params=*/FuncTy_args,
+                    /*isVarArg=*/false);
 
-  FunctionType* FuncTy_0 = FunctionType::get(
+  // Char* for the regionfile
+  FuncTy_args.push_back(PointerType::get(IntegerType::get(mod->getContext(), 8),
+                                         0));
+  FunctionType* FuncTy_Init = FunctionType::get(
                     /*Result=*/Type::getVoidTy(mod->getContext()),
                     /*Params=*/FuncTy_args,
                     /*isVarArg=*/false);
@@ -372,16 +412,16 @@ bool RegionInstrumentation::runOnFunction(Function &F) {
     // Cere close must be added via atexit.
     Function *initFunction = mod->getFunction("cere_markerInit");
     if(!initFunction) {
-      Function *initFunction = Function::Create(FuncTy_0,
+      Function *initFunction = Function::Create(FuncTy_Init,
                                                 GlobalValue::ExternalLinkage,
                                                 "cere_markerInit",
                                                 mod);
-      CallInst::Create(initFunction, "", &firstBB->front());
+      CallInst::Create(initFunction, createInitParameters(mod), "", &firstBB->front());
       DEBUG(dbgs() << "Init successfuly inserted in main function\n");
     }
     Function *closeFunction = mod->getFunction("cere_markerClose");
     if(!closeFunction) {
-      Function *closeFunction = Function::Create(FuncTy_0,
+      Function *closeFunction = Function::Create(FuncTy_Close,
                                                  GlobalValue::ExternalLinkage,
                                                  "cere_markerClose",
                                                  mod);

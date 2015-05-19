@@ -28,6 +28,10 @@ def trace_exists(region):
     return (os.path.isfile("{0}/{1}.csv".format(var.CERE_TRACES_PATH, region))
             and os.path.isfile("{0}/{1}.bin".format(var.CERE_TRACES_PATH, region)))
 
+def io_trace_exists(region, invocation):
+    trace_dir = os.path.join(var.CERE_IO_TRACES_PATH, region, str(invocation))
+    return os.path.isfile("{0}/{1}".format(trace_dir, region))
+
 class Error_table:
     def __init__(self):
         self.table = []
