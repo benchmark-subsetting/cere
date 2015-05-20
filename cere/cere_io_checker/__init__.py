@@ -122,13 +122,14 @@ def parse_io_trace(regions_to_trace):
             if not os.path.isfile(trace_dir):
                 missing_trace.append(trace_dir)
                 continue
-
+            region_stack.append(region)
             regex = r'(.*)\(([0-9]*)\,\s\"(.*)\"'
             # Parse the IO trace, if a read or write is detected, the region is invalid.
             with open(trace_dir, 'r') as io_trace:
                 content = io_trace.readlines()
             for line in content:
                 matchObj = re.match(regex, line)
+                if not matchObj: continue
                 op_type = matchObj.group(1)
                 fd = int(matchObj.group(2))
                 text = matchObj.group(3)
@@ -153,11 +154,11 @@ def parse_io_trace(regions_to_trace):
                     for f in file_stack:
                         f.write(line)
                     if (op_type in forbidden_ios) and (fd not in tolerated_fd):
-                        logger.info("Region {0}, invocation {1} is invalid because it does IOs".format(region, invocation))
                         for r in region_stack:
                             utils.mark_invalid(r, cere_error.EIO)
-    for missing in missing_trace:
-        logger.error("Trace {0} is missing".format(missing))
+            region_stack.pop()
+    for r in region_stack:
+        utils.mark_invalid(r, "Failed to run IO checker")
 
 def run(args):
     return run_io_checker(args.region, args.regions_file, args.invocation, args.force)
