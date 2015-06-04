@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([cere], [0.0.1], [cere@uvsq.fr])
+AC_INIT([cere], [0.0.1], [cere-dev@googlegroups.com])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
 AC_CONFIG_MACRO_DIR([m4])
@@ -21,10 +21,10 @@ AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
 AX_LLVM([3.3],[all])
 
-AC_CHECK_LIB([c], [exit])
-AC_CHECK_LIB([gfortran], [exit])
-AC_CHECK_LIB([m], [sin])
-AC_CHECK_LIB([profiler], [ProfilerStart])
+AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
+AC_CHECK_LIB([gfortran], [exit], , AC_MSG_ERROR([Could not find gfortran library]))
+AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))
+AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google profiler library]))
 
 # Check that the selected GCC is compatible with the selected dragonegg
 AC_MSG_CHECKING([if gcc can compile fortran with dragonegg])
@@ -41,20 +41,40 @@ AC_MSG_ERROR([Your gcc version ($CC) cannot compile Fortran programs with your d
 fi
 
 # Check for common programs and tools
-AC_PATH_PROG(SED,  [sed],  [])
-AC_PATH_PROG(DOT,  [dot],  [])
+AC_PATH_PROG(SED,  [sed], [])
+if test x"$SED" == x"" ; then
+    AC_MSG_ERROR([could not find sed])
+fi
+
+AC_PATH_PROG(DOT,  [dot], [])
+if test x"$DOT" == x"" ; then
+    AC_MSG_ERROR([could not find dot])
+fi
 
 AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
+if test x"$OBJCOPY" == x"" ; then
+    AC_MSG_ERROR([could not find objcopy])
+fi
+
 AC_CHECK_TOOL([READELF], [readelf], [])
+if test x"$READELF" == x"" ; then
+    AC_MSG_ERROR([could not find readelf])
+fi
 
 # Check for ronn, used to generate man pages
 AC_PATH_PROGS(RONN, [ronn], [])
+if test x"$RONN" == x"" ; then
+    AC_MSG_ERROR([could not find ronn])
+fi
 
 # Check for google-pprof
 AC_PATH_PROGS(PPROF, [pprof google-pprof], [])
+if test x"$PPROF" == x"" ; then
+    AC_MSG_ERROR([could not find google-pprof])
+fi
 
 # Check for header files.
-AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/time.h unistd.h utime.h])
+AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/time.h unistd.h utime.h], , AC_MSG_ERROR([Missing required headers]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
