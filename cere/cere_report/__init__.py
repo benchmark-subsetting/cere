@@ -1,4 +1,20 @@
 #!/usr/bin/env python
+# This file is part of CERE.
+#
+# Copyright (c) 2013-2015, Universite de Versailles St-Quentin-en-Yvelines
+#
+# CERE is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# Foobar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
@@ -118,13 +134,13 @@ class Region:
 
     def set_callcount(self,callcount):
         self._callcount = callcount
-        
+
     def append_invocation_table(self,inv):
         self._inv_table = inv
-        
+
     def init_code(self, code_place):
         self._code = read_code(code_place)
-        
+
     def init_selected(self, selected):
         self._selected = selected
 
@@ -133,7 +149,7 @@ class Node:
         '''
         Initialize the information of a node
         region: object Region contained by the Node
-        id: id of the node 
+        id: id of the node
         parent: id of the Node's Parent
         selected: True if the Node is selected by matching algorithm
         '''
@@ -156,7 +172,7 @@ class Report:
         bench: bench Name
         template: Report template
         nb_cycles: nb_cycles of bench
-        regions: list of analyzed regions. 
+        regions: list of analyzed regions.
                  Analyzed regions are the regions with all results
         liste_script: list of script javascript for codemirror to print text code
         tree: tree of regions to make the main table in report
@@ -173,7 +189,7 @@ class Report:
         self.init_tree()
         self.init_graph_error()
         self.init_javascript()
-        
+
     def init_template(self):
         '''
         Read the template in Report/template.html
@@ -185,7 +201,7 @@ class Report:
             sys.exit(1)
         self._template = jinja2.Template(TEMPLATE.read())
         TEMPLATE.close()
-        
+
     def init_nb_cycles(self):
         '''
         Read the nb_cycles value of application in app_cycles.csv
@@ -207,7 +223,7 @@ class Report:
     def init_regions(self, graph, mincycles):
         '''
         Initialize the region list
-        For each region in matching_error we create a new objet Region, which contains all information neccessary 
+        For each region in matching_error we create a new objet Region, which contains all information neccessary
         for the report about this region
         Then we initialize the value not in matching_error.csv like callcount
         '''
@@ -220,7 +236,7 @@ class Report:
                 self._regions[k]._execError = "true"
         self.init_invocation_table(graph)
         self.init_codes()
-        
+
     def init_callcount(self):
         '''
         Initialize the callcount
@@ -249,7 +265,7 @@ class Report:
                 self._regions[d['_name']].append_invocation_table(d['_invocations'])
             except(KeyError):
                 logger.warning("INVOCATIONS: " + d['_name'] + " not in graph")
-        
+
     def init_codes(self):
         '''
         Initialize the list of Code.
@@ -266,11 +282,11 @@ class Report:
                     self._regions[code_place[0]].init_code(code_place)
             except(KeyError):
                 logger.warning("CODE_PLACE: " + code_place[0] + " not regions")
-        
+
     def init_liste_script(self):
         '''
         Initialize the list of script include in template for codemirror.
-        There is one script for each code language 
+        There is one script for each code language
         '''
         self._liste_script = []
         for region in self._regions:

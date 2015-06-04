@@ -1,9 +1,22 @@
-//===- RegionInstrumentation.cpp - Instrument a region with probes --------===//
-//
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the ... License. See LICENSE.TXT for details.
-//
+/*****************************************************************************
+ * This file is part of CERE.                                                *
+ *                                                                           *
+ * Copyright (c) 2013-2015, Universite de Versailles St-Quentin-en-Yvelines  *
+ *                                                                           *
+ * CERE is free software: you can redistribute it and/or modify it under     *
+ * the terms of the GNU Lesser General Public License as published by        *
+ * the Free Software Foundation, either version 3 of the License,            *
+ * or (at your option) any later version.                                    *
+ *                                                                           *
+ * Foobar is distributed in the hope that it will be useful,                 *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
+ * GNU General Public License for more details.                              *
+ *                                                                           *
+ * You should have received a copy of the GNU General Public License         *
+ * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.           *
+ *****************************************************************************/
+
 //===----------------------------------------------------------------------===//
 //
 // This file insert an init function at the beginning of programm. The close
@@ -26,7 +39,7 @@
 #include <sstream>
 #include <errno.h>
 
-#undef LLVM_BINDIR 
+#undef LLVM_BINDIR
 #include "config.h"
 #if LLVM_VERSION_MINOR == 4
 #include "llvm/IR/Constants.h"
@@ -331,7 +344,7 @@ std::string RegionInstrumentation::createFunctionName(Loop *L,
 /// \brief Creates a global integer variable
 GlobalVariable* create_invocation_counter(Module *mod)
 {
-  GlobalVariable* gvar_int32_count = new GlobalVariable(/*Module=*/*mod, 
+  GlobalVariable* gvar_int32_count = new GlobalVariable(/*Module=*/*mod,
   /*Type=*/IntegerType::get(mod->getContext(), 32),
   /*isConstant=*/false,
   /*Linkage=*/GlobalValue::InternalLinkage,
@@ -446,7 +459,7 @@ bool RegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   Function* currFunc = L->getHeader()->getParent();
 
   // Ensure that we are working on outermost loops
-  if(L->getLoopDepth() > 1) return false; 
+  if(L->getLoopDepth() > 1) return false;
   if(!L->isLoopSimplifyForm()) {
     DEBUG(dbgs() << "Loop found, but not in simple form...\n");
     return false;
