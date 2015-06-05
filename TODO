@@ -1,7 +1,0 @@
-* Revisit strange patch in src/llvm-3.3.src/lib/IR/Verifier.cpp
-
-* Add tests for dumping a particular loop and for trace mode (invivo & invitro)
-
-* The dump lib must be able to dump choosen invocation: Values and range.
-
-* Update readme file
