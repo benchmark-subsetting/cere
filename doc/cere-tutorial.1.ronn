@@ -174,4 +174,4 @@ cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
 
 ## SEE ALSO
 
-cere-trace(1) cere-dump(1) cere-replay(1)
+cere-trace(1) cere-capture(1) cere-replay(1)
