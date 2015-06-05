@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import networkx as nx
-sys.path.insert(0, "../../cere/")
+sys.path.insert(0, "../../src/cere/")
 from cere_profile.create_graph import remove_cycles, fix_self_coverage
 import cere_configure
 from common.graph_utils import plot, save_graph
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     digraph.node[6]['_coverage'] = 26.
     digraph.node[7]['_self_coverage'] = 9.
     digraph.node[7]['_coverage'] = 9.
-    
+
     #add edges
     digraph.add_edge(1, 3, weight = 30.)
     digraph.add_edge(1, 4, weight = 20.)
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     plot(digraph, "debug")
     digraph = remove_cycles(digraph, samples)
-    
+
     cycles = list(nx.simple_cycles(digraph))
     #If there is still a cycle we have a problem
     if len(cycles) != 0:

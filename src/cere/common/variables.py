@@ -23,7 +23,7 @@ def create_path(top_dir, sub_dir):
   CERE_DIRECTORIES.append(new_path)
   return new_path
 
-PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../.."))
+PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/../../../"))
 RDTSC_WRAPPER = PROJECT_ROOT + "/src/rdtsc/librdtsc.a"
 IO_CHECKER_LIB = PROJECT_ROOT + "/src/io_detector/libio_detector.a"
 INVALID_REGION_FILE = "invalid_regions"
