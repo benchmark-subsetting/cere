@@ -21,7 +21,7 @@ import csv
 import subprocess
 import re
 import cere_configure
-import cere_dump
+import cere_capture
 import logging
 import shutil
 import argparse
@@ -116,7 +116,7 @@ def run(args):
 
     if(args.static):
         mydump = Dump()
-        res = cere_dump.run(mydump)
+        res = cere_capture.run(mydump)
         logger.info("Regions list dumped in regions.csv file")
         if not res:
             logger.warning("Regions listing encountered and error: list may be incomplete or empty")

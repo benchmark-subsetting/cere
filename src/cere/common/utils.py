@@ -48,6 +48,10 @@ def io_trace_exists(region, invocation):
     trace_dir = os.path.join(var.CERE_IO_TRACES_PATH, region, str(invocation))
     return os.path.isfile("{0}/{1}".format(trace_dir, region))
 
+def dump_exist(region, invocation):
+  if os.path.isdir(os.path.join(var.CERE_DUMPS_PATH, region, str(invocation))):
+    return True
+
 class Error_table:
     def __init__(self):
         self.table = []

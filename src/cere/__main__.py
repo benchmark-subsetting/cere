@@ -21,7 +21,7 @@ import argparse
 
 import cere_configure
 import cere_profile
-import cere_dump
+import cere_capture
 import cere_replay
 import cere_test
 import cere_select_max_cov
@@ -63,7 +63,7 @@ start_log()
 
 cere_configure.init_module(subparsers, cere_plugins)
 cere_profile.init_module(subparsers, cere_plugins)
-cere_dump.init_module(subparsers, cere_plugins)
+cere_capture.init_module(subparsers, cere_plugins)
 cere_replay.init_module(subparsers, cere_plugins)
 cere_test.init_module(subparsers, cere_plugins)
 cere_select_max_cov.init_module(subparsers, cere_plugins)

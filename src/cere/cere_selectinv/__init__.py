@@ -173,7 +173,8 @@ def run(args):
         logger.info("Invocations already selected for {0}. If you want to reselect use -f".format(args.region, invocation_file))
         return True
     if not utils.trace_exists(args.region):
-        logger.error("No trace for {0}. Please first run cere trace --region={0}".format(args.region))
+        logger.error("No trace for {0}.\n\
+                     Please first run cere trace --region={0}".format(args.region))
         return False
     bin_file = os.path.join(var.CERE_TRACES_PATH, args.region+".bin")
     csv_file = os.path.join(var.CERE_TRACES_PATH, args.region+".csv")

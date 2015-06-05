@@ -23,7 +23,7 @@ import subprocess
 import shutil
 import csv
 import cere_configure
-import cere_dump
+import cere_capture
 import cere_replay
 import cere_trace
 import cere_selectinv
@@ -114,7 +114,7 @@ class Region():
                 self.invocation = infos[0]
                 self.invitro_callcount = 10
                 #Dump the required invocation
-                cere_dump.run(self)
+                cere_capture.run(self)
                 #Replay it and compute error between invivo and invitro cycles for this invocation
                 self.force = force
                 if not cere_replay.run(self):

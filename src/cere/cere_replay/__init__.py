@@ -23,7 +23,7 @@ import logging
 import shutil
 import subprocess
 import cere_configure
-import cere_dump
+import cere_capture
 import common.variables as var
 import common.utils as utils
 import common.errors as cere_error
