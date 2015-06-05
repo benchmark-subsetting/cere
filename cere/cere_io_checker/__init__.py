@@ -115,8 +115,7 @@ def find_regions_to_trace(args_region, args_regions_file, args_invocation, args_
                 # If the IO trace already exists, we can skip the test
                 if not args_force:
                     invocations = [invocation for invocation in invocations if not utils.io_trace_exists(region, invocation)]
-                if invocations:
-                    regions_to_check[region] = invocations
+                regions_to_check[region] = invocations
     # If user passed a single region
     elif args_region:
         # If the IO trace already exists, we can skip the test
