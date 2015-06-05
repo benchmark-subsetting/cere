@@ -75,14 +75,14 @@ def add_coverage(regions_file, new_regions_file, matchObj):
     if "__cere__"  not in name: return
 
     try:
-        coverage = float(matchObj.group(6))
-    except IndexError:
-        coverage = "NA"
-
-    try:
         self_coverage = float(matchObj.group(4))
     except IndexError:
         self_coverage = "NA"
+
+    try:
+        coverage = float(matchObj.group(6))
+    except IndexError:
+        coverage = self_coverage
 
     with open(regions_file, 'rb') as regions:
         r = csv.reader(regions)
@@ -92,8 +92,8 @@ def add_coverage(regions_file, new_regions_file, matchObj):
                 found=True
                 break
     if(found):
-        row.append(self_coverage)
-        row.append(coverage)
+        row[5] = self_coverage
+        row[6] = coverage
         with open(new_regions_file, 'ab') as tmp_regions:
             w = csv.writer(tmp_regions)
             w.writerow(row)
