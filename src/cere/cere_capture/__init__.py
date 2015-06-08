@@ -46,7 +46,8 @@ def find_invocations(chosen_invoc, region):
   if not chosen_invoc:
     if not os.path.isfile("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, region)):
       logger.error("Representative invocations file is missing.\n\
-                        Please run cere selectinv --region={0}".format(region))
+                        Please run cere selectinv --region={0}\n\
+                        Or choose manually an invocation with --invocation".format(region))
       return None
     with open("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, region)) as invocation_file:
       invitro_cycles=0.
