@@ -22,6 +22,7 @@ import argparse
 import logging
 import shutil
 import subprocess
+import csv
 import cere_configure
 import cere_capture
 import common.variables as var
@@ -30,48 +31,115 @@ import common.errors as cere_error
 
 logger = logging.getLogger('Replay')
 
+PREDICTION_MODE=False
+
 def init_module(subparsers, cere_plugins):
-    cere_plugins["replay"] = run
-    replay_parser = subparsers.add_parser("replay", help="replay a region")
-    replay_parser.add_argument('--region', required=True, help="Region to replay")
-    replay_parser.add_argument('--invocation', type=int, default=1, help="invocation to replay (Default 1)")
-    replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
-    replay_parser.add_argument('--noinstrumentation', type=bool, const=True, default=False, nargs='?', help="=Replay without instrumentation")
-    replay_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library")
-    replay_parser.add_argument('--norun', type=bool, default=False, help="=If you don't want to automatically run the replay")
-    replay_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will re-dump any previous CERE dumps")
+  cere_plugins["replay"] = run
+  replay_parser = subparsers.add_parser("replay", help="replay a region")
+  replay_parser.add_argument('--region', required=True, help="Region to replay")
+  replay_parser.add_argument('--invocation', type=int, help="invocation to replay")
+  replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
+  replay_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library")
+  replay_parser.add_argument('--noinstrumentation', action='store_true', help="=Replay without instrumentation")
+  replay_parser.add_argument('--norun', action='store_true', help="=If you don't want to automatically run the replay")
+  replay_parser.add_argument('--force', '-f', action='store_true', help="force to replay (Delete previous measure)")
+
+def find_invocations(chosen_invoc, region):
+  global PREDICTION_MODE
+  tmp_invocations = {}
+  if not chosen_invoc:
+    #Find representatives invocations
+    if not os.path.isfile("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, region)):
+      logger.error("Representative invocations file is missing.\n\
+                        Please run cere selectinv --region={0}\n\
+                        Or choose manually an invocation with --invocation".format(region))
+      return None
+    #Store invocations and the corresponding cluster part
+    with open("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, region)) as invocation_file:
+      for line in invocation_file:
+        infos = line.strip().split()
+        tmp_invocations[infos[0]] = float(infos[1])
+    PREDICTION_MODE=True
+  else:
+    tmp_invocations[chosen_invoc] = 1
+  return tmp_invocations
+
+def compute_predicted_time(region, invocations):
+  #Use representatives invocations replay measures to predict
+  #the region execution time.
+  invitro_cycles = 0.
+  err = False
+  logger.info("Predicted cycles for region: {0}".format(region))
+  for invocation, part in invocations.iteritems():
+    replay_file = "{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, region, invocation)
+    if os.path.isfile(replay_file):
+      with open(replay_file) as invitro:
+        reader = csv.DictReader(invitro)
+        for row in reader:
+          invocation_cycles = float(row["CPU_CLK_UNHALTED_CORE"]) / float(row["Call Count"])
+      logger.info(" Invocation {0}: In vitro cycles = {1} (part = {2})".format(invocation, invocation_cycles, part))
+      invitro_cycles = invitro_cycles + invocation_cycles * part
+    else:
+      logger.error("  Invocation {0}: No results file. Maybe replay failed".format(invocation))
+      err=True
+  if err:
+    invitro_cycles = 0
+  return invitro_cycles
 
 def run(args):
-    if not cere_configure.init():
-        return False
-    if utils.is_invalid(args.region) and not args.force:
-        logger.warning("{0} is invalid. Skipping replay".format(args.region))
-        return False
-    if os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, args.region, args.invocation)) and not args.force:
-        logger.info("Keeping previous replay measures for {0} invocation {1}.".format(args.region, args.invocation))
-        return True
+  if not cere_configure.init():
+    return False
+  if utils.is_invalid(args.region) and not args.force:
+    logger.warning("{0} is invalid. Skipping replay".format(args.region))
+    return False
+
+  invocations = find_invocations(args.invocation, args.region)
+  if not invocations:
+    return False
+  if (PREDICTION_MODE and args.wrapper != var.RDTSC_WRAPPER):
+    logger.warning("You are not using the default library. Computing predicted time\n\
+                    may not work if the replay output is not the same")
+  for invocation, part in invocations.iteritems():
+    if os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, args.region, invocation)) and not args.force:
+      logger.warning("Replay already measured for {0} invocation {1}.".format(args.region, invocation))
+      continue
+    if not utils.dump_exist(args.region, invocation):
+      logger.error("Memory dump is missing for {0} invocation {1}.\n\
+                    Run cere capture --region={0} [--invocation={1}]".format(args.region, invocation))
+      return False
     if args.noinstrumentation:
-        instru_cmd = ""
-        logger.info("Compiling replay mode for region {0} invocation {1} without instrumentation".format(args.region, args.invocation))
+      instru_cmd = ""
+      logger.info("Compiling replay mode for region {0} invocation {1} without instrumentation".format(args.region, invocation))
     else:
-        instru_cmd = "--instrument"
-        logger.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, args.invocation))
+      instru_cmd = "--instrument"
+      logger.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, invocation))
     try:
-        logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, args.invocation, instru_cmd, args.wrapper, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
+      logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation, instru_cmd, args.wrapper, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
+      logger.error(str(err))
+      logger.error(err.output)
+      logger.error("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, invocation))
+      utils.mark_invalid(args.region, cere_error.EREPLAY)
+      return False
+    if not args.norun:
+      logger.info("Replaying invocation {1} for region {0}".format(args.region, invocation))
+      try:
+        logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+      except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
-        logger.error("Compiling replay mode for region {0} invocation {1} Failed".format(args.region, args.invocation))
+        logger.error("Replay failed for {0} invocation {1}".format(args.region, invocation))
         utils.mark_invalid(args.region, cere_error.EREPLAY)
         return False
-    if not args.norun:
-        logger.info("Replaying invocation {1} for region {0}".format(args.region, args.invocation))
+      #Save replay measures files
+      if PREDICTION_MODE:
         try:
-            logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
-        except subprocess.CalledProcessError as err:
-            logger.error(str(err))
-            logger.error(err.output)
-            logger.error("Replay failed for {0} invocation {1}".format(args.region, args.invocation))
-            utils.mark_invalid(args.region, cere_error.EREPLAY)
-            return False
-    return True
+          shutil.move("{0}.csv".format(args.region), "{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, args.region, invocation))
+        except IOError as err:
+          logger.error(str(err))
+          logger.error("  No results file. Maybe replay failed".format(invocation))
+          return False
+  if PREDICTION_MODE:
+    predicted_cycles = compute_predicted_time(args.region, invocations)
+    logger.info(" Overall predicted cycles = {0}".format(predicted_cycles))
+  return True

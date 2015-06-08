@@ -67,7 +67,6 @@ def run(args):
     if not invocations:
       return False
     for invocation in invocations:
-      print(invocation)
       if not args.force:
         if utils.dump_exist(args.region, invocation):
           logger.info("Dump already exists for region {0} invocation {1}".format(args.region, invocation))
