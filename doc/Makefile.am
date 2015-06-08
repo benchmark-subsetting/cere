@@ -2,8 +2,8 @@ RONN_FLAGS=\
 	--manual="CERE manual" \
 	--organization="Université de Versailles St-Quentin-en-Yvelines"
 
-man_MANS = cere-configure.1 cere-profile.1 cere-capture.1 cere-tutorial.1 cere-replay.1
-doc_DATA = cere-configure.1.html cere-profile.1.html cere-capture.1.html cere-tutorial.1.html cere-replay.1.html
+man_MANS = cere-configure.1 cere-profile.1 cere-capture.1 cere-tutorial.1 cere-replay.1 cere-regions.1
+doc_DATA = cere-configure.1.html cere-profile.1.html cere-capture.1.html cere-tutorial.1.html cere-replay.1.html cere-regions.1.html
 
 %.1: %.1.ronn
 	$(RONN) $(RONN_FLAGS) -r $<
@@ -17,4 +17,5 @@ EXTRA_DIST=\
 	cere-profile.1.ronn \
 	cere-capture.1.ronn \
 	cere-tutorial.1.ronn \
-	cere-replay.1.ronn
+	cere-replay.1.ronn \
+	cere-regions.1.ronn
