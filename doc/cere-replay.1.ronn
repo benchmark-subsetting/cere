@@ -49,6 +49,11 @@ runtime of the region according to the model computed by cere-selectinv(1).
     By default, **cere replay** does not replay a region+invocation pair if a
     previous replay result exists. The **--force** flag forces the replay.
 
+## OUTPUT FILE
+
+  * `.cere/replays/REGION_INVOCATION`:
+    Replay execution time of the region * INVITRO_CALLCOUNT
+
 ## COPYRIGHT
 
 cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines

@@ -28,6 +28,12 @@ where the region is outlined, the start line and coverage measures.
     All regions are outlined and the binary is executed. Only executed regions
     are listed with their coverage measures.
 
+## OUTPUT FILES
+
+  * `regions.csv`:
+    File containing for each region, the region name, region location, and
+    coverage informations.
+
 ## COPYRIGHT
 
 cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
