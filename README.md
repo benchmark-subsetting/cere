@@ -19,13 +19,13 @@ prediction or piecewise code optimization.
 ### Installation
 
 Please follow the instructions in
-[INSTALL](https://github.com/benchmark-subsetting/cere/blob/master/INSTALL.md).
+[INSTALL.md](https://github.com/benchmark-subsetting/cere/blob/master/INSTALL.md).
 
 
 ### Documentation
 
 New users should start by reading [CERE
-tutorial](https://github.com/benchmark-subsetting/cere/blob/master/doc/cere-tutorial.1.ronn).
+tutorial](https://github.com/benchmark-subsetting/cere/blob/master/doc/cere-tutorial.1.md).
 
 Once installation is complete, a set of man pages for cere commands is available
 in the `doc/` directory. To check a command use `man -M <cere-path>/doc
