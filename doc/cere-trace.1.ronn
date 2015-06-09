@@ -4,7 +4,7 @@ cere trace(1) -- Replay invocation(s) and predict region time
 ## SYNOPSIS
 
 ```
-cere trace [-h] [--region REGION] [--regions-file REGIONS_FILE] [--norun]
+cere trace [-h] --region REGION | --regions-file REGIONS_FILE [--norun]
           [--read READ] [--force]
 ```
 
@@ -39,6 +39,14 @@ the instrumentation time.
   * `--force`:
     By default, **cere trace** does not trace a region if a previous measure
     already exists. The **--force** flag forces the trace.
+
+## OUTPUT FILES
+
+  * `.cere/traces/REGION.csv`:
+    Cumulative invocations execution time and call count for the region.
+
+  * `.cere/traces/REGION.bin`:
+    Trace of invocations.
 
 ## COPYRIGHT
 
