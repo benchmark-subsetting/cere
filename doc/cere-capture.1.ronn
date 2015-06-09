@@ -36,6 +36,12 @@ representative invocations selected by cere-selectinv(1).
     By default, **cere capture** does not captures a region+invocation pair if a
     previous dump exists. The **--force** flag forces a recapture.
 
+## OUTPUT FILES
+
+  * `.cere/dumps/REGION/INVOCATION/`:
+    Files needed to restore the memory and the cache state in order to replay
+    the region.
+
 ## COPYRIGHT
 
 cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
