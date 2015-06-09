@@ -39,9 +39,9 @@ def init_module(subparsers, cere_plugins):
   replay_parser.add_argument('--region', required=True, help="Region to replay")
   replay_parser.add_argument('--invocation', type=int, help="invocation to replay")
   replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
-  replay_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library")
-  replay_parser.add_argument('--noinstrumentation', action='store_true', help="=Replay without instrumentation")
-  replay_parser.add_argument('--norun', action='store_true', help="=If you don't want to automatically run the replay")
+  replay_parser.add_argument('--plugin-instr', default=var.RDTSC_WRAPPER, help="Plugin to instrument the replay")
+  replay_parser.add_argument('--noinstrumentation', action='store_true', help="Replay without instrumentation")
+  replay_parser.add_argument('--norun', action='store_true', help="If you don't want to automatically run the replay")
   replay_parser.add_argument('--force', '-f', action='store_true', help="force to replay (Delete previous measure)")
 
 def find_invocations(chosen_invoc, region):
@@ -96,7 +96,7 @@ def run(args):
   invocations = find_invocations(args.invocation, args.region)
   if not invocations:
     return False
-  if (PREDICTION_MODE and args.wrapper != var.RDTSC_WRAPPER):
+  if (PREDICTION_MODE and args.plugin_instr != var.RDTSC_WRAPPER):
     logger.warning("You are not using the default library. Computing predicted time\n\
                     may not work if the replay output is not the same")
   for invocation, part in invocations.iteritems():
@@ -114,7 +114,7 @@ def run(args):
       instru_cmd = "--instrument"
       logger.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, invocation))
     try:
-      logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation, instru_cmd, args.wrapper, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
+      logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation, instru_cmd, args.plugin_instr, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)
