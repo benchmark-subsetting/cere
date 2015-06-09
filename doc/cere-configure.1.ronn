@@ -28,7 +28,7 @@ run the application.
   * `--multiple-trace`:
     Enables tracing multiple regions in a single run.  By default, multiple
     tracing is disabled and cere-trace(1) will only trace the requested region.
-    If `--multiple-trace` is activated, cere-trace(1) traces all possible regions
+    If **--multiple-trace** is activated, cere-trace(1) traces all possible regions
     in a single run (regions must be non-nested). This can considerably decrease
     the tracing cost.
 
@@ -50,6 +50,12 @@ The user should call **cere configure** with the following arguments:
 cere configure --build-cmd="make CC=ccc LD=ccc"
                --run-cmd="./app"
 ```
+
+## OUTPUT FILES
+
+  * `cere.json`:
+    the configuration file. This file is read by most of **CERE**
+    passes. You can manually edit this file.
 
 ## COPYRIGHT
 

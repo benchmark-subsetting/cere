@@ -34,21 +34,28 @@ The profiling step is required by other **CERE** commands such as **cere test** 
     atexit(3). The probes measure the application whole execution time using the
     Time Stamp Counter.
 
-    The execution time is saved in `.cere/profile/app_cycles.csv`.
-
   * `--regions`:
     Enables region profiling. In *loop mode* regions are outer loops, in *OpenMP
     mode* regions are parallel regions. All the regions of the program are
     identified and outlined as separate functions. The program is run using google
     perftool google-pprof(1) and a call graph of the regions recorded.
 
-    The call graph is saved in `.cere/profile/original.dot` and
-    `.cere/profile/original.pdf`.
-
   * `--force`:
     By default *cere profile* does nothing if a previous profile exists. This flag
     deletes the old measures and launches a new profile.
 
+## OUTPUT FILES
+
+### --app output
+
+  * `.cere/profile/app_cycles.csv`: the application runtime in CPU cycles.
+
+### --regions output
+
+  * `.cere/profile/app.prof`: the google perf tool output.
+  * `.cere/profile/graph_.dot`: dot representation of the region call graph.
+  * `.cere/profile/graph_.pdf`: image of the call graph.
+  * `.cere/profile/graph_.pkl`: the python graph object.
 
 ## COPYRIGHT
 

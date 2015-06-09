@@ -14,6 +14,8 @@ outlined at compilation time and listed in the file **regions.csv**. this file
 contains for each region, informations such as the file and the function from
 where the region is outlined, the start line and coverage measures.
 
+By default if no mode is chosen, both modes are enabled.
+
 ## OPTIONS
 
   * `-h`:
