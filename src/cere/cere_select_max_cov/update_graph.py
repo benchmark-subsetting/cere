@@ -24,7 +24,7 @@ import networkx as nx
 import subprocess
 from common.graph_utils import *
 import cere_configure
-import cere_test
+import cere_check_matching
 import logging
 import common.variables as var
 import common.utils as utils
@@ -69,7 +69,7 @@ def update(args):
     binary_cmd = cere_configure.cere_config["run_cmd"]
     build_cmd = cere_configure.cere_config["build_cmd"]
     error = args.max_error
-    args.regions = "{0}/loops".format(var.CERE_REPLAY_PATH)
+    args.regions_file = "{0}/loops".format(var.CERE_REPLAY_PATH)
 
     logger.info("Start graph updating")
     graph = load_graph("original")
@@ -127,6 +127,6 @@ def update(args):
             break
         else:
             plot(graph, step)
-            cere_test.run(args)
+            cere_check_matching.run(args)
 
     return True

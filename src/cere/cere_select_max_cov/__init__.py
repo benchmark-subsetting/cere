@@ -20,7 +20,6 @@ import argparse
 import logging
 import cere_configure
 import os
-import cere_test
 import common.variables as var
 from update_graph import update
 from regions_selector import *

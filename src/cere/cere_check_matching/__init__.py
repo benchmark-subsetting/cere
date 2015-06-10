@@ -31,16 +31,17 @@ import cere_check_io
 import common.variables as var
 import common.utils as utils
 
-logger = logging.getLogger('Test')
+logger = logging.getLogger('Check-matching')
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
 def init_module(subparsers, cere_plugins):
-    cere_plugins["test"] = run
-    profile_parser = subparsers.add_parser("test", help="Test the matching for a list of region")
-    profile_parser.add_argument("--regions", help="The list of regions to test in a file")
-    profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
-    profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will force replay of regions.\
-                                                                                             Force is ignored for dumps and traces.")
+    cere_plugins["check-matching"] = run
+    matching_parser = subparsers.add_parser("check-matching", help="Test the matching for a list of region")
+    matching_parser.add_argument('--region', help="Region to check matching")
+    matching_parser.add_argument("--regions-file", help="The list of regions to check")
+    matching_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
+    matching_parser.add_argument('--force', '-f', action='store_true', help="Will force replay of regions.\
+                                                                             Force is ignored for dumps and traces.")
 
 def compute_error(n1, n2):
     if n1 == 0 and n2 == 0: return 100
@@ -185,18 +186,24 @@ def run_io_checker(trace_filename):
 def run(args):
     if not cere_configure.init():
         return False
-    region_file = args.regions
-    if not region_file:
-        if not os.path.isfile("{0}/selected_regions".format(var.CERE_REPLAY_PATH)):
-            logger.critical("The default region file is not present ({0}/selected_regions):\n    Choose a file manually with --regions=[file]\n    Run cere filter or cere regions".format(var.CERE_REPLAY_PATH))
-            return False
-        else: region_file = "{0}/selected_regions".format(var.CERE_REPLAY_PATH)
-    if not os.path.isfile(region_file):
-        logger.critical("\"{0}\" No such file. Please check name or put the region name in a file".format(region_file))
+
+    if not (args.region or args.regions_file):
+        logger.error("No region specified, use at least one of the following: --region, --regions-file")
         return False
 
-    with open(region_file, 'r') as region_file:
-        regions = [region.strip() for region in region_file]
+    if (args.regions_file and args.region):
+        logger.error("--region and --regions-file are exclusive")
+        return False
+
+    if args.region:
+      regions = [args.region]
+    elif args.regions_file:
+      if not os.path.isfile(args.regions_file):
+        logger.critical("\"{0}\" No such file.".format(args.regions_file))
+        return False
+      with open(args.regions_file, 'r') as regions_file:
+        regions = [region.strip() for region in regions_file]
+    
     err=False
     allRegions = []
     #For each region
