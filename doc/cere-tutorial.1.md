@@ -85,63 +85,63 @@ For BT the `Makefile` has already been configured to use `ccc`. The file
 
 ## CONFIGURATION OF CERE
 
-The first step before using CERE on an application is running **cere
-configure**. This command tells CERE which commands must be used
-to build and run the application. Be sure to be in BT folder and type:
+Now we have to tell CERE which commands must be used to build and run the
+application. For this we use cere-configure(1) with the following arguments
 
-```
+```bash
 cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/bt.A"
 ```
 
-### Output files
-
-    * cere.json: the configuration file. This file is read by most of CERE
-    passes. You can manually edit this file.
-
-For more option see also cere-configure(1)
+cere-configure(1) saves the project configuration in the file `cere.json`.
+This file is read by most of CERE passes. You can manually edit this file if you
+wish to change the initial values.
 
 ## PROFILE THE APPLICATION
 
-**cere profile** is used to determine the application runtime and the percentage
-of execution time for each extractible region using Google perf tool. This
-command also generate the region call graph.
+To determine which are the regions of interest, CERE must profile the application
+and the contribution of each region.  cere-profile(1) is used to determine the
+application runtime and the percentage of execution time for each extractible
+region using [Google gperftools](https://code.google.com/p/gperftools/). This
+command also captures the region call graph.
 
 ### Measuring application runtime
 
-To measure the programm runtime, we instrument the application. Probes are
-inserted at the very beginning of the main function and at the application
-exit. RDTSC is used to count CPU cycles between these two probes. To run only
-the application runtime measure, type:
+To measure the application runtime, probes are inserted at the very beginning of
+the main function and at the application exit. RDTSC is used to count CPU cycles
+between these two probes. To only run the application runtime measure, type:
 
-`
+```bash
 cere profile --app
-`
+```
 
-**Output file:**
-    * .cere/profile/app_cycles.csv: the application runtime in CPU cycles.
+The application runtime is saved in the file `.cere/profile/app_cycles.csv`.
 
 ### Region instrumentation
 
-Two important steps in CERE are, determine regions that are worth to
-extract/replay, and build the region call graph. This is done using the Google
-perf tool. The CPU profiler of the Google perf tool instrument every functions
-and gives for each of them usefull informations like the overall coverage, the
-self coverage, calls between function and more.
-To do so, CERE first outline every region in functions and run the CPU
-profiler. The output is then parsed with *pprof* to generate the intern
-representation of the call graph.
+Before doing any profiling or optimization work with CERE, one must select
+a representative subset of regions. Usually one focus on the hot spot regions that
+contribute the most to the total execution time.
+
+cere-profile(1) can measure the contribution of each region and capture the region
+call graph. It outlines every extractible region as independent functions which it
+profiles using
+[Google gperftools CPU profiler](https://code.google.com/p/gperftools/).  The
+output is then parsed with *pprof* and converted to CERE internal callgraph
+representation.
 
 `
 cere profile --regions
 `
 
-**Output files:**
-    * .cere/profile/app.prof: the google perf tool output.
-    * .cere/profile/graph_.dot: dot representation of the region call graph.
-    * .cere/profile/graph_.pdf: image of the call graph.
-    * .cere/profile/graph_.pkl: the python graph object.
+This command generates the following output files:
 
-The graph you obtain should look like the one in CERE_PATH/doc/images/graph_.pdf
+    * `.cere/profile/graph_.dot`: dot representation of the region call graph.
+
+    * `.cere/profile/graph_.pdf`: pdf representation of the region call graph.
+
+    * `.cere/profile/app.prof`: the Google raw perftool output.
+
+    * `.cere/profile/graph_.pkl`: cere internal representation of the region call graph.
 
 ### Full profiling
 
