@@ -27,7 +27,7 @@ import cere_capture
 import cere_replay
 import cere_trace
 import cere_selectinv
-import cere_io_checker
+import cere_check_io
 import common.variables as var
 import common.utils as utils
 
@@ -180,7 +180,7 @@ def create_region_to_trace_file(regions):
     return trace_filename
 
 def run_io_checker(trace_filename):
-    cere_io_checker.run_io_checker(None, trace_filename, 0, False)
+    cere_check_io.run_io_checker(None, trace_filename, 0, False)
 
 def run(args):
     if not cere_configure.init():

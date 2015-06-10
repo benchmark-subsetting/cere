@@ -28,7 +28,7 @@ import common.utils as utils
 import common.variables as var
 import common.errors as cere_error
 import cere_configure
-import cere_io_checker
+import cere_check_io
 
 logger = logging.getLogger('Capture')
 
@@ -74,7 +74,7 @@ def run(args):
 
         if not args.no_io_trace:
           #Check IOs
-          if not cere_io_checker.run_io_checker(args.region, None, invocation, args.force):
+          if not cere_check_io.run_io_checker(args.region, None, invocation, args.force):
             utils.mark_invalid(args.region, "Failed to run IO checker")
 
         if utils.is_invalid(args.region):
