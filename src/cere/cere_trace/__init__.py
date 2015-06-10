@@ -161,7 +161,7 @@ def launch_trace(args, regions):
 
         args.regions_file = temp.name
         args.invocation = 0
-        args.wrapper = var.RDTSC_WRAPPER
+        args.plugin_instr = var.RDTSC_WRAPPER
         args.force = True
 
         os.environ["CERE_TRACE"] = "1"

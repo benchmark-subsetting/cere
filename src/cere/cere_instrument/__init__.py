@@ -29,12 +29,12 @@ def init_module(subparsers, cere_plugins):
     instrument_parser = subparsers.add_parser("instrument", help="Instrument a region in the application")
     instrument_parser.add_argument('--region', help="Region to instrument")
     instrument_parser.add_argument('--regions-file', help="File containing the list of regions to instrument")
-    instrument_parser.add_argument('--wrapper', default=var.RDTSC_WRAPPER, help="Wrapper used to make the link between cere interface and your library (Default: rdtsc)")
+    instrument_parser.add_argument('--plugin-instr', default=var.RDTSC_WRAPPER, help="Plugin to instrument the region")
     instrument_parser.add_argument('--invocation', type=int, default=0, help="Invocation to measure (Default measures all)")
-    instrument_parser.add_argument('--norun', action='store_true', help="=If you don't want to automatically run the measure")
+    instrument_parser.add_argument('--norun', action='store_true', help="If you don't want to automatically run the measure")
     instrument_parser.add_argument('--force', '-f', action='store_true', help="Will force the CERE instrumentation")
 
-def run_instrument(args_region=None, args_regions_file=None, args_wrapper=var.RDTSC_WRAPPER, args_invocation=0, args_norun=False, args_force=False):
+def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=var.RDTSC_WRAPPER, args_invocation=0, args_norun=False, args_force=False):
     if not cere_configure.init():
         return False
     if utils.is_invalid(args_region) and not args_force:
@@ -57,7 +57,7 @@ def run_instrument(args_region=None, args_regions_file=None, args_wrapper=var.RD
         mode = ""
 
     try:
-        logger.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument {2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, mode, args_wrapper), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument {2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, mode, args_plugin_instr), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
@@ -76,4 +76,4 @@ def run_instrument(args_region=None, args_regions_file=None, args_wrapper=var.RD
     return True
 
 def run(args):
-    return run_instrument(args.region, args.regions_file, args.wrapper, args.invocation, args.norun, args.force)
+    return run_instrument(args.region, args.regions_file, args.plugin_instr, args.invocation, args.norun, args.force)
