@@ -3,37 +3,90 @@ cere tutorial(1) -- Example on how to use CERE
 
 ## SYNOPSIS
 
-**CERE** is a tool that allows you to capture a region of code and to replay it
-whithout running the entire programm. The applications are wide, debugging,
-piece wise optimisation and flag exploration, performance prediction...
-**CERE** provides automatic process, to profile, capture and replay every
-extractible regions of your application and output an html report to visualize
-the results.  
-This tutorial show and explain how to use **CERE** on BT,
-a NAS-SER 3.0 benchmark. We explain for each command what **CERE** is doing,
-what are the files generated and their purpose.
-You can find BT example in CERE_PATH/example.
+CERE allows to capture a region of code and to replay it whithout running the
+entire program. Costly optimization and profiling process, such as iterative
+compilation or architecture selection, can be accelerated through CERE fast
+replay.
+
+CERE automatically profiles, captures and replays every extractible region of your
+application and produces an html report that summarizes the results.
+
+To orchestrate CERE
+operations one uses the `cere` command-line program which is located at the root
+of CERE distribution. In this tutorial we will assume that cere directory is
+located at `~/cere/`. The first step is including cere root directory in the
+`PATH` environment variable:
+
+```bash
+$ export PATH=~/cere/:$PATH
+```
+
+Now try executing the `cere --help` command. As the output shows, `cere` includes
+a number of sub commands that will be used during this tutorial:
+
+```bash
+user@ix:~/cere/$ ../cere --help
+INFO 06/10/2015 10:31:59 CERE : Start
+usage: cere [-h]
+            {configure,profile,capture,replay,test,select-max-cov,select-ilp,instrument,trace,check,regions,report,io-checker,selectinv}
+            ...
+
+CERE command line
+
+positional arguments:
+  {configure,profile,capture,replay,test,select-max-cov,select-ilp,instrument,trace,check,regions,report,io-checker,selectinv}
+                        Call CERE modules
+    configure           Configure CERE to build and run an application
+    profile             Profiles an application
+    capture             captures a region
+    replay              replay a region
+    test                Test the matching for a list of region
+    select-max-cov      Select regions to maximise the matching coverage
+    select-ilp          Select matching regions
+    instrument          Instrument a region in the application
+    trace               produce or read a region trace
+    check               Compare for a given region, the assembly between
+                        original region and replay region
+    regions             List extractible regions
+    report              Generates the html report for an application
+    io-checker          Check if a region does IOs
+    selectinv           select representatives invocations from region trace
+
+optional arguments:
+  -h, --help            show this help message and exit
+```
+
+In this tutorial we will use CERE to replay the most important regions of the
+Block Tri-diagonal (BT) solver from the
+[NAS-SER 3.0 benchmarks](http://http://www.nas.nasa.gov/).
 
 ## CONFIGURATION OF BT
 
-Once you are in BT folder CERE_PATH/example/NPB3.0-SER/BT/ we have to configure
-the application Makefile to use **CERE** for compiling and linking. For the
-NAS-SER 3.0 benchmark, this configuration is done in
-*CERE_PATH/example/NPB3.0-SER/config/make.def* file.
+First enter the BT benchmark directory:
 
-You should replace F77, FLINK, CC and CLINK values by CERE_PATH/src/ccc/ccc ${MODE}
-but it's already done for this example.
+```bash
+$ cd ~/cere/examples/NPB3.0-SER/BT/
+```
 
-*ccc* is a script that apply code transformation (region outlining, region
-instrumentation...) using llvm passes. Source files are then compiled with
-clang, and the application is linked with gcc.  
-MODE tells *ccc* the kind of operation that has to be applied like replay, dump
-and the option for each of them.
+CERE capture and replay require specific LLVM compiler passes. To easily compile
+an application, CERE includes a compiler wrapper, `ccc`, which is located at
+`~/cere/src/ccc/ccc`. You can either use `ccc` directly to compile and link a
+program, or modify the `Makefile` so it uses `ccc`.
+
+For BT the `Makefile` has already been configured to use `ccc`. The file
+`~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
+
+```m4
+     F77 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
+     FLINK	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
+     CC 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
+     CLINK 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
+```
 
 ## CONFIGURATION OF CERE
 
-The first step before using **CERE** on an application is running **cere
-configure**. This command tells **CERE** which commands must be used
+The first step before using CERE on an application is running **cere
+configure**. This command tells CERE which commands must be used
 to build and run the application. Be sure to be in BT folder and type:
 
 ```
@@ -51,7 +104,7 @@ For more option see also cere-configure(1)
 
 **cere profile** is used to determine the application runtime and the percentage
 of execution time for each extractible region using Google perf tool. This
-command also generate the region call graph. 
+command also generate the region call graph.
 
 ### Measuring application runtime
 
@@ -69,12 +122,12 @@ cere profile --app
 
 ### Region instrumentation
 
-Two important steps in **CERE** are, determine regions that are worth to
+Two important steps in CERE are, determine regions that are worth to
 extract/replay, and build the region call graph. This is done using the Google
 perf tool. The CPU profiler of the Google perf tool instrument every functions
 and gives for each of them usefull informations like the overall coverage, the
 self coverage, calls between function and more.
-To do so, **CERE** first outline every region in functions and run the CPU
+To do so, CERE first outline every region in functions and run the CPU
 profiler. The output is then parsed with *pprof* to generate the intern
 representation of the call graph.
 
@@ -116,10 +169,10 @@ For more option see also cere-regions(1)
 
 ## AUTOMATIC SELECTORS
 
-One of main **CERE** goal is to provide a set of codelets that represent the best
-the application.  
-**CERE** can automatically select the best regions depending on what you want.
-**CERE** provide two selectors:
+One of main CERE goal is to provide a set of codelets that represent the best
+the application.
+CERE can automatically select the best regions depending on what you want.
+CERE provide two selectors:
 
 1. select-max-cov: this selector choose the best regions to maximise the application
 coverage with codelets. This method maximise the coverage regardless replay cost.
@@ -129,10 +182,10 @@ the replay cost.
 
 For both selectors, the process is the same:
 
-1. **CERE** choose in the graph generated by the profiling pass a set of
+1. CERE choose in the graph generated by the profiling pass a set of
 interesting regions. Interesting regions are by default regions with coverage
 greater than 1%. This threshold is configurable.
-2. **CERE** extract and replay the choosen regions. For each region, the error
+2. CERE extract and replay the choosen regions. For each region, the error
 between the replay and the original execution is calculated. By default if this
 error is lower than 15% we consider this region as a valid one. This threshold is
 also configurable.
@@ -154,7 +207,7 @@ You can find more information in cere-select-max-cov(1) and cere-select-ilp(1)
 
 ## CERE REPORT
 
-**CERE** provides a report tool to visualize in html format several informations
+CERE provides a report tool to visualize in html format several informations
 about the extraction process for your application. You can find an example of
 report for BT in CERE_PATH/doc/images/BT_report.html.
 To generate the report:
