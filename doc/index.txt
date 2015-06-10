@@ -8,6 +8,8 @@ cere-test(1) cere-test.1.ronn
 cere-report(1) cere-report.1.ronn
 cere-plugin-instr(1) cere-plugin-instr.1.ronn
 cere-selectinv(1) cere-selectinv.1.ronn
+cere-check-io(1) cere-check-io.1.ronn
+cere-instrument(1) cere-instrument.1.ronn
 
 # External links
 atexit(3) http://man.cx/atexit(3)
