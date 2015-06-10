@@ -12,8 +12,8 @@ cere check-io [-h] --region REGION | --regions-file REGIONS_FILE
 
 **cere check-io** check if a regions does illegal IOs. Illegal IOs are **open**,
 **close**, **read** and **write** on files. If a region does such IOs, the region
-is marked as invalid because we can't restore files descriptors or guarantee files
-state in replay.
+is marked as invalid because **CERE** can't restore files descriptors or
+guarantee files state at replay.
 
 ## OPTIONS
 
