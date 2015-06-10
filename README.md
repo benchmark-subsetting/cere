@@ -45,6 +45,29 @@ For more general questions or discussions please use the
 [cere-dev@googlegroups.com mailing
 list](https://groups.google.com/forum/#!forum/cere-dev).
 
+
+### How to cite CERE ?
+
+If you use CERE in your research, please cite the following paper:
+
+```bibtex
+@article{CERE,
+    title = {{CERE: LLVM Based Codelet Extractor and REplayer for Piecewise
+    Benchmarking and Optimization}},
+    author = {de Oliveira Castro, Pablo and Akel, Chadi and Petit, Eric and Popov,
+    Mihail and Jalby, William},
+    journal = {ACM Transactions on Architecture and Code Optimization (TACO)},
+    volume = {12},
+    number = {1},
+    pages = {6},
+    year = {2015},
+    publisher = {ACM},
+    doi = {10.1145/2724717}
+    }
+```
+
+Thanks !
+
 ### Contributors
 
 CERE contributors are listed in the [THANKS
