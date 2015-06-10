@@ -89,7 +89,7 @@ Now we have to tell CERE which commands must be used to build and run the
 application. For this we use cere-configure(1) with the following arguments
 
 ```bash
-cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/bt.A"
+$ cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/bt.A"
 ```
 
 cere-configure(1) saves the project configuration in the file `cere.json`.
@@ -111,7 +111,7 @@ the main function and at the application exit. RDTSC is used to count CPU cycles
 between these two probes. To only run the application runtime measure, type:
 
 ```bash
-cere profile --app
+$ cere profile --app
 ```
 
 The application runtime is saved in the file `.cere/profile/app_cycles.csv`.
@@ -129,9 +129,9 @@ profiles using
 output is then parsed with *pprof* and converted to CERE internal callgraph
 representation.
 
-`
-cere profile --regions
-`
+```bash
+$ cere profile --regions
+```
 
 This command generates the following output files:
 
@@ -145,27 +145,26 @@ This command generates the following output files:
 
 ### Full profiling
 
-To generate the full profiling type:
+The previous two profiling steps (application and regions) can be combined in a
+single cere command:
 
+```bash
+$ cere profile
 ```
-cere profile
+
+### Listing the extractible regions
+
+At any moment one can list the extractible regions, their source code location, and their contribution to the
+total running time with the following command:
+
+```bash
+$ cere regions
 ```
 
-For more option see also cere-profile(1)
-
-## LIST EXTRACTIBLE REGIONS
-
-With **cere profile --regions** you can already have a visual idea of what are
-the important regions in your application. But you can also list them in a file.
-With the command:
-
-**cere regions**
-
-**Output files:**
-    * regions.csv: File containing for each region, the region name, region
-    location, and coverage informations.
-
-For more option see also cere-regions(1)
+This command outputs the file `regions.csv` containing for each region, the region
+name, region location, and coverage informations. If no profile information is
+available cere-regions(1) will still output the region information but it will
+lack per-region execution time.
 
 ## AUTOMATIC SELECTORS
 

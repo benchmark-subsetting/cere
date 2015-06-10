@@ -30,9 +30,9 @@ logger = logging.getLogger('Configure')
 def init_module(subparsers, cere_plugins):
     cere_plugins["configure"] = run
     configure_parser = subparsers.add_parser("configure", help="Configure CERE to build and run an application")
-    configure_parser.add_argument('--build_cmd', required=True, help="Sets the command to build the application")
-    configure_parser.add_argument('--run_cmd', required=True, help="Sets the command used to run the application")
-    configure_parser.add_argument('--multiple_trace', action='store_true', help="Enables tracing multiple regions in a single run. (default false)")
+    configure_parser.add_argument('--build-cmd', required=True, help="Sets the command to build the application")
+    configure_parser.add_argument('--run-cmd', required=True, help="Sets the command used to run the application")
+    configure_parser.add_argument('--multiple-trace', action='store_true', help="Enables tracing multiple regions in a single run. (default false)")
 
 def run(args):
     global cere_config
