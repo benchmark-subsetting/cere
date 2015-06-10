@@ -10,7 +10,7 @@ cere select-max-cov [-h] [--max-error MAX_ERROR] [--min-coverage MIN_COVERAGE]
 
 ## DESCRIPTION
 
-**cere select-ilp** automatically selects the best set of matching regions to
+**cere select-max-cov** automatically selects the best set of matching regions to
 maximize the application coverage regardless of the replay cost. cere-profile(1)
 must be executed before running **cere select-max-cov**. cere-report(1) can be
 then used to visualize the selection summary.

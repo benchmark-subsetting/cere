@@ -11,11 +11,12 @@ cere select-ilp [-h] [--max-error MAX_ERROR] [--min-coverage MIN_COVERAGE]
 ## DESCRIPTION
 
 **cere select-ilp** automatically selects the best set of matching regions to
-maximize the application coverage and minimize the replay cost. **cere select-ilp**
-calls cere-check-matching(1) on all regions, and selects among the matching ones
-the best set of codelets. The optimization problem is formulated as an Integer
-Linear Programming problem. cere-profile(1) must be executed before running **cere
-select-ilp**. cere-report(1) can be then used to visualize the selection summary.
+provide a good-enough application coverage while minimizing the replay
+cost. **cere select-ilp** calls cere-check-matching(1) on all regions, and selects
+among the matching ones the best set of codelets. The optimization problem is
+formulated as an Integer Linear Programming problem. cere-profile(1) must be
+executed before running **cere select-ilp**. cere-report(1) can be then used to
+visualize the selection summary.
 
 ## OPTIONS
 
