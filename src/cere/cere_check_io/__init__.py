@@ -13,13 +13,13 @@ import common.utils as utils
 import common.errors as cere_error
 import cere_instrument
 
-logger = logging.getLogger('Io_checker')
+logger = logging.getLogger('Check-io')
 tolerated_fd = [1,2]
 #This list must match operations traced by strace in io_detector.c
 forbidden_ios = ["read", "write", "mmap"]
 
 def init_module(subparsers, cere_plugins):
-    cere_plugins["io-checker"] = run
+    cere_plugins["check-io"] = run
     io_checker_parser = subparsers.add_parser("io-checker", help="Check if a region does IOs")
     io_checker_parser.add_argument('--region', help="Region to check")
     io_checker_parser.add_argument('--regions-file', help="File containing the list of regions to check")

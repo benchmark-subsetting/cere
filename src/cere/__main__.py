@@ -31,7 +31,7 @@ import cere_trace
 import cere_regions
 import cere_sanity_check
 import cere_report
-import cere_io_checker
+import cere_check_io
 import cere_selectinv
 
 import logging
@@ -73,7 +73,7 @@ cere_trace.init_module(subparsers, cere_plugins)
 cere_sanity_check.init_module(subparsers, cere_plugins)
 cere_regions.init_module(subparsers, cere_plugins)
 cere_report.init_module(subparsers, cere_plugins)
-cere_io_checker.init_module(subparsers, cere_plugins)
+cere_check_io.init_module(subparsers, cere_plugins)
 cere_selectinv.init_module(subparsers, cere_plugins)
 
 if __name__ == "__main__":
