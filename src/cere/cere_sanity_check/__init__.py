@@ -28,7 +28,7 @@ logger = logging.getLogger('ASM checker')
 def init_module(subparsers, cere_plugins):
     cere_plugins["check"] = run
     check_parser = subparsers.add_parser("check", help="Compare for a given region, the assembly between original region and replay region")
-    check_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between original and replay regions (Default: 15%)")
+    check_parser.add_argument("--max-error", default=15.0, help="Maximum tolerated error between original and replay regions (Default: 15%)")
     check_parser.add_argument('--region', required=True, help="Region to check")
     check_parser.add_argument('--path', help="Path of the object file")
     check_parser.add_argument("--diff-asm", nargs='?', const=True, default=False, help="Run vimdiff between original and replay file")

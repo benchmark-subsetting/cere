@@ -29,9 +29,9 @@ logger = logging.getLogger('Max-Cov selector')
 def init_module(subparsers, cere_plugins):
     cere_plugins["select-max-cov"] = run
     profile_parser = subparsers.add_parser("select-max-cov", help="Select regions to maximise the matching coverage")
-    profile_parser.add_argument("--max_error", default=15.0, help="Maximum tolerated error between invivo and invitro regions (Default: 15%)")
-    profile_parser.add_argument("--min_coverage", type=float, default=0.1, help="Minimum percentage of region execution time (Default: 0.1%)")
-    profile_parser.add_argument('--force', '-f', const=True, default=False, nargs='?', help="Will overwrite any previous CERE measures (Default: False)")
+    profile_parser.add_argument("--max-error", default=15.0, help="Maximum tolerated error between invivo and invitro regions (Default: 15%)")
+    profile_parser.add_argument("--min-coverage", type=float, default=0.1, help="Minimum percentage of region execution time (Default: 0.1%)")
+    profile_parser.add_argument('--force', '-f', action='store_true', help="Will overwrite any previous CERE measures (Default: False)")
 
 def check_arguments(args):
     return True

@@ -32,8 +32,8 @@ logger = logging.getLogger('Regions')
 def init_module(subparsers, cere_plugins):
     cere_plugins["regions"] = run
     profile_parser = subparsers.add_parser("regions", help="List extractible regions")
-    profile_parser.add_argument("--static", nargs='?', const=True, default=False, help="List regions.")
-    profile_parser.add_argument("--dynamic", nargs='?', const=True, default=False, help="List executed regions with coverage")
+    profile_parser.add_argument("--static", action='store_true', help="List regions.")
+    profile_parser.add_argument("--dynamic", action='store_true', help="List executed regions with coverage")
 
 class Dump():
     def __init__(self):
