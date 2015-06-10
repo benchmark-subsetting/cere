@@ -2,7 +2,7 @@
 
 function do_test()
 {
-    ../../cere configure --build_cmd="" --run_cmd=""
+    ../../cere configure --build-cmd="" --run-cmd=""
     python test.py
 }
 

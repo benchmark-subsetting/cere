@@ -11,7 +11,7 @@ for bench in LU CG EP FT IS MG SP BT; do
     cd $BASEDIR/$bench
     RUN_COMMAND="numactl -C 1 ../bin/${sbench}.${CLASS}"
     BUILD_COMMAND="make CLASS=${CLASS}"
-    ../../../cere configure --build_cmd="$BUILD_COMMAND" --run_cmd="$RUN_COMMAND"
+    ../../../cere configure --build-cmd="$BUILD_COMMAND" --run-cmd="$RUN_COMMAND"
     ../../../cere profile
     ../../../cere select-max-cov
     ../../../cere report
