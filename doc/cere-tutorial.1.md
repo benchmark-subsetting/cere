@@ -26,21 +26,21 @@ a number of sub commands that will be used during this tutorial:
     user@ix:~/cere/$ ../cere --help
     INFO 06/10/2015 10:31:59 CERE : Start
     usage: cere [-h]
-                {configure,profile,capture,replay,test,select-max-cov,select-ilp,
+                {configure,profile,capture,replay,check-matching,select-max-cov,select-ilp,
                  instrument,trace,check,regions,report,io-checker,selectinv}
                 ...
 
     CERE command line
 
     positional arguments:
-        {configure,profile,capture,replay,test,select-max-cov,select-ilp,
+        {configure,profile,capture,replay,check-matching,select-max-cov,select-ilp,
          instrument,trace,check,regions,report,io-checker,selectinv}
                             Call CERE modules
         configure           Configure CERE to build and run an application
         profile             Profiles an application
         capture             captures a region
         replay              replay a region
-        test                Test the matching for a list of region
+        check-matching      Test the matching for a list of region
         select-max-cov      Select regions to maximise the matching coverage
         select-ilp          Select matching regions
         instrument          Instrument a region in the application
@@ -224,7 +224,7 @@ This command generates the following output files:
 * `.cere/replays/__cere__fft3d_swarztrauber__27_INVOCATION`:
     Replay execution time of the region * INVITRO_CALLCOUNT
 
-## REPLAY OUTPUT
+### Replay output
 
 Replay command outputs in the terminal, the runtime of each invocvation replayed
 in cycles, and the simulated runtime of the region based on representative values.
@@ -252,6 +252,29 @@ cycles to predict 6158949523 cycles. This represents a prediction speedup of 156
 
 **CERE** predicts a runtime of 6430148516 while it is really 6158949523. It means
 **CERE** has succesfully predicted the runtime of the region with an error of 4%.
+
+## AUTOMATIC REGION VALIDATOR
+
+One important condition before replaying a region to predict its runtime inside the
+application, is the guarantee that the replay actually matches the original
+behavior. Otherwise what you observe in replay may not be what is trully happening
+in the real execution of the application. cere-check-matching(1) automatically
+executes the steps described previsouly in REPLAYING A REGION section and tells you
+if the region is matching or not. The command to run is:
+
+    cere check-matching --region=__cere__fft3d_swarztrauber__27
+
+### Terminal output
+
+The end of the command output should looks like this:
+
+    INFO 06/11/2015 16:24:31 Check-matching : Results for region: __cere__fft3d_swarztrauber__27
+    INFO 06/11/2015 16:24:31 Check-matching :   MATCHING: In vitro = 6430148516.65 & invivo = 6158949523.0 (error = 4.21761632639%, coverage = 66.1%)
+    INFO 06/11/2015 16:24:31 Check-matching :     Invocation 17632: In vitro cycles = 279057.6 & in vivo cycles = 269038.0 (error = 3.59051321304%, part = 15955.7846108)
+    INFO 06/11/2015 16:24:31 Check-matching :     Invocation 2438: In vitro cycles = 114033.6 & in vivo cycles = 107614.0 (error = 5.62956882884%, part = 17341.9549768)
+
+**CERE** tells us that `__cere__fft3d_swarztrauber__27` is matching and can then
+be used to predict its original runtime.
 
 ## AUTOMATIC REGION SELECTORS
 

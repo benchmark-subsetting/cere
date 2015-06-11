@@ -18,10 +18,10 @@ It offers two profiling modes:
 
 By default if no profiling mode is chosen, both modes are enabled.
 
-Before running **cere profile**, one must run **cere configure**.
+Before running cere-profile(1), one must run cere-configure(1).
 
-The profiling step is required by other **CERE** commands such as **cere test** and
-**cere report**.
+The profiling step is required by other **CERE** commands such as cere-check-matching(1)
+and cere-report(1).
 
 ## OPTIONS
 
@@ -63,4 +63,4 @@ cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
 
 ## SEE ALSO
 
-cere-configure(1) cere-trace(1) cere-test(1) cere-report(1)
+cere-configure(1) cere-trace(1) cere-check-matching(1) cere-report(1)
