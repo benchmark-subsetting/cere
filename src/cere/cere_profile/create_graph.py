@@ -95,7 +95,7 @@ def add_node(digraph, matchObj):
     digraph.node[_id]['_coverage'] = coverage
     digraph.node[_id]['_matching'] = False
     digraph.node[_id]['_error'] = 100.0
-    digraph.node[_id]['_error_message'] = ""
+    digraph.node[_id]['_error_message'] = None
     digraph.node[_id]['_valid'] = valid
     digraph.node[_id]['_tested'] = False
     digraph.node[_id]['_to_test'] = False

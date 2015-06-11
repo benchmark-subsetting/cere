@@ -70,6 +70,7 @@ def update(args):
     build_cmd = cere_configure.cere_config["build_cmd"]
     error = args.max_error
     args.regions_file = "{0}/loops".format(var.CERE_REPLAY_PATH)
+    args.region = None
 
     logger.info("Start graph updating")
     graph = load_graph("original")
