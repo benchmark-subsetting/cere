@@ -86,7 +86,7 @@ def update(args):
             graph = update_nodes(graph, lines, error)
 
         newLoopsToTest = False
-        with open(args.regions, 'w') as f:
+        with open(args.regions_file, 'w') as f:
             for n, d in graph.nodes(data=True):
                 cancel=False
                 if d['_coverage'] < 1: d['_small'] = True

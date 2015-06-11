@@ -108,7 +108,7 @@ def update(args):
                 graph.node[node]['_transfered'] = True
 
         newLoopsToTest = False
-        with open(args.regions, 'w') as f:
+        with open(args.regions_file, 'w') as f:
             for n, d in graph.nodes(data=True):
                 cancel=False
                 if d['_valid'] and not d['_small'] and not d['_tested']:
