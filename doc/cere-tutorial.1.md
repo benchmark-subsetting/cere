@@ -17,82 +17,76 @@ of CERE distribution. In this tutorial we will assume that cere directory is
 located at `~/cere/`. The first step is including cere root directory in the
 `PATH` environment variable:
 
-```bash
-$ export PATH=~/cere/:$PATH
-```
+    $ export PATH=~/cere/:$PATH
 
 Now try executing the `cere --help` command. As the output shows, `cere` includes
 a number of sub commands that will be used during this tutorial:
 
-```
-user@ix:~/cere/$ ../cere --help
-INFO 06/10/2015 10:31:59 CERE : Start
-usage: cere [-h]
-            {configure,profile,capture,replay,test,select-max-cov,select-ilp,
-             instrument,trace,check,regions,report,io-checker,selectinv}
-            ...
 
-CERE command line
+    user@ix:~/cere/$ ../cere --help
+    INFO 06/10/2015 10:31:59 CERE : Start
+    usage: cere [-h]
+                {configure,profile,capture,replay,test,select-max-cov,select-ilp,
+                 instrument,trace,check,regions,report,io-checker,selectinv}
+                ...
 
-positional arguments:
-    {configure,profile,capture,replay,test,select-max-cov,select-ilp,
-     instrument,trace,check,regions,report,io-checker,selectinv}
-                        Call CERE modules
-    configure           Configure CERE to build and run an application
-    profile             Profiles an application
-    capture             captures a region
-    replay              replay a region
-    test                Test the matching for a list of region
-    select-max-cov      Select regions to maximise the matching coverage
-    select-ilp          Select matching regions
-    instrument          Instrument a region in the application
-    trace               produce or read a region trace
-    check               Compare for a given region, the assembly between
-                        original region and replay region
-    regions             List extractible regions
-    report              Generates the html report for an application
-    io-checker          Check if a region does IOs
-    selectinv           select representatives invocations from region trace
+    CERE command line
 
-optional arguments:
-  -h, --help            show this help message and exit
-```
+    positional arguments:
+        {configure,profile,capture,replay,test,select-max-cov,select-ilp,
+         instrument,trace,check,regions,report,io-checker,selectinv}
+                            Call CERE modules
+        configure           Configure CERE to build and run an application
+        profile             Profiles an application
+        capture             captures a region
+        replay              replay a region
+        test                Test the matching for a list of region
+        select-max-cov      Select regions to maximise the matching coverage
+        select-ilp          Select matching regions
+        instrument          Instrument a region in the application
+        trace               produce or read a region trace
+        check               Compare for a given region, the assembly between
+                            original region and replay region
+        regions             List extractible regions
+        report              Generates the html report for an application
+        io-checker          Check if a region does IOs
+        selectinv           select representatives invocations from region trace
+
+    optional arguments:
+      -h, --help            show this help message and exit
+
 
 In this tutorial we will use CERE to replay the most important regions of the
-Block Tri-diagonal (BT) solver from the
-[NAS-SER 3.0 benchmarks](http://http://www.nas.nasa.gov/).
+discrete 3D fast Fourier Transform (FT) solver from the
+[NAS-SER 3.0 benchmarks](http://www.nas.nasa.gov/).
 
-## CONFIGURATION OF BT
+## CONFIGURATION OF FT
 
-First enter the BT benchmark directory:
+First enter the FT benchmark directory:
 
-```bash
-$ cd ~/cere/examples/NPB3.0-SER/BT/
-```
+    $ cd ~/cere/examples/NPB3.0-SER/FT/
 
 CERE capture and replay require specific LLVM compiler passes. To easily compile
 an application, CERE includes a compiler wrapper, `ccc`, which is located at
 `~/cere/src/ccc/ccc`. You can either use `ccc` directly to compile and link a
 program, or modify the `Makefile` so it uses `ccc`.
 
-For BT the `Makefile` has already been configured to use `ccc`. The file
+For FT the `Makefile` has already been configured to use `ccc`. The file
 `~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
 
-```m4
-     F77 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
-     FLINK	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
-     CC 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
-     CLINK 	= ../../../src/ccc/ccc ${MODE} ${INSTRU} ${INSTRU_OPTS}
-```
+
+    F77 = ../../../src/ccc/ccc ${MODE}
+    FLINK = ../../../src/ccc/ccc ${MODE}
+    CC = ../../../src/ccc/ccc ${MODE}
+    CLINK = ../../../src/ccc/ccc ${MODE}
+
 
 ## CONFIGURATION OF CERE
 
 Now we have to tell CERE which commands must be used to build and run the
 application. For this we use cere-configure(1) with the following arguments
 
-```bash
-$ cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/bt.A"
-```
+    $ cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/ft.A"
 
 cere-configure(1) saves the project configuration in the file `cere.json`.
 This file is read by most of CERE passes. You can manually edit this file if you
@@ -112,9 +106,7 @@ To measure the application runtime, probes are inserted at the very beginning of
 the main function and at the application exit. RDTSC is used to count CPU cycles
 between these two probes. To only run the application runtime measure, type:
 
-```bash
-$ cere profile --app
-```
+    $ cere profile --app
 
 The application runtime is saved in the file `.cere/profile/app_cycles.csv`.
 
@@ -131,9 +123,7 @@ profiles using
 output is then parsed with *pprof* and converted to CERE internal callgraph
 representation.
 
-```bash
-$ cere profile --regions
-```
+    $ cere profile --regions
 
 This command generates the following output files:
 
@@ -150,23 +140,118 @@ This command generates the following output files:
 The previous two profiling steps (application and regions) can be combined in a
 single cere command:
 
-```bash
-$ cere profile
-```
+    $ cere profile
 
-### Listing the extractible regions
+## LISTING EXTRACTIBLE REGIONS
 
-At any moment one can list the extractible regions, their source code location, and their contribution to the
-total running time with the following command:
+At any moment one can list the extractible regions, their source code location,
+and their contribution to the total running time with the following command:
 
-```bash
-$ cere regions
-```
+    $ cere regions
 
 This command outputs the file `regions.csv` containing for each region, the region
 name, region location, and coverage informations. If no profile information is
 available cere-regions(1) will still output the region information but it will
 lack per-region execution time.
+
+## REPLAYING A REGION
+
+As you can see in `regions.csv`, the region `__cere__fft3d_swarztrauber__27` cover
+around 66% of FT runtime. It means that if we can successfully replay this region,
+we could predict 66% of FT execution time with only few executions of the region.
+
+### Find representative invocations
+
+Representative invocations are the invocations we need to replay, to be able to
+predict the whole region runtime. To find representative invocations, cere-selectinv(1)
+reads the trace generated by cere-trace(1) and clusterize the invocations. One invocation
+per cluster is selected to represent its cluster. The model needed to retrieve
+the region execution time from these representatives invocations is also outputted.
+
+To trace invocations execution time run:
+
+    $ cere trace --region=__cere__fft3d_swarztrauber__27
+
+This command generates the following output files:
+
+* `.cere/traces/__cere__fft3d_swarztrauber__27.bin`: Trace of invocations.
+* `.cere/traces/__cere__fft3d_swarztrauber__27.csv`: Cumulative invocations
+    execution time and call count.
+
+To select representative invocations run:
+
+    $ cere selectinv --region=__cere__fft3d_swarztrauber__27
+
+This command generates the following output file:
+
+* `.cere/traces/__cere__fft3d_swarztrauber__27.invocations`:
+    Each row correspond to a cluster with row N stands for the cluster N. Each
+    row contains the cluster representative invocation, the invocation execution
+    time in cycle and the part of the cluster in the total execution time of the
+    region.
+
+* `.cere/plots/__cere__fft3d_swarztrauber__27_byPhase.png`:
+    Image of the trace clustering.
+
+As you can see in these 2 files, the region runtime can be simulated by only
+replaying 2 invocations instead of the 32768 original invocations.
+The number and value of representative invocations can vary from a machine to
+another so you may have more or less representative invocations.
+
+### Capturing representative invocations
+
+Last step before replaying `__cere__fft3d_swarztrauber__27` region, is to capture
+using cere-capture(1), the memory and cache state for the 2 invocations we need
+to replay. This is done with the following command:
+
+    $ cere capture --region=__cere__fft3d_swarztrauber__27
+
+This command generates the following output files:
+
+* `.cere/dumps/__cere__fft3d_swarztrauber__27/INVOCATIONS/`:
+    Files needed to restore the memory and the cache state in order to replay
+    the region.
+
+### Replaying the region
+
+Finally we can replay with cere-replay(1) the region of interest. Only the 2
+selected invocations are replayed, and are used to simulate the region total runtime.
+
+    $ cere replay --region=__cere__fft3d_swarztrauber__27
+
+This command generates the following output files:
+
+* `.cere/replays/__cere__fft3d_swarztrauber__27_INVOCATION`:
+    Replay execution time of the region * INVITRO_CALLCOUNT
+
+## REPLAY OUTPUT
+
+Replay command outputs in the terminal, the runtime of each invocvation replayed
+in cycles, and the simulated runtime of the region based on representative values.
+
+    INFO 06/11/2015 15:36:59 Replay : Predicted cycles for region: __cere__fft3d_swarztrauber__27
+    INFO 06/11/2015 15:36:59 Replay :  Invocation 17632: In vitro cycles = 279057.6 (part = 15955.7846108)
+    INFO 06/11/2015 15:36:59 Replay :  Invocation 2438: In vitro cycles = 114033.6 (part = 17341.9549768)
+    INFO 06/11/2015 15:36:59 Replay :  Overall predicted cycles = 6430148516.65
+
+The real runtime of the region can be found in `.cere/traces/__cere__fft3d_swarztrauber__27.csv`  
+In our example the value is:
+
+    $ cat .cere/traces/__cere__fft3d_swarztrauber__27.csv
+    Codelet Name,Call Count,CPU_CLK_UNHALTED_CORE
+    __cere__fft3d_swarztrauber__27,32768,6158949523
+
+In our example the measured value is 6158949523 cycles.
+
+### Prediction speedup
+
+Each invocation is replayed 10 times. So the total replay cost is 2790576 + 1140336
+cycles to predict 6158949523 cycles. This represents a prediction speedup of 1566!
+
+### Prediction accuracy
+
+**CERE** predicts a runtime of 6430148516 while it is really 6158949523. It means
+**CERE** has succesfully predicted the runtime of the region with an error of 4%.
 
 ## AUTOMATIC REGION SELECTORS
 
@@ -195,10 +280,8 @@ configurable.
 
 You can try both selectors by running one (or all) of the following commands:
 
-```bash
-$ cere select-max-cov
-$ cere select-ilp
-```
+    $ cere select-max-cov
+    $ cere select-ilp
 
 You can find more information in the manual pages for cere-select-max-cov(1) and
 cere-select-ilp(1).
@@ -209,12 +292,10 @@ CERE provides a report tool to visualize in html format several informations
 about the extraction process of your application.
 To generate the report you can use the following command:
 
-```bash
-$ cere report
-```
+    $ cere report
 
-An example of report generated for the BT class A serial benchmark can be found
-[here](https://benchmark-subsetting.github.io/cere/reports/NAS3.0-SER/BT.html).
+An example of report generated for the FT class A serial benchmark can be found
+[here](https://benchmark-subsetting.github.io/cere/reports/NAS3.0-SER/FT.html).
 
 ## COPYRIGHT
 
@@ -223,4 +304,4 @@ cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
 ## SEE ALSO
 
 cere-configure(1) cere-trace(1) cere-profile(1) cere-capture(1) cere-regions(1)
-cere-replay(1) cere-check-matching(1) cere-report(1)
+cere-replay(1) cere-check-matching(1) cere-report(1) cere-select-max-cov(1)
