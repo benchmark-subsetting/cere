@@ -2,7 +2,7 @@
 
 function do_test()
 {
-    rm -rf cere_dumps/ *.ll
+    rm -rf ./cere/dumps/ *.ll
     make clean
     make -j4 MODE="dump --region=__cere__fnbf_do_fnbf_232 --invocation=7948"
     LD_BIND_NOW=1 ./gromacs -silent -deffnm gromacs -nice 0

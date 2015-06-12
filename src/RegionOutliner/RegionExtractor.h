@@ -141,7 +141,7 @@ private:
                               Function *oldFunction, Module *M);
 
   void moveCodeToFunction(Function *newFunction);
-
+  void removeWrongMetadata(Function *newFunction);
   void emitCallAndSwitchStatement(Function *newFunction, BasicBlock *newHeader,
                                   ValueSet &inputs, ValueSet &outputs);
 

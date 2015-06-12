@@ -29,6 +29,8 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/RegionIterator.h"
+#include "llvm/Support/InstIterator.h"
+//~#include "llvm/IR/InstIterator.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -563,6 +565,59 @@ static BasicBlock *FindPhiPredForUseInBlock(Value *Used, BasicBlock *BB) {
   return 0;
 }
 
+/// Sometimes when outlining code, metadata refers to the original function
+/// and not to the extracted one. This function removes wrong metadata. This
+/// code is based on this example:
+/// https://weaponshot.wordpress.com/2012/05/06/extract-all-the-metadata-nodes-in-llvm/
+void RegionExtractor::removeWrongMetadata(Function *newFunction)
+{
+  std::vector<CallInst*> InstToDel;
+
+  //Iterate over instructions of the function
+  for(Function::iterator BB = newFunction->begin(), E = newFunction->end(); BB!=E; ++BB) {
+    for(BasicBlock::iterator I = BB->begin(), M = BB->end(); I != M; ++I){
+      //If this instruction is a call
+      if(CallInst* CI = dyn_cast<CallInst>(I)) {
+        if(Function *F = CI->getCalledFunction()) {
+          for(unsigned i = 0, e = I->getNumOperands(); i!=e; ++i) {
+            //Get Metadata information
+            if(MDNode *MD = dyn_cast_or_null<MDNode>(I->getOperand(i))) {
+              for (unsigned j = 0, k = MD->getNumOperands(); j != k; ++j) {
+                Function *ActualF = 0;
+                Value *Op = MD->getOperand(j);
+                if (!Op)
+                  continue;
+                if (isa<Constant>(Op) || isa<MDString>(Op))
+                  continue;
+
+                // If this was an instruction, bb, or argument, verify that it is in the
+                // function that we expect.
+                if (Instruction *J = dyn_cast<Instruction>(Op))
+                  ActualF = J->getParent()->getParent();
+                else if (BasicBlock *BB = dyn_cast<BasicBlock>(Op))
+                  ActualF = BB->getParent();
+                else if (Argument *A = dyn_cast<Argument>(Op))
+                  ActualF = A->getParent();
+                else continue;
+
+                if(ActualF != newFunction) {
+                  //Keep this instruction for delation
+                  InstToDel.push_back(CI);
+                }
+              }
+            }
+          }
+        }
+      }
+    } // Instructions iterator
+  } // BB iterator
+
+  //Delete instructions to remove
+  for(std::vector<CallInst*>::size_type i = 0; i != InstToDel.size(); i++) {
+    InstToDel[i]->eraseFromParent();
+  }
+}
+
 /// emitCallAndSwitchStatement - This method sets up the caller side by adding
 /// the call instruction, splitting any PHI nodes in the header block as
 /// necessary.
@@ -891,6 +946,8 @@ Function *RegionExtractor::extractCodeRegion() {
   emitCallAndSwitchStatement(newFunction, codeReplacer, inputs, outputs);
 
   moveCodeToFunction(newFunction);
+
+  removeWrongMetadata(newFunction);
 
   // Loop over all of the PHI nodes in the header block, and change any
   // references to the old incoming edge to be the new incoming edge.
