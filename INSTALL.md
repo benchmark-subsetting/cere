@@ -21,6 +21,7 @@ Please ensure that CERE's dependencies are installed on your system:
 
   * ronn, https://rtomayko.github.io/ronn/
 
+  * numactl (needed when running the testsuite)
 
 Then run the following command inside CERE directory:
 
@@ -53,7 +54,7 @@ install procedure:
    $ sudo apt-get install clang-3.3 llvm3.3-dev dragonegg-4.7 \
        gcc-4.7 gfortran-4.7 autoconf automake build-essential ruby-ronn \
        python python-matplotlib python-jinja2 python-pygraphviz python-sklearn python-numpy \
-       python-networkx pip google-perftools
+       python-networkx pip google-perftools numactl
 
    $ sudo pip install pulp
 
