@@ -42,6 +42,8 @@ def run(args):
     if not args.app and not args.regions:
         args.app = True
         args.regions = True
+    res_1=True
+    res_2=True
     if args.regions:
         res_1 = instrument_application(cere_configure.cere_config["run_cmd"], cere_configure.cere_config["build_cmd"], args.force)
     if args.app:
