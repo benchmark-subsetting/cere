@@ -23,7 +23,7 @@ Now try executing the `cere --help` command. As the output shows, `cere` include
 a number of sub commands that will be used during this tutorial:
 
 
-    user@ix:~/cere/$ ../cere --help
+    user@ix:~/cere/$ ./cere --help
     INFO 06/10/2015 10:31:59 CERE : Start
     usage: cere [-h]
                 {configure,profile,capture,replay,check-matching,select-max-cov,select-ilp,
