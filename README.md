@@ -24,8 +24,8 @@ Please follow the instructions in
 ### Supported platforms
 
 For now CERE only supports the Linux operating system. We have tested different
-versions >= 2.6. CERE has been tested mainly on x86_64 Debian and Ubuntu
-distributions.
+versions of kernels in the 2.6 series. CERE has been tested mainly on x86_64
+Debian and Ubuntu distributions using llvm 3.3 and gcc-4.7.
 
 CERE capture and replay is performed in user mode, but requires that
 `/proc/sys/kernel/randomize_va_space` is set to 1. This is the default on most
