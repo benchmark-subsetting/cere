@@ -21,6 +21,18 @@ prediction or piecewise code optimization.
 Please follow the instructions in
 [INSTALL.md](https://github.com/benchmark-subsetting/cere/blob/master/INSTALL.md).
 
+### Supported platforms
+
+For now CERE only supports the Linux operating system. We have tested different
+versions >= 2.6. CERE has been tested mainly on x86_64 Debian and Ubuntu
+distributions.
+
+CERE capture and replay is performed in user mode, but requires that
+`/proc/sys/kernel/randomize_va_space` is set to 1. This is the default on most
+linux distribution.
+
+v0.0.1 of CERE is an alpha release, if you experience bugs during capture and
+replay please report them using the issue tracker. Thanks !
 
 ### Documentation
 
