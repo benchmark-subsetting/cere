@@ -2,11 +2,11 @@
 
 Please ensure that CERE's dependencies are installed on your system:
 
-  * LLVM, clang and opt 3.3 or 3.4, http://clang.llvm.org/
+  * LLVM, clang, dragonegg and opt 3.3 or 3.4, http://llvm.org/releases/download.html#3.3
 
-  * gcc, gfortran and dragonegg (for Fortran support), http://dragonegg.llvm.org/
-    We recommend to use gcc-4.7 and dragonegg-4.7, we have experienced some
-    problems with 4.8 versions.
+  * gcc, gfortran (for Fortran support)
+    We recommend to use gcc-4.7 we have experienced some problems with dragonegg 4.8
+    version.
 
   * GNU binutils (objcopy, readelf)
 
@@ -23,6 +23,10 @@ Please ensure that CERE's dependencies are installed on your system:
 
   * numactl and dc (needed when running the testsuite)
 
+It is very important that you install a dragonegg plugin which is both compatible
+with your gcc and llvm versions. For this we recommend that you manually install
+from source [llvm-3.3 and dragonegg-3.3](http://llvm.org/releases/download.html#3.3).
+
 Then run the following command inside CERE directory:
 
 ```bash
@@ -31,7 +35,7 @@ Then run the following command inside CERE directory:
    $ make
 ```
 
-If needed LLVM path, dragonegg path, and gcc path can be configured with the
+If needed, LLVM path, dragonegg path, and gcc path can be configured with the
 following options:
 
 ```bash
