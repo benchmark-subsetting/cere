@@ -30,6 +30,8 @@ import cere_selectinv
 import cere_check_io
 import common.variables as var
 import common.utils as utils
+from common.graph_utils import *
+import networkx as nx
 
 logger = logging.getLogger('Check-matching')
 ROOT = os.path.dirname(os.path.realpath(__file__))
@@ -46,6 +48,14 @@ def init_module(subparsers, cere_plugins):
 def compute_error(n1, n2):
     if n1 == 0 and n2 == 0: return 100
     return (abs(n1-n2)/max(n1, n2))*100
+
+def read_csv(File):
+    try:
+        FILE = open(File, 'rb')
+    except (IOError):
+        return []
+    Dict = csv.DictReader(FILE, delimiter=',')
+    return Dict
 
 class Region():
     def __init__(self, r):
@@ -68,8 +78,6 @@ class Region():
     def compute_coverage(self):
         #There is two ways of computing coverage
         #1) If we have gperftool results:
-        from common.graph_utils import load_graph
-        import networkx as nx
         graph = load_graph()
         if graph:
             logger.info("Computing coverage using google perf tool")
@@ -164,6 +172,34 @@ def dump_results(regions, max_error):
                 logger.info("      Invocation {0}: In vitro cycles = {1} & in vivo cycles = {2} (error = {3}%, part = {4})".format(d[0], d[3], d[4], d[5], d[2]))
                 invocations_writer.writerow([region.region]+d)
 
+def update_nodes(graph, max_allowed_error):
+    lines = read_csv("{0}/matching_error.csv".format(var.CERE_REPLAY_PATH))
+    for line in lines:
+        #for region_name, error in matching.iteritems():
+        #find the node in the graph
+        for n,d in graph.nodes(data=True):
+            if line["Codelet Name"] == d['_name'] and not d['_tested']:
+                d['_invivo'] = float(line["Invivo"])
+                d['_invitro'] = float(line["Invitro"])
+                d['_tested'] = True
+                if float(line["Error"]) <= max_allowed_error:
+                    d['_matching'] = True
+                else:
+                    d['_valid'] = False
+                d['_error'] = float(line["Error"])
+                if utils.is_invalid(d['_name']):
+                    d['_error_message'] = utils.get_error_message(d['_name'])
+                invocations = read_csv("{0}/invocations_error.csv".format(var.CERE_REPLAY_PATH))
+                for inv in invocations:
+                    if inv["Codelet Name"] == d['_name']:
+                        d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
+                          "Part":round(float(inv["Part"]), 2), "Invivo (cycles)":"{:e}".format(float(inv["Invivo"])),
+                          "Invitro (cycles)":"{:e}".format(float(inv["Invitro"])), "Error (%)":round(float(inv["Error"]), 2)})
+                d['_tested'] = True
+                d['_to_test'] = False
+    save_graph(graph)
+    plot(graph)
+
 def create_region_to_trace_file(regions):
     trace_filename = os.path.join(var.CERE_IO_TRACES_PATH, "regions_to_trace")
     with open(trace_filename, 'w') as trace_file:
@@ -231,4 +267,7 @@ def run(args):
         allRegions[idx].check_region_matching()
 
     dump_results(allRegions, args.max_error)
+    graph = load_graph()
+    if graph != None:
+        update_nodes(graph, args.max_error)
     return not err

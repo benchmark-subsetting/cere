@@ -25,7 +25,7 @@ import common.variables as var
 
 logger = logging.getLogger('Graph utils')
 
-def plot(g, step):
+def plot(g, step=""):
     import os
     for n,d in g.nodes(data=True):
         d["label"]="{} {} {} ({})".format(n, d['_name'], d['_self_coverage'], d['_coverage'])

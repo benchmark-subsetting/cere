@@ -91,6 +91,7 @@ def add_node(digraph, matchObj):
         valid = False
 
     digraph.add_node(_id, _name = name)
+    digraph.graph['coverage'] = 0
     digraph.node[_id]['_self_coverage'] = float(matchObj.group(4))
     digraph.node[_id]['_coverage'] = coverage
     digraph.node[_id]['_matching'] = False
@@ -212,8 +213,7 @@ def create_graph(force):
     if not delete_useless_nodes(digraph):
         return False
 
-    plot(digraph, "original")
-    save_graph(digraph, "original")
+    plot(digraph)
     save_graph(digraph)
 
     logger.info('Call graph creation successefull')
