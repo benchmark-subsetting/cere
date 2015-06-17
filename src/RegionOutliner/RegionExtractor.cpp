@@ -30,7 +30,6 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/RegionIterator.h"
 #include "llvm/Support/InstIterator.h"
-//~#include "llvm/IR/InstIterator.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -404,6 +403,9 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
 
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(),
                        firstLine, path, Original_location);
+  }
+  else {
+    errs() << "No metadata for region in " << oldFunction->getName() << "\n";
   }
 
   return newFunctionName;
@@ -892,7 +894,6 @@ void RegionExtractor::moveCodeToFunction(Function *newFunction) {
 Function *RegionExtractor::extractCodeRegion() {
   if (!isEligible())
     return 0;
-
   ValueSet inputs, outputs;
 
   // Assumption: this is a single-entry code region, and the header is the first
@@ -900,7 +901,8 @@ Function *RegionExtractor::extractCodeRegion() {
   BasicBlock *header = *Blocks.begin();
   Function *oldFunction = header->getParent();
   std::string newFunctionName = createFunctionName(oldFunction, header);
-  if (newFunctionName.empty()) return 0;
+  if (newFunctionName.empty())
+    return 0;
 
   DEBUG(dbgs() << "Requested loop = " << RegionName << " & isolating "
                << newFunctionName << "\n");
