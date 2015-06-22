@@ -35,24 +35,22 @@ using namespace llvm;
 
 STATISTIC(NumExtracted, "Number of regions extracted");
 
-static cl::opt<std::string>
-IsolateRegion("isolate-region", cl::init("all"), cl::value_desc("String"),
-              cl::desc("RegionOutliner will only isolate this region"));
-static cl::opt<bool>
-AppMeasure("instrument-app", cl::init(false), cl::value_desc("Boolean"),
-        cl::desc("If you want to isolate regions to profile the application"));
+extern cl::opt<std::string> IsolateRegion;
+extern cl::opt<bool> AppMeasure;
+extern cl::opt<bool> PcereUse;
 
 namespace {
-struct RegionOutliner : public LoopPass {
+struct LoopRegionOutliner : public LoopPass {
   static char ID; // Pass identification, replacement for typeid
   unsigned NumLoops;
   bool ProfileApp;
+  bool Pcere;
   std::string RegionName;
 
-  explicit RegionOutliner(unsigned numLoops = ~0,
+  explicit LoopRegionOutliner(unsigned numLoops = ~0,
                           const std::string &regionName = "")
       : LoopPass(ID), NumLoops(numLoops), ProfileApp(AppMeasure),
-        RegionName(regionName) {
+        Pcere(PcereUse), RegionName(regionName) {
     if (regionName.empty())
       RegionName = IsolateRegion;
   }
@@ -67,11 +65,11 @@ struct RegionOutliner : public LoopPass {
 };
 }
 
-char RegionOutliner::ID = 0;
-static RegisterPass<RegionOutliner> X("region-outliner", "Outline all loops",
+char LoopRegionOutliner::ID = 0;
+static RegisterPass<LoopRegionOutliner> X("region-outliner", "Outline all loops",
                                       false, false);
 
-bool RegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
+bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // Only visit top-level loops.
   if (L->getParentLoop())
     return false;
@@ -98,7 +96,7 @@ bool RegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
     if (NumLoops == 0)
       return Changed;
     --NumLoops;
-    RegionExtractor Extractor(DT, *L, RegionName, ProfileApp);
+    RegionExtractor Extractor(DT, *L, RegionName, ProfileApp, false);
     if (Extractor.extractCodeRegion() != 0) {
       Changed = true;
       // After extraction, the loop is replaced by a function call, so

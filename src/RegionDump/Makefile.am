@@ -3,5 +3,5 @@ libRegionDump_la_CXXFLAGS = $(LLVMCXXFLAGS)
 
 
 lib_LTLIBRARIES = libRegionDump.la
-libRegionDump_la_SOURCES = RegionDump.cpp
-libRegionDump_la_LDFLAGS = 
+libRegionDump_la_SOURCES = RegionDump.cpp LoopRegionDump.cpp OmpRegionDump.cpp
+libRegionDump_la_LDFLAGS =
