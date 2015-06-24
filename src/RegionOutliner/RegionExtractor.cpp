@@ -387,8 +387,8 @@ void RegionExtractor::add_region_to_file(
       loopstream << header + "\n";
     }
     if (!is_region_in_file(newFunctionName, loopstream)) {
-      loopstream << newFunctionName + "," + path + File + "," + path +
-                        Original_location + "," + oldFunction + "," +
+      loopstream << newFunctionName + "," + path + "/" + File + "," + path +
+                        "/" + Original_location + "," + oldFunction + "," +
                         firstLine + ",NA,NA\n";
     }
     loopstream.close();

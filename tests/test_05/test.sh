@@ -1,8 +1,13 @@
 #!/bin/bash
 
-make veryclean
-test_1= ../../src/granularity/coverage.sh . ./IS "make INVITRO_CALL_COUNT=1 -j4"
-test_2= ../../src/granularity/matching.sh . ./measures/loops ./IS "make INVITRO_CALL_COUNT=1 -j4"
-test_3= ../../src/Report/Report.py ./
-$test_1 || $test_2 || $test_3
-exit $?
+function do_test()
+{
+    make veryclean
+    ../../cere configure --build-cmd="make" --run-cmd="./IS"
+    ../../cere profile
+    ../../cere select-ilp
+    ../../cere report
+    exit $?
+}
+
+source ../source.sh
