@@ -131,7 +131,7 @@ class Region():
                     invitro_cycles = 0.
                 else:
                     try:
-                        if not os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, self.region, self.invocation)):
+                        if not os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, self.region, self.invocation)) or self.force:
                             shutil.move("{0}.csv".format(self.region), "{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, self.region, self.invocation))
                     except IOError as err:
                         logger.error(str(err))
@@ -178,7 +178,7 @@ def update_nodes(graph, max_allowed_error):
         #for region_name, error in matching.iteritems():
         #find the node in the graph
         for n,d in graph.nodes(data=True):
-            if line["Codelet Name"] == d['_name'] and not d['_tested']:
+            if line["Codelet Name"] == d['_name']:
                 d['_invivo'] = float(line["Invivo"])
                 d['_invitro'] = float(line["Invitro"])
                 d['_tested'] = True
