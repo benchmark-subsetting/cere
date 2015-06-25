@@ -135,11 +135,11 @@ static SetVector<BasicBlock *> buildExtractionBlockSet(const RegionNode &RN) {
 }
 
 RegionExtractor::RegionExtractor(BasicBlock *BB, std::string regionName,
-                                 bool profileApp, bool Pcere,
+                                 bool profileApp, bool pcere,
                                  bool AggregateArgs)
     : DT(0), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
       LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(BB)),
-      NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp) {
+      NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
 
   if (regionName.empty())
     RegionName = "all";
@@ -147,11 +147,11 @@ RegionExtractor::RegionExtractor(BasicBlock *BB, std::string regionName,
 
 RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
                                  std::string regionName, bool profileApp,
-                                 bool Pcere, bool AggregateArgs)
+                                 bool pcere, bool AggregateArgs)
     : DT(&DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
       LoopFileInfos("regions.csv"),
       Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),
-      RegionName(regionName), ProfileApp(profileApp) {
+      RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
 
   if (regionName.empty())
     RegionName = "all";

@@ -77,7 +77,7 @@ public:
   /// In this formation, we don't require a dominator tree. The given basic
   /// block is set up for extraction.
   RegionExtractor(BasicBlock *BB, std::string regionName = "",
-                  bool profileApp = false, bool Pcere = false,
+                  bool profileApp = false, bool pcere = false,
                   bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a sequence of blocks.
@@ -94,7 +94,7 @@ public:
   /// Behaves just like the generic code sequence constructor, but uses the
   /// block sequence of the loop.
   RegionExtractor(DominatorTree &DT, Loop &L, std::string regionName = "",
-                  bool profileApp = false, bool Pcere = false,
+                  bool profileApp = false, bool pcere = false,
                   bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a region node.

@@ -13,8 +13,9 @@ function do_test()
     make clean
     make -j4 MODE="replay --region=__cere__test_fct1_25 --invocation=2 --instrument --wrapper=../../src/rdtsc/librdtsc.a"  -B
     ./test
-    make MODE="original  --instrument --regions-file=reg  --wrapper=/home/mpopov/merge_cere_pcere/try4_final/llvm_loop_extractor/src/rdtsc/librdtsc.a --wrapper=../../src/rdtsc/librdtsc.a" -B
+    make MODE="original  --instrument --regions-file=reg --wrapper=../../src/rdtsc/librdtsc.a" -B
     ./test
+    unset CERE_OMP
 }
 
 source ../source.sh
