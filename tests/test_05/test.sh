@@ -4,9 +4,7 @@ function do_test()
 {
     make veryclean
     ../../cere configure --build-cmd="make" --run-cmd="./IS"
-    ../../cere profile
-    ../../cere select-ilp
-    ../../cere report
+    ../../cere profile --regions
     exit $?
 }
 
