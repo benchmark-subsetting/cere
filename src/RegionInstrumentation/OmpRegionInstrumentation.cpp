@@ -48,7 +48,10 @@
 #endif
 
 using namespace llvm;
-enum { VIVO, VITRO };
+enum {
+  VIVO,
+  VITRO
+};
 
 STATISTIC(LoopCounter, "Counts number of regions instrumented");
 
@@ -108,10 +111,6 @@ struct OmpRegionInstrumentation : public FunctionPass {
   bool choosePutMarkerOnFunction(std::string functionCall,
                                  std::string newFunctionName);
   virtual bool runOnFunction(Function &F);
-  std::vector<Value *> createFunctionParameters(Module *mod,
-                                                std::string newFunctionName,
-                                                LoadInst *int32 = NULL);
-  std::vector<Value *> createInitParameters(Module *mod);
   void insertMarker(Module *mod, Function *F, int place, Function *probe);
   LoadInst *insertMarkerInvocation(Module *mod, Function *F, int place,
                                    Function *probe, LoadInst *int32_1);
@@ -127,139 +126,16 @@ struct OmpRegionInstrumentation : public FunctionPass {
 
 char OmpRegionInstrumentation::ID = 0;
 static RegisterPass<OmpRegionInstrumentation>
-    X("omp-region-instrumentation", "Instrument parallel regions with probes",
-      false, false);
-
-/// Create a vector of parameter to fit the signature of cere start and stop
-/// probes. (char*, bool, int, int)
-std::vector<Value *> OmpRegionInstrumentation::createFunctionParameters(
-    Module *mod, std::string newFunctionName, LoadInst *int32) {
-  // LoopName
-  // Get current function name
-  Constant *param_name =
-      ConstantDataArray::getString(mod->getContext(), newFunctionName, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0,
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_indices;
-  const_ptr_indices.push_back(const_int32_0);
-  const_ptr_indices.push_back(const_int32_0);
-  Constant *const_ptr_0 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_indices);
-
-  // Set vivo/vitro boolean
-  ConstantInt *const_int1;
-  if (Mode == VIVO)
-    const_int1 = ConstantInt::get(mod->getContext(),
-                                  APInt(1, StringRef("-1"), 10)); // true
-  else
-    const_int1 = ConstantInt::get(mod->getContext(),
-                                  APInt(1, StringRef("0"), 10)); // false
-
-  // Store requested invocation
-  ConstantInt *const_int32_1 =
-      ConstantInt::get(mod->getContext(), APInt(32, RequestedInvoc, 10));
-
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
-
-  std::vector<Value *> void_params;
-  void_params.push_back(const_ptr_0);   // LoopName
-  void_params.push_back(const_int1);    // Vivo/Vitro boolean
-  void_params.push_back(const_int32_1); // requested
-  if (RequestedInvoc == 0)              // We want to measure all invocations
-    void_params.push_back(const_int32_1);
-  else
-    void_params.push_back(int32);
-  return void_params;
-}
+X("omp-region-instrumentation", "Instrument parallel regions with probes",
+  false, false);
 
 /// Insert init probes
 bool OmpRegionInstrumentation::runOnFunction(Function &F) {
   if (F.getName().find(".omp_microtask") != std::string::npos)
     return false;
 
+  prepareInstrumentation(F, RegionFile, MeasureAppli, Mode, RequestedInvoc);
   Module *mod = F.getParent();
-
-  std::vector<Type *> FuncTy_args;
-
-  FunctionType *FuncTy_0 = FunctionType::get(
-      /*Result=*/Type::getVoidTy(mod->getContext()),
-      /*Params=*/FuncTy_args,
-      /*isVarArg=*/false);
-
-  // No main, no instrumentation!
-  Function *Main = mod->getFunction("main");
-
-  // Using fortran? ... this kind of works
-  if (!Main)
-    Main = mod->getFunction("MAIN__");
-
-  if (Main) {
-    // Get atexit function
-    Function *func_atexit = createAtexit(mod);
-
-    // Get entry basic block of the main function
-    BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
-    std::vector<BasicBlock *> ReturningBlocks;
-    for (Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
-      if (isa<ReturnInst>(I->getTerminator()))
-        ReturningBlocks.push_back(I);
-    }
-
-    // If we want to measure the whole application cycle, insert start
-    // in the entry basic block and stop in each exit basic blocks.
-    if (MeasureAppli) {
-      FunctionType *FuncTy_1 = createFunctionType(mod);
-      std::vector<Value *> funcParameter =
-          createFunctionParameters(mod, "main");
-      Function *startFunction = mod->getFunction("cere_markerStartRegion");
-      Function *stopFunction = mod->getFunction("cere_markerStopRegion");
-      // Create start function if it does not exists yet
-      if (!startFunction) {
-        Function *func_start =
-            createFunction(FuncTy_1, mod, "cere_markerStartRegion");
-        CallInst *start =
-            CallInst::Create(func_start, funcParameter, "", &firstBB->front());
-      }
-      // Create stop function if it does not exists yet
-      if (!stopFunction) {
-        Function *func_stop =
-            createFunction(FuncTy_1, mod, "cere_markerStopRegion");
-        // We must insert stop probe in all exits blocks
-        for (std::vector<BasicBlock *>::iterator I = ReturningBlocks.begin(),
-                                                 E = ReturningBlocks.end();
-             I != E; ++I) {
-          CallInst::Create(func_stop, funcParameter, "", &(*I)->back());
-        }
-      }
-    }
-    // Add cere init as the first instruction of the entry basic block.
-    // Cere close must be added via atexit.
-    Function *initFunction = mod->getFunction("cere_markerInit");
-    if (!initFunction) {
-      Function *initFunction = Function::Create(
-          FuncTy_0, GlobalValue::ExternalLinkage, "cere_markerInit", mod);
-      CallInst::Create(initFunction, "", &firstBB->front());
-      DEBUG(dbgs() << "Init successfuly inserted in main function\n");
-    }
-    Function *closeFunction = mod->getFunction("cere_markerClose");
-    if (!closeFunction) {
-      Function *closeFunction = Function::Create(
-          FuncTy_0, GlobalValue::ExternalLinkage, "cere_markerClose", mod);
-      // Register close marker with atexit
-      CallInst::Create(func_atexit, closeFunction, "", &firstBB->front());
-      DEBUG(dbgs() << "Close successfuly inserted in main function\n");
-    }
-  }
 
   insertOmpProbe(mod, &F);
 
@@ -352,7 +228,8 @@ void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
         std::string newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
-          funcParameter = createFunctionParameters(mod, newFunctionName);
+          funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
+                                                   RequestedInvoc);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -413,8 +290,8 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             int32_1 = new LoadInst(gvar_int32_count, "", false, (&*I));
             int32_1->setAlignment(4);
           }
-          funcParameter =
-              createFunctionParameters(mod, newFunctionName, int32_1);
+          funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
+                                                   RequestedInvoc, int32_1);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);

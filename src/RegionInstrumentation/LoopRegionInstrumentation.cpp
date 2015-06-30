@@ -47,7 +47,10 @@
 #endif
 
 using namespace llvm;
-enum { VIVO, VITRO };
+enum {
+  VIVO,
+  VITRO
+};
 
 STATISTIC(LoopCounter, "Counts number of regions instrumented");
 
@@ -72,7 +75,7 @@ struct LoopRegionInstrumentation : public FunctionPass {
   LoopInfo *LI; // The current loop information
 
   explicit LoopRegionInstrumentation(unsigned numLoops = ~0,
-                                 const std::string &regionName = "")
+                                     const std::string &regionName = "")
       : FunctionPass(ID), NumLoops(numLoops), RegionName(regionName),
         Mode(VIVO), Separator("_"), RegionFile(LoopsFilename),
         RequestedInvoc(Invocation), MeasureAppli(AppMeasure) {
@@ -106,10 +109,6 @@ struct LoopRegionInstrumentation : public FunctionPass {
   virtual bool runOnFunction(Function &F);
   std::string createFunctionName(Loop *L, Function *oldFunction);
   bool visitLoop(Loop *L, Module *mod);
-  std::vector<Value *> createFunctionParameters(Module *mod,
-                                                std::string newFunctionName,
-                                                LoadInst *int32 = NULL);
-  std::vector<Value *> createInitParameters(Module *mod);
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
@@ -122,97 +121,12 @@ struct LoopRegionInstrumentation : public FunctionPass {
 
 char LoopRegionInstrumentation::ID = 0;
 static RegisterPass<LoopRegionInstrumentation>
-    X("region-instrumentation", "Instrument regions with probes", false, false);
-
-/// Create a vector of parameter to fit the signature of cere start and stop
-/// probes. (char*, bool, int, int)
-std::vector<Value *> LoopRegionInstrumentation::createFunctionParameters(
-    Module *mod, std::string newFunctionName, LoadInst *int32) {
-  // LoopName
-  // Get current function name
-  Constant *param_name =
-      ConstantDataArray::getString(mod->getContext(), newFunctionName, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0,
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_indices;
-  const_ptr_indices.push_back(const_int32_0);
-  const_ptr_indices.push_back(const_int32_0);
-  Constant *const_ptr_0 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_indices);
-
-  // Set vivo/vitro boolean
-  ConstantInt *const_int1;
-  if (Mode == VIVO)
-    const_int1 = ConstantInt::get(mod->getContext(),
-                                  APInt(1, StringRef("-1"), 10)); // true
-  else
-    const_int1 = ConstantInt::get(mod->getContext(),
-                                  APInt(1, StringRef("0"), 10)); // false
-
-  // Store requested invocation
-  ConstantInt *const_int32_1 =
-      ConstantInt::get(mod->getContext(), APInt(32, RequestedInvoc, 10));
-
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
-
-  std::vector<Value *> void_params;
-  void_params.push_back(const_ptr_0);   // LoopName
-  void_params.push_back(const_int1);    // Vivo/Vitro boolean
-  void_params.push_back(const_int32_1); // requested
-  if (RequestedInvoc == 0)              // We want to measure all invocations
-    void_params.push_back(const_int32_1);
-  else
-    void_params.push_back(int32);
-  return void_params;
-}
-
-/// Create a vector of parameter to fit the signature of cere init and close
-/// probes. (char*)
-std::vector<Value *> LoopRegionInstrumentation::createInitParameters(Module *mod) {
-
-  // Get region filename
-  Constant *param_name =
-      ConstantDataArray::getString(mod->getContext(), RegionFile, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0,
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_indices;
-  const_ptr_indices.push_back(const_int32_0);
-  const_ptr_indices.push_back(const_int32_0);
-  Constant *const_ptr_0 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_indices);
-
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
-
-  std::vector<Value *> void_params;
-  void_params.push_back(const_ptr_0); // Region filename
-
-  return void_params;
-}
+X("region-instrumentation", "Instrument regions with probes", false, false);
 
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
-std::string LoopRegionInstrumentation::createFunctionName(Loop *L,
-                                                      Function *oldFunction) {
+std::string
+LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
   // Get current module
   Module *mod = oldFunction->getParent();
   std::string module_name = mod->getModuleIdentifier();
@@ -240,87 +154,9 @@ std::string LoopRegionInstrumentation::createFunctionName(Loop *L,
 /// \brief This function find if the string \p newFunctionName is present in
 /// the regions file
 bool LoopRegionInstrumentation::runOnFunction(Function &F) {
+  prepareInstrumentation(F, RegionFile, MeasureAppli, Mode, RequestedInvoc);
+
   Module *mod = F.getParent();
-
-  std::vector<Type *> FuncTy_args;
-  FunctionType *FuncTy_Close = FunctionType::get(
-      /*Result=*/Type::getVoidTy(mod->getContext()),
-      /*Params=*/FuncTy_args,
-      /*isVarArg=*/false);
-
-  // Char* for the regionfile
-  FuncTy_args.push_back(
-      PointerType::get(IntegerType::get(mod->getContext(), 8), 0));
-  FunctionType *FuncTy_Init = FunctionType::get(
-      /*Result=*/Type::getVoidTy(mod->getContext()),
-      /*Params=*/FuncTy_args,
-      /*isVarArg=*/false);
-
-  // No main, no instrumentation!
-  Function *Main = mod->getFunction("main");
-
-  // Using fortran? ... this kind of works
-  if (!Main)
-    Main = mod->getFunction("MAIN__");
-
-  if (Main) {
-    // Get atexit function
-    Function *func_atexit = createAtexit(mod);
-
-    // Get entry basic block of the main function
-    BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
-    std::vector<BasicBlock *> ReturningBlocks;
-    for (Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
-      if (isa<ReturnInst>(I->getTerminator()))
-        ReturningBlocks.push_back(I);
-    }
-
-    // If we want to measure the whole application cycle, insert start
-    // in the entry basic block and stop in each exit basic blocks.
-    if (MeasureAppli) {
-      FunctionType *FuncTy_1 = createFunctionType(mod);
-      std::vector<Value *> funcParameter =
-          createFunctionParameters(mod, "main");
-      Function *startFunction = mod->getFunction("cere_markerStartRegion");
-      Function *stopFunction = mod->getFunction("cere_markerStopRegion");
-      // Create start function if it does not exists yet
-      if (!startFunction) {
-        Function *func_start =
-            createFunction(FuncTy_1, mod, "cere_markerStartRegion");
-        CallInst *start =
-            CallInst::Create(func_start, funcParameter, "", &firstBB->front());
-      }
-      // Create stop function if it does not exists yet
-      if (!stopFunction) {
-        Function *func_stop =
-            createFunction(FuncTy_1, mod, "cere_markerStopRegion");
-        // We must insert stop probe in all exits blocks
-        for (std::vector<BasicBlock *>::iterator I = ReturningBlocks.begin(),
-                                                 E = ReturningBlocks.end();
-             I != E; ++I) {
-          CallInst::Create(func_stop, funcParameter, "", &(*I)->back());
-        }
-      }
-    }
-    // Add cere init as the first instruction of the entry basic block.
-    // Cere close must be added via atexit.
-    Function *initFunction = mod->getFunction("cere_markerInit");
-    if (!initFunction) {
-      Function *initFunction = Function::Create(
-          FuncTy_Init, GlobalValue::ExternalLinkage, "cere_markerInit", mod);
-      CallInst::Create(initFunction, createInitParameters(mod), "",
-                       &firstBB->front());
-      DEBUG(dbgs() << "Init successfuly inserted in main function\n");
-    }
-    Function *closeFunction = mod->getFunction("cere_markerClose");
-    if (!closeFunction) {
-      Function *closeFunction = Function::Create(
-          FuncTy_Close, GlobalValue::ExternalLinkage, "cere_markerClose", mod);
-      // Register close marker with atexit
-      CallInst::Create(func_atexit, closeFunction, "", &firstBB->front());
-      DEBUG(dbgs() << "Close successfuly inserted in main function\n");
-    }
-  }
   // If we want to instrument a region, visit every loops.
   if (!MeasureAppli) {
     LoopInfo &LI = getAnalysis<LoopInfo>();
@@ -421,10 +257,12 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
     int32_1->setAlignment(4);
 
     // Create function parameters
-    funcParameter = createFunctionParameters(mod, newFunctionName, int32_1);
+    funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
+                                             RequestedInvoc, int32_1);
   } else {
     // Create function parameters
-    funcParameter = createFunctionParameters(mod, newFunctionName);
+    funcParameter =
+        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc);
   }
 
   // Add the call of cere start probe as the last instruction of the

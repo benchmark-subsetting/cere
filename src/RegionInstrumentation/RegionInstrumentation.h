@@ -49,4 +49,18 @@ std::string updateFileFormat(std::string str);
 
 /// \brief Creates a global integer variable
 GlobalVariable *create_invocation_counter(Module *mod);
+
+/// Create a vector of parameter to fit the signature of cere init and close
+/// probes.
+std::vector<Value *> createInitParameters(Module *mod, std::string regionN);
+
+void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
+                            bool mode, int RequestedI);
+
+/// Create a vector of parameter to fit the signature of cere start and stop
+/// probes.
+std::vector<Value *> createFunctionParameters(Module *mod,
+                                              std::string newFunctionName,
+                                              int mode, int RequestedI,
+                                              LoadInst *int32 = NULL);
 }
