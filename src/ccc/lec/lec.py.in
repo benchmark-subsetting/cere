@@ -30,6 +30,9 @@ SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
 OMP_FLAGS=""
 if "CERE_OMP" in os.environ:
     OMP_FLAGS="-omp"
+BACKEND_FLAGS=""
+if "CERE_BACKEND_FLAGS" in os.environ:
+    BACKEND_FLAGS=os.environ["CERE_BACKEND_FLAGS"]
 
 def fail_lec(error_message):
     exit("Error {prog} : {cmd}".format(prog='lec', cmd=error_message))
@@ -179,8 +182,9 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     Compile BASE.ll
     If Error compile with INCLUDES
     '''
-    test = os.system("{llvm_bindir}/clang -c {opts} {base}.ll -o {object}".format(
-                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), base=BASE, object=OBJECT))
+    test = os.system("{llvm_bindir}/clang -c {opts} {backend_flags} {base}.ll -o {object}".format(
+                     llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT),
+                     backend_flags=BACKEND_FLAGS, base=BASE, object=OBJECT))
 
     if (test):
         safe_system("{llvm_bindir}/clang -c {opts} {includes} {source} -o {object}".format(
