@@ -57,11 +57,13 @@ def safe_system(command, EXIT=True):
                   prog='lec', cmd=command))
 
 #Keep regions that are in sources
-def read_file(regions_file, sources):
+def read_file(regions_file, regions_infos, sources):
   regions = {}
   all_regions = {}
 
-  with open("regions.csv") as regions_list:
+  if not (os.path.isfile(regions_infos)):
+    fail_lec("No such file: {0}".format(regions_infos))
+  with open(regions_infos) as regions_list:
     regions_reader = csv.DictReader(regions_list)
     for regions_row in regions_reader:
       all_regions[regions_row["Region Name"]] = os.path.basename(regions_row["Original Location"])
@@ -258,7 +260,9 @@ def compile(args, args2):
 
     regions={}
     if args[0].hybrid:
-      regions = read_file(args[0].regions_file, SOURCES)
+      if not (args[0].regions_infos):
+        fail_lec("--regions-infos needed with --hybrid.")
+      regions = read_file(args[0].regions_file, args[0].regions_infos, SOURCES)
 
     for SOURCE in SOURCES:
         BASE, ext = os.path.splitext(SOURCE)
