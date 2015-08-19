@@ -279,7 +279,7 @@ def compile(args, args2):
     for region, data in regions.items():
       os.environ["CERE_BACKEND_FLAGS"] = data['flags']
       last_compil(INCLUDES, "", region, region+'.o', COMPIL_OPT)
-      objs = objs + ' ' + region+'.o'
+      objs = objs + ' ' + os.path.realpath(region+'.o')
 
     if objs:
       with open(args[0].cere_objects, "a") as text_file:
