@@ -36,11 +36,9 @@ def run(args):
     logger.error("No such file: {0}".format(cere_configure.cere_config["regions_infos"]))
     logger.error("Did you run cere regions?")
     return False
-  #New .o files created and needed by lel are stored in CERE_OBJECTS
-  #and is populated by lec
   try:
     logger.debug(subprocess.check_output("{0} MODE=\"original --hybrid --regions-file={1} \
-    --regions-infos={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.regions_file, cere_configure.cere_config["regions_infos"]), stderr=subprocess.STDOUT, shell=True))
+    --regions-infos={2} --cere-objects={3}\" -B".format(cere_configure.cere_config["build_cmd"], args.regions_file, cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects")), stderr=subprocess.STDOUT, shell=True))
   except subprocess.CalledProcessError as err:
     logger.critical(str(err))
     logger.critical(err.output)

@@ -262,6 +262,9 @@ def compile(args, args2):
     if args[0].hybrid:
       if not (args[0].regions_infos):
         fail_lec("--regions-infos needed with --hybrid.")
+      if not (args[0].cere_objects):
+        fail_lec("--cere-objects needed with --hybrid.")
+      args[0].cere_objects = os.path.realpath(args[0].cere_objects)
       regions = read_file(args[0].regions_file, args[0].regions_infos, SOURCES)
 
     for SOURCE in SOURCES:
@@ -279,5 +282,5 @@ def compile(args, args2):
       objs = objs + ' ' + region+'.o'
 
     if objs:
-      with open("__cere__objects", "a") as text_file:
+      with open(args[0].cere_objects, "a") as text_file:
         text_file.write(objs)
