@@ -51,6 +51,9 @@ using namespace llvm;
 cl::opt<std::string>
     IsolateRegion("isolate-region", cl::init("all"), cl::value_desc("String"),
                   cl::desc("RegionOutliner will only isolate this region"));
+cl::opt<std::string>
+    RegionsFile("regions-infos", cl::init(""), cl::value_desc("String"),
+                  cl::desc("File in which regions infos are stored"));
 cl::opt<bool> AppMeasure(
     "instrument-app", cl::init(false), cl::value_desc("Boolean"),
     cl::desc("If you want to isolate regions to profile the application"));
@@ -138,7 +141,7 @@ RegionExtractor::RegionExtractor(BasicBlock *BB, std::string regionName,
                                  bool profileApp, bool pcere,
                                  bool AggregateArgs)
     : DT(0), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(BB)),
+      LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(BB)),
       NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
 
   if (regionName.empty())
@@ -149,7 +152,7 @@ RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
                                  std::string regionName, bool profileApp,
                                  bool pcere, bool AggregateArgs)
     : DT(&DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"),
+      LoopFileInfos(RegionsFile),
       Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),
       RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
 
@@ -160,13 +163,13 @@ RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
 RegionExtractor::RegionExtractor(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
                                  bool AggregateArgs)
     : DT(DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(BBs)),
+      LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(BBs)),
       NumExitBlocks(~0U) {}
 
 RegionExtractor::RegionExtractor(DominatorTree &DT, const RegionNode &RN,
                                  bool AggregateArgs)
     : DT(&DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(RN)),
+      LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(RN)),
       NumExitBlocks(~0U) {}
 
 /// definedInRegion - Return true if the specified value is defined in the
@@ -378,6 +381,7 @@ bool RegionExtractor::is_region_in_file(std::string newFunctionName,
 void RegionExtractor::add_region_to_file(
     std::string newFunctionName, std::string File, std::string oldFunction,
     std::string firstLine, std::string path, std::string Original_location) {
+  if (LoopFileInfos.empty()) return;
   std::string header = "Region Name,File Name,Original Location,Function "
                        "Name,Line,Coverage (self),Coverage";
   std::fstream loopstream(LoopFileInfos.c_str(),

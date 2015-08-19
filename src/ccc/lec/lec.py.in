@@ -91,8 +91,8 @@ def dump_fun(mode_opt, BASE, regions):
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopExt=LOOP_EXT, base=BASE,Omp=OMP_FLAGS), EXIT=False)
+                "-regions-infos={regions_infos} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                LoopExt=LOOP_EXT, regions_infos=mode_opt.regions_infos, base=BASE,Omp=OMP_FLAGS), EXIT=False)
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} {Omp}-region-dump {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopMan=LOOP_DUMP, opts=temp, base=BASE,Omp=OMP_FLAGS), EXIT=False)
@@ -261,7 +261,6 @@ def compile(args, args2):
       regions = read_file(args[0].regions_file, SOURCES)
 
     for SOURCE in SOURCES:
-        print("Compiling {0}".format(SOURCE))
         BASE, ext = os.path.splitext(SOURCE)
         OBJECT = args[0].o if args[0].o else BASE + '.o'
         # call mode_function
@@ -275,5 +274,6 @@ def compile(args, args2):
       last_compil(INCLUDES, "", region, region+'.o', COMPIL_OPT)
       objs = objs + ' ' + region+'.o'
 
-    with open("__cere__objects", "a") as text_file:
-      text_file.write(objs)
+    if objs:
+      with open("__cere__objects", "a") as text_file:
+        text_file.write(objs)
