@@ -190,6 +190,7 @@ def update_nodes(graph, max_allowed_error):
                 if utils.is_invalid(d['_name']):
                     d['_error_message'] = utils.get_error_message(d['_name'])
                 invocations = read_csv("{0}/invocations_error.csv".format(var.CERE_REPLAY_PATH))
+                del d['_invocations'][:]
                 for inv in invocations:
                     if inv["Codelet Name"] == d['_name']:
                         d['_invocations'].append({"Cluster":inv["Cluster"], "Invocation":inv["Invocation"],
