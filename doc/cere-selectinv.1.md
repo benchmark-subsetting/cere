@@ -4,7 +4,7 @@ cere selectinv(1) -- Select representative invocations for a region
 ## SYNOPSIS
 
 ```
-cere replay [-h] --region REGION [--force]
+cere selectinv [-h] --region REGION [--force]
 ```
 
 ## DESCRIPTION
