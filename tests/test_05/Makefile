@@ -19,7 +19,7 @@ OBJS = is.o \
 
 
 ${PROGRAM}: ${OBJS}
-	${CLINK} ${MODE} ${INSTRU} ${INSTRU_OPTS} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
+	${CLINK} ${MODE} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 .c.o:
 	${CC} ${MODE} ${INSTRU} ${INSTRU_OPTS} ${FLAGS} -c $<
@@ -31,5 +31,5 @@ clean:
 	- rm -f IS core
 
 veryclean: clean
-	- rm -rf cere_dumps/ cere_measures/
-	- rm -f lel_bin realmain.c
+	- rm -rf .cere/ regions.csv
+	- rm -f realmain.c cere.* *.html

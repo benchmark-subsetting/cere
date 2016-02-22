@@ -239,7 +239,11 @@ def link(args):
     function["original_fun"] = original_fun
     if (len(args[1]) == 0):
         exit("Error:Need source file")
-    COMPIL_OPT = " ".join(args[1])
+    objs = ""
+    if os.path.isfile(args[0].cere_objects):
+      with open(args[0].cere_objects, "r") as text_file:
+        objs = text_file.read()
+    COMPIL_OPT = " ".join(args[1]) + ' ' + objs
     BINARY = args[0].o
     # call mode_function
     function[args[0].func](args[0], BINARY, COMPIL_OPT)

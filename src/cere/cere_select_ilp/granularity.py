@@ -115,13 +115,16 @@ def solve_with_best_granularity(error):
             chosen, coverage = solve(graph, err)
             table.complete_error_table(err, coverage)
         except(Unsolvable):
+            coverage=0
             table.complete_error_table(err, coverage)
 
     try:
         target_error_chosen, target_coverage = solve(graph, target_error)
     except(Unsolvable):
+        target_coverage=0
         logger.error("Solution impossible")
 
+    
     table.write_table(error_filename)
     logger.info("Solved with coverage >= {0}".format(target_coverage))
     for c in target_error_chosen:

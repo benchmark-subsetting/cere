@@ -30,7 +30,6 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/RegionIterator.h"
 #include "llvm/Support/InstIterator.h"
-//~#include "llvm/IR/InstIterator.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -48,6 +47,18 @@
 #endif
 
 using namespace llvm;
+
+cl::opt<std::string>
+    IsolateRegion("isolate-region", cl::init("all"), cl::value_desc("String"),
+                  cl::desc("RegionOutliner will only isolate this region"));
+cl::opt<std::string>
+    RegionsFile("regions-infos", cl::init(""), cl::value_desc("String"),
+                  cl::desc("File in which regions infos are stored"));
+cl::opt<bool> AppMeasure(
+    "instrument-app", cl::init(false), cl::value_desc("Boolean"),
+    cl::desc("If you want to isolate regions to profile the application"));
+cl::opt<bool> PcereUse("use_omp", cl::init(false), cl::value_desc("Boolean"),
+                       cl::desc("If you want to isolate openmp regions"));
 
 // Provide a command-line option to aggregate function arguments into a struct
 // for functions produced by the code extractor. This is useful when converting
@@ -126,35 +137,39 @@ static SetVector<BasicBlock *> buildExtractionBlockSet(const RegionNode &RN) {
   return buildExtractionBlockSet(R.block_begin(), R.block_end());
 }
 
-RegionExtractor::RegionExtractor(BasicBlock *BB, bool AggregateArgs)
-    : DT(0), AggregateArgs(AggregateArgs || AggregateArgsOpt),
-      Separator("_"),
-      LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(BB)),
-      NumExitBlocks(~0U) {}
-
-RegionExtractor::RegionExtractor(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
+RegionExtractor::RegionExtractor(BasicBlock *BB, std::string regionName,
+                                 bool profileApp, bool pcere,
                                  bool AggregateArgs)
-    : DT(DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(BBs)),
-      NumExitBlocks(~0U) {}
-
-RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
-                                 std::string regionName, bool profileApp,
-                                 bool AggregateArgs)
-    : DT(&DT),
-      AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"),
-      Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),
-      RegionName(regionName), ProfileApp(profileApp) {
+    : DT(0), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
+      LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(BB)),
+      NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
 
   if (regionName.empty())
     RegionName = "all";
 }
 
+RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
+                                 std::string regionName, bool profileApp,
+                                 bool pcere, bool AggregateArgs)
+    : DT(&DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
+      LoopFileInfos(RegionsFile),
+      Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),
+      RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
+
+  if (regionName.empty())
+    RegionName = "all";
+}
+
+RegionExtractor::RegionExtractor(ArrayRef<BasicBlock *> BBs, DominatorTree *DT,
+                                 bool AggregateArgs)
+    : DT(DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
+      LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(BBs)),
+      NumExitBlocks(~0U) {}
+
 RegionExtractor::RegionExtractor(DominatorTree &DT, const RegionNode &RN,
                                  bool AggregateArgs)
     : DT(&DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
-      LoopFileInfos("regions.csv"), Blocks(buildExtractionBlockSet(RN)),
+      LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(RN)),
       NumExitBlocks(~0U) {}
 
 /// definedInRegion - Return true if the specified value is defined in the
@@ -326,6 +341,15 @@ std::string RegionExtractor::removeChar(std::string str, const char toReplace,
   return str;
 }
 
+/// \brief Update file format.
+std::string RegionExtractor::updateFileFormat(std::string str) {
+  str = removeChar(str, '-', '_');
+  str = removeChar(str, '/', '_');
+  str = removeChar(str, '+', '_');
+  str = removeChar(str, '.', '_');
+  return str;
+}
+
 /// \brief This function find if the string \p newFunctionName is present in the
 /// regions file
 bool RegionExtractor::is_region_in_file(std::string newFunctionName,
@@ -357,7 +381,9 @@ bool RegionExtractor::is_region_in_file(std::string newFunctionName,
 void RegionExtractor::add_region_to_file(
     std::string newFunctionName, std::string File, std::string oldFunction,
     std::string firstLine, std::string path, std::string Original_location) {
-  std::string header = "Region Name,File Name,Original Location,Function Name,Line,Coverage (self),Coverage";
+  if (LoopFileInfos.empty()) return;
+  std::string header = "Region Name,File Name,Original Location,Function "
+                       "Name,Line,Coverage (self),Coverage";
   std::fstream loopstream(LoopFileInfos.c_str(),
                           std::ios::in | std::ios::out | std::ios::app);
   if (loopstream.is_open()) {
@@ -365,9 +391,9 @@ void RegionExtractor::add_region_to_file(
       loopstream << header + "\n";
     }
     if (!is_region_in_file(newFunctionName, loopstream)) {
-      loopstream << newFunctionName + "," + path + File + "," + path +
-                    Original_location + "," + oldFunction + "," + firstLine +
-                    ",NA,NA\n";
+      loopstream << newFunctionName + "," + path + "/" + File + "," + path +
+                        "/" + Original_location + "," + oldFunction + "," +
+                        firstLine + ",NA,NA\n";
     }
     loopstream.close();
   } else {
@@ -375,11 +401,34 @@ void RegionExtractor::add_region_to_file(
   }
 }
 
+StringRef get_function_name(CallInst *call) {
+  Function *fun = call->getCalledFunction();
+  if (fun)                 // thanks @Anton Korobeynikov
+    return fun->getName(); // inherited from llvm::Value
+  else
+    return StringRef("indirect call");
+}
+
+/// Find omp microtask name for the parralel region
+std::string findMicrotaskName(CallInst *callInst) {
+  std::string str;
+  llvm::raw_string_ostream rso(str);
+  callInst->print(rso);
+
+  size_t place = str.find(".omp_microtask.");
+  if (place == std::string::npos) {
+    exit(0);
+  } else {
+    size_t place2 = str.substr(place).find(" ");
+    return str.substr(place, place2);
+  }
+}
+
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
 std::string RegionExtractor::createFunctionName(Function *oldFunction,
                                                 BasicBlock *header) {
-  //Get current module
+  // Get current module
   Module *mod = oldFunction->getParent();
   std::string File = mod->getModuleIdentifier();
 
@@ -396,14 +445,21 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
     std::string path = firstLoc.getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
-
-    newFunctionName = removeChar(newFunctionName, '-', '_');
-    newFunctionName = removeChar(newFunctionName, '/', '_');
-    newFunctionName = removeChar(newFunctionName, '+', '_');
-    newFunctionName = removeChar(newFunctionName, '.', '_');
-
+    newFunctionName = updateFileFormat(newFunctionName);
     add_region_to_file(newFunctionName, File, oldFunction->getName().str(),
                        firstLine, path, Original_location);
+  } else {
+    if (!Pcere)
+      errs() << "No metadata for region in " << oldFunction->getName() << "\n";
+
+    // Create a parallel region name for others iterations
+    else {
+      newFunctionName = "__cere__" + removeExtension(File) + Separator +
+                        oldFunction->getName().str() + Separator + "first";
+      newFunctionName = updateFileFormat(newFunctionName);
+      add_region_to_file(newFunctionName, File, oldFunction->getName().str(),
+                         "", "", "");
+    }
   }
 
   return newFunctionName;
@@ -512,7 +568,7 @@ Function *RegionExtractor::constructFunction(
           inst->replaceUsesOfWith(inputs[i], RewriteVal);
   }
 
-  //Creates Attribute Noalias
+  // Creates Attribute Noalias
   AttributeSet newParamAttr = AttributeSet().addAttribute(
       newFunction->getContext(), 0, Attribute::NoAlias);
 
@@ -521,7 +577,7 @@ Function *RegionExtractor::constructFunction(
     if (AI->getType()->isPointerTy()) {
       PointerType *pointerType = dyn_cast<PointerType>(AI->getType());
       Type *elementType = pointerType->getElementType();
-      //Add no alias if it's not an array or a structure
+      // Add no alias if it's not an array or a structure
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
         AI->addAttr(newParamAttr);
       }
@@ -569,19 +625,19 @@ static BasicBlock *FindPhiPredForUseInBlock(Value *Used, BasicBlock *BB) {
 /// and not to the extracted one. This function removes wrong metadata. This
 /// code is based on this example:
 /// https://weaponshot.wordpress.com/2012/05/06/extract-all-the-metadata-nodes-in-llvm/
-void RegionExtractor::removeWrongMetadata(Function *newFunction)
-{
-  std::vector<CallInst*> InstToDel;
+void RegionExtractor::removeWrongMetadata(Function *newFunction) {
+  std::vector<CallInst *> InstToDel;
 
-  //Iterate over instructions of the function
-  for(Function::iterator BB = newFunction->begin(), E = newFunction->end(); BB!=E; ++BB) {
-    for(BasicBlock::iterator I = BB->begin(), M = BB->end(); I != M; ++I){
-      //If this instruction is a call
-      if(CallInst* CI = dyn_cast<CallInst>(I)) {
-        if(Function *F = CI->getCalledFunction()) {
-          for(unsigned i = 0, e = I->getNumOperands(); i!=e; ++i) {
-            //Get Metadata information
-            if(MDNode *MD = dyn_cast_or_null<MDNode>(I->getOperand(i))) {
+  // Iterate over instructions of the function
+  for (Function::iterator BB = newFunction->begin(), E = newFunction->end();
+       BB != E; ++BB) {
+    for (BasicBlock::iterator I = BB->begin(), M = BB->end(); I != M; ++I) {
+      // If this instruction is a call
+      if (CallInst *CI = dyn_cast<CallInst>(I)) {
+        if (Function *F = CI->getCalledFunction()) {
+          for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
+            // Get Metadata information
+            if (MDNode *MD = dyn_cast_or_null<MDNode>(I->getOperand(i))) {
               for (unsigned j = 0, k = MD->getNumOperands(); j != k; ++j) {
                 Function *ActualF = 0;
                 Value *Op = MD->getOperand(j);
@@ -590,7 +646,8 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction)
                 if (isa<Constant>(Op) || isa<MDString>(Op))
                   continue;
 
-                // If this was an instruction, bb, or argument, verify that it is in the
+                // If this was an instruction, bb, or argument, verify that it
+                // is in the
                 // function that we expect.
                 if (Instruction *J = dyn_cast<Instruction>(Op))
                   ActualF = J->getParent()->getParent();
@@ -598,10 +655,11 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction)
                   ActualF = BB->getParent();
                 else if (Argument *A = dyn_cast<Argument>(Op))
                   ActualF = A->getParent();
-                else continue;
+                else
+                  continue;
 
-                if(ActualF != newFunction) {
-                  //Keep this instruction for delation
+                if (ActualF != newFunction) {
+                  // Keep this instruction for delation
                   InstToDel.push_back(CI);
                 }
               }
@@ -610,10 +668,10 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction)
         }
       }
     } // Instructions iterator
-  } // BB iterator
+  }   // BB iterator
 
-  //Delete instructions to remove
-  for(std::vector<CallInst*>::size_type i = 0; i != InstToDel.size(); i++) {
+  // Delete instructions to remove
+  for (std::vector<CallInst *>::size_type i = 0; i != InstToDel.size(); i++) {
     InstToDel[i]->eraseFromParent();
   }
 }
@@ -892,7 +950,6 @@ void RegionExtractor::moveCodeToFunction(Function *newFunction) {
 Function *RegionExtractor::extractCodeRegion() {
   if (!isEligible())
     return 0;
-
   ValueSet inputs, outputs;
 
   // Assumption: this is a single-entry code region, and the header is the first
@@ -900,12 +957,13 @@ Function *RegionExtractor::extractCodeRegion() {
   BasicBlock *header = *Blocks.begin();
   Function *oldFunction = header->getParent();
   std::string newFunctionName = createFunctionName(oldFunction, header);
-  if (newFunctionName.empty()) return 0;
+  if (newFunctionName.empty())
+    return 0;
 
   DEBUG(dbgs() << "Requested loop = " << RegionName << " & isolating "
                << newFunctionName << "\n");
 
-  //If we want to isolate a particular loop
+  // If we want to isolate a particular loop
   if (RegionName != "all" && RegionName != newFunctionName) {
     return 0;
   }

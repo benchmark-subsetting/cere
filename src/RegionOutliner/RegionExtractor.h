@@ -67,6 +67,7 @@ class RegionExtractor {
   SetVector<BasicBlock *> Blocks;
   unsigned NumExitBlocks;
   std::string RegionName;
+  bool Pcere;
   bool ProfileApp;
   Type *RetTy;
 
@@ -75,7 +76,9 @@ public:
   ///
   /// In this formation, we don't require a dominator tree. The given basic
   /// block is set up for extraction.
-  RegionExtractor(BasicBlock *BB, bool AggregateArgs = false);
+  RegionExtractor(BasicBlock *BB, std::string regionName = "",
+                  bool profileApp = false, bool pcere = false,
+                  bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a sequence of blocks.
   ///
@@ -91,7 +94,8 @@ public:
   /// Behaves just like the generic code sequence constructor, but uses the
   /// block sequence of the loop.
   RegionExtractor(DominatorTree &DT, Loop &L, std::string regionName = "",
-                  bool profileApp = false, bool AggregateArgs = false);
+                  bool profileApp = false, bool pcere = false,
+                  bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a region node.
   ///
@@ -134,6 +138,7 @@ private:
   std::string removeExtension(const std::string &);
   std::string removeChar(std::string str, const char toReplace,
                          const char replacer);
+  std::string updateFileFormat(std::string str);
 
   Function *constructFunction(const ValueSet &inputs, const ValueSet &outputs,
                               BasicBlock *header, BasicBlock *newRootNode,
@@ -144,7 +149,6 @@ private:
   void removeWrongMetadata(Function *newFunction);
   void emitCallAndSwitchStatement(Function *newFunction, BasicBlock *newHeader,
                                   ValueSet &inputs, ValueSet &outputs);
-
 };
 }
 
