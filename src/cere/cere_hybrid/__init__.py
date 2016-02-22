@@ -23,10 +23,12 @@ import cere_configure
 
 logger = logging.getLogger('Hybrid')
 
+
 def init_module(subparsers, cere_plugins):
   cere_plugins["hybrid"] = run
   flag_parser = subparsers.add_parser("hybrid", help="test optimal optimization flags")
   flag_parser.add_argument('--regions-file', required=True, help="file to compile")
+  flag_parser.add_argument('--region', help="Region to instrument")
 
 def run(args):
   if not cere_configure.init():
@@ -36,9 +38,13 @@ def run(args):
     logger.error("No such file: {0}".format(cere_configure.cere_config["regions_infos"]))
     logger.error("Did you run cere regions?")
     return False
+  region_input=""
+  if args.region:
+    region_input="--region={0}".format(args.region)
   try:
-    logger.debug(subprocess.check_output("{0} MODE=\"original --hybrid --regions-file={1} \
-    --regions-infos={2} --cere-objects={3}\" -B".format(cere_configure.cere_config["build_cmd"], args.regions_file, cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects")), stderr=subprocess.STDOUT, shell=True))
+    logger.debug(subprocess.check_output("{0} MODE=\"original --hybrid --instrument {5} --wrapper={1} --hybrid-regions={2} \
+    --regions-infos={3} --cere-objects={4}\"".format(cere_configure.cere_config["build_cmd"], var.RDTSC_WRAPPER, args.regions_file, \
+    cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects"), region_input), stderr=subprocess.STDOUT, shell=True))
   except subprocess.CalledProcessError as err:
     logger.critical(str(err))
     logger.critical(err.output)
