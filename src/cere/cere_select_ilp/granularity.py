@@ -57,8 +57,7 @@ def solve_under_coverage(graph, min_coverage=80):
             upBound=1,
             cat=LpInteger)
 
-    # Objective function: the codelet cost must be minimal
-    # we want small codelets
+    # Objective function: minimize the total replay cost of selected codelets
 
     # Compute replay time
     for n,d in graph.nodes(data=True):
