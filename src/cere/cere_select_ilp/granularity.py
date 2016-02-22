@@ -57,8 +57,16 @@ def solve_under_coverage(graph, min_coverage=80):
             upBound=1,
             cat=LpInteger)
 
-    # Objective function:
-    prob += lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)])
+    # Objective function: the codelet cost must be minimal
+    # we want small codelets
+
+    # Compute replay time
+    for n,d in graph.nodes(data=True):
+      d['_total_replay_cycles'] = 0
+      for inv in d['_invocations']:
+        d['_total_replay_cycles'] = d['_total_replay_cycles'] + float(inv["Invivo (cycles)"])
+
+    prob += lpSum([codelet_vars[n]*d['_total_replay_cycles'] for n,d in graph.nodes(data=True)])
 
     # and with good coverage
     prob += (lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)]) >= min_coverage)
