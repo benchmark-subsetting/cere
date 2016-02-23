@@ -243,7 +243,7 @@ def link(args):
     if os.path.isfile(args[0].cere_objects):
       with open(args[0].cere_objects, "r") as text_file:
         objs = text_file.read()
-    COMPIL_OPT = " ".join(args[1]) + ' ' + objs
+    COMPIL_OPT = objs + ' ' + " ".join(args[1])
     BINARY = args[0].o
     # call mode_function
     function[args[0].func](args[0], BINARY, COMPIL_OPT)

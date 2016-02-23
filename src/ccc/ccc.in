@@ -70,6 +70,7 @@ def init_subpars(parser, region_required):
     parser.add_argument('--instrument-app', action=OptAction, nargs=0,
                         const=True, default=False)
     parser.add_argument('--regions-infos', action=OptAction, default="")
+    parser.add_argument('--hybrid-regions', action=OptAction, default="")
     parser.add_argument('--cere-objects', action=OptAction, default="")
     parser.add_argument('--hybrid', action=OptAction, nargs=0,
                         const=True, default=False)

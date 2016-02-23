@@ -20,9 +20,9 @@ import argparse
 import logging
 import subprocess
 import cere_configure
+import common.variables as var
 
 logger = logging.getLogger('Hybrid')
-
 
 def init_module(subparsers, cere_plugins):
   cere_plugins["hybrid"] = run
