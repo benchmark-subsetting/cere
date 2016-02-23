@@ -31,11 +31,10 @@
 #include "llvm/Analysis/LoopPass.h"
 #include <llvm/IR/Instructions.h>
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
-#include "llvm/DebugInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/InstIterator.h"
 #include <fstream>
 #include <sstream>
 #include <errno.h>
@@ -43,8 +42,13 @@
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 4
-#include "llvm/IR/Constants.h"
+#if LLVM_VERSION_MINOR == 5
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/DebugInfo.h"
+#else
+#include "llvm/DebugInfo.h"
+#include "llvm/Support/InstIterator.h"
 #endif
 
 using namespace llvm;
@@ -119,7 +123,11 @@ struct OmpRegionInstrumentation : public FunctionPass {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequired<LoopInfo>();
     AU.addPreserved<LoopInfo>();
+#if LLVM_VERSION_MINOR == 5
+    AU.addRequired<DominatorTreeWrapperPass>();
+#else
     AU.addRequired<DominatorTree>();
+#endif
   }
 };
 }

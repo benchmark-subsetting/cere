@@ -27,18 +27,25 @@
 #define DEBUG_TYPE "region-outliner"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "RegionExtractor.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Support/InstIterator.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/DebugInfo.h"
+#include "llvm/Transforms/Scalar.h"
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include "RegionExtractor.h"
+
+#if LLVM_VERSION_MINOR == 5
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/DebugInfo.h"
+#else
+#include "llvm/DebugInfo.h"
+#include "llvm/Support/InstIterator.h"
+#endif
 
 using namespace llvm;
 
@@ -70,8 +77,13 @@ struct OmpRegionOutliner : public FunctionPass {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequired<LoopInfo>();
     AU.addPreserved<LoopInfo>();
+#if LLVM_VERSION_MINOR == 5
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addPreserved<DominatorTreeWrapperPass>();
+#else
     AU.addRequired<DominatorTree>();
     AU.addPreserved<DominatorTree>();
+#endif
   }
 };
 }

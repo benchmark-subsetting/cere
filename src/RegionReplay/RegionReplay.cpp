@@ -35,12 +35,17 @@
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/InstIterator.h"
 #include <string>
 #include <sstream>
 #include <fstream>
 #include <set>
 #include "RegionReplay.h"
+
+#if LLVM_VERSION_MINOR == 5
+#include "llvm/IR/InstIterator.h"
+#else
+#include "llvm/Support/InstIterator.h"
+#endif
 
 using namespace llvm;
 

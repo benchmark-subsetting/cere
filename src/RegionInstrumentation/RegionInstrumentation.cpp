@@ -27,9 +27,9 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
 #include <llvm/IR/Instructions.h>
+#include "llvm/IR/Constants.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/Module.h"
-#include "llvm/DebugInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
 #include <fstream>
@@ -39,8 +39,10 @@
 #include "RegionInstrumentation.h"
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 4
-#include "llvm/IR/Constants.h"
+#if LLVM_VERSION_MINOR == 5
+#include "llvm/IR/DebugInfo.h"
+#else
+#include "llvm/DebugInfo.h"
 #endif
 
 using namespace llvm;

@@ -31,6 +31,10 @@
 #include "llvm/Transforms/Scalar.h"
 #include "RegionExtractor.h"
 
+#if LLVM_VERSION_MINOR == 5
+#include "llvm/IR/Dominators.h"
+#endif
+
 using namespace llvm;
 
 STATISTIC(NumExtracted, "Number of regions extracted");
@@ -60,7 +64,11 @@ struct LoopRegionOutliner : public LoopPass {
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequiredID(LoopSimplifyID);
+#if LLVM_VERSION_MINOR == 5
+    AU.addRequired<DominatorTreeWrapperPass>();
+#else
     AU.addRequired<DominatorTree>();
+#endif
   }
 };
 }
@@ -77,8 +85,12 @@ bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // If LoopSimplify form is not available, stay out of trouble.
   if (!L->isLoopSimplifyForm())
     return false;
-
-  DominatorTree &DT = getAnalysis<DominatorTree>();
+#if LLVM_VERSION_MINOR == 5
+    DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+#else
+    DominatorTree &DT = getAnalysis<DominatorTree>();
+#endif
+  
   bool Changed = false;
 
   // Extract the loop if it was not previously extracted:
