@@ -1,4 +1,4 @@
-# CERE v0.0.1
+# CERE v0.1.0
 
 [Codelet Extractor and REplayer
 (CERE)](https://benchmark-subsetting.github.io/cere/) is an open source framework
@@ -31,7 +31,7 @@ CERE capture and replay is performed in user mode, but requires that
 `/proc/sys/kernel/randomize_va_space` is set to 1. This is the default on most
 linux distribution.
 
-v0.0.1 of CERE is an alpha release, if you experience bugs during capture and
+v0.1.0 of CERE is an alpha release, if you experience bugs during capture and
 replay please report them using the issue tracker. Thanks !
 
 ### Documentation
