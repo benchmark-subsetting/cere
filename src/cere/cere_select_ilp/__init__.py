@@ -30,7 +30,7 @@ def init_module(subparsers, cere_plugins):
     cere_plugins["select-ilp"] = run
     profile_parser = subparsers.add_parser("select-ilp", help="Select matching regions")
     profile_parser.add_argument("--max-error", default=15, type=int, help="Maximum tolerated error between invivo and invitro regions")
-    profile_parser.add_argument("--min-coverage", type=float, default=0.1, help="Minimum percentage of region execution time")
+    profile_parser.add_argument("--min-coverage", type=float, default=1.0, help="Minimum percentage of region execution time")
     profile_parser.add_argument('--force', '-f', action='store_true', help="Will overwrite any previous CERE measures")
 
 def check_arguments(args):
@@ -39,7 +39,7 @@ def check_arguments(args):
 def check_dependancies(args):
     #Check if the profiling file is present
     profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
-    graph = "{0}/graph_original.pkl".format(var.CERE_PROFILE_PATH)
+    graph = "{0}/graph_.pkl".format(var.CERE_PROFILE_PATH)
     if not os.path.isfile(profile_file) or not os.path.isfile(graph):
         logger.critical('No profiling file or graph not created. Run: cere profile')
         return False

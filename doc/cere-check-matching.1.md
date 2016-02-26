@@ -17,6 +17,8 @@ cere-selectinv(1). **cere check-matching** then captures and replay selected
 invocations to predict the replay time of the region thanks to cere-capture(1)
 and cere-replay(1). Finally **cere check-matching** compare replay time with
 the original execution time of the region and output the matching results.
+**cere check-matching** also update the call graph. cere-report(1) can be the
+used to visualize the matching result for tested region(s).
 
 ## OPTIONS
 
@@ -44,4 +46,4 @@ cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
 ## SEE ALSO
 
 cere-configure(1) cere-regions(1) cere-trace(1) cere-selectinv(1) cere-capture(1)
-cere-replay(1)
+cere-replay(1) cere-report(1)

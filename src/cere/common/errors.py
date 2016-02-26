@@ -16,7 +16,7 @@
 # along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
 #!/usr/bin/env python
 
-EIO = "Region makes not replayables IOs"
+EIO = "Not replayables IOs"
 EDUMP = "Dumping region failed"
 EREPLAY = "Replaying region failed"
 ETRACE = "Tracing region failed"

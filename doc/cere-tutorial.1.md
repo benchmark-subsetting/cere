@@ -312,7 +312,8 @@ cere-select-ilp(1).
 ## CERE REPORT
 
 CERE provides a report tool to visualize in html format several informations
-about the extraction process of your application.
+about the extraction process of your application. You can call cere-report(1)
+after any cere command.
 To generate the report you can use the following command:
 
     $ cere report

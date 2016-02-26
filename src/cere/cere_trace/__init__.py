@@ -195,8 +195,8 @@ def run(args):
     if not args.norun:
         for region in regions:
             try:
-                shutil.move("{0}.bin".format(region), var.CERE_TRACES_PATH)
-                shutil.move("{0}.csv".format(region), var.CERE_TRACES_PATH)
+                shutil.copy("{0}.bin".format(region), "{0}/{1}.bin".format(var.CERE_TRACES_PATH, region))
+                shutil.copy("{0}.csv".format(region), "{0}/{1}.csv".format(var.CERE_TRACES_PATH, region))
             except IOError as err:
                 logger.error(str(err))
                 logger.error("Trace failed for region {0}: No output files, maybe the selected region does not exist.".format(region))

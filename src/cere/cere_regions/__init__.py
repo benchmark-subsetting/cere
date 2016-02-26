@@ -102,7 +102,7 @@ def run(args):
     if not cere_configure.init():
         return False
     profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
-    regions_file = "regions.csv"
+    regions_file = cere_configure.cere_config["regions_infos"]
     new_regions_file = "tmp.csv"
 
     logger.info("Removing previous regions list")
@@ -117,7 +117,7 @@ def run(args):
     if(args.static):
         mydump = Dump()
         res = cere_capture.run(mydump)
-        logger.info("Regions list dumped in regions.csv file")
+        logger.info("Regions list dumped in {0} file".format(regions_file))
         if not res:
             logger.warning("Regions listing encountered and error: list may be incomplete or empty")
     if(args.dynamic):

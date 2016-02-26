@@ -110,7 +110,7 @@ def run(args):
   else:
     logger.info("Compiling capture mode for all regions")
     try:
-      logger.debug(subprocess.check_output("{0} MODE=\"dump\" -B".format(cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True))
+      logger.debug(subprocess.check_output("{0} MODE=\"dump --regions-infos={1}\" -B".format(cere_configure.cere_config["build_cmd"], cere_configure.cere_config["regions_infos"]), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)

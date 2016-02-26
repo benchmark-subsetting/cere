@@ -1,0 +1,16 @@
+CERE CHANGELOG
+
+[v0.1.0] 2016/02/24
+    * Compatibility with LLVM 3.5 (LLVM 3.3 and LLVM 3.4 are still
+      supported).
+    * Initial support for OpenMP applications. Parallel CERE (PCERE) enables
+      parallel regions capture and replay. Still experimental.
+      (http://dx.doi.org/doi:10.1109/IPDPS.2015.19)
+    * Hybrid compilation support: CERE allows experimental separate per region
+      compilation, with different optimization flags.
+    * CERE exploration flags support: 'CERE flag' predict region performance
+      for each requested flag.
+    * Reduce test suite execution runtime.
+
+[v0.0.1] 2015/06/15
+    * Initial CERE release

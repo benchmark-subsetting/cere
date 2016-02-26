@@ -57,8 +57,15 @@ def solve_under_coverage(graph, min_coverage=80):
             upBound=1,
             cat=LpInteger)
 
-    # Objective function:
-    prob += lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)])
+    # Objective function: minimize the total replay cost of selected codelets
+
+    # Compute replay time
+    for n,d in graph.nodes(data=True):
+      d['_total_replay_cycles'] = 0
+      for inv in d['_invocations']:
+        d['_total_replay_cycles'] = d['_total_replay_cycles'] + float(inv["Invivo (cycles)"])
+
+    prob += lpSum([codelet_vars[n]*d['_total_replay_cycles'] for n,d in graph.nodes(data=True)])
 
     # and with good coverage
     prob += (lpSum([codelet_vars[n]*d['_coverage'] for n,d in graph.nodes(data=True)]) >= min_coverage)
@@ -115,13 +122,16 @@ def solve_with_best_granularity(error):
             chosen, coverage = solve(graph, err)
             table.complete_error_table(err, coverage)
         except(Unsolvable):
+            coverage=0
             table.complete_error_table(err, coverage)
 
     try:
         target_error_chosen, target_coverage = solve(graph, target_error)
     except(Unsolvable):
+        target_coverage=0
         logger.error("Solution impossible")
 
+    
     table.write_table(error_filename)
     logger.info("Solved with coverage >= {0}".format(target_coverage))
     for c in target_error_chosen:

@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([cere], [0.0.1], [cere-dev@googlegroups.com])
+AC_INIT([cere], [0.1.0], [cere-dev@googlegroups.com])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
 AC_CONFIG_MACRO_DIR([m4])
@@ -19,7 +19,7 @@ AC_PROG_MAKE_SET
 AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
-AX_LLVM([3.3],[all])
+AX_LLVM([3.3],[3.5.2],[all])
 
 AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
 AC_CHECK_LIB([gfortran], [exit], , AC_MSG_ERROR([Could not find gfortran library]))

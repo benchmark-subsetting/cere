@@ -3,5 +3,5 @@ libRegionReplay_la_CXXFLAGS = $(LLVMCXXFLAGS)
 
 
 lib_LTLIBRARIES = libRegionReplay.la
-libRegionReplay_la_SOURCES = RegionReplay.cpp
-libRegionReplay_la_LDFLAGS = 
+libRegionReplay_la_SOURCES = RegionReplay.cpp LoopRegionReplay.cpp OmpRegionReplay.cpp
+libRegionReplay_la_LDFLAGS =
