@@ -55,10 +55,13 @@ For example on an Ubuntu x86_64 14.04 release, you should use the following
 install procedure:
 
 ```bash
-   $ sudo apt-get install clang-3.3 llvm3.3-dev dragonegg-4.7 \
-       gcc-4.7 gfortran-4.7 autoconf automake build-essential ruby-ronn \
+   $ sudo apt-get install clang-3.3 llvm-3.3-dev dragonegg-4.7 \
+       gcc-4.7 gfortran-4.7 autoconf automake build-essential libtool ruby-ronn \
        python python-matplotlib python-jinja2 python-pygraphviz python-sklearn python-numpy \
-       python-networkx pip google-perftools numactl dc
+       python-networkx python-pip google-perftools libgoogle-perftools-dev numactl dc
+
+   $ sudo ln -s /usr/bin/llvm-config-3.3 /usr/local/bin/llvm-config
+   $ sudo ln -s /usr/lib/x86_64-linux-gnu/libgfortran.so.3 /usr/lib/libgfortran.so
 
    $ sudo pip install pulp
 
