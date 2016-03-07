@@ -141,25 +141,25 @@ def replay_fun(mode_opt, BASE, regions):
         os.system("sed -i 's/internal global/global/' {base}.ll".format(base=BASE))
 
 #Extract region into a seperate file
-def extract_function(regions, BASE):
+def extract_function(mode_opt, regions, BASE):
   for region, data in regions.items():
         baseName = os.path.splitext(data["file"])[0]
         if baseName == BASE:
-          #Outline the region into a function
-          safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
-               "-isolate-region={loop} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-               LoopExt=LOOP_EXT, loop=region, base=BASE, Omp=OMP_FLAGS), EXIT=False)
+          to_extract=data["function"]
+          #Extract at loop lvl
+          if mode_opt.extraction_lvl == "loop":
+            to_extract=region
+            #Outline the loop into a function
+            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
+                 "-isolate-region={loop} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                 LoopExt=LOOP_EXT, loop=to_extract, base=BASE, Omp=OMP_FLAGS), EXIT=False)
+
           #Then extract this function into a new file
-          safe_system("llvm-extract -S -func={0} {1}.ll -o {0}.ll".format(region, baseName), EXIT=False)
-          safe_system("llvm-extract -S -func={0} {1}.ll -o {1}.ll -delete".format(region, baseName), EXIT=False)
+          safe_system("llvm-extract -S -func={0} {1}.ll -o {0}.ll".format(to_extract, baseName), EXIT=False)
+          safe_system("llvm-extract -S -func={0} {1}.ll -o {1}.ll -delete".format(to_extract, baseName), EXIT=False)
+
           global REGION_EXTRACTED
           REGION_EXTRACTED = True
-          #Instrument the extracted region
-          safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
-                        "{Omp}-region-instrumentation --instrument-region=base " +
-                        "{base}.ll -o {base}.ll").format(
-                        llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                        LoopInstr=LOOP_INSTR, base=region, Omp=OMP_FLAGS, EXIT=False))
 
 #in original mode
 def original_fun(mode_opt, BASE, regions):
@@ -304,8 +304,12 @@ def compile(args, args2):
     for region, data in regions.items():
       global BACKEND_FLAGS
       BACKEND_FLAGS = data['flags']
-      last_compil(INCLUDES, "", region, region+'.o', COMPIL_OPT)
-      objs = objs + ' ' + os.path.realpath(region+'.o')
+      if args[0].extraction_lvl == "loop":
+        last_compil(INCLUDES, "", region, region+'.o', COMPIL_OPT)
+        objs = objs + ' ' + os.path.realpath(region+'.o')
+      else:
+        last_compil(INCLUDES, "", data["function"], data["function"]+'.o', COMPIL_OPT)
+        objs = objs + ' ' + os.path.realpath(data["function"]+'.o')
 
     #Save new *.o files for link
     if objs:
