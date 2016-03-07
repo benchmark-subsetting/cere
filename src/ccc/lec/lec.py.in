@@ -168,7 +168,7 @@ def original_fun(mode_opt, BASE, regions):
     Call LoopInstrumentation on wanted loops
     by passing options like --invocation
     '''
-    extract_function(regions, BASE)
+    extract_function(mode_opt, regions, BASE)
 
     instru_opts = ""
     extract_opts = ""
