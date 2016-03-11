@@ -1,0 +1,26 @@
+language: c
+sudo: required
+
+before_install:
+  - sudo add-apt-repository 'deb http://llvm.org/apt/precise/ llvm-toolchain-precise main'
+  - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -
+  - sudo add-apt-repository ppa:dns/gnu -y
+  - sudo apt-get update
+  - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev dragonegg gcc-4.6
+    gfortran-4.6 autoconf automake build-essential libtool ruby-ronn python
+    python-matplotlib python-jinja2 python-pygraphviz python-sklearn python-numpy
+    python-networkx python-pip google-perftools libgoogle-perftools-dev numactl dc
+  - sudo pip install pulp
+
+install:
+  - ./autogen.sh
+  - ./configure --with-dragonegg=/usr/lib/gcc/x86_64-linux-gnu/4.6/plugin/dragonegg.so
+    CC=gcc-4.6
+  - make || true
+
+after_failure:
+  - cat config.log
+
+script:
+  - cd tests/
+  - ./test.sh
