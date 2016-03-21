@@ -6,16 +6,22 @@ before_install:
   - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -
   - sudo add-apt-repository ppa:dns/gnu -y
   - sudo apt-get update
-  - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev dragonegg gcc-4.6
-    gfortran-4.6 autoconf automake build-essential libtool ruby-ronn python
-    python-matplotlib python-jinja2 python-pygraphviz python-sklearn python-numpy
-    python-networkx python-pip google-perftools libgoogle-perftools-dev numactl dc
-  - sudo pip install pulp
+
+  - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev gcc-4.6 g++-4.6
+    gfortran-4.6 gcc-4.6-plugin-dev autoconf automake build-essential libtool
+    ruby-ronn python python-pip python-sklearn python-pygraphviz
+    python-networkx python-jinja2 python-matplotlib google-perftools
+    libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
+  - sudo pip install pulp numpy --upgrade
+
+  # Get dragonegg
+  - wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz
+  - tar xvf dragonegg-3.4.src.tar.gz && cd dragonegg-3.4
+  - make && sudo cp dragonegg.so /usr/local/lib/. && cd ..
 
 install:
   - ./autogen.sh
-  - ./configure --with-dragonegg=/usr/lib/gcc/x86_64-linux-gnu/4.6/plugin/dragonegg.so
-    CC=gcc-4.6
+  - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
   - make || true
 
 after_failure:
@@ -24,3 +30,5 @@ after_failure:
 script:
   - cd tests/
   - ./test.sh
+  - cd ..
+  - for i in $(find tests/ -maxdepth 1 -type d -name 'test_*' | sort ); do echo "************** TEST $i"; cat $i/test.log; done;
