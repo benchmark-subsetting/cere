@@ -103,7 +103,7 @@ AC_DEFUN([AX_LLVM],
   LDFLAGS="$LDFLAGS"
   # LDFLAGS="$LDFLAGS $LLVM_LDFLAGS" --- see comment above.
   LIBS_SAVED="$LIBS"
-  LIBS="$LIBS $LLVM_LIBS $LLVM_LDFLAGS"
+  LIBS="-L$LLVM_LIBDIR $LIBS $LLVM_LIBS $LLVM_LDFLAGS"
   # LIBS="$LIBS $LLVM_LIBS" --- see comment above.
 
   AC_CACHE_CHECK(can compile with and link with LLVM([$3]),

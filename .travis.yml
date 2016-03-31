@@ -1,0 +1,41 @@
+language: c
+sudo: required
+
+before_install:
+  - sudo add-apt-repository 'deb http://llvm.org/apt/precise/ llvm-toolchain-precise main'
+  - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -
+  - sudo add-apt-repository ppa:dns/gnu -y
+  - sudo apt-get update
+
+  - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev gcc-4.6 g++-4.6
+    gfortran-4.6 gcc-4.6-plugin-dev autoconf automake build-essential libtool
+    python python-pip python-sklearn python-pygraphviz
+    python-networkx python-jinja2 python-matplotlib google-perftools
+    libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
+
+  # Install rdiscount
+  - rvm install 2.0.0
+  - rvm use 2.0.0
+  - gem install ronn
+
+  # Install pulp and upgrade numpy
+  - sudo pip install pulp numpy --upgrade
+
+  # Get dragonegg
+  - wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz
+  - tar xvf dragonegg-3.4.src.tar.gz && cd dragonegg-3.4
+  - make && sudo cp dragonegg.so /usr/local/lib/. && cd ..
+
+install:
+  - ./autogen.sh
+  - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
+  - make
+
+after_failure:
+  - cat config.log
+
+script:
+  - cd tests/
+  - ./test.sh
+  - cd ..
+  - for i in $(find tests/ -maxdepth 1 -type d -name 'test_*' | sort ); do echo "************** TEST $i"; cat $i/test.log; done;
