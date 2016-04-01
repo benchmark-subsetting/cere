@@ -23,6 +23,7 @@ LOOP_EXT = "/RegionOutliner/.libs/libRegionOutliner.so"
 LOOP_DUMP = "/RegionDump/.libs/libRegionDump.so"
 LOOP_REPLAY = "/RegionReplay/.libs/libRegionReplay.so"
 LOOP_INSTR = "/RegionInstrumentation/.libs/libRegionInstrumentation.so"
+GLOB_RENAME = "/GlobalRename/.libs/libGlobalRename.so"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
 GCC="@GCC_PATH@"
@@ -154,6 +155,10 @@ def extract_function(mode_opt, regions, BASE):
                  "-isolate-region={loop} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                  LoopExt=LOOP_EXT, loop=to_extract, base=BASE, Omp=OMP_FLAGS), EXIT=False)
 
+          #Rename global variables in this module
+          safe_system(("{llvm_bindir}/opt -S -load {Root}{globRename} -global-rename " +
+                    "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                    globRename=GLOB_RENAME, base=BASE), EXIT=False)
           #Then extract this function into a new file
           safe_system("llvm-extract -S -func={0} {1}.ll -o {0}.ll".format(to_extract, baseName), EXIT=False)
           safe_system("llvm-extract -S -func={0} {1}.ll -o {1}.ll -delete".format(to_extract, baseName), EXIT=False)
@@ -252,7 +257,7 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
           #This prevent from new globals optimizations
           os.system("llc -O3 {base}.ll -o {base}.s".format(opts=" ".join(COMPIL_OPT), base=BASE))
           if "-g" in COMPIL_OPT:
-            COMPIL_OPT.remove("-g")
+            COMPIL_OPT = [x for x in COMPIL_OPT if x != "-g"]
           safe_system("clang -c {opts} {base}.s -o {object}".format(opts=" ".join(COMPIL_OPT),
                          base=BASE, object=OBJECT))
         else:

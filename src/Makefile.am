@@ -1,1 +1,1 @@
-SUBDIRS=rdtsc io_detector memory_dump cache_flush RegionOutliner RegionInstrumentation RegionReplay RegionDump
+SUBDIRS=rdtsc io_detector memory_dump cache_flush RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename

@@ -161,6 +161,7 @@ AC_CONFIG_FILES([Makefile
                  src/RegionInstrumentation/Makefile
                  src/RegionDump/Makefile
                  src/RegionReplay/Makefile
+                 src/GlobalRename/Makefile
                  src/rdtsc/Makefile
                  src/io_detector/Makefile
                  src/cache_flush/Makefile

@@ -9,9 +9,16 @@ before_install:
 
   - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev gcc-4.6 g++-4.6
     gfortran-4.6 gcc-4.6-plugin-dev autoconf automake build-essential libtool
-    ruby-ronn python python-pip python-sklearn python-pygraphviz
+    python python-pip python-sklearn python-pygraphviz
     python-networkx python-jinja2 python-matplotlib google-perftools
     libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
+
+  # Install rdiscount
+  - rvm install 2.0.0
+  - rvm use 2.0.0
+  - gem install ronn
+
+  # Install pulp and upgrade numpy
   - sudo pip install pulp numpy --upgrade
 
   # Get dragonegg
@@ -22,7 +29,7 @@ before_install:
 install:
   - ./autogen.sh
   - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
-  - make || true
+  - make
 
 after_failure:
   - cat config.log
