@@ -35,6 +35,16 @@ Then run the following command inside CERE directory:
    $ make
 ```
 
+If you are not interested in Fortran support, you can configure CERE using
+
+```bash
+  $ ./configure --without-dragonegg
+```
+
+In that case you will not be able to compile Fortran programs, but you do not
+need to install `dragonegg` or `gfortran`. Tests that depend on Fortran in the
+testsuite will fail.
+
 If needed, LLVM path, dragonegg path, and gcc path can be configured with the
 following options:
 
