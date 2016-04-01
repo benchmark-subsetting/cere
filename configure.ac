@@ -27,6 +27,9 @@ AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))
 AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google profiler library]))
 
 # Check that the selected GCC is compatible with the selected dragonegg
+if test -z "$DRAGONEGG_PATH"; then
+  AC_MSG_NOTICE([Fortran support disabled.])
+else
 AC_MSG_CHECKING([if gcc can compile fortran with dragonegg])
 cat <<EOF >conftest.f90
 module conftest_module
@@ -38,6 +41,7 @@ AC_MSG_RESULT([yes])
 else
 AC_MSG_RESULT([no])
 AC_MSG_ERROR([Your gcc version ($CC) cannot compile Fortran programs with your dragonegg plugin ($DRAGONEGG_PATH)])
+fi
 fi
 
 # Check for common programs and tools
