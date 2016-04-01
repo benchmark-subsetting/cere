@@ -151,7 +151,7 @@ llvm::Module *M = new llvm::Module("test", context);]])],
 
     if test -z "$DRAGONEGG_PATH"; then
         AC_MSG_ERROR(
-                [dragonegg.so could not be found at $with_dragonegg_path])
+                [dragonegg.so could not be found at $with_dragonegg_path. Disabling fortran support.])
         DRAGONEGG_PATH=""
     fi
   fi
