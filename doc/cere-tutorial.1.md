@@ -75,10 +75,10 @@ For FT the `Makefile` has already been configured to use `ccc`. The file
 `~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
 
 
-    F77 = ../../../src/ccc/ccc ${MODE}
-    FLINK = ../../../src/ccc/ccc ${MODE}
-    CC = ../../../src/ccc/ccc ${MODE}
-    CLINK = ../../../src/ccc/ccc ${MODE}
+    F77 = ../../../src/ccc/ccc
+    FLINK = ../../../src/ccc/ccc
+    CC = ../../../src/ccc/ccc
+    CLINK = ../../../src/ccc/ccc
 
 
 ## CONFIGURATION OF CERE

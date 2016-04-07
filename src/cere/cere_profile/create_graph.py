@@ -180,7 +180,7 @@ def create_graph(force):
 
     #Build again the application to be sure we give the right binary to pprof
     try:
-        logger.debug(subprocess.check_output("{0} MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} CERE_MODE=\"original --instrument --instrument-app\" -B".format(build_cmd), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)

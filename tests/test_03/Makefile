@@ -19,10 +19,10 @@ OBJS = is.o \
 
 
 ${PROGRAM}: ${OBJS}
-	${CLINK} ${MODE} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
+	${CLINK} ${CLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${C_LIB}
 
 .c.o:
-	${CC} ${MODE} ${FLAGS} -c $<
+	${CC} ${FLAGS} -c $<
 
 is.o: is.c npbparams.h
 

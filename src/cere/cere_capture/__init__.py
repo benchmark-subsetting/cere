@@ -85,7 +85,7 @@ def run(args):
 
       logger.info("Compiling capture mode for region {0} invocation {1}".format(args.region, invocation))
       try:
-        logger.debug(subprocess.check_output("{0} MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} CERE_MODE=\"dump --region={1} --invocation={2}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation), stderr=subprocess.STDOUT, shell=True))
       except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
@@ -110,7 +110,7 @@ def run(args):
   else:
     logger.info("Compiling capture mode for all regions")
     try:
-      logger.debug(subprocess.check_output("{0} MODE=\"dump --regions-infos={1}\" -B".format(cere_configure.cere_config["build_cmd"], cere_configure.cere_config["regions_infos"]), stderr=subprocess.STDOUT, shell=True))
+      logger.debug(subprocess.check_output("{0} CERE_MODE=\"dump --regions-infos={1}\" -B".format(cere_configure.cere_config["build_cmd"], cere_configure.cere_config["regions_infos"]), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)

@@ -15,13 +15,13 @@ OBJS = appft.o auxfnct.o fft3d.o mainft.o verify.o \
 PROGRAM=FT
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lm -lgfortran
+	${FLINK} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lm -lgfortran
 
 %.o: %.c
-	${CC} ${MODE} ${FLAGS} -c $<
+	${CC} ${FLAGS} -c $<
 
 .f.o:
-	${F77} ${MODE} ${FLAGS} -c $<
+	${F77} ${FLAGS} -c $<
 
 appft.o:	appft.f  global.h npbparams.h
 auxfnct.o:	auxfnct.f  global.h npbparams.h

@@ -114,7 +114,7 @@ def run(args):
       instru_cmd = "--instrument"
       logger.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, invocation))
     try:
-      logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation, instru_cmd, args.plugin_instr, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
+      logger.debug(subprocess.check_output("{0} INVITRO_CALL_COUNT={5} CERE_MODE=\"replay --region={1} --invocation={2} {3} --wrapper={4}\" -B".format(cere_configure.cere_config["build_cmd"], args.region, invocation, instru_cmd, args.plugin_instr, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)
