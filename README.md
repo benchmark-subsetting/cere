@@ -1,5 +1,7 @@
 # CERE v0.1.0
 
+[![Build Status](https://travis-ci.org/benchmark-subsetting/cere.svg?branch=master)](https://travis-ci.org/benchmark-subsetting/cere)
+
 [Codelet Extractor and REplayer
 (CERE)](https://benchmark-subsetting.github.io/cere/) is an open source framework
 for code isolation. CERE finds and extracts the hotspots of an application as

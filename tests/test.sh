@@ -7,3 +7,5 @@ if test "$RANDOMIZE_SPACE" = "0"; then
     exit 127
 fi
 ../autoconf/tap-driver.sh --test-name testplan.test --log-file testplan.log --trs-file testplan.trs --color-tests yes -- ./testplan.test
+grep ":global-test-result: PASS" testplan.trs > /dev/null
+exit $?
