@@ -75,10 +75,10 @@ For FT the `Makefile` has already been configured to use `ccc`. The file
 `~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
 
 
-    F77 = ../../../src/ccc/ccc ${MODE}
-    FLINK = ../../../src/ccc/ccc ${MODE}
-    CC = ../../../src/ccc/ccc ${MODE}
-    CLINK = ../../../src/ccc/ccc ${MODE}
+    F77 = ../../../src/ccc/ccc
+    FLINK = ../../../src/ccc/ccc
+    CC = ../../../src/ccc/ccc
+    CLINK = ../../../src/ccc/ccc
 
 
 ## CONFIGURATION OF CERE
@@ -86,7 +86,7 @@ For FT the `Makefile` has already been configured to use `ccc`. The file
 Now we have to tell CERE which commands must be used to build and run the
 application. For this we use cere-configure(1) with the following arguments
 
-    $ cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/ft.A"
+    $ cere configure --build-cmd="make CLASS=A" --clean-cmd="make clean" --run-cmd="../bin/ft.A"
 
 cere-configure(1) saves the project configuration in the file `cere.json`.
 This file is read by most of CERE passes. You can manually edit this file if you

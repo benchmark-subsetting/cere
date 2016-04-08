@@ -4,7 +4,7 @@ set -e
 function do_test()
 {
     make veryclean
-    ../../cere configure --run-cmd="numactl -C1 ./test" --build-cmd="make"
+    ../../cere configure --run-cmd="numactl -C1 ./test" --clean-cmd="make clean" --build-cmd="make"
     ../../cere trace --region=__cere__test_loop_11
 
     ITER2=$(../../cere trace --region=__cere__test_loop_11 --read=2)

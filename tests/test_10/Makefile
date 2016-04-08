@@ -10,10 +10,10 @@ OBJS = test.o
 PROGRAM=test
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
+	${FLINK} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
 
 %.o: %.c
-	${CC} ${MODE} ${FLAGS} -c $<
+	${CC} ${FLAGS} -c $<
 
 clean:
 	- rm -f *.o *.s *.ll

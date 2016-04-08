@@ -57,7 +57,8 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
         mode = ""
 
     try:
-        logger.debug(subprocess.check_output("{0} MODE=\"original {1} --instrument {2} --wrapper={3}\" -B".format(cere_configure.cere_config["build_cmd"], region_input, mode, args_plugin_instr), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} && {1} CERE_MODE=\"original {2} --instrument {3} --wrapper={4}\"".format(cere_configure.cere_config["clean_cmd"],
+                                              cere_configure.cere_config["build_cmd"], region_input, mode, args_plugin_instr), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)

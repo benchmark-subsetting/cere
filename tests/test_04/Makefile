@@ -17,13 +17,13 @@ OBJS = bt.o initialize.o exact_solution.o exact_rhs.o \
 PROGRAM=BT
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${MODE} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lgfortran 
+	${FLINK} ${INSTRU} ${FLINKFLAGS} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} -lgfortran 
 
 %.o: %.c
-	${CC} ${MODE} ${INSTRU} ${FLAGS} -c $<
+	${CC} ${INSTRU} ${FLAGS} -c $<
 
 %.o: %.f
-	${F77} ${MODE} ${INSTRU} ${FLAGS} -c $<
+	${F77} ${INSTRU} ${FLAGS} -c $<
 
 clean:
 	- rm -f *.o *.s *.ll *~ mputil*

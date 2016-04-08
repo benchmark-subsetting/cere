@@ -84,7 +84,7 @@ def run(args):
     logger.debug("The file is {0} and the function is {1}".format(filename, functionname))
 
     #Now let's compile it in the orginal application
-    if not run_shell_command("{0} MODE=original -B".format(cere_configure.cere_config["build_cmd"])):
+    if not run_shell_command("{0} && {1} CERE_MODE=original".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"])):
         return False
     original_lines = get_nlines(filename, functionname)
     if not original_lines:
@@ -96,7 +96,7 @@ def run(args):
     #Compile replay mode
     #we accept that compilation fails because the dump does not have to be present.
     try:
-        logger.debug(subprocess.check_output("{0} MODE=\"replay --region={1}\" -B".format(cere_configure.cere_config["build_cmd"], args.region), stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} && {1} CERE_MODE=\"replay --region={2}\"".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"], args.region), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
