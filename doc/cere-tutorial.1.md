@@ -86,7 +86,7 @@ For FT the `Makefile` has already been configured to use `ccc`. The file
 Now we have to tell CERE which commands must be used to build and run the
 application. For this we use cere-configure(1) with the following arguments
 
-    $ cere configure --build-cmd="make CLASS=A" --run-cmd="../bin/ft.A"
+    $ cere configure --build-cmd="make CLASS=A" --clean-cmd="make clean" --run-cmd="../bin/ft.A"
 
 cere-configure(1) saves the project configuration in the file `cere.json`.
 This file is read by most of CERE passes. You can manually edit this file if you

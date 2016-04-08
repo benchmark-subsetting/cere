@@ -32,6 +32,7 @@ def init_module(subparsers, cere_plugins):
     configure_parser = subparsers.add_parser("configure", help="Configure CERE to build and run an application")
     configure_parser.add_argument('--build-cmd', required=True, help="Sets the command to build the application")
     configure_parser.add_argument('--run-cmd', required=True, help="Sets the command used to run the application")
+    configure_parser.add_argument('--clean-cmd', required=True, help="Sets the command used to run the application")
     configure_parser.add_argument('--multiple-trace', action='store_true', help="Enables tracing multiple regions in a single run. (default false)")
     configure_parser.add_argument('--regions-infos', default="regions.csv", help="File in which regions infos are stored")
 
@@ -39,6 +40,7 @@ def run(args):
     global cere_config
     cere_config["build_cmd"] = args.build_cmd
     cere_config["run_cmd"] = args.run_cmd
+    cere_config["clean_cmd"] = args.clean_cmd
     cere_config["multiple_trace"] = args.multiple_trace
     cere_config["regions_infos"] = os.path.realpath(args.regions_infos)
 

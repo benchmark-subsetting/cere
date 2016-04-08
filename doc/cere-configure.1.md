@@ -4,7 +4,7 @@ cere configure(1) -- Configures CERE to build and run an application
 ## SYNOPSIS
 
 ```
-cere configure [-h] --run-cmd=RUN_CMD --build-cmd=BUILD_CMD
+cere configure [-h] --run-cmd=RUN_CMD --build-cmd=BUILD_CMD --clean-cmd=CLEAN_CMD
                [--multiple-trace]
 ```
 
@@ -25,6 +25,9 @@ run the application.
   * `--build-cmd=BUILD_CMD`:
     Sets the command used to build the application.
 
+  * `--clean-cmd=CLEAN_CMD`:
+    Sets the command used to clean the application.
+
   * `--multiple-trace`:
     Enables tracing multiple regions in a single run.  By default, multiple
     tracing is disabled and cere-trace(1) will only trace the requested region.
@@ -42,12 +45,15 @@ app: app.o
      $(LD) -o $@ $<
 app.o: app.c
      $(CC) -c $<
+clean:
+     rm app *.o *.ll
 ```
 
 The user should call **cere configure** with the following arguments:
 
 ```
 cere configure --build-cmd="make CC=ccc LD=ccc"
+               --clean-cmd="make clean"
                --run-cmd="./app"
 ```
 
