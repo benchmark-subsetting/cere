@@ -30,6 +30,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
 #include <fstream>
@@ -39,11 +40,7 @@
 #include "RegionInstrumentation.h"
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
 #include "llvm/IR/DebugInfo.h"
-#else
-#include "llvm/DebugInfo.h"
-#endif
 
 using namespace llvm;
 enum {
@@ -180,30 +177,11 @@ GlobalVariable *create_invocation_counter(Module *mod) {
 
 /// Create a vector of parameter to fit the signature of cere init and close
 /// probes. (char*)
-std::vector<Value *> createInitParameters(Module *mod, std::string fileN) {
+std::vector<Value *> createInitParameters(std::string fileN, BasicBlock *firstBB) {
 
   // Get region filename
-  Constant *param_name =
-      ConstantDataArray::getString(mod->getContext(), fileN, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/ *mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0,
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_indices;
-  const_ptr_indices.push_back(const_int32_0);
-  const_ptr_indices.push_back(const_int32_0);
-  Constant *const_ptr_0 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_indices);
-
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
+  IRBuilder<> builder(firstBB);
+  Value *const_ptr_0 = builder.CreateGlobalStringPtr(fileN);
 
   std::vector<Value *> void_params;
   void_params.push_back(const_ptr_0); // Region filename
@@ -216,27 +194,12 @@ std::vector<Value *> createInitParameters(Module *mod, std::string fileN) {
 std::vector<Value *> createFunctionParameters(Module *mod,
                                               std::string newFunctionName,
                                               int mode, int RequestedI,
+                                              BasicBlock *PredBB,
                                               LoadInst *int32) {
   // LoopName
-  // Get current function name
-  Constant *param_name =
-      ConstantDataArray::getString(mod->getContext(), newFunctionName, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/ *mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0,
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_indices;
-  const_ptr_indices.push_back(const_int32_0);
-  const_ptr_indices.push_back(const_int32_0);
-  Constant *const_ptr_0 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_indices);
+  //~LLVMContext &Context = getGlobalContext();
+  IRBuilder<> builder(PredBB);
+  Value *const_ptr_0 = builder.CreateGlobalStringPtr(newFunctionName);
 
   // Set vivo/vitro boolean
   ConstantInt *const_int1;
@@ -250,9 +213,6 @@ std::vector<Value *> createFunctionParameters(Module *mod,
   // Store requested invocation
   ConstantInt *const_int32_1 =
       ConstantInt::get(mod->getContext(), APInt(32, RequestedI, 10));
-
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
 
   std::vector<Value *> void_params;
   void_params.push_back(const_ptr_0);   // LoopName
@@ -298,9 +258,10 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
     // Get entry basic block of the main function
     BasicBlock *firstBB = dyn_cast<BasicBlock>(Main->begin());
     std::vector<BasicBlock *> ReturningBlocks;
-    for (Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
-      if (isa<ReturnInst>(I->getTerminator()))
-        ReturningBlocks.push_back(I);
+    //~for (Function::iterator I = Main->begin(), E = Main->end(); I != E; ++I) {
+    for (BasicBlock &I : *Main) {
+      if (isa<ReturnInst>(I.getTerminator()))
+        ReturningBlocks.push_back(&I);
     }
 
     // If we want to measure the whole application cycle, insert start
@@ -308,7 +269,7 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
     if (MeasureA) {
       FunctionType *FuncTy_1 = createFunctionType(mod);
       std::vector<Value *> funcParameter =
-          createFunctionParameters(mod, "main", mode, RequestedI);
+          createFunctionParameters(mod, "main", mode, RequestedI, firstBB);
       Function *startFunction = mod->getFunction("cere_markerStartRegion");
       Function *stopFunction = mod->getFunction("cere_markerStopRegion");
       // Create start function if it does not exists yet
@@ -336,7 +297,7 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
     if (!initFunction) {
       Function *initFunction = Function::Create(
           FuncTy_Init, GlobalValue::ExternalLinkage, "cere_markerInit", mod);
-      CallInst::Create(initFunction, createInitParameters(mod, fileN), "",
+      CallInst::Create(initFunction, createInitParameters(fileN, firstBB), "",
                        &firstBB->front());
       DEBUG(dbgs() << "Init successfuly inserted in main function\n");
     }

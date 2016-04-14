@@ -34,6 +34,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
@@ -43,8 +44,9 @@
 #include <set>
 #include "RegionDump.h"
 
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Dominators.h"
 #else
 #include "llvm/Support/InstIterator.h"
 #endif
@@ -87,8 +89,8 @@ struct LoopRegionDump : public FunctionPass {
   bool visitLoop(Loop *L, Module *mod);
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 };
 }
@@ -107,6 +109,7 @@ bool LoopRegionDump::runOnFunction(Function &F) {
     Main = mod->getFunction("main");
   }
   if (Main) { // We are in the module with the main function
+    IRBuilder<> builder(&(Main->front().front()));
     ConstantInt *const_int1_11;
     std::string funcName = "dump_init";
     if (GlobalDump)
@@ -129,11 +132,12 @@ bool LoopRegionDump::runOnFunction(Function &F) {
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
       std::vector<Value *> void_16_params;
       void_16_params.push_back(const_int1_11);
-      CallInst::Create(mainFunction, void_16_params, "",
-                       Main->begin()->begin());
+      //~CallInst::Create(mainFunction, void_16_params, "",
+                       //~Main->begin()->begin());
+      builder.CreateCall(mainFunction, void_16_params);
     }
   }
-  LoopInfo &LI = getAnalysis<LoopInfo>();
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   // Get all loops int the current function and visit them
   std::vector<Loop *> SubLoops(LI.begin(), LI.end());
   for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
