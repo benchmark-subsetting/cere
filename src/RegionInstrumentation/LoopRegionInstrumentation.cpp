@@ -42,7 +42,7 @@
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/DebugInfo.h"
 #else
@@ -115,10 +115,9 @@ struct LoopRegionInstrumentation : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
     AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
 #else
     AU.addRequired<DominatorTree>();
 #endif
@@ -139,16 +138,14 @@ LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
   std::string module_name = mod->getModuleIdentifier();
 
   std::string newFunctionName;
-  std::ostringstream oss;
+  //~std::ostringstream oss;
   BasicBlock *firstBB = L->getBlocks()[0];
 
-  if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
-    std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
+  if (DILocation *firstLoc = firstBB->front().getDebugLoc()) {
+    std::string firstLine = std::to_string(firstLoc->getLine());
+    std::string Original_location = firstLoc->getFilename();
     std::string File = module_name;
-    std::string path = firstLoc.getDirectory();
+    std::string path = firstLoc->getDirectory();
 
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
@@ -166,7 +163,7 @@ bool LoopRegionInstrumentation::runOnFunction(Function &F) {
   Module *mod = F.getParent();
   // If we want to instrument a region, visit every loops.
   if (!MeasureAppli) {
-    LoopInfo &LI = getAnalysis<LoopInfo>();
+    LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     std::vector<Loop *> SubLoops(LI.begin(), LI.end());
     for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
       visitLoop(SubLoops[i], mod);
@@ -265,11 +262,11 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
 
     // Create function parameters
     funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                             RequestedInvoc, int32_1);
+                                             RequestedInvoc, PredBB, int32_1);
   } else {
     // Create function parameters
     funcParameter =
-        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc);
+        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, PredBB);
   }
 
   // Add the call of cere start probe as the last instruction of the

@@ -24,6 +24,7 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-dump"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
@@ -32,6 +33,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
@@ -41,8 +43,9 @@
 #include <set>
 #include "RegionDump.h"
 
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/DebugInfo.h"
 #else
 #include "llvm/Support/InstIterator.h"
 #endif
@@ -79,28 +82,10 @@ FunctionType *createDumpFunctionType(Module *mod) {
   return tmp;
 }
 
-/// \brief Create a pointer to string \p s
-Constant *createStringValue(Module *mod, std::string &s) {
-
-  Constant *const_array_0 =
-      ConstantDataArray::getString(mod->getContext(), s, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/const_array_0->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0, // has initializer, specified below
-                         /*Name=*/".str");
-
-  gvar_array__str->setAlignment(1);
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_0_indices;
-  const_ptr_0_indices.push_back(const_int32_0);
-  const_ptr_0_indices.push_back(const_int32_0);
-  gvar_array__str->setInitializer(const_array_0);
-
-  return ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_0_indices);
+/// \brief Create a pointer to string \p
+Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
+  errs() << mod->getModuleIdentifier() << "\n";
+  return b->CreateGlobalStringPtr(s);
 }
 
 /// Creates parameters for the dump function
@@ -111,6 +96,7 @@ Constant *createStringValue(Module *mod, std::string &s) {
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
                                                   BasicBlock *PredBB, int N) {
+  IRBuilder<> builder(PredBB);
   // The requested region has been outlined into a function.
   // Give adresses of its arguments to the dump function.
   std::vector<Value *> params;
@@ -118,9 +104,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
        args != currFunc->arg_end(); args++) {
     // If argument is a value get its address
     if (args->getType()->isPointerTy() == false) {
-      AllocaInst *ptr_args =
-          new AllocaInst(args->getType(), args->getName(), &PredBB->back());
-      new StoreInst(args, ptr_args, false, &PredBB->back());
+      AllocaInst *ptr_args = builder.CreateAlloca(args->getType(), nullptr, args->getName());
       // If this argument does not have a name, create one
       if ((ptr_args->getName().str()).empty()) {
         std::ostringstream ss;
@@ -131,7 +115,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
     }
     // If argument is already a pointer, just give the adress
     else {
-      Argument *ptr_args = args;
+      Argument *ptr_args = dyn_cast<Argument>(args);
       if ((ptr_args->getName().str()).empty()) {
         std::ostringstream ss;
         ss << params.size();
@@ -148,8 +132,8 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
   params.insert(params.begin(), nbParam);
   params.insert(params.begin(), iterToDump);
   /*Convert the regionName as a C type string*/
-  std::string tmp = currFunc->getName().str();
-  params.insert(params.begin(), createStringValue(mod, tmp));
+  Value *tmp = createStringValue(mod, &builder, currFunc->getName());
+  params.insert(params.begin(), tmp);
 
   return params;
 }
