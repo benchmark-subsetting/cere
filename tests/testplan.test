@@ -5,7 +5,13 @@ if [ "$1" == "--long" ]; then
     tests="$tests $(find . -maxdepth 1 -type d -name 'long_*' | sort)"
 fi
 
-tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' | sort)"
+dragonegg_path=`grep 'DRAGONEGG_PATH' ../config.h | cut -d " " -f 3`
+#Test if dragonegg is available and select tests accordingly
+if [ "$dragonegg_path" == "\"\"" ]; then
+  tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' '!' -exec test -e "{}/fortran_test" ';' -print | sort)"
+else
+  tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' | sort)"
+fi
 
 count=$(echo $tests | wc -w)
 

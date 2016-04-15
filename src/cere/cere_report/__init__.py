@@ -274,7 +274,8 @@ class Report:
         try:
             FILE = open(NAME_FILE, 'rb')
         except (IOError):
-            logger.error("Can't read " + NAME_FILE + "-> Verify coverage and matching")
+            logger.error("File not found: {regions_file}. Did you run cere regions".format(regions_file=NAME_FILE))
+            sys.exit(1)
         table = csv.reader(FILE, delimiter=CSV_DELIMITER)
         for code_place in table:
             try:

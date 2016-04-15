@@ -37,15 +37,9 @@
 #include <iostream>
 #include <string>
 #include "RegionExtractor.h"
-
-#if LLVM_VERSION_MINOR == 5
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/DebugInfo.h"
-#else
-#include "llvm/DebugInfo.h"
-#include "llvm/Support/InstIterator.h"
-#endif
 
 using namespace llvm;
 
@@ -75,15 +69,8 @@ struct OmpRegionOutliner : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
-#if LLVM_VERSION_MINOR == 5
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addPreserved<DominatorTreeWrapperPass>();
-#else
-    AU.addRequired<DominatorTree>();
-    AU.addPreserved<DominatorTree>();
-#endif
   }
 };
 }
@@ -128,12 +115,10 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   std::ostringstream oss;
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
-  if (MDNode *firstN = callInst->getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
-    std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
-    std::string path = firstLoc.getDirectory();
+  if (DILocation *firstLoc = callInst->getDebugLoc()) {
+    std::string firstLine = std::to_string(firstLoc->getLine());
+    std::string Original_location = firstLoc->getFilename();
+    std::string path = firstLoc->getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
     newFunctionName = updateFileFormat(newFunctionName);
@@ -167,7 +152,7 @@ bool ChooseExtract(std::string functionCall, std::string RegionName,
 }
 
 /// Extract in a new basic block the omp fork call
-int SplitOMPCall(Module *mod, Function *F, Pass *P, std::string RegionName) {
+int SplitOMPCall(Module *mod, Function *F, DominatorTree &DT, std::string RegionName) {
   std::string functionCall;
   int t = 0;
 
@@ -192,8 +177,8 @@ int SplitOMPCall(Module *mod, Function *F, Pass *P, std::string RegionName) {
     }
   }
   if (t) {
-    SplitBlock(iFirst->getParent(), iFirst, P);
-    SplitBlock(iSecond->getParent(), iSecond, P);
+    SplitBlock(iFirst->getParent(), iFirst, &DT);
+    SplitBlock(iSecond->getParent(), iSecond, &DT);
   }
 
   return t;
@@ -227,8 +212,9 @@ bool OmpRegionOutliner::runOnFunction(Function &F) {
   if (F.getName().find(".omp_microtask") != std::string::npos)
     return false;
   int work = 1;
+  DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   while (work) {
-    work = SplitOMPCall(mod, &F, this, RegionName);
+    work = SplitOMPCall(mod, &F, DT, RegionName);
     ExtractOMPCall(mod, &F, this, ProfileApp, RegionName);
   }
 

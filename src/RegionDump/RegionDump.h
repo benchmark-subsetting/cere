@@ -35,7 +35,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   BasicBlock *PredBB, int N);
 
 /// \brief Create a pointer to string \p s
-Constant *createStringValue(Module *mod, std::string &s);
+Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s);
 
 /// Create signature for the dump function
 /// void dump(char*, int, int, ...)
