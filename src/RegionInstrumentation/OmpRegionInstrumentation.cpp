@@ -42,7 +42,7 @@
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/DebugInfo.h"
@@ -121,9 +121,7 @@ struct OmpRegionInstrumentation : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
     AU.addRequired<DominatorTreeWrapperPass>();
 #else
     AU.addRequired<DominatorTree>();
@@ -165,15 +163,13 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   Module *mod = oldFunction->getParent();
   std::string newFunctionName;
   std::string File = mod->getModuleIdentifier();
-  std::ostringstream oss;
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
-  if (MDNode *firstN = callInst->getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
-    std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
-    std::string path = firstLoc.getDirectory();
+    
+  if (DILocation *firstLoc = callInst->getDebugLoc()) {
+    std::string firstLine = std::to_string(firstLoc->getLine());
+    std::string Original_location = firstLoc->getFilename();
+    std::string path = firstLoc->getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
 
@@ -237,7 +233,7 @@ void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
           funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                                   RequestedInvoc);
+                                                   RequestedInvoc, &(F->front()));
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -299,7 +295,7 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             int32_1->setAlignment(4);
           }
           funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                                   RequestedInvoc, int32_1);
+                                                   RequestedInvoc, &(F->front()), int32_1);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);

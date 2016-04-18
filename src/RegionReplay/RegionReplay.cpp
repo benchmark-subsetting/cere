@@ -29,6 +29,7 @@
 #include "llvm/Analysis/LoopPass.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
+#include "llvm/IR/IRBuilder.h"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/DataLayout.h>
@@ -41,7 +42,7 @@
 #include <set>
 #include "RegionReplay.h"
 
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/InstIterator.h"
 #else
 #include "llvm/Support/InstIterator.h"
@@ -93,26 +94,9 @@ std::vector<Value *> createLoadFunctionParameters(Module *mod,
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
   std::vector<Value *> params;
 
-  // Get name of the loop to load
-  Constant *param_name = ConstantDataArray::getString(
-      mod->getContext(), currFunc->getName().str(), true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0, // has initializer, specified below
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-  ConstantInt *const_int32_10 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_11_indices;
-  const_ptr_11_indices.push_back(const_int32_10);
-  const_ptr_11_indices.push_back(const_int32_10);
-  Constant *const_ptr_11 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_11_indices);
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
+  //~// Get name of the loop to load
+  IRBuilder<> builder(B);
+  Value *const_ptr_11 = builder.CreateGlobalStringPtr(currFunc->getName());
 
   // The invocation to load
   ConstantInt *iterToLoad =
@@ -159,6 +143,7 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
                                           AllocaInst *ptr_vla,
                                           BasicBlock *label_entry) {
   std::vector<Value *> params;
+  IRBuilder<> builder(label_entry);
   // get back adresses of loop parameters from the array filled by load
   int i = 0;
   for (Function::arg_iterator args = currFunc->arg_begin();
@@ -166,10 +151,9 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
     UnaryInstruction *ptr;
     ConstantInt *const_int64_35 =
         ConstantInt::get(mod->getContext(), APInt(32, i, 10));
-    GetElementPtrInst *ptr_arrayidx = GetElementPtrInst::Create(
-        ptr_vla, const_int64_35, "arrayidx", label_entry);
-    LoadInst *ptr_69 =
-        new LoadInst(ptr_arrayidx, "", false, label_entry); // get args[i]
+
+    Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla, i, "arrayidx");
+    LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx, const_int64_35);
     DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
                  << *args->getType() << "\n");
     if (args->getType()->isPointerTy()) {
