@@ -29,15 +29,17 @@ import common.variables as var
 
 logger = logging.getLogger('Max-Cov selector')
 
-def solve(graph):
+def solve(graph, max_error):
     coverage = 0
     nodes = []
     for n, d in graph.nodes(data=True):
         d["_selected"] = False
-        if d['_matching']:
+        if d['_error'] <= max_error:
             coverage = coverage + d['_self_coverage']
             nodes.append(n)
             d["_selected"] = True
+    if coverage > 100:
+      coverage = 100
     return nodes, coverage
 
 def solve_with_best_granularity(args):
@@ -59,7 +61,7 @@ def solve_with_best_granularity(args):
         logger.info("Computing matching with a maximum error of {0}%".format(args.max_error))
         update_graph.update(args)
         graph = load_graph()
-        table_chosen, table_coverage = solve(graph)
+        table_chosen, table_coverage = solve(graph, args.max_error)
         table.complete_error_table(args.max_error, table_coverage)
         args.max_error = args.max_error-5
     table.write_table(error_filename)
@@ -68,7 +70,7 @@ def solve_with_best_granularity(args):
     update_graph.update(args)
     graph = load_graph()
     padding = max([len(d['_name']) for n,d in graph.nodes(data=True)])
-    chosen, coverage = solve(graph)
+    chosen, coverage = solve(graph, args.max_error)
 
     if coverage == 0:
         logger.error("Solution impossible")
