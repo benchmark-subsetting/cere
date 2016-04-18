@@ -55,6 +55,7 @@ def dump_exist(region, invocation):
 class Error_table:
     def __init__(self):
         self.table = []
+        self.complete_error_table(0, 0)
 
     def complete_error_table(self, error, coverage):
         self.table = self.table + [[error,coverage]]
