@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <assert.h>
+#include <unistd.h>
 
 void anti_dead_code_elimination(int n, ...) {{}}
 void sigcatch(int signal) {{

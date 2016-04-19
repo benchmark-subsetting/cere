@@ -20,4 +20,5 @@
 #define CACHELINESIZE 16
 #define round_to_page(addr)                                                    \
   ((char *)(((long unsigned)(addr)) & ~(PAGESIZE - 1)))
-#define round_up_page(size) ((((size) - 1) / PAGESIZE + 1) * PAGESIZE)
+#define round_up_page(addr) ((((long unsigned)(addr) - 1) / PAGESIZE + 1) * PAGESIZE)
+#define nb_pages_in_range(from, to) (((long unsigned)round_up_page(to) - (long unsigned)round_to_page(from))/PAGESIZE)
