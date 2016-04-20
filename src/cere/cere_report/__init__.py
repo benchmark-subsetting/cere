@@ -30,6 +30,7 @@ import base64
 import xmlrpclib
 import common.variables as var
 from contextlib import contextmanager
+import graph_error
 
 logger = logging.getLogger('Report')
 
@@ -410,7 +411,7 @@ def context(DIR):
     if not os.path.isfile("{0}/table_error.csv".format(var.CERE_REPORT_PATH)):
         logger.warning("Can't find {0}/table_error.csv".format(var.CERE_REPORT_PATH))
     else:
-        os.system(ROOT + "/graph_error.R")
+        graph_error.plot_graph("{0}/table_error.csv".format(var.CERE_REPORT_PATH))
     #try:
     yield
     #except MyError as err:

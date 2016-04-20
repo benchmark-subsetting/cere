@@ -17,6 +17,7 @@
 # along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
 
 import networkx as nx
+from networkx.drawing.nx_agraph import write_dot
 import cPickle as pickle
 import logging
 import os
@@ -38,7 +39,7 @@ def plot(g, step=""):
         if d['_to_test']: d['color']="orange"
     for u,v,d in g.edges(data=True):
         d["label"] = round(d["weight"], 2)
-    nx.write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PROFILE_PATH, step))
+    write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PROFILE_PATH, step))
     try:
         logger.debug(subprocess.check_output("dot -Tpdf {0}/graph_{1}.dot -o {0}/graph_{1}.pdf".format(var.CERE_PROFILE_PATH, step), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:

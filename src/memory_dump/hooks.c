@@ -74,22 +74,26 @@ static void hooks_init(void) {
   }
 }
 
-void *malloc(size_t size) {
-  if (real_malloc == NULL)
-    hooks_init();
-  long unsigned nb_pages_to_allocate = round_up_page(size) / PAGESIZE;
-
-  void *p = NULL;
-  p = real_malloc(size);
+static void lock_range(void * from, void * to) {
+  long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
   if (state.mtrace_active) {
     for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
-      if (!is_mru(p + PAGESIZE * i)) {
+      if (!is_mru(from + PAGESIZE * i)) {
         int result =
-            mprotect(round_to_page(p + PAGESIZE * i), PAGESIZE, PROT_NONE);
+          mprotect(round_to_page(from + PAGESIZE * i), PAGESIZE, PROT_NONE);
         assert(result != -1);
       }
     }
   }
+}
+
+void *malloc(size_t size) {
+  if (real_malloc == NULL)
+    hooks_init();
+
+  void *p = NULL;
+  p = real_malloc(size);
+  lock_range(p, p+size);
   return p;
 }
 
@@ -108,58 +112,30 @@ void *calloc(size_t nmemb, size_t size) {
 
   if (real_calloc == NULL)
     hooks_init();
-  long unsigned nb_pages_to_allocate = round_up_page(nmemb * size) / PAGESIZE;
 
   void *p = NULL;
   p = real_calloc(nmemb, size);
-  if (state.mtrace_active) {
-    //We have to check for each page we want to allocate if it is not in MRU
-    for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
-      if (!is_mru(p + PAGESIZE * i)) {
-        int result =
-            mprotect(round_to_page(p + PAGESIZE * i), PAGESIZE, PROT_NONE);
-        assert(result != -1);
-      }
-    }
-  }
+  lock_range(p, p+size);
   return p;
 }
 
 void *realloc(void *ptr, size_t size) {
   if (real_realloc == NULL)
     hooks_init();
-  long unsigned nb_pages_to_allocate = round_up_page(size) / PAGESIZE;
 
   void *p = NULL;
   p = real_realloc(ptr, size);
-  if (state.mtrace_active) {
-    for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
-      if (!is_mru(p + PAGESIZE * i)) {
-        int result =
-            mprotect(round_to_page(p + PAGESIZE * i), PAGESIZE, PROT_NONE);
-        assert(result != -1);
-      }
-    }
-  }
+  lock_range(p, p+size);
   return p;
 }
 
 void *memalign(size_t alignment, size_t size) {
   if (real_memalign == NULL)
     hooks_init();
-  long unsigned nb_pages_to_allocate = round_up_page(size) / PAGESIZE;
 
   void *p = NULL;
   p = real_memalign(alignment, size);
-  if (state.mtrace_active) {
-    for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
-      if (!is_mru(p + PAGESIZE * i)) {
-        int result =
-            mprotect(round_to_page(p + PAGESIZE * i), PAGESIZE, PROT_NONE);
-        assert(result != -1);
-      }
-    }
-  }
+  lock_range(p, p+size);
   return p;
 }
 
