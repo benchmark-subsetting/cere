@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "pages.h"
-#include <emmintrin.h>
 
 /**********************************************************************
  * REPLAY MODE                                                        *
