@@ -73,7 +73,7 @@ def create_user_main(mode_opt,LOOP):
     MAIN.close()
 
 def compile_memory_dump_objects(DIR):
-    DUMP_ARGS="-Wl,--section-start=.text=0x60000000"
+    DUMP_ARGS="-Wl,--section-start=.text=0x60004000 -Wl,--section-start=.init=0x60000000"
     safe_system("rm -f {0}/objs.S".format(DUMPS_DIR))
     OBJ=open("{0}/objs.S".format(DUMPS_DIR),'w')
     for FILE in os.listdir(DIR):
