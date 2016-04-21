@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <unistd.h>
 
+void run{loop}(void);
 void anti_dead_code_elimination(int n, ...) {{}}
 void sigcatch(int signal) {{
   fprintf(stderr, "Timeout...\n");
