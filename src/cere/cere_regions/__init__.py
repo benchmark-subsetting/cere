@@ -18,6 +18,7 @@
 
 import os
 import csv
+import conf
 import subprocess
 import re
 import cere_configure
@@ -152,7 +153,7 @@ def run(args):
                   r'(N.*)\s\[label\=\"(.*)\\n([0-9]*)\s\((.*)\%\)\\r',
                   r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,']
 
-        cmd = subprocess.Popen("pprof -dot {0} {1}".format(binary, profile_file), shell=True, stdout=subprocess.PIPE)
+        cmd = subprocess.Popen("{0} -dot {1} {2}".format(conf.PPROF, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
         for line in cmd.stdout:
             matchObj, step = parse_line(regex_list, line)
