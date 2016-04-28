@@ -90,7 +90,7 @@ bool OmpRegionReplay::runOnFunction(Function &F) {
     Main = mod->getFunction("MAIN__");
 
   if (Main) { // We are in the module with the main function
-    IRBuilder<> builder(&(Main->front()));
+    IRBuilder<> builder(&(Main->front().front()));
     std::string funcName = "real_main";
 
     Function *mainFunction = mod->getFunction(funcName);
