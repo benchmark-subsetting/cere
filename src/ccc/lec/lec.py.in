@@ -242,32 +242,35 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
         os.system("{llvm_bindir}/opt -S {midend_flags} {base}.ll -o {base}.ll".format(
                      llvm_bindir=LLVM_BINDIR, midend_flags=MIDEND_FLAGS, base=BASE))
 
-    # Can choose llc as llvm backend
-    if (BACKEND_USE):
-        safe_system("{llvm_bindir}/{backend} -filetype=obj {backend_flags} {base}.ll -o {object}".format(
-                         llvm_bindir=LLVM_BINDIR, backend=BACKEND_USE,
-                         backend_flags=BACKEND_FLAGS, base=BASE, object=OBJECT))
-    else:
-        if REGION_EXTRACTED:
-          #Regions have been extracted from this file. So we must change globals
-          #definitions.
-          safe_system("opt -S -O3 {base}.ll -o {base}.ll".format(opts=" ".join(COMPIL_OPT),
-                         base=BASE))
-          os.system("sed -i 's/internal constant/hidden constant/' {base}.ll".format(base=BASE))
-          #This prevent from new globals optimizations
-          os.system("llc -O3 {base}.ll -o {base}.s".format(opts=" ".join(COMPIL_OPT), base=BASE))
-          if "-g" in COMPIL_OPT:
+    if REGION_EXTRACTED:
+        #Regions have been extracted from this file. So we must change globals
+        #definitions.
+        safe_system("opt -S -O3 {base}.ll -o {base}.ll".format(opts=" ".join(COMPIL_OPT),
+                                                               base=BASE))
+        os.system("sed -i 's/internal constant/hidden constant/' {base}.ll".format(base=BASE))
+        #This prevent from new globals optimizations
+        os.system("llc -O3 {base}.ll -o {base}.s".format(opts=" ".join(COMPIL_OPT), base=BASE))
+        if "-g" in COMPIL_OPT:
             COMPIL_OPT = [x for x in COMPIL_OPT if x != "-g"]
-          safe_system("clang -c {opts} {base}.s -o {object}".format(opts=" ".join(COMPIL_OPT),
-                         base=BASE, object=OBJECT))
+        safe_system("clang -c {opts} {base}.s -o {object}".format(opts=" ".join(COMPIL_OPT),
+                                                                  base=BASE, object=OBJECT))
+    else:
+        # Can choose llc as llvm backend
+        failure = False
+        if (BACKEND_USE):
+            failure = os.system("{llvm_bindir}/{backend} -filetype=obj {backend_flags} {base}.ll -o {object}".format(
+                llvm_bindir=LLVM_BINDIR, backend=BACKEND_USE,
+                backend_flags=BACKEND_FLAGS, base=BASE, object=OBJECT))
         else:
-          test = os.system("{llvm_bindir}/clang -c {opts} {backend_flags} {base}.ll -o {object}".format(
-                         llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT),
-                         backend_flags=BACKEND_FLAGS, base=BASE, object=OBJECT))
-          if (test):
+            failure = os.system("{llvm_bindir}/clang -c {opts} {backend_flags} {base}.ll -o {object}".format(
+                llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT),
+                backend_flags=BACKEND_FLAGS, base=BASE, object=OBJECT))
+
+        # In case of failure fallback to a simple clang compilation without any CERE passes
+        if (failure):
             safe_system("{llvm_bindir}/clang -c {opts} {backend_flags} {includes} {source} -o {object}".format(
-                        llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
-                        backend_flags=BACKEND_FLAGS, source=SOURCE, base=BASE, object=OBJECT))
+                llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
+                backend_flags=BACKEND_FLAGS, source=SOURCE, base=BASE, object=OBJECT))
 
 def compile(args, args2):
     function={}
