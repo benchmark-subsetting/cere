@@ -31,5 +31,5 @@ clean:
 	- rm -f dump.c
 
 veryclean: clean
-	- rm -rf cere_dumps/
+	- rm -rf .cere/
 	- rm -f lel_bin realmain.c dump.c *.csv

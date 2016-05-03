@@ -2,7 +2,7 @@
 
 function do_test()
 {
-    rm -rf cere_dumps/ *.ll
+    rm -rf .cere/ *.ll
     make clean
     make -j4 CERE_MODE="dump --region=__cere__advx1_advx1__622 --invocation=1"
     LD_BIND_NOW=1 ./zeusmp
