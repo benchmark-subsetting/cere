@@ -5,7 +5,7 @@ cere flag(1) -- Replay region with specified compilation flags
 
 ```
 cere flag [-h] --region REGION --flags FLAGS1, FLAGS2, ...
-          [--invocation INVOCATION] [--invitro-callcount INVITRO_CALLCOUNT]
+          [--invocation INVOCATION] [--invitro-callcount CERE_REPLAY_REPETITIONS]
           [--plugin-instr PLUGIN_INSTR] [--norun] [--noinstrumentation]
           [--force]
 ```
@@ -32,7 +32,7 @@ then choose the best set of flags for each region before calling cere-hybrid(1).
     Selects the invocation to replay. By default, all the representative
     invocations chosen by cere-selectinv(1) are replayed.
 
-  * `--invitro-callcount INVITRO_CALLCOUNT`:
+  * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
     Select the meta-repetition of the replay. By default **cere replay** runs
     the region 10 times.
 
@@ -53,7 +53,7 @@ then choose the best set of flags for each region before calling cere-hybrid(1).
 ## OUTPUT FILE
 
   * `.cere/replays/REGION_INVOCATION`:
-    Replay execution time of the region * INVITRO_CALLCOUNT
+    Replay execution time of the region multiplied by CERE_REPLAY_REPETITIONS
 
 ## COPYRIGHT
 

@@ -8,7 +8,7 @@ function do_test()
     LD_BIND_NOW=1 ./gromacs -silent -deffnm gromacs -nice 0
 
     make clean
-    make -j4 INVITRO_CALL_COUNT=1 CERE_MODE="replay --region=__cere__fnbf_do_fnbf_232 --invocation=7948 --instrument --wrapper=../../src/rdtsc/librdtsc.a"
+    make -j4 CERE_REPLAY_REPETITIONS=1 CERE_MODE="replay --region=__cere__fnbf_do_fnbf_232 --invocation=7948 --instrument --wrapper=../../src/rdtsc/librdtsc.a"
     ./gromacs -silent -deffnm gromacs -nice 0 > $TMPDIR/test.replay.out 2>&1
 
     #diff -u $TMPDIR/test.replay.out verif
