@@ -3,7 +3,7 @@
 function do_test()
 {
     make veryclean
-    make -j4 CERE_MODE="dump"
+    make -j4 CERE_MODE="dump --region=__cere__test_checksum_7"
     LD_BIND_NOW=1 ./test 2> $TMPDIR/test.dump.out
     cat $TMPDIR/test.dump.out
 

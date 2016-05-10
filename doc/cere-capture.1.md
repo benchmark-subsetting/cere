@@ -4,7 +4,7 @@ cere capture(1) -- Captures the memory and cache state of a region
 ## SYNOPSIS
 
 ```
-cere capture [-h] [--region REGION] [--invocation INVOCATION] [--norun]
+cere capture [-h] --region REGION [--invocation INVOCATION] [--norun]
           [--force]
 ```
 
