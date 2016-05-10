@@ -92,7 +92,7 @@ def init_parser_core(parser):
                         version='%(prog)s '+VERSION)
     subparsers = parser.add_subparsers(help='sub-command help')
     parser_dump = subparsers.add_parser('dump', description='dump')
-    init_subpars(parser_dump, False)
+    init_subpars(parser_dump, True)
     parser_dump.set_defaults(func="dump_fun")
     parser_replay = subparsers.add_parser('replay', description='replay')
     init_subpars(parser_replay, True)

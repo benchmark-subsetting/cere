@@ -3,7 +3,7 @@ PROJECT_ROOT=../../
 CC=../../src/ccc/ccc
 FLINK=../../src/ccc/ccc
 
-FLAGS=-g -O0
+FLAGS=-O3 -g
 
 OBJS = test.o
 
@@ -17,7 +17,7 @@ ${PROGRAM}: ${OBJS}
 
 clean:
 	- rm -f *.o *.s *.ll
-	- rm test
+	- rm -f test
 
 veryclean: clean
 	- rm -rf .cere/
