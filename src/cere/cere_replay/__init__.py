@@ -86,6 +86,11 @@ def compute_predicted_time(region, invocations):
     invitro_cycles = 0
   return invitro_cycles
 
+def dump_result(region, predicted_cycles):
+  result_file = open("{0}/{1}".format(var.CERE_REPLAY_PATH, region), 'w')
+  result_file.write("{0}\n".format(predicted_cycles))
+  result_file.close()
+
 def run(args):
   if not cere_configure.init():
     return False
@@ -142,5 +147,6 @@ def run(args):
           return False
   if PREDICTION_MODE:
     predicted_cycles = compute_predicted_time(args.region, invocations)
+    dump_result(args.region, predicted_cycles)
     logger.info(" Overall predicted cycles = {0}".format(predicted_cycles))
   return True
