@@ -223,7 +223,7 @@ selected invocations are replayed, and are used to simulate the region total run
 
 This command generates the file
 `.cere/replays/__cere__fft3d_swarztrauber__27_INVOCATION` which contains the
-replay execution time of the region multiplied by the INVITRO_CALLCOUNT.
+replay execution time of the region multiplied by the CERE_REPLAY_REPETITIONS.
 
 ### Replay output
 

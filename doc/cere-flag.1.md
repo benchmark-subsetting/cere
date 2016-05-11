@@ -5,7 +5,7 @@ cere flag(1) -- Find best compilation flags for regions
 
 ```
 cere flag [-h] [--region REGION] --flags-file FLAGS_FILE
-               [--invitro-callcount INVITRO_CALLCOUNT] [--force]
+               [--invitro-callcount CERE_REPLAY_REPETITIONS] [--force]
 ```
 
 ## DESCRIPTION
@@ -33,8 +33,8 @@ predicted based on each region best performance.
     wants to test. An exemple can be find at CERE_PATH/src/cere/common/flags.csv
     wich is the default input.
 
-  * `--invitro-callcount INVITRO_CALLCOUNT`:
-    Select the meta-repetitions of the replay. By default **cere replay** runs
+  * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
+    Select the meta-repetition of the replay. By default **cere replay** runs
     the region 10 times.
 
   * `--force`:

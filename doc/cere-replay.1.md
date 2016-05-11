@@ -5,7 +5,7 @@ cere replay(1) -- Replay invocation(s) and predict region time
 
 ```
 cere replay [-h] --region REGION [--invocation INVOCATION]
-          [--invitro-callcount INVITRO_CALLCOUNT] [--plugin-instr PLUGIN_INSTR]
+          [--invitro-callcount CERE_REPLAY_REPETITIONS] [--plugin-instr PLUGIN_INSTR]
           [--norun] [--noinstrumentation] [--force]
 ```
 
@@ -17,6 +17,18 @@ and jump to a wrapper function that load the memory and call the outlined region
 If no particular invocation is selected, **cere replay** replays all the
 representative invocations selected by cere-selectinv(1), and predicts the
 runtime of the region according to the model computed by cere-selectinv(1).
+
+The warmup type can be selected by setting the environnement variable
+`CERE_WARMUP` to one of the tree values below.  Three warmup modes are
+available,
+
+  * `COLD`, no warmup at all.
+
+  * `WORKLOAD` (the default mode), optimistic warmup the whole workload is
+     touched before replaying.
+
+  * `PAGETRACE`, the trace of most recently touched pages is replayed before
+    entering the region of interest.
 
 ## OPTIONS
 
@@ -31,7 +43,7 @@ runtime of the region according to the model computed by cere-selectinv(1).
     Selects the invocation to replay. By default, all the representative
     invocations chosen by cere-selectinv(1) are replayed.
 
-  * `--invitro-callcount INVITRO_CALLCOUNT`:
+  * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
     Select the meta-repetition of the replay. By default **cere replay** runs
     the region 10 times.
 
@@ -52,7 +64,7 @@ runtime of the region according to the model computed by cere-selectinv(1).
 ## OUTPUT FILE
 
   * `.cere/replays/REGION_INVOCATION`:
-    Replay execution time of the region * INVITRO_CALLCOUNT
+    Replay execution time of the region multiplied by CERE_REPLAY_REPETITIONS
 
 ## COPYRIGHT
 
