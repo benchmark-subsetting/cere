@@ -81,5 +81,6 @@ def solve_with_best_granularity(args):
     for c in chosen:
         graph.graph['coverage'] = graph.graph['coverage'] + graph.node[c]['_self_coverage']
         print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_self_coverage'])
+    graph.graph['selector'] = "MAX_COV"
     save_graph(graph)
     return True

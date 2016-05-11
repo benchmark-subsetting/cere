@@ -137,5 +137,6 @@ def solve_with_best_granularity(error):
     for c in target_error_chosen:
         graph.graph['coverage'] = graph.graph['coverage'] + graph.node[c]['_coverage']
         print >>sys.stderr, "> {0} {1}".format(graph.node[c]['_name'].ljust(padding), graph.node[c]['_coverage'])
+    graph.graph['selector'] = "ILP"
     save_graph(graph)
     return True

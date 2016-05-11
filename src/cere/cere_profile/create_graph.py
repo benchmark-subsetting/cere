@@ -92,6 +92,7 @@ def add_node(digraph, matchObj):
 
     digraph.add_node(_id, _name = name)
     digraph.graph['coverage'] = 0
+    digraph.graph['selector'] = None
     digraph.node[_id]['_self_coverage'] = float(matchObj.group(4))
     digraph.node[_id]['_coverage'] = coverage
     digraph.node[_id]['_matching'] = False
