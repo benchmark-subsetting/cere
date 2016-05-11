@@ -38,6 +38,9 @@
  **********************************************************************/
 
 #define MAX_WARMUP (16384 * 100)
+#define WARMUP_COLD 0
+#define WARMUP_WORKLOAD 1
+#define WARMUP_PAGETRACE 2
 #define MAX_COLD (4096 * 64)
 #define REPLAY_PAST MAX_COLD
 
@@ -77,10 +80,17 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
-  char *ge = getenv("WARMUP_TYPE");
-  if (ge) {
-    type_of_warmup = atoi(ge);
-    assert(type_of_warmup >= 0 && type_of_warmup < 3);
+  /* Read warmup type from environment variable */
+  char *ge = getenv("CERE_WARMUP");
+  if (ge && strcmp("COLD", ge) == 0) {
+    type_of_warmup = WARMUP_COLD;
+  }
+  else if (ge && strcmp("PAGETRACE", ge) == 0) {
+    type_of_warmup = WARMUP_PAGETRACE;
+  }
+  else {
+    /* WARMUP_WORKLOAD is the default warmup */
+    type_of_warmup = WARMUP_WORKLOAD;
   }
 
   /* Load adresses */
@@ -120,8 +130,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     loaded = true;
   }
 
-  // No warmup at all for NOWARMUP
-  if (type_of_warmup == 2) {
+  // No warmup at all for COLD
+  if (type_of_warmup == WARMUP_COLD) {
     cacheflush();
     return;
   }
@@ -182,10 +192,11 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
   closedir(dir);
 
-  /* No flush or warmup for OPTIMISTIC warmup */
-  if (type_of_warmup == 1)
+  /* No flush or warmup for WORKLOAD warmup */
+  if (type_of_warmup == WARMUP_WORKLOAD)
     return;
 
+  /* Flush and prepare TRACE warmup */
   /* invalid address should warm cold zone */
   int start = MAX(0, hotpages_counter - REPLAY_PAST);
   for (int i = start; i < hotpages_counter; i++) {
