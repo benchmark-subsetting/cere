@@ -18,6 +18,18 @@ If no particular invocation is selected, **cere replay** replays all the
 representative invocations selected by cere-selectinv(1), and predicts the
 runtime of the region according to the model computed by cere-selectinv(1).
 
+The warmup type can be selected by setting the environnement variable
+`CERE_WARMUP` to one of the tree values below.  Three warmup modes are
+available,
+
+  * `COLD`, no warmup at all.
+
+  * `WORKLOAD` (the default mode), optimistic warmup the whole workload is
+     touched before replaying.
+
+  * `PAGETRACE`, the trace of most recently touched pages is replayed before
+    entering the region of interest.
+
 ## OPTIONS
 
   * `-h`:

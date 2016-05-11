@@ -11,6 +11,7 @@ function do_test()
     ITER4=$(../../cere trace --region=__cere__test_loop_11 --read=4)
     echo $ITER2 $ITER4
 
+    export CERE_WARMUP="PAGETRACE"
     export CERE_TRACE=1
     export CERE_REPLAY_REPETITIONS=4
     rm -f __cere__test_loop_11.bin

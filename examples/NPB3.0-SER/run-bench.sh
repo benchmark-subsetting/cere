@@ -2,7 +2,7 @@
 
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CLASS=A
-export WARMUP_TYPE=1
+export CERE_WARMUP="WORKLOAD"
 export CERE_REPLAY_REPETITIONS=5
 
 for bench in LU CG EP FT IS MG SP BT; do
