@@ -95,8 +95,8 @@ def dump_fun(mode_opt, BASE, regions):
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
-                "-regions-infos={regions_infos} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopExt=LOOP_EXT, regions_infos=mode_opt.regions_infos, base=BASE,Omp=OMP_FLAGS), EXIT=False)
+                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                LoopExt=LOOP_EXT, base=BASE,Omp=OMP_FLAGS), EXIT=False)
     safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} {Omp}-region-dump {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopMan=LOOP_DUMP, opts=temp, base=BASE,Omp=OMP_FLAGS), EXIT=False)
@@ -214,9 +214,11 @@ def original_fun(mode_opt, BASE, regions):
                 instru_opts = instru_opts + "--instrument-app "
     if(mode_opt.instrument):
         if(mode_opt.instrument_app):
+          if(mode_opt.regions_infos):
+            extract_opts = extract_opts + "-regions-infos=" + mode_opt.regions_infos + " "
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner {opts} " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                LoopExt=LOOP_EXT, opts=extract_opts, base=BASE,Omp=OMP_FLAGS), EXIT=False)
+                        "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                        LoopExt=LOOP_EXT, opts=extract_opts, base=BASE,Omp=OMP_FLAGS), EXIT=False)
         else:
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
                         "{Omp}-region-instrumentation {opts} {base}.ll " +
