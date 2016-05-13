@@ -216,9 +216,9 @@ def original_fun(mode_opt, BASE, regions):
         if(mode_opt.instrument_app):
           if(mode_opt.regions_infos):
             extract_opts = extract_opts + "-regions-infos=" + mode_opt.regions_infos + " "
-            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner {opts} " +
-                        "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
-                        LoopExt=LOOP_EXT, opts=extract_opts, base=BASE,Omp=OMP_FLAGS), EXIT=False)
+          safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner {opts} " +
+                      "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                      LoopExt=LOOP_EXT, opts=extract_opts, base=BASE,Omp=OMP_FLAGS), EXIT=False)
         else:
             safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
                         "{Omp}-region-instrumentation {opts} {base}.ll " +
