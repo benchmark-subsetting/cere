@@ -5,8 +5,8 @@ PROJECT_ROOT=../../
 
 include make.def
 
-CC=../../src/ccc/ccc
-CLINK=../../src/ccc/ccc
+CC=../../src/cerec
+CLINK=../../src/cerec
 
 FLAGS=-g
 

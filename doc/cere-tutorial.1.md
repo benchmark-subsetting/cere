@@ -66,19 +66,19 @@ First enter the FT benchmark directory:
 
     $ cd ~/cere/examples/NPB3.0-SER/FT/
 
-CERE capture and replay require specific LLVM compiler passes. To easily compile
-an application, CERE includes a compiler wrapper, `ccc`, which is located at
-`~/cere/src/ccc/ccc`. You can either use `ccc` directly to compile and link a
-program, or modify the `Makefile` so it uses `ccc`.
+CERE capture and replay require specific LLVM compiler passes. To easily
+compile an application, CERE includes a compiler wrapper, `cerec`.  You can
+either use `cerec` directly to compile and link a program, or modify the
+`Makefile` so it uses `cerec`.
 
 For FT the `Makefile` has already been configured to use `ccc`. The file
 `~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
 
 
-    F77 = ../../../src/ccc/ccc
-    FLINK = ../../../src/ccc/ccc
-    CC = ../../../src/ccc/ccc
-    CLINK = ../../../src/ccc/ccc
+    F77 = ../../../src/cerec
+    FLINK = ../../../src/cerec
+    CC = ../../../src/cerec
+    CLINK = ../../../src/cerec
 
 
 ## CONFIGURATION OF CERE

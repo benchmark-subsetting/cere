@@ -130,7 +130,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     loaded = true;
   }
 
-  // No warmup at all for COLD
+  // No warmup at all for COLD.
+  // COLD warmup must always be used with CERE_REPLAY_REPETITIONS=1
   if (type_of_warmup == WARMUP_COLD) {
     cacheflush();
     return;
@@ -157,8 +158,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     if (strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
       continue;
 
-    snprintf(filename, sizeof(filename), ".cere/dumps/%s/%d/%s", loop_name,
-             invocation, ent->d_name);
+    snprintf(filename, sizeof(filename), "%s/%s", path, ent->d_name);
     if (stat(filename, &st) != 0) {
       fprintf(stderr, "Could not get size for file %s: %s\n", filename,
               strerror(errno));
@@ -179,6 +179,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       read_bytes += len;
     }
 
+    // XXX This code should be only done once in the !loaded section
+    // because the valid status does not depend on the repetition
     for (int i = 0; i < hotpages_counter; i++) {
       if ((warmup[i] >= (char *)address) &&
           (warmup[i] < ((char *)address + read_bytes))) {
