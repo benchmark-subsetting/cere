@@ -33,4 +33,4 @@ pkgpython_PYTHON= \
 	cere/cere_flag.py \
 	cere/cere_configure.py
 		
-SUBDIRS=rdtsc io_detector memory_dump cache_flush RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
+SUBDIRS=rdtsc io_detector memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename

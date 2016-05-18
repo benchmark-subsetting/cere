@@ -133,7 +133,6 @@ AC_CONFIG_FILES([Makefile
                  src/GlobalRename/Makefile
                  src/rdtsc/Makefile
                  src/io_detector/Makefile
-                 src/cache_flush/Makefile
                  src/memory_dump/Makefile
                  tests/Makefile])
 
