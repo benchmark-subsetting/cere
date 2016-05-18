@@ -30,6 +30,7 @@ install:
   - ./autogen.sh
   - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
   - make
+  - sudo make install
 
 after_failure:
   - cat config.log
