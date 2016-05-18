@@ -16,6 +16,8 @@ html/%.1.html: %.1.md
 	mkdir -p html
 	$(RONN) $(RONN_FLAGS) --pipe -5 $< > $@
 
+clean-local:
+	rm -rf html man1
 
 EXTRA_DIST=\
 	cere-configure.1.md \
