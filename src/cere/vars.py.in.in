@@ -18,30 +18,32 @@
 import os
 
 VERSION = "@PACKAGE_VERSION@"
+DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
+CLANG = os.path.join("@LLVM_BINDIR@","clang")
+PPROF = "@PPROF@"
+LLVM_BINDIR = "@LLVM_BINDIR@"
+GCC="@GCC_PATH@"
+LIBDIR = "%LIBDIR%"
+
 ROOT = os.path.dirname(os.path.realpath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/.."))
 PROFILE_LIB = "-lprofiler"
-PPROF = "@PPROF@"
 OBJCOPY = "objcopy"
-MEMORYDUMP = "/memory_dump/.libs/"
-LOOP_REPLAY = "/RegionReplay/.libs/libRegionReplay.so"
-LOOP_INSTR = "/RegionInstrumentation/.libs/libRegionInstrumentation.so"
-LOOP_EXT = "/RegionOutliner/.libs/libRegionOutliner.so"
-LOOP_DUMP = "/RegionDump/.libs/libRegionDump.so"
-LLVM_BINDIR = "@LLVM_BINDIR@"
+LOOP_REPLAY = LIBDIR + "/libcere_regionreplay.so"
+LOOP_INSTR = LIBDIR + "/libcere_regioninstrumentation.so"
+LOOP_EXT = LIBDIR + "/libcere_regionoutliner.so"
+LOOP_DUMP = LIBDIR + "/libcere_regiondump.so"
+GLOB_RENAME = LIBDIR + "/libcere_globalrename.so"
+
+RDTSC_WRAPPER = "libcere_rdtsc.so"
+IO_CHECKER_LIB = "libcere_iodetector.so"
 LIKWID = "/usr/local/lib/liblikwid.a -lpthread -lm"
-GLOB_RENAME = "/GlobalRename/.libs/libGlobalRename.so"
-GCC="@GCC_PATH@"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
 DUMPS_DIR = ".cere/dumps/"
-DRAGONEGG_PATH = "@DRAGONEGG_PATH@"
-CLANG = os.path.join("@LLVM_BINDIR@","clang")
 
 SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
 
-RDTSC_WRAPPER = PROJECT_ROOT + "/rdtsc/librdtsc.a"
 FLAGS_FILE = PROJECT_ROOT + "/cere/flags.csv"
-IO_CHECKER_LIB = PROJECT_ROOT + "/io_detector/libio_detector.a"
 INVALID_REGION_FILE = "invalid_regions"
 
 CERE_DIRECTORIES = []

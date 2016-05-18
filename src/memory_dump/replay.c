@@ -33,6 +33,17 @@
 #include <errno.h>
 #include "pages.h"
 
+#define CACHE_SIZE_MB 20
+
+void cacheflush(void) {
+    const size_t size = CACHE_SIZE_MB*1024*1024;
+    int i, j;
+    char *c = malloc(size);
+    for (i = 0; i < 5; i++)
+      for (j = 0; j < size; j++)
+        c[j] = i*j;
+}
+
 /**********************************************************************
  * REPLAY MODE                                                        *
  **********************************************************************/
@@ -45,7 +56,6 @@
 #define REPLAY_PAST MAX_COLD
 
 char cold[MAX_COLD * PAGESIZE];
-extern char *cacheflush();
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
 static bool valid[MAX_WARMUP];

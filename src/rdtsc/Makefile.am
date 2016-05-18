@@ -1,3 +1,3 @@
-noinst_LIBRARIES = librdtsc.a
-librdtsc_a_SOURCES = rdtsc.c rdtsc_wrapper.c ../ccan/ccan/htable/htable.c
-librdtsc_a_CFLAGS = -I ../ccan/
+lib_LTLIBRARIES = libcere_rdtsc.la
+libcere_rdtsc_la_CFLAGS = --std=gnu99 -I ../ccan/
+libcere_rdtsc_la_SOURCES = rdtsc.c rdtsc_wrapper.c ../ccan/ccan/htable/htable.c

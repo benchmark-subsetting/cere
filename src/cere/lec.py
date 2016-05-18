@@ -85,10 +85,10 @@ def dump_fun(mode_opt, BASE, regions):
             temp = temp+"--regions-file="+mode_opt.regions_file+" "
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
+    safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, base=BASE,Omp=OMP_FLAGS), EXIT=False)
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} {Omp}-region-dump {opts} " +
+    safe_system(("{llvm_bindir}/opt -S -load {LoopMan} {Omp}-region-dump {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopMan=LOOP_DUMP, opts=temp, base=BASE,Omp=OMP_FLAGS), EXIT=False)
 
@@ -107,11 +107,11 @@ def replay_fun(mode_opt, BASE, regions):
     print "Compiling replay mode"
     if (mode_opt.invocation):
         temp = temp + "--invocation=" + mode_opt.invocation + " "
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
+    safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
                 "-isolate-region={loop} {base}.ll -o {base}.ll").format(
                 llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
                 loop=mode_opt.region, base=BASE,Omp=OMP_FLAGS), EXIT=False)
-    safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopMan} {opts} {Omp}-region-replay -region={loop} " +
+    safe_system(("{llvm_bindir}/opt -S -load {LoopMan} {opts} {Omp}-region-replay -region={loop} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR,
                     Root=PROJECT_ROOT, LoopMan=LOOP_REPLAY, opts=temp, loop=mode_opt.region,
                     base=BASE,Omp=OMP_FLAGS), EXIT=False)
@@ -121,7 +121,7 @@ def replay_fun(mode_opt, BASE, regions):
         safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR,
                     base=BASE), EXIT=False)
-        safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
+        safe_system(("{llvm_bindir}/opt -S -load {LoopInstr} " +
                     "{Omp}-region-instrumentation --replay {opts} {base}.ll " +
                     "-o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
@@ -154,12 +154,12 @@ def extract_function(mode_opt, regions, BASE):
           if mode_opt.extraction_lvl == "loop":
             to_extract=region
             #Outline the loop into a function
-            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner " +
+            safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
                  "-isolate-region={loop} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                  LoopExt=LOOP_EXT, loop=to_extract, base=BASE, Omp=OMP_FLAGS), EXIT=False)
 
           #Rename global variables in this module
-          safe_system(("{llvm_bindir}/opt -S -load {Root}{globRename} -global-rename " +
+          safe_system(("{llvm_bindir}/opt -S -load {globRename} -global-rename " +
                     "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                     globRename=GLOB_RENAME, base=BASE), EXIT=False)
           #Then extract this function into a new file
@@ -207,11 +207,11 @@ def original_fun(mode_opt, BASE, regions):
         if(mode_opt.instrument_app):
           if(mode_opt.regions_infos):
             extract_opts = extract_opts + "-regions-infos=" + mode_opt.regions_infos + " "
-          safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopExt} {Omp}-region-outliner {opts} " +
+          safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner {opts} " +
                       "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                       LoopExt=LOOP_EXT, opts=extract_opts, base=BASE,Omp=OMP_FLAGS), EXIT=False)
         else:
-            safe_system(("{llvm_bindir}/opt -S -load {Root}{LoopInstr} " +
+            safe_system(("{llvm_bindir}/opt -S -load {LoopInstr} " +
                         "{Omp}-region-instrumentation {opts} {base}.ll " +
                         "-o {base}.ll").format(
                         llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,

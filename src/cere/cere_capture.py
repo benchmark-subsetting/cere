@@ -95,7 +95,7 @@ def run(args):
     if not args.norun:
       logger.info("Capturing invocation {1} for region {0}".format(args.region, invocation))
       try:
-        logger.info(subprocess.check_output("LD_BIND_NOW=1 " + cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+        logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
       except subprocess.CalledProcessError as err:
         #even if the capture run fails, maybe the region is dumped.
         logger.error(str(err))
