@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 PROJECT_ROOT=../../
-CC=../../src/ccc/ccc
-FLINK=../../src/ccc/ccc
+CC=../../src/cerec
+FLINK=../../src/cerec
 
 FLAGS=-O3 -g
 

@@ -16,15 +16,15 @@ BENCHLANG=F
 ONESTEP=
 FONESTEP=
 
-CC               = ../../src/ccc/ccc
+CC               = ../../src/cerec
 COPTIMIZE        = -O3 -mcmodel=large
-CLD              = ../../src/ccc/ccc
-CXX              = ../../src/ccc/ccc
+CLD              = ../../src/cerec
+CXX              = ../../src/cerec
 CXXOPTIMIZE      = -O3 -mcmodel=large
-CXXLD            = ../../src/ccc/ccc
-FC               = ../../src/ccc/ccc
+CXXLD            = ../../src/cerec
+FC               = ../../src/cerec
 FOPTIMIZE        = -O3 -mcmodel=medium
-FLD              = ../../src/ccc/ccc
+FLD              = ../../src/cerec
 EXTRA_LIBS       = -lm -lgfortran -mcmodel=medium
 FPBASE           = yes
 OS               = unix

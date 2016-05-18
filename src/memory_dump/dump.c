@@ -547,21 +547,6 @@ void dump_init(bool global_dump) {
   /* configure sigaction */
   configure_sigaction();
 
-  /*If we want to dump all loops
-   * start memory lock and trace at start*/
-  if (state.global_dump) {
-    /* set ignore */
-    set_ignore();
-
-    /* lock memory */
-    lock_mem();
-
-    /* configure mru sa */
-    set_mru();
-
-    /* start protecting malloc and co */
-    state.mtrace_active = true;
-  }
   state.dump_initialized = true;
 
 #ifdef _DEBUG
@@ -593,6 +578,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   //the dump.
   if (!state.dump_initialized)
     return;
+
 #ifdef _DEBUG
   printf("enter dump( %s %d count = %d) \n", loop_name, invocation, count);
 #endif

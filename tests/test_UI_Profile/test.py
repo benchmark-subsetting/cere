@@ -6,8 +6,8 @@ import logging
 import networkx as nx
 sys.path.insert(0, "../../src/cere/")
 import cere_configure
-from common.graph_utils import load_graph
-import common.variables as var
+from graph_utils import load_graph
+import vars as var
 
 logger = logging.getLogger('Test Profile')
 

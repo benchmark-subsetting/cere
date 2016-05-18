@@ -75,8 +75,8 @@ static void hooks_init(void) {
 }
 
 static void lock_range(void * from, void * to) {
-  long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
   if (state.mtrace_active) {
+    long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
     for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
       if (!is_mru(from + PAGESIZE * i)) {
         int result =
