@@ -27,7 +27,8 @@ def read_datafile(file_name):
 
 def plot_graph(datafile):
   table = read_datafile(datafile)
-
+  #Sort by error
+  table.sort(0)
   f, ax = plt.subplots(1, figsize=(10, 4.16))
   ax.plot(table['error'], table['coverage'], linewidth=0.8, marker="o")
   ax.axvline(15, color="r", linestyle="dotted", linewidth=1.5)
