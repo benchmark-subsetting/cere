@@ -182,6 +182,10 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     INVOCATION=mode_opt.invocation
     if(not INVOCATION):
         INVOCATION=1
+
+    if mode_opt.instrument and not mode_opt.wrapper:
+        fail_lel("When using --instrument you must provide the --wrapper argument")
+
     DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=DUMPS_DIR, loop=LOOP, invocation=INVOCATION)
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
