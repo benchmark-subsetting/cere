@@ -1,3 +1,4 @@
 SUBDIRS=src/ tests/ doc/
 ACLOCAL_AMFLAGS=-I m4
-bin_SCRIPTS=cere
+EXTRA_DIST=examples/
+dist_bin_SCRIPTS=cere
