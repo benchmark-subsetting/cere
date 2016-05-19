@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([cere], [0.1.0], [cere-dev@googlegroups.com])
+AC_INIT([cere], [0.2.0], [cere-dev@googlegroups.com])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
 AC_CONFIG_MACRO_DIR([m4])
