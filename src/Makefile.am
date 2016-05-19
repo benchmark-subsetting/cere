@@ -33,7 +33,10 @@ pkgpython_PYTHON= \
 	cere/cere_capture.py \
 	cere/cere_report.py \
 	cere/cere_flag.py \
-	cere/cere_configure.py
+	cere/cere_configure.py \
+	cere/template.html \
+	cere/template_realmain.c \
+	cere/Report.js
 
 edit_script = $(SED) -e 's,%LIBDIR%,$(libdir),'g $(NULL)
 
