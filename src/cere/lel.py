@@ -8,19 +8,20 @@
 # the Free Software Foundation, either version 3 of the License,
 # or (at your option) any later version.
 #
-# CERE is distributed in the hope that it will be useful,  
+# CERE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
+# along with CERE.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import re
 import subprocess
 import tempfile
 
 from cere.vars import *
+from cere.compress import compress
 
 def grep(path, regex):
     regex=".*"+regex+".*"
@@ -85,10 +86,10 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Dump mode
     Call the linker and copy the original binary
     '''
-    safe_system(("{link} {opts} -o {binary} -L {libs} -Wl," +
-                 "--rpath={libs},-z,now,-z,relro -lcere_dump -ldl"
+    safe_system(("{link} {opts} -o {binary} {libdir} " +
+                 "-Wl,-z,now -lcere_dump -ldl"
     ).format(link=CLANG, binary=BINARY,
-             opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=LIBDIR))
+             opts=COMPIL_OPT, Root=PROJECT_ROOT,libdir=LIBDIR_FLAGS))
 
 def sysout(cmd):
     return (subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
@@ -192,7 +193,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
         fail_lel("No dump for {loop} invocation {invocation}".format(loop=LOOP,
                  invocation=INVOCATION))
     # Compress the traces
-    safe_system("{root}/compress.py {rep}/".format(root=ROOT, rep=DIR))
+    compress(DIR)
     create_user_main(mode_opt,LOOP)
 
     # Extract symbol file
@@ -210,10 +211,10 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     with tempfile.NamedTemporaryFile() as f:
         f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
                  + " objs.o realmain.o {args} "
-                 + " -L {libs} -lcere_load -Wl,--rpath={libs},-z,now,-z,relro"
+                 + " {libdir} -lcere_load -Wl,-z,now"
                  + " -ldl {wrapper}\n").format(
                 opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
-                     libs=LIBDIR, wrapper=mode_opt.wrapper, dump_dir=DIR))
+                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR))
 
         f.flush()
         safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))
@@ -225,11 +226,13 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Only call the linker
     '''
     if(mode_opt.instrument_app):
-        safe_system(("{link} -o {binary} {opts} {libs}").format(link=CLANG,
-                binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB))
+        safe_system(("{link} -o {binary} {opts} {libs} {libdir}").format(
+              link=CLANG, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
+              libdir=LIBDIR_FLAGS))
     elif(mode_opt.instrument):
-        safe_system(("{link} -o {binary} {opts} {wrapper}").format(link=CLANG,
-                binary=BINARY, opts=COMPIL_OPT, wrapper=mode_opt.wrapper))
+        safe_system(("{link} -o {binary} {opts} {wrapper} {libdir}").format(
+              link=CLANG, binary=BINARY, opts=COMPIL_OPT,
+              wrapper=mode_opt.wrapper, libdir=LIBDIR_FLAGS))
     else:
         safe_system(("{link} -o {binary} {opts}").format(link=CLANG,
                 binary=BINARY, opts=COMPIL_OPT))
