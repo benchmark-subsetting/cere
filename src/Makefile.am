@@ -1,4 +1,4 @@
-SUBDIRS=rdtsc io_detector memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
+SUBDIRS=ccan rdtsc io_detector memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
 
 dist_bin_SCRIPTS=cerec
 pkgpython_PYTHON= \

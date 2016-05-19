@@ -129,6 +129,7 @@ AX_PYTHON_MODULE(pygraphviz, fatal)
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  src/Makefile
+                 src/ccan/Makefile
                  src/RegionOutliner/Makefile
                  src/RegionInstrumentation/Makefile
                  src/RegionDump/Makefile
