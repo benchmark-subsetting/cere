@@ -36,6 +36,8 @@ import cere_selectinv
 import cere_flag
 import cere_hybrid
 
+import vars as var
+
 import logging
 logger = logging.getLogger('CERE')
 
@@ -58,10 +60,9 @@ def start_log():
     logging.getLogger('').addHandler(console)
     logger.info("Start")
 
-parser = argparse.ArgumentParser(description="CERE command line")
+parser = argparse.ArgumentParser(description="CERE command line", prog="cere")
+parser.add_argument('--version', action='version', version='%(prog)s ' + var.VERSION)
 subparsers = parser.add_subparsers(help="Call CERE modules", dest="mode")
-
-start_log()
 
 cere_configure.init_module(subparsers, cere_plugins)
 cere_profile.init_module(subparsers, cere_plugins)
@@ -84,6 +85,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     status = 0
 
+    start_log()
     if not cere_plugins[args.mode](args):
         status = 1
 

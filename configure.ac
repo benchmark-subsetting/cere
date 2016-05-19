@@ -16,10 +16,13 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
+AC_SUBST(CERELIBS, $libdir)
+
 # Check for specific compilers
 AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
+
 AX_LLVM([3.3],[3.5.2],[all])
 
 AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
@@ -126,6 +129,7 @@ AX_PYTHON_MODULE(pygraphviz, fatal)
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  src/Makefile
+                 src/ccan/Makefile
                  src/RegionOutliner/Makefile
                  src/RegionInstrumentation/Makefile
                  src/RegionDump/Makefile
@@ -133,10 +137,10 @@ AC_CONFIG_FILES([Makefile
                  src/GlobalRename/Makefile
                  src/rdtsc/Makefile
                  src/io_detector/Makefile
-                 src/cache_flush/Makefile
                  src/memory_dump/Makefile
                  tests/Makefile])
 
-AC_CONFIG_FILES([src/cere/vars.py], [])
+AC_CONFIG_FILES([src/cere/vars.py.in], [])
+
 
 AC_OUTPUT

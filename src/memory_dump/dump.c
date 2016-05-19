@@ -403,7 +403,7 @@ static void lock_mem(void) {
       continue;
 
     /* Ignore libdump mem zones */
-    if (strstr(buf, "libdump.so") != NULL)
+    if (strstr(buf, "libcere_dump.so") != NULL)
       continue;
 
     /* Ignore libdump vdso zones */

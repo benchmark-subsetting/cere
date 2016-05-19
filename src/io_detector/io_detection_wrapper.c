@@ -20,6 +20,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+extern void init_io_detection(char*);
+extern void close_io_detection(void);
+extern void start_io_detection(char*);
+extern void stop_io_detection(char*);
+
 void cere_markerInit(char* filename) {
     init_io_detection(filename);
 }

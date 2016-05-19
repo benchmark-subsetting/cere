@@ -85,9 +85,10 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Dump mode
     Call the linker and copy the original binary
     '''
-    safe_system(("{link} {opts} -o {binary} -L {Root}{libs} -ldump -Wl," +
-                "--rpath={Root}{libs} -ldl").format(link=CLANG, binary=BINARY,
-                opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=MEMORYDUMP))
+    safe_system(("{link} {opts} -o {binary} -L {libs} -Wl," +
+                 "--rpath={libs},-z,now,-z,relro -lcere_dump -ldl"
+    ).format(link=CLANG, binary=BINARY,
+             opts=COMPIL_OPT, Root=PROJECT_ROOT,libs=LIBDIR))
 
 def sysout(cmd):
     return (subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
@@ -162,11 +163,14 @@ def extract_symbols(DIR):
         for n in original_map:
             f.write(n + "\n")
 
-    safe_system("{objcopy} --globalize-symbols={dump_dir}/static.names  {dump_dir}/lel_bin {dump_dir}/static.sym".format(
-        objcopy=OBJCOPY, dump_dir=DIR))
+    safe_system(("{objcopy} --globalize-symbols={dump_dir}/static.names"
+                + " {dump_dir}/lel_bin {dump_dir}/static.sym").format(
+                    objcopy=OBJCOPY, dump_dir=DIR))
 
-    safe_system("{objcopy} -S --extract-symbol --keep-symbols={dump_dir}/static.names {dump_dir}/static.sym {dump_dir}/static.sym".format(
-        objcopy=OBJCOPY, dump_dir=DIR))
+    safe_system(("{objcopy} -S --extract-symbol"
+                + " --keep-symbols={dump_dir}/static.names"
+                + " {dump_dir}/static.sym {dump_dir}/static.sym").format(
+                    objcopy=OBJCOPY, dump_dir=DIR))
 
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -178,6 +182,10 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     INVOCATION=mode_opt.invocation
     if(not INVOCATION):
         INVOCATION=1
+
+    if mode_opt.instrument and not mode_opt.wrapper:
+        fail_lel("When using --instrument you must provide the --wrapper argument")
+
     DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=DUMPS_DIR, loop=LOOP, invocation=INVOCATION)
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
@@ -193,17 +201,19 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
 
     for f in COMPIL_OPT.split():
         if f.endswith('.o'):
-            safe_system ("{objcopy}  --weaken-symbols={dump_dir}/static.names {f}".format(
+            safe_system (
+                "{objcopy} --weaken-symbols={dump_dir}/static.names {f}".format(
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
     safe_system(CLANG + " -c realmain.c")
     OPTS = compile_memory_dump_objects(DIR)
     with tempfile.NamedTemporaryFile() as f:
-        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym objs.o realmain.o {args} " +
-                "-L {Root}{libs} -lload -Wl," +
-                 "--rpath={Root}{libs} -ldl {wrapper}\n").format(
+        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
+                 + " objs.o realmain.o {args} "
+                 + " -L {libs} -lcere_load -Wl,--rpath={libs},-z,now,-z,relro"
+                 + " -ldl {wrapper}\n").format(
                 opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
-                     libs=MEMORYDUMP, wrapper=mode_opt.wrapper, dump_dir=DIR))
+                     libs=LIBDIR, wrapper=mode_opt.wrapper, dump_dir=DIR))
 
         f.flush()
         safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))

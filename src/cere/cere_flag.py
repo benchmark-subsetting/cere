@@ -33,7 +33,7 @@ def init_module(subparsers, cere_plugins):
   cere_plugins["flag"] = run
   flag_parser = subparsers.add_parser("flag", help="test flags performance")
   flag_parser.add_argument('--region', help="region to replay")
-  flag_parser.add_argument('--flags-file', type=file, default=var.FLAGS_FILE, help="file of flags to test")
+  flag_parser.add_argument('FLAGSFILE', type=file, help="file of flags to test")
   flag_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetitions for the replay (Default 10)")
   flag_parser.add_argument('--force', '-f', action='store_true', help="force to replay (Delete previous measure)")
 
@@ -90,7 +90,7 @@ def run_replay(flags, args):
       if predicted_cycles < best_cycles:
         best_cycles = predicted_cycles
         best_seed = line["id"]
-  args.flags_file.seek(0)
+  args.FLAGSFILE.seek(0)
   flags.next()
   return best_seed, best_cycles
 
@@ -128,7 +128,7 @@ def run(args):
   #Use llc as backend
   os.environ["CERE_LLC"]="llc"
   #Read flags file
-  flags = read_csv(args.flags_file)
+  flags = read_csv(args.FLAGSFILE)
 
   #Set attributes for the replay pass.
   args.force=True
@@ -168,6 +168,6 @@ def run(args):
           best_flags.append({"region":args.region, "best_seed":-1, "best_cycles":d['_invivo'], "original_cycles":d['_invivo']})
 
   compute_theorical_speedup(best_flags, graph)
-  dump_results(best_flags, args.flags_file, flags)
+  dump_results(best_flags, args.FLAGSFILE, flags)
   clean_environ()
   return True

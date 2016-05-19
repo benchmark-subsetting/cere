@@ -4,7 +4,7 @@ function do_test()
 {
     make veryclean
     make -j4 CERE_MODE="dump --region=__cere__is_main_724 --invocation=1"
-    LD_BIND_NOW=1 ./IS
+    ./IS
 
     make clean
     make -j4 CERE_REPLAY_REPETITIONS=1 CERE_MODE="replay --region=__cere__is_main_724"

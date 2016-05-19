@@ -4,6 +4,18 @@
 #define PAGESIZE 4096
 #define round_to_page(addr) ((char *)(((long unsigned)(addr)) & ~(PAGESIZE-1)))
 #define WIDTH 4096*10
+#define CACHE_SIZE_MB 20
+
+void cacheflush(void) {
+    const size_t size = CACHE_SIZE_MB*1024*1024;
+    int i, j;
+    char *c = malloc(size);
+    for (i = 0; i < 5; i++)
+      for (j = 0; j < size; j++)
+        c[j] = i*j;
+}
+
+
 int loop(int *a, int size)
 {
   int i;
@@ -38,7 +50,7 @@ int main(int argc, char **argv)
     init(a, WIDTH);
     init(b, WIDTH);
 
-    system("cacheflush");
+    cacheflush();
 
     printf("a: %p -> %p\n", &a[0], &a[WIDTH]);
     printf("b: %p -> %p\n", &b[0], &b[WIDTH]);

@@ -20,6 +20,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+extern void rdtsc_markerInit();
+extern void rdtsc_markerClose();
+extern void rdtsc_markerStartRegion(char*, bool);
+extern void rdtsc_markerStopRegion(char*, bool);
+
 void cere_markerInit() {
     rdtsc_markerInit();
 }

@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-//******************************io-detector.c*********************************//
-// This library generates for each region an IO trace using strace. These     //
-// traces are then parsed to detect IOs. Regions doing IOs are not replayable //
-//****************************************************************************//
 
+// This library generates for each region an IO trace using strace. These
+// traces are then parsed to detect IOs. Regions doing IOs are not replayabl
+
+#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>

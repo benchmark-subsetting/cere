@@ -1,7 +1,7 @@
 LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags)
-libRegionReplay_la_CXXFLAGS = $(LLVMCXXFLAGS)
+libcere_regionreplay_la_CXXFLAGS = $(LLVMCXXFLAGS)
 
 
-lib_LTLIBRARIES = libRegionReplay.la
-libRegionReplay_la_SOURCES = RegionReplay.cpp LoopRegionReplay.cpp OmpRegionReplay.cpp
-libRegionReplay_la_LDFLAGS =
+lib_LTLIBRARIES = libcere_regionreplay.la
+libcere_regionreplay_la_SOURCES = RegionReplay.cpp LoopRegionReplay.cpp OmpRegionReplay.cpp
+libcere_regionreplay_la_LDFLAGS =

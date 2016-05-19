@@ -1,3 +1,5 @@
+SUBDIRS=ccan rdtsc io_detector memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
+
 dist_bin_SCRIPTS=cerec
 pkgpython_PYTHON= \
 	cere/lel.py \
@@ -32,5 +34,13 @@ pkgpython_PYTHON= \
 	cere/cere_report.py \
 	cere/cere_flag.py \
 	cere/cere_configure.py
-		
-SUBDIRS=rdtsc io_detector memory_dump cache_flush RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
+
+edit_script = $(SED) -e 's,%LIBDIR%,$(libdir),'g $(NULL)
+
+cere/vars.py: cere/vars.py.in Makefile
+	$(AM_V_GEN)rm -f $@ $@.tmp && \
+	$(edit_script) $< >$@.tmp && \
+	chmod a-w $@.tmp && \
+	mv $@.tmp $@
+
+CLEANFILES = cere/vars.py

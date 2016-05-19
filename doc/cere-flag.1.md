@@ -4,8 +4,8 @@ cere flag(1) -- Find best compilation flags for regions
 ## SYNOPSIS
 
 ```
-cere flag [-h] [--region REGION] --flags-file FLAGS_FILE
-               [--invitro-callcount CERE_REPLAY_REPETITIONS] [--force]
+cere flag [-h] [--region REGION] [--invitro-callcount CERE_REPLAY_REPETITIONS] 
+               [--force] FLAGS_FILE
 ```
 
 ## DESCRIPTION
@@ -28,11 +28,6 @@ predicted based on each region best performance.
     Selects the region to replay. The list of valid regions can be displayed with
     the cere-regions(1) command.
 
-  * `--flags-file FLAGS_FILE`:
-    Csv file where each row is a sequence of compilation flags that the user
-    wants to test. An exemple can be find at CERE_PATH/src/cere/common/flags.csv
-    wich is the default input.
-
   * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
     Select the meta-repetition of the replay. By default **cere replay** runs
     the region 10 times.
@@ -40,6 +35,10 @@ predicted based on each region best performance.
   * `--force`:
     **cere flag** keeps any previous results for regions. Use --force if you want
     to measure again or if you changed the input file.
+
+  * `FLAGS_FILE`:
+    Csv file where each row is a sequence of compilation flags that the user
+    wants to test. An example can be find at CERE_PATH/examples/flags.csv.
 
 ## OUTPUT FILE
 
@@ -49,7 +48,7 @@ predicted based on each region best performance.
 
 ## COPYRIGHT
 
-cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
+cere is Copyright (C) 2014-2016 Université de Versailles St-Quentin-en-Yvelines
 
 ## SEE ALSO
 

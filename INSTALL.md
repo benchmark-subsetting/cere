@@ -33,6 +33,7 @@ Then run the following command inside CERE directory:
    $ ./autogen.sh
    $ ./configure
    $ make
+   $ make install
 ```
 
 If you are not interested in Fortran support, you can configure CERE using
@@ -85,5 +86,6 @@ install procedure:
    $ ./configure \
        --with-dragonegg=/usr/local/lib/dragonegg.so \
        CC=gcc-4.7
-   $ make && make check
+   $ make && make install
+   $ make check
 ```

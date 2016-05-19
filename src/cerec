@@ -110,7 +110,7 @@ if __name__ == "__main__":
     try:
       cere_args = os.environ["CERE_MODE"].split()
     except KeyError:
-      print("ccc: CERE_MODE not defined. Building original binary.")
+      print("cerec: CERE_MODE not defined. Building original binary.")
       cere_args = ["original"]
 
     # Create parsers
