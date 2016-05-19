@@ -35,9 +35,9 @@ LOOP_EXT = LIBDIR + "/libcere_regionoutliner.so"
 LOOP_DUMP = LIBDIR + "/libcere_regiondump.so"
 GLOB_RENAME = LIBDIR + "/libcere_globalrename.so"
 
-RDTSC_WRAPPER = "libcere_rdtsc.so"
-IO_CHECKER_LIB = "libcere_iodetector.so"
-LIKWID = "/usr/local/lib/liblikwid.a -lpthread -lm"
+RDTSC_WRAPPER = "-lcere_rdtsc"
+IO_CHECKER_LIB = "-lcere_iodetector"
+LIKWID = "-llikwid"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
 DUMPS_DIR = ".cere/dumps/"
 

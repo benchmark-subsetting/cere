@@ -11,9 +11,9 @@ function do_test()
 
     export OMP_NUM_THREADS=4
     make clean
-    make -j4 CERE_MODE="replay --region=__cere__test_fct1_25 --invocation=2 --instrument --wrapper=../../src/rdtsc/librdtsc.a"  -B
+    make -j4 CERE_MODE="replay --region=__cere__test_fct1_25 --invocation=2 --instrument --wrapper=-lcere_rdtsc"  -B
     ./test
-    make CERE_MODE="original  --instrument --regions-file=reg --wrapper=../../src/rdtsc/librdtsc.a" -B
+    make CERE_MODE="original  --instrument --regions-file=reg --wrapper=-lcere_rdtsc" -B
     ./test
     unset CERE_OMP
 }
