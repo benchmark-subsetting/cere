@@ -44,7 +44,6 @@ DUMPS_DIR = ".cere/dumps/"
 
 SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
 
-FLAGS_FILE = PROJECT_ROOT + "/cere/flags.csv"
 INVALID_REGION_FILE = "invalid_regions"
 
 CERE_DIRECTORIES = []
