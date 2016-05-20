@@ -56,6 +56,7 @@ CERE_DUMPS = "dumps"
 CERE_PLOTS = "plots"
 CERE_REPORT = "report"
 CERE_IO_TRACES = "io_traces"
+CERE_FLAGS = "flags"
 
 def create_path(top_dir, sub_dir):
   new_path = os.path.join(top_dir, sub_dir)
@@ -69,3 +70,4 @@ CERE_DUMPS_PATH = create_path(CERE_MAIN_DIR, CERE_DUMPS)
 CERE_PLOTS_PATH = create_path(CERE_MAIN_DIR, CERE_PLOTS)
 CERE_REPORT_PATH = create_path(CERE_MAIN_DIR, CERE_REPORT)
 CERE_IO_TRACES_PATH = create_path(CERE_MAIN_DIR, CERE_IO_TRACES)
+CERE_FLAGS_PATH = create_path(CERE_MAIN_DIR, CERE_FLAGS)
