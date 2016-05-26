@@ -101,6 +101,8 @@ def run_replay(flags, args, history):
           predicted_cycles = get_predicted_cycles(args.region)
           region_writer.writerow([line["id"], line["mid_end"], line["back_end"], predicted_cycles])
           region_file.flush()
+        else:
+          predicted_cycles = float("inf")
       #Get previous measure for this sequence of flags
       else:
         predicted_cycles = float(history[line["id"]]["cycles"])

@@ -42,9 +42,12 @@ predicted based on each region best performance.
 
 ## OUTPUT FILE
 
-  * `.cere/replays/regions_flags.csv`:
+  * `.cere/flags/regions_flags.csv`:
     This file contains for each region the best sequence id, the original and
     the best runtime. This file can be used as an input of cere-hybrid(1)
+  * `.cere/flags/REGION.csv`:
+    One file per tested region. This file contains the region execution cycles
+    for each sequence of flags.
 
 ## COPYRIGHT
 
