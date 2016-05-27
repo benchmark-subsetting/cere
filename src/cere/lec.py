@@ -63,8 +63,8 @@ def read_file(regions_file, regions_infos, sources):
   with open(regions_file) as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
-      if row["region"] in all_regions and all_regions[row["region"]]["file"] in sources:
-        regions[row["region"]] = {"flags": row["flag"], "file": all_regions[row["region"]]["file"], "function": all_regions[row["region"]]["function"]}
+      if (row["Region"] in all_regions) and (all_regions[row["Region"]]["file"] in sources) and (int(row["Id"]) >= 0):
+        regions[row["Region"]] = {"midend": row["Mid_end"], "backend": row["Back_end"], "file": all_regions[row["Region"]]["file"], "function": all_regions[row["Region"]]["function"]}
   return regions
 
 def dump_fun(mode_opt, BASE, regions):
@@ -310,13 +310,16 @@ def compile(args, args2):
         function[args[0].func](args[0], BASE, regions)
         last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT)
 
-    global REGION_EXTRACTED
+    global REGION_EXTRACTED, BACKEND_USE
     REGION_EXTRACTED = False
+    BACKEND_USE="llc"
     #Compile extracted region with choosen flags
     objs = ""
     for region, data in regions.items():
-      global BACKEND_FLAGS
-      BACKEND_FLAGS = data['flags']
+      global BACKEND_FLAGS, MIDEND_FLAGS
+      BACKEND_FLAGS = data['backend']
+      MIDEND_FLAGS = data['midend']
+
       if args[0].extraction_lvl == "loop":
         last_compil(INCLUDES, "", region, region+'.o', COMPIL_OPT)
         objs = objs + ' ' + os.path.realpath(region+'.o')
