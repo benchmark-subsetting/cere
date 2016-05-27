@@ -30,23 +30,22 @@ def init_module(subparsers, cere_plugins):
   hybrid_parser = subparsers.add_parser("hybrid", help="test optimal optimization flags")
   hybrid_parser.add_argument('--regions-file', required=True, help="file to compile")
   hybrid_parser.add_argument('--extraction-lvl', default="loop", choices=["loop","function"], help="Extract region at loop or function granularity. Default is loop")
-  hybrid_parser.add_argument('--noinstrumentation', action='store_true', help="Hybrid without instrumentation")
+  hybrid_parser.add_argument('--instrumentation', action='store_true', help="Instrument the hybrid to measure cycles")
 
 def run(args):
   if not cere_configure.init():
     return False
 
   args.regions_file = os.path.realpath(args.regions_file)
+
   if not os.path.isfile(cere_configure.cere_config["regions_infos"]):
-    logger.error("No such file: {0}".format(cere_configure.cere_config["regions_infos"]))
+    logger.error("File not found: {0}".format(cere_configure.cere_config["regions_infos"]))
     logger.error("Did you run cere regions?")
     return False
 
+  instru_cmd = ""
   #Check for instrumentation
-  if args.noinstrumentation:
-    instru_cmd = ""
-    logger.info("Compiling hybrid binary without instrumentation")
-  else:
+  if args.instrumentation:
     instru_cmd = "--instrument --wrapper={0}".format(var.RDTSC_WRAPPER)
     logger.info("Compiling hybrid binary with instrumentation")
 
