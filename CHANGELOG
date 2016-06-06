@@ -1,5 +1,13 @@
 CERE CHANGELOG
 
+[v0.2.2] 2016/06/06
+    * Improved cere flag (add a stop/restart feature)
+    * Fixed release version number
+
+[v0.2.1] 2016/05/20
+    * Fixed installation and replay issues from v0.2.0 (#68)
+    * Cere flag exploration can be interrupted and restarted later (#69)
+
 [v0.2.0] 2016/05/19
     * Fixed autotools installation: now CERE can and must be installed
       with make install. All libraries were renamed with a common libcere_
