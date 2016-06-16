@@ -96,6 +96,7 @@ def run_replay(flags, args, history):
         args.noinstrumentation=False
         args.norun=False
         args.plugin_instr=var.RDTSC_WRAPPER
+        args.omp_num_threads=None
 
         if cere_replay.run(args):
           predicted_cycles = get_predicted_cycles(args.region)

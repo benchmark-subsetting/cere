@@ -6,7 +6,7 @@ cere instrument(1) -- Instrument a region inside the application
 ```
 cere instrument [-h] --region REGION | --regions-file REGIONS_FILE
           [--plugin-instr PLUGIN_INSTR] [--invocation INVOCATION]
-          [--norun] [--force]
+          [--omp-num-threads OMP_ NUM_THREAD] [--norun] [--force]
 ```
 
 ## DESCRIPTION
@@ -35,6 +35,11 @@ application with probes around the region. These probes are defined via the
   * `--invocation INVOCATION`:
     Selects the invocation to instrument. By default, all invocations are
     instrumented.
+
+  * `--omp-num-threads OMP_ NUM_THREAD`:
+    If PCERE is enabled, selects the number of OpenMP threads during instrumentation
+    execution. If this argument is not specified, PCERE runs the application with
+    the system default parameters.
 
   * `--norun`:
     Builds the instrumented binary but does not run it automatically.

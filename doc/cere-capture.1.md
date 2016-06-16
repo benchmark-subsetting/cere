@@ -4,8 +4,8 @@ cere capture(1) -- Captures the memory and cache state of a region
 ## SYNOPSIS
 
 ```
-cere capture [-h] --region REGION [--invocation INVOCATION] [--norun]
-          [--force]
+cere capture [-h] --region REGION [--invocation INVOCATION]
+          [--omp-num-threads OMP_ NUM_THREAD] [--norun] [--force]
 ```
 
 ## DESCRIPTION
@@ -28,6 +28,11 @@ representative invocations selected by cere-selectinv(1).
   * `--invocation INVOCATION`:
     Selects the invocation to capture. By default, all the representative
     invocations chosen by cere-selectinv(1) are captured.
+
+  * `--omp-num-threads OMP_ NUM_THREAD`:
+    If PCERE is enabled, selects the number of OpenMP threads during capture
+    execution. Default is 1 and capturing with more threads is highly not
+    recommended.
 
   * `--norun`:
     Builds the capture-instrumented binary but does not run it automatically.

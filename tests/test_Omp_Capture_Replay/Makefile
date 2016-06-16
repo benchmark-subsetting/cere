@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 PROJECT_ROOT=../../
-CC=../../src/cerec
-FLINK=../../src/cerec
+CC=cerec
+FLINK=cerec
 
 FLAGS=-g -O0 -fopenmp
 
@@ -21,4 +21,4 @@ clean:
 
 veryclean: clean
 	- rm -rf .cere/
-	- rm -f *.o realmain.c
+	- rm -f *.o realmain.c cere.log *.csv

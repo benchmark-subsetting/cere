@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
 
+import os
 import logging
 import subprocess
 import vars as var
@@ -31,10 +32,11 @@ def init_module(subparsers, cere_plugins):
     instrument_parser.add_argument('--regions-file', help="File containing the list of regions to instrument")
     instrument_parser.add_argument('--plugin-instr', default=var.RDTSC_WRAPPER, help="Plugin to instrument the region")
     instrument_parser.add_argument('--invocation', type=int, default=0, help="Invocation to measure (Default measures all)")
+    instrument_parser.add_argument('--omp-num-threads', type=int, help="number of OMP threads during execution")
     instrument_parser.add_argument('--norun', action='store_true', help="If you don't want to automatically run the measure")
     instrument_parser.add_argument('--force', '-f', action='store_true', help="Will force the CERE instrumentation")
 
-def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=var.RDTSC_WRAPPER, args_invocation=0, args_norun=False, args_force=False):
+def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=var.RDTSC_WRAPPER, args_invocation=0, args_norun=False, args_force=False, args_omp_num_threads=None):
     if not cere_configure.init():
         return False
     if utils.is_invalid(args_region) and not args_force:
@@ -66,6 +68,16 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
         return False
 
     if not args_norun:
+        #Configure omp num threads if necessary
+        if cere_configure.cere_config["omp"]:
+          if args_omp_num_threads:
+            logger.info("Setting Omp num threads at {0}".format(args_omp_num_threads))
+            os.environ["OMP_NUM_THREADS"] = str(args_omp_num_threads)
+          else:
+            logger.info("Number of OMP threads not defined. Running with system default parameters")
+        elif args_omp_num_threads:
+          logger.warning("PCERE not enabled. Ignoring omp-num-threads.")
+
         logger.info("Running instrumentation for {0}".format(region_input))
         try:
             logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
@@ -77,4 +89,4 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
     return True
 
 def run(args):
-    return run_instrument(args.region, args.regions_file, args.plugin_instr, args.invocation, args.norun, args.force)
+    return run_instrument(args.region, args.regions_file, args.plugin_instr, args.invocation, args.norun, args.force, args.omp_num_threads)

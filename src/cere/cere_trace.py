@@ -159,13 +159,8 @@ def launch_trace(args, regions):
             temp.write(region + '\n')
         temp.flush()
 
-        args.regions_file = temp.name
-        args.invocation = 0
-        args.plugin_instr = var.RDTSC_WRAPPER
-        args.force = True
-
         os.environ["CERE_TRACE"] = "1"
-        result = cere_instrument.run(args)
+        result = cere_instrument.run_instrument(None, temp.name, var.RDTSC_WRAPPER, 0, args.norun, True)
         del os.environ["CERE_TRACE"]
         return result
 
