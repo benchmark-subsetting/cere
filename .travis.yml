@@ -1,12 +1,18 @@
 language: c
 sudo: required
+dist: trusty
 
 before_install:
-  - sudo add-apt-repository ppa:dns/gnu -y
-  - sudo apt-get update
+  #~- sudo add-apt-repository ppa:dns/gnu -y
+  #~- sudo apt-get update
 
-  - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev gcc-4.6 g++-4.6
-    gfortran-4.6 gcc-4.6-plugin-dev autoconf automake build-essential libtool
+  # Get llvm 3.8
+  wget http://llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+  tar -xvf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+  export PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/bin/:$PATH
+  export LD_LIBRARY_PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/lib/:$LD_LIBRARY_PATH
+
+  - sudo apt-get -y install autoconf automake build-essential libtool
     python python-pip python-sklearn python-pygraphviz
     python-networkx python-jinja2 python-matplotlib google-perftools
     libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
@@ -19,14 +25,9 @@ before_install:
   # Install pulp and upgrade numpy
   - sudo pip install pulp numpy --upgrade
 
-  # Get dragonegg
-  - wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz
-  - tar xvf dragonegg-3.4.src.tar.gz && cd dragonegg-3.4
-  - make && sudo cp dragonegg.so /usr/local/lib/. && cd ..
-
 install:
   - ./autogen.sh
-  - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
+  - ./configure --without-dragonegg
   - make
   - sudo make install
 
