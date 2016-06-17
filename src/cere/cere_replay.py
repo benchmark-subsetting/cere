@@ -98,6 +98,10 @@ def run(args):
     logger.warning("{0} is invalid. Skipping replay".format(args.region))
     return False
 
+  if (cere_configure.cere_config["omp"]) and ("OMP_NUM_THREADS" not in os.environ) and (not args.norun):
+    logger.error("OMP_NUM_THREADS not set. Export OMP_NUM_THREADS first.")
+    return False
+
   invocations = find_invocations(args.invocation, args.region)
   if not invocations:
     return False
@@ -129,6 +133,8 @@ def run(args):
       return False
     if not args.norun:
       logger.info("Replaying invocation {1} for region {0}".format(args.region, invocation))
+      if cere_configure.cere_config["omp"]:
+        logger.info("Replaying with {0} threads".format(os.environ["OMP_NUM_THREADS"]))
       try:
         logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
       except subprocess.CalledProcessError as err:
