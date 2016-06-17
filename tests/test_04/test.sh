@@ -3,11 +3,11 @@
 function do_test()
 {
     make veryclean
-    make -j4 CERE_MODE="dump"
-    LD_BIND_NOW=1 ./BT
+    make -j4 CERE_MODE="dump --region=__cere__verify_verify__265"
+    ./BT
 
     make clean
-    make -j4 INVITRO_CALL_COUNT=2 CERE_MODE="replay --region=__cere__verify_verify__265 --instrument --wrapper=../../src/rdtsc/librdtsc.a"
+    make -j4 CERE_REPLAY_REPETITIONS=2 CERE_MODE="replay --region=__cere__verify_verify__265 --instrument --wrapper=-lcere_rdtsc"
     ./BT
 
     rm -rf "$TMPDIR"

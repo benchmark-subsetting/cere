@@ -11,19 +11,12 @@ replay.
 CERE automatically profiles, captures and replays every extractible region of your
 application and produces an html report that summarizes the results.
 
-To orchestrate CERE
-operations one uses the `cere` command-line program which is located at the root
-of CERE distribution. In this tutorial we will assume that cere directory is
-located at `~/cere/`. The first step is including cere root directory in the
-`PATH` environment variable:
-
-    $ export PATH=~/cere/:$PATH
-
-Now try executing the `cere --help` command. As the output shows, `cere` includes
+To orchestrate CERE operations one uses the `cere` command-line program.
+Try executing the `cere --help` command. As the output shows, `cere` includes
 a number of sub commands that will be used during this tutorial:
 
 
-    user@ix:~/cere/$ ./cere --help
+    user@ix:~/cere/$ cere --help
     INFO 06/10/2015 10:31:59 CERE : Start
     usage: cere [-h]
                 {configure,profile,capture,replay,check-matching,select-max-cov,select-ilp,
@@ -66,19 +59,19 @@ First enter the FT benchmark directory:
 
     $ cd ~/cere/examples/NPB3.0-SER/FT/
 
-CERE capture and replay require specific LLVM compiler passes. To easily compile
-an application, CERE includes a compiler wrapper, `ccc`, which is located at
-`~/cere/src/ccc/ccc`. You can either use `ccc` directly to compile and link a
-program, or modify the `Makefile` so it uses `ccc`.
+CERE capture and replay require specific LLVM compiler passes. To easily
+compile an application, CERE includes a compiler wrapper, `cerec`.  You can
+either use `cerec` directly to compile and link a program, or modify the
+`Makefile` so it uses `cerec`.
 
-For FT the `Makefile` has already been configured to use `ccc`. The file
+For FT the `Makefile` has already been configured to use `cerec`. The file
 `~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
 
 
-    F77 = ../../../src/ccc/ccc
-    FLINK = ../../../src/ccc/ccc
-    CC = ../../../src/ccc/ccc
-    CLINK = ../../../src/ccc/ccc
+    F77 = cerec
+    FLINK = cerec
+    CC = cerec
+    CLINK = cerec
 
 
 ## CONFIGURATION OF CERE
@@ -223,7 +216,7 @@ selected invocations are replayed, and are used to simulate the region total run
 
 This command generates the file
 `.cere/replays/__cere__fft3d_swarztrauber__27_INVOCATION` which contains the
-replay execution time of the region multiplied by the INVITRO_CALLCOUNT.
+replay execution time of the region multiplied by the CERE_REPLAY_REPETITIONS.
 
 ### Replay output
 

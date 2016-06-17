@@ -1,7 +1,6 @@
 LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags)
-libRegionOutliner_la_CXXFLAGS = $(LLVMCXXFLAGS)
+libcere_regionoutliner_la_CXXFLAGS = $(LLVMCXXFLAGS)
 
 
-lib_LTLIBRARIES = libRegionOutliner.la
-libRegionOutliner_la_SOURCES = RegionExtractor.cpp LoopRegionOutliner.cpp OmpRegionOutliner.cpp
-libRegionOutliner_la_LDFLAGS =
+lib_LTLIBRARIES = libcere_regionoutliner.la
+libcere_regionoutliner_la_SOURCES = RegionExtractor.cpp LoopRegionOutliner.cpp OmpRegionOutliner.cpp RegionExtractor.h

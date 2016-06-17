@@ -32,18 +32,30 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "pages.h"
-#include <emmintrin.h>
+
+#define CACHE_SIZE_MB 20
+
+void cacheflush(void) {
+    const size_t size = CACHE_SIZE_MB*1024*1024;
+    int i, j;
+    char *c = malloc(size);
+    for (i = 0; i < 5; i++)
+      for (j = 0; j < size; j++)
+        c[j] = i*j;
+}
 
 /**********************************************************************
  * REPLAY MODE                                                        *
  **********************************************************************/
 
 #define MAX_WARMUP (16384 * 100)
+#define WARMUP_COLD 0
+#define WARMUP_WORKLOAD 1
+#define WARMUP_PAGETRACE 2
 #define MAX_COLD (4096 * 64)
 #define REPLAY_PAST MAX_COLD
 
 char cold[MAX_COLD * PAGESIZE];
-extern char *cacheflush();
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
 static bool valid[MAX_WARMUP];
@@ -78,10 +90,17 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
-  char *ge = getenv("WARMUP_TYPE");
-  if (ge) {
-    type_of_warmup = atoi(ge);
-    assert(type_of_warmup >= 0 && type_of_warmup < 3);
+  /* Read warmup type from environment variable */
+  char *ge = getenv("CERE_WARMUP");
+  if (ge && strcmp("COLD", ge) == 0) {
+    type_of_warmup = WARMUP_COLD;
+  }
+  else if (ge && strcmp("PAGETRACE", ge) == 0) {
+    type_of_warmup = WARMUP_PAGETRACE;
+  }
+  else {
+    /* WARMUP_WORKLOAD is the default warmup */
+    type_of_warmup = WARMUP_WORKLOAD;
   }
 
   /* Load adresses */
@@ -121,8 +140,9 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     loaded = true;
   }
 
-  // No warmup at all for NOWARMUP
-  if (type_of_warmup == 2) {
+  // No warmup at all for COLD.
+  // COLD warmup must always be used with CERE_REPLAY_REPETITIONS=1
+  if (type_of_warmup == WARMUP_COLD) {
     cacheflush();
     return;
   }
@@ -148,8 +168,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     if (strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
       continue;
 
-    snprintf(filename, sizeof(filename), ".cere/dumps/%s/%d/%s", loop_name,
-             invocation, ent->d_name);
+    snprintf(filename, sizeof(filename), "%s/%s", path, ent->d_name);
     if (stat(filename, &st) != 0) {
       fprintf(stderr, "Could not get size for file %s: %s\n", filename,
               strerror(errno));
@@ -170,6 +189,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       read_bytes += len;
     }
 
+    // XXX This code should be only done once in the !loaded section
+    // because the valid status does not depend on the repetition
     for (int i = 0; i < hotpages_counter; i++) {
       if ((warmup[i] >= (char *)address) &&
           (warmup[i] < ((char *)address + read_bytes))) {
@@ -183,10 +204,11 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
   closedir(dir);
 
-  /* No flush or warmup for OPTIMISTIC warmup */
-  if (type_of_warmup == 1)
+  /* No flush or warmup for WORKLOAD warmup */
+  if (type_of_warmup == WARMUP_WORKLOAD)
     return;
 
+  /* Flush and prepare TRACE warmup */
   /* invalid address should warm cold zone */
   int start = MAX(0, hotpages_counter - REPLAY_PAST);
   for (int i = start; i < hotpages_counter; i++) {

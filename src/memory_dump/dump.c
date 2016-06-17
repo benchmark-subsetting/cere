@@ -161,7 +161,8 @@ static void fill_dump_name(char *buf, int stack_pos, off64_t addr) {
  * and ending at address <end>
  */
 static bool write_page(char path[], off64_t start) {
-  int out = syscall(SYS_open, path, O_WRONLY | O_CREAT | O_EXCL, S_IRWXU);
+  int out = syscall(SYS_openat, AT_FDCWD, path,
+                    O_WRONLY | O_CREAT | O_EXCL, S_IRWXU);
 
   if (out <= 0) {
     /* region already dumped */
@@ -177,8 +178,9 @@ static bool write_page(char path[], off64_t start) {
 
   int wr = syscall(SYS_write, out, (char *)start, PAGESIZE);
   if (wr < 0) {
-    syscall(SYS_unlink, path);
     syscall(SYS_close, out);
+    int result = syscall(SYS_unlinkat, AT_FDCWD, path, 0);
+    assert(result != -1);
     return false;
   }
   assert(wr == PAGESIZE);
@@ -197,7 +199,7 @@ static bool dump_page(off64_t start) {
     for (int i = 0; i < state.stack_pos; i++) {
       char parent_path[MAX_PATH];
       fill_dump_name(parent_path, i, start);
-      syscall(SYS_link, current_path, parent_path);
+      syscall(SYS_linkat, AT_FDCWD, current_path, AT_FDCWD, parent_path, AT_SYMLINK_FOLLOW);
     }
   }
   return result;
@@ -248,7 +250,8 @@ static void flush_hot_pages_trace_to_disk(void) {
 
   snprintf(path, sizeof(path), "%s/%s", state.dump_path[state.stack_pos],
            state.pagelog_suffix);
-  int out = syscall(SYS_open, path, O_WRONLY | O_CREAT | O_EXCL, S_IRWXU);
+  int out = syscall(SYS_openat, AT_FDCWD, path,
+                    O_WRONLY | O_CREAT | O_EXCL, S_IRWXU);
 
   assert(out > 0);
 
@@ -400,7 +403,7 @@ static void lock_mem(void) {
       continue;
 
     /* Ignore libdump mem zones */
-    if (strstr(buf, "libdump.so") != NULL)
+    if (strstr(buf, "libcere_dump.so") != NULL)
       continue;
 
     /* Ignore libdump vdso zones */
@@ -544,21 +547,6 @@ void dump_init(bool global_dump) {
   /* configure sigaction */
   configure_sigaction();
 
-  /*If we want to dump all loops
-   * start memory lock and trace at start*/
-  if (state.global_dump) {
-    /* set ignore */
-    set_ignore();
-
-    /* lock memory */
-    lock_mem();
-
-    /* configure mru sa */
-    set_mru();
-
-    /* start protecting malloc and co */
-    state.mtrace_active = true;
-  }
   state.dump_initialized = true;
 
 #ifdef _DEBUG
@@ -590,6 +578,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   //the dump.
   if (!state.dump_initialized)
     return;
+
 #ifdef _DEBUG
   printf("enter dump( %s %d count = %d) \n", loop_name, invocation, count);
 #endif
@@ -670,7 +659,8 @@ void dump(char *loop_name, int invocation, int count, ...) {
   /*Link to the original binary*/
   snprintf(lel_bin_path, sizeof(lel_bin_path), "%s/lel_bin",
            state.dump_path[state.stack_pos]);
-  int res = syscall(SYS_link, "lel_bin", lel_bin_path);
+  int res = syscall(SYS_linkat, AT_FDCWD, "lel_bin", AT_FDCWD, lel_bin_path,
+                    AT_SYMLINK_FOLLOW);
   if (res == -1)
     errx(EXIT_FAILURE, "Error copying the dump binary\n");
 

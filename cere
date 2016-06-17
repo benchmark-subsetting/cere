@@ -1,3 +1,2 @@
 #!/bin/bash
-CURRENT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-exec python2 $CURRENT_DIR/src/cere "$@"
+exec python2 -m cere "$@"
