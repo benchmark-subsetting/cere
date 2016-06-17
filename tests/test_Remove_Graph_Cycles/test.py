@@ -2,9 +2,9 @@
 import sys
 import networkx as nx
 sys.path.insert(0, "../../src/cere/")
-from cere_profile.create_graph import remove_cycles, fix_self_coverage
+from create_graph import remove_cycles, fix_self_coverage
 import cere_configure
-from common.graph_utils import plot, save_graph
+from graph_utils import plot, save_graph
 
 if __name__ == "__main__":
     cere_configure.init()

@@ -1,3 +1,4 @@
-noinst_LIBRARIES = libio_detector.a
-libio_detector_a_SOURCES = io_detector.c io_detection_wrapper.c ../ccan/ccan/htable/htable.c
-libio_detector_a_CFLAGS = -I ../ccan/
+lib_LTLIBRARIES = libcere_iodetector.la
+libcere_iodetector_la_CFLAGS = --std=gnu99 -I ../ccan/
+libcere_iodetector_la_SOURCES = io_detector.c io_detection_wrapper.c io_detector.h
+libcere_iodetector_la_LIBADD = ../ccan/libccan.la

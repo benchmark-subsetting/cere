@@ -3,9 +3,9 @@ BENCHMARK=bt
 BENCHMARKU=BT
 PROJECT_ROOT=../../
 include make.def
-CC=../../src/ccc/ccc
-F77=../../src/ccc/ccc
-FLINK=../../src/ccc/ccc
+CC=../../src/cerec
+F77=../../src/cerec
+FLINK=../../src/cerec
 
 FLAGS=-g
 
@@ -32,5 +32,5 @@ clean:
 	- rm -f dump.c
 
 veryclean: clean
-	- rm -rf cere_dumps/
+	- rm -rf .cere/
 	- rm -f lel_bin realmain.c dump.c
