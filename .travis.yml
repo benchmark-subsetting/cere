@@ -13,7 +13,7 @@ before_install:
   export LD_LIBRARY_PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/lib/:$LD_LIBRARY_PATH
 
   - sudo apt-get -y install autoconf automake build-essential libtool
-    python python-pip python-sklearn python-pygraphviz
+    python python-pip python-sklearn python-pygraphviz libiomp-dev
     python-networkx python-jinja2 python-matplotlib google-perftools
     libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
 
