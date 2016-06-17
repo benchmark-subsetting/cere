@@ -22,8 +22,7 @@ AC_SUBST(CERELIBS, $libdir)
 AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
-
-AX_LLVM([3.3],[3.5.2],[all])
+AX_LLVM([3.8.0],[3.8.0],[all])
 
 AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
 AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))

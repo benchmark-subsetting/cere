@@ -35,6 +35,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
@@ -44,7 +45,7 @@
 #include <set>
 #include "RegionReplay.h"
 
-#if LLVM_VERSION_MINOR == 5
+#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/InstIterator.h"
 #else
 #include "llvm/Support/InstIterator.h"
@@ -70,11 +71,6 @@ struct OmpRegionReplay : public FunctionPass {
 
   virtual bool runOnFunction(Function &F);
   bool visitLoop(Loop *L, Module *mod);
-
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
-  }
 };
 }
 
@@ -94,9 +90,8 @@ bool OmpRegionReplay::runOnFunction(Function &F) {
     Main = mod->getFunction("MAIN__");
 
   if (Main) { // We are in the module with the main function
+    IRBuilder<> builder(&(Main->front().front()));
     std::string funcName = "real_main";
-    //~ConstantInt* const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1,
-    // StringRef("0"), 10)); //false
 
     Function *mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
@@ -108,7 +103,7 @@ bool OmpRegionReplay::runOnFunction(Function &F) {
       Function *mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
       std::vector<Value *> void_16_params;
-      CallInst::Create(mainFunction, "", Main->begin()->begin());
+      builder.CreateCall(mainFunction, void_16_params);
     }
   }
 
