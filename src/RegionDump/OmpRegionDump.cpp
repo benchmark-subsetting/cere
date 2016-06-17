@@ -118,7 +118,7 @@ bool OmpRegionDump::runOnFunction(Function &F) {
     Main = mod->getFunction("main");
   }
   if (Main) { // We are in the module with the main function
-    IRBuilder<> builder(&(Main->front()));
+    IRBuilder<> builder(&(Main->front().front()));
     ConstantInt *const_int1_11;
     std::string funcName = "dump_init";
     if (GlobalDump)
