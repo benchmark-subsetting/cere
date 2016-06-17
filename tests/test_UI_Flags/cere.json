@@ -1,1 +1,1 @@
-{"build_cmd": "make CLASS=A", "multiple_trace": false, "run_cmd": "./FT", "regions_infos": "/home/cakel/cere/tests/test_UI_Flags/regions.csv", "clean_cmd": "make clean"}
+{"build_cmd": "make CLASS=A", "omp": false, "multiple_trace": false, "run_cmd": "./FT", "regions_infos": "/home/cakel/cere/tests/test_UI_Flags/regions.csv", "clean_cmd": "make clean"}

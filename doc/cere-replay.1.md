@@ -6,7 +6,7 @@ cere replay(1) -- Replay invocation(s) and predict region time
 ```
 cere replay [-h] --region REGION [--invocation INVOCATION]
           [--invitro-callcount CERE_REPLAY_REPETITIONS] [--plugin-instr PLUGIN_INSTR]
-          [--norun] [--noinstrumentation] [--force]
+          [--omp-num-threads OMP_ NUM_THREAD] [--norun] [--noinstrumentation] [--force]
 ```
 
 ## DESCRIPTION
@@ -50,6 +50,11 @@ available,
   * `--plugin-instr PLUGIN_INSTR`:
     Library to instrument the replay. For more information on how to use another
     library please refer to cere-plugin-instr(1).
+
+  * `--omp-num-threads OMP_ NUM_THREAD`:
+    Selects number of OpenMP threads during replay execution. This is mandatory
+    if PCERE is enabled. Replay can be done with a different number of threads
+    than the capture one.
 
   * `--norun`:
     Builds the replay binary but does not run it automatically.

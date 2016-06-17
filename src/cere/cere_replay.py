@@ -39,6 +39,7 @@ def init_module(subparsers, cere_plugins):
   replay_parser.add_argument('--region', required=True, help="Region to replay")
   replay_parser.add_argument('--invocation', type=int, help="invocation to replay")
   replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
+  replay_parser.add_argument('--omp-num-threads', type=int, help="number of OMP threads during replay")
   replay_parser.add_argument('--plugin-instr', default=var.RDTSC_WRAPPER, help="Plugin to instrument the replay")
   replay_parser.add_argument('--noinstrumentation', action='store_true', help="Replay without instrumentation")
   replay_parser.add_argument('--norun', action='store_true', help="If you don't want to automatically run the replay")
@@ -98,6 +99,10 @@ def run(args):
     logger.warning("{0} is invalid. Skipping replay".format(args.region))
     return False
 
+  if cere_configure.cere_config["omp"] and not args.omp_num_threads and not args.norun:
+    logger.error("Please specify number of omp threads with --omp-num-threads")
+    return False
+
   invocations = find_invocations(args.invocation, args.region)
   if not invocations:
     return False
@@ -128,6 +133,14 @@ def run(args):
       utils.mark_invalid(args.region, cere_error.EREPLAY)
       return False
     if not args.norun:
+  
+      #Configure omp num threads if necessary
+      if cere_configure.cere_config["omp"]:
+        logger.info("Setting Omp num threads at {0}".format(args.omp_num_threads))
+        os.environ["OMP_NUM_THREADS"] = str(args.omp_num_threads)
+      elif args.omp_num_threads:
+          logger.warning("PCERE not enabled. Ignoring omp-num-threads.")
+
       logger.info("Replaying invocation {1} for region {0}".format(args.region, invocation))
       try:
         logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))

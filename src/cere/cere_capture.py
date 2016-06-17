@@ -37,6 +37,7 @@ def init_module(subparsers, cere_plugins):
     capture_parser = subparsers.add_parser("capture", help="captures a region")
     capture_parser.add_argument('--region', required=True, help="region to capture")
     capture_parser.add_argument('--invocation', type=int, help="invocation to capture (default 1)")
+    capture_parser.add_argument('--omp-num-threads', type=int, help="number of OMP threads during capture (default 1)")
     capture_parser.add_argument('--norun', action='store_true', help="builds the capture-instrumented binary without running it")
     capture_parser.add_argument('--no-io-trace', action='store_true', help="do not check ios")
     capture_parser.add_argument('--force', '-f', action='store_true', help="overwrites previous existing dump (default False)")
@@ -93,6 +94,18 @@ def run(args):
       utils.mark_invalid(args.region, cere_error.EDUMP)
       return False
     if not args.norun:
+      #Configure omp num threads if necessary
+      if cere_configure.cere_config["omp"]:
+        if not args.omp_num_threads:
+          logger.info("Setting Omp num threads at 1")
+          os.environ["OMP_NUM_THREADS"] = "1"
+        else:
+          logger.info("Setting Omp num threads at {0}".format(args.omp_num_threads))
+          os.environ["OMP_NUM_THREADS"] = str(args.omp_num_threads)
+      else:
+        if args.omp_num_threads:
+          logger.warning("PCERE not enabled. Ignoring omp-num-threads.")
+
       logger.info("Capturing invocation {1} for region {0}".format(args.region, invocation))
       try:
         logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
