@@ -62,6 +62,15 @@ def run(args):
   if not cere_configure.init():
     return False
 
+  #Configure omp num threads if necessary
+  if not args.norun and cere_configure.cere_config["omp"]:
+    if "OMP_NUM_THREADS" not in os.environ:
+      logger.error("OMP_NUM_THREADS not set. Run export OMP_NUM_THREADS=1 first.")
+      return False
+    elif int(os.environ["OMP_NUM_THREADS"]) != 1:
+      logger.error("Capture can only be done with one thread. (Current value is {0})".format(os.environ["OMP_NUM_THREADS"]))
+      return False
+
   invocations = find_invocations(args.invocation, args.region)
   if not invocations:
     return False

@@ -5,7 +5,7 @@ cere configure(1) -- Configures CERE to build and run an application
 
 ```
 cere configure [-h] --run-cmd=RUN_CMD --build-cmd=BUILD_CMD --clean-cmd=CLEAN_CMD
-               [--multiple-trace]
+               [--multiple-trace] [--omp]
 ```
 
 ## DESCRIPTION
@@ -35,6 +35,10 @@ run the application.
     in a single run (regions must be non-nested). This can considerably decrease
     the tracing cost.
 
+  * `--omp`:
+    Enables PCERE. PCERE works at OpenMP parallel region granularity instead of
+    loops granularity for CERE.
+
 ## EXAMPLES
 
 Given a simple application `app` that is built using the following `Makefile`:
@@ -52,7 +56,7 @@ clean:
 The user should call **cere configure** with the following arguments:
 
 ```
-cere configure --build-cmd="make CC=ccc LD=ccc"
+cere configure --build-cmd="make CC=cerec LD=cerec"
                --clean-cmd="make clean"
                --run-cmd="./app"
 ```
