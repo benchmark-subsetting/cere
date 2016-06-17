@@ -2,8 +2,8 @@
 
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CLASS=A
-export WARMUP_TYPE=1
-export INVITRO_CALL_COUNT=5
+export CERE_WARMUP="WORKLOAD"
+export CERE_REPLAY_REPETITIONS=5
 
 for bench in LU CG EP FT IS MG SP BT; do
     echo "Benchmarking $bench"
@@ -11,8 +11,8 @@ for bench in LU CG EP FT IS MG SP BT; do
     cd $BASEDIR/$bench
     RUN_COMMAND="numactl -C 1 ../bin/${sbench}.${CLASS}"
     BUILD_COMMAND="make CLASS=${CLASS}"
-    ../../../cere configure --build-cmd="$BUILD_COMMAND" --run-cmd="$RUN_COMMAND"
-    ../../../cere profile
-    ../../../cere select-max-cov
-    ../../../cere report
+    cere configure --build-cmd="$BUILD_COMMAND" --run-cmd="$RUN_COMMAND"
+    cere profile
+    cere select-max-cov
+    cere report
 done

@@ -2,8 +2,6 @@ language: c
 sudo: required
 
 before_install:
-  - sudo add-apt-repository 'deb http://llvm.org/apt/precise/ llvm-toolchain-precise main'
-  - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -
   - sudo add-apt-repository ppa:dns/gnu -y
   - sudo apt-get update
 
@@ -30,6 +28,7 @@ install:
   - ./autogen.sh
   - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
   - make
+  - sudo make install
 
 after_failure:
   - cat config.log

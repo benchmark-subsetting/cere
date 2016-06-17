@@ -4,28 +4,29 @@ set -e
 function do_test()
 {
     make veryclean
-    ../../cere configure --run-cmd="numactl -C1 ./test" --clean-cmd="make clean" --build-cmd="make"
-    ../../cere trace --region=__cere__test_loop_11
+    cere configure --run-cmd="numactl -C1 ./test" --clean-cmd="make clean" --build-cmd="make"
+    cere trace --region=__cere__test_loop_23
 
-    ITER2=$(../../cere trace --region=__cere__test_loop_11 --read=2)
-    ITER4=$(../../cere trace --region=__cere__test_loop_11 --read=4)
+    ITER2=$(cere trace --region=__cere__test_loop_23 --read=2)
+    ITER4=$(cere trace --region=__cere__test_loop_23 --read=4)
     echo $ITER2 $ITER4
 
+    export CERE_WARMUP="PAGETRACE"
     export CERE_TRACE=1
-    export INVITRO_CALL_COUNT=4
-    rm -f __cere__test_loop_11.bin
-    ../../cere capture --region=__cere__test_loop_11 --invocation=2
-    ../../cere replay --region=__cere__test_loop_11 --invocation=2
-    cp __cere__test_loop_11.bin .cere/traces/__replay__test_loop_11.bin
-    cp __cere__test_loop_11.csv .cere/traces/__replay__test_loop_11.csv
-    REPLAY2=$(../../cere trace --region=__replay__test_loop_11 --read=2)
+    export CERE_REPLAY_REPETITIONS=4
+    rm -f __cere__test_loop_23.bin
+    cere capture --region=__cere__test_loop_23 --invocation=2
+    cere replay --region=__cere__test_loop_23 --invocation=2
+    cp __cere__test_loop_23.bin .cere/traces/__replay__test_loop_23.bin
+    cp __cere__test_loop_23.csv .cere/traces/__replay__test_loop_23.csv
+    REPLAY2=$(cere trace --region=__replay__test_loop_23 --read=2)
 
-    rm -f __cere__test_loop_11.bin __replay__test_loop_11.csv
-    ../../cere capture --region=__cere__test_loop_11 --invocation=4
-    ../../cere replay --region=__cere__test_loop_11 --invocation=4
-    cp __cere__test_loop_11.bin .cere/traces/__replay__test_loop_11.bin
-    cp __cere__test_loop_11.csv .cere/traces/__replay__test_loop_11.csv
-    REPLAY4=$(../../cere trace --region=__replay__test_loop_11 --read=4)
+    rm -f __cere__test_loop_23.bin __replay__test_loop_23.csv
+    cere capture --region=__cere__test_loop_23 --invocation=4
+    cere replay --region=__cere__test_loop_23 --invocation=4
+    cp __cere__test_loop_23.bin .cere/traces/__replay__test_loop_23.bin
+    cp __cere__test_loop_23.csv .cere/traces/__replay__test_loop_23.csv
+    REPLAY4=$(cere trace --region=__replay__test_loop_23 --read=4)
 
     DIFF2=$(echo "$ITER2 $REPLAY2 - 100 * $ITER2 / d * v p" | dc)
     DIFF4=$(echo "$ITER4 $REPLAY4 - 100 * $ITER4 / d * v p" | dc)

@@ -1,5 +1,29 @@
 CERE CHANGELOG
 
+[v0.2.2] 2016/06/06
+    * Improved cere flag (add a stop/restart feature)
+    * Fixed release version number
+
+[v0.2.1] 2016/05/20
+    * Fixed installation and replay issues from v0.2.0 (#68)
+    * Cere flag exploration can be interrupted and restarted later (#69)
+
+[v0.2.0] 2016/05/19
+    * Fixed autotools installation: now CERE can and must be installed
+      with make install. All libraries were renamed with a common libcere_
+      prefix. (#6)
+    * ccc is now called cerec (cere compiler)
+    * Fixed the documentation and renamed some configuration variables.
+      To set the replay repetitions now one should use CERE_REPLAY_REPETITIONS.
+      To choose the warmup mode one can configure CERE_WARMUP.
+    * Fixed a capture/replay bug that could happen when global static variables
+      were optimized during capture but not replay. (#51)
+    * Cere flags now accepts a file of flags combinations (#24)
+    * Removed the undocumented and unused dump-all mode.
+    * Fixed an issue with the report generation coverage plot.
+    * Fixed various bugs in cere python driver.
+    * Added various missing tests.
+
 [v0.1.0] 2016/02/24
     * Compatibility with LLVM 3.5 (LLVM 3.3 and LLVM 3.4 are still
       supported).
