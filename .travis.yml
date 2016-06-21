@@ -3,15 +3,13 @@ sudo: required
 dist: trusty
 
 before_install:
-  #~- sudo add-apt-repository ppa:dns/gnu -y
-  #~- sudo apt-get update
-
   # Get llvm 3.8
-  wget http://llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-  tar -xvf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-  export PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/bin/:$PATH
-  export LD_LIBRARY_PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/lib/:$LD_LIBRARY_PATH
+  - wget http://llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+  - tar -xvf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+  - export PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/bin/:$PATH
+  - export LD_LIBRARY_PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/lib/:$LD_LIBRARY_PATH
 
+  # Get package dependencies
   - sudo apt-get -y install autoconf automake build-essential libtool
     python python-pip python-sklearn python-pygraphviz
     python-networkx python-jinja2 python-matplotlib google-perftools
