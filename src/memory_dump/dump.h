@@ -23,7 +23,7 @@
 #include "../ccan/ccan/htable/htable.h"
 
 /* Public Interface */
-void dump_init(bool);
+void dump_init(void);
 void dump_close(void);
 
 void dump(char *, int, int, ...);
@@ -47,33 +47,24 @@ enum dump_sa {
 };
 
 struct dump_state {
-  void *(*real_malloc)(size_t);
-  void *(*real_calloc)(size_t nmemb, size_t size);
-  void *(*real_realloc)(void *ptr, size_t size);
-  void *(*real_memalign)(size_t alignment, size_t size);
-  char *dump_prefix;
-  char *dump_root;
-  char *pagelog_suffix;
-  char *core_suffix;
-  struct sigaction sa;
-  bool page_log_active;
-  bool kill_after_dump;
-  bool global_dump;
-  bool dump_initialized;
-  int last_page;
-  int last_trace;
   int log_size;
   int mem_fd;
+  int last_page;
+  int last_trace;
   int last_ignored;
+  int stack_pos;
   enum dump_sa dump_sa;
   struct htable counters;
+  bool dump_initialized;
   bool mtrace_active;
   bool mtrace_init_called;
-  int stack_pos;
-  int dump_active_pos;
+  bool kill_after_dump;
   char hs[PAGESIZE + BUFSIZ];
-  bool dump_active[MAX_STACK];
-  char dump_path[MAX_STACK][MAX_PATH];
+  char dump_path[MAX_PATH];
+  char *dump_prefix;
+  char *dump_root;
+  char *core_suffix;
+  char *pagelog_suffix;
   char *pages_cache[LOG_SIZE];
   char *pages_trace[TRACE_SIZE];
   char *pages_ignored[MAX_IGNORE];

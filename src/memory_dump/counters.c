@@ -37,7 +37,7 @@ static size_t rehash(const void *e, void *unused) {
   return hash_string(((struct region_counter *)e)->name);
 }
 
-void init_counters(void) { htable_init(&state.counters, rehash, NULL); }
+void init_counters() { htable_init(&state.counters, rehash, NULL); }
 
 struct region_counter *get_region(char *loop_name) {
   struct region_counter *r = NULL;
