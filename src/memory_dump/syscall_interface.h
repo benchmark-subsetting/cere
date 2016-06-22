@@ -1,17 +1,27 @@
 #ifndef __SYSCALL_INTERFACE__H
 #define __SYSCALL_INTERFACE__H
 
-#define SYS_fake (-1)
+#include <tracer.h>
 
-typedef enum {PROTECT, UNPROTECT} syscallID;
+/* #define sigtrap asm volatile ("int $3") */
 
-void protect(pid_t pid, char *start, char *end);
-void unprotect(pid_t pid, char *start, char *end);
-void fake_syscall(void *arg);
+typedef enum {PROTECT, UNPROTECT, UNPROTECT_STATE, WRITE, OPENAT, CLOSE} syscallID;
 
-void* get_arg_fake_syscall(pid_t pid);
-void get_string(pid_t pid, char *loop, size_t nbyte);
+void protect(pid_t pid, char *start, size_t size);
+void unprotect(pid_t pid, char *start, size_t size);
+void unprotect_state(pid_t pid, char *start, size_t size);
+void write_page(pid_t pid, int fd, const void* buf, size_t nbyte);
+int openat_i(pid_t pid, char *pathname);
+void close_i(pid_t pid, int fd);
+
+register_t get_arg_from_regs(pid_t pid);
+
+void send_to_tracer(register_t arg);
+
+void get_string(pid_t pid, char *src_tracee, char *dst_tracer, size_t nbyte);
+void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
+
 void sigtrap(void);
-void set_var(pid_t pid, void* arg, void* val);
 
 #endif /* __SYSCALL_INTERFACE__H */ 
+

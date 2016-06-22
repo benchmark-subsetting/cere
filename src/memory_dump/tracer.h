@@ -1,13 +1,10 @@
-size_t get_tids(pid_t **const listptr, size_t *const sizeptr, const pid_t pid);
-static int wait_process(const pid_t pid, int *const statusptr);
-static int continue_process(const pid_t pid, int *const statusptr);
-void show_registers(FILE *const out, pid_t tid, const char *const note);
-void exit_status(int status);
-int tgkill(pid_t pid, pid_t tid, int sig);
-void attach_all_threads(pid_t pid, pid_t tid[], int nbthread, int *const status);
-void detach_all_threads(pid_t pid, pid_t tid[], int nbthread, int *const status);
-void attach_one_thread(pid_t pid, int tid, int *const status);
-void getdata(pid_t child, long addr, char *str, int len);
-void putdata(pid_t child, long addr, char *str, int len);
-void print_step(pid_t tid, pid_t tids[], int nbthreads, int nb_step);
-void injection_code(pid_t pid, pid_t tid, pid_t tids[], int nbthread);
+bool is_mru(void *addr);
+
+#define PAST_INV 30
+#define MAX_PATH 256
+#define MAX_IGNORE 32
+#define TRACE_SIZE (16384 * 100)
+#define LOG_SIZE 64
+#define SIZE_LOOP 256
+
+#define register_t uint64_t

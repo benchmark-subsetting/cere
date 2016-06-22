@@ -3,7 +3,7 @@
 
 int checksum(int *a, int size)
 {
-    int check=0, i;
+    int check=0, i; printf("HERE 1\n");
     for (i = 0; i < size; i++) {
         if (i == 0) {
             fprintf(stderr, "check: %d, &a: %p, a[0]: %d\n", check, a, a[0]);
@@ -26,6 +26,7 @@ void init(int *a, int size)
 
 int main(int argc, char **argv)
 {
+    fprintf(stderr, "START OF PROGRAM");
     int size=4096*4;
     int * a = malloc(sizeof(int)*size);
     init(a, size);

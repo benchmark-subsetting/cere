@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include "pages.h"
 #include "dump.h"
+#include "tracer.h"
 
 static void *(*real_malloc)(size_t) = NULL;
 static void *(*real_calloc)(size_t nmemb, size_t size) = NULL;

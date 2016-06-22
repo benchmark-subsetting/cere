@@ -87,7 +87,7 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Call the linker and copy the original binary
     '''
     safe_system(("{link} {opts} -o {binary} {libdir} " +
-                 "-Wl,-z,now -lcere_dump -ldl"
+                 "-Wl,-z,now -lcere_dump -lcere_syscall -ldl"
     ).format(link=CLANG, binary=BINARY,
              opts=COMPIL_OPT, Root=PROJECT_ROOT,libdir=LIBDIR_FLAGS))
 

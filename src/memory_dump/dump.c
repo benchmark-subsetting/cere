@@ -37,34 +37,19 @@
 #include <sys/prctl.h>
 
 #include "dump.h"
-#include "counters.h"
 #include "err.h"
 #include "ptrace.h"
 #include "syscall_interface.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+/* #undef _DEBUG */
+
+char writing_buff[1024];
+
+static int times_called = 0;
 
 struct dump_state state __attribute__((aligned(PAGESIZE)));
 extern const char *__progname;
-
-void create_dump_dir(void) {
-  struct stat sb;
-  /* Check that dump exists or try to create it, then enter it */
-  if (stat(state.dump_prefix, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
-    if (mkdir(state.dump_prefix, 0777) != 0)
-      errx(EXIT_FAILURE, "Could not create %s %s", state.dump_prefix, strerror(errno));
-  }
-
-  char dump_root[MAX_PATH];
-  snprintf(dump_root, sizeof(dump_root), "%s/%s",
-           state.dump_prefix, state.dump_root);
-
-  if (stat(dump_root, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
-    if (mkdir(dump_root, 0777) != 0)
-        errx(EXIT_FAILURE, "Could not create %s: %s", dump_root, strerror(errno));
-  }
-}
 
 void copy(char *source, char *dest) {
   char buf[BUFSIZ + 1];
@@ -74,7 +59,6 @@ void copy(char *source, char *dest) {
     errx(EXIT_FAILURE, "Error while copying the original binary");
 
   size_t bytes;
-
   while (0 < (bytes = fread(buf, 1, sizeof(buf), input))) {
     if (bytes != fwrite(buf, 1, bytes, output)) {
       errx(EXIT_FAILURE, "Error while copying the original binary");
@@ -84,17 +68,11 @@ void copy(char *source, char *dest) {
   fclose(output);
 }
 
-
-void lock_mem() {
-  sigtrap();
-}
-
 void dump_init(void) {
   
-  state.dump_prefix = strdup(".cere");
-  state.dump_root = strdup("dumps");
-  state.pagelog_suffix = strdup("hotpages.map");
-  state.core_suffix = strdup("core.map");
+  state.mtrace_active = false;
+
+  char tracer_path[] = "/home/yohan/Documents/cere/src/memory_dump/.libs/tracer";
   
   /* Copy the original binary */
   copy("/proc/self/exe", "lel_bin");
@@ -102,17 +80,10 @@ void dump_init(void) {
   /* configure atexit */
   atexit(dump_close);
 
-  /* create dump dir */
-  create_dump_dir();
-
-  /* init counters table */
-  init_counters();
-  state.last_page = 0;
-  state.last_trace = 0;
-
   pid_t child = 0;
   int status = 0;
 
+  char *const envs[] = {"LD_PRELOAD=/usr/local/lib/libcere_syscall.so",NULL};
   child = fork();
 
   if (child == (pid_t)-1) {
@@ -121,16 +92,32 @@ void dump_init(void) {
 
   /* If we are the parent */
   if (child != 0) {
-    fflush(stdout);
-    fflush(stderr);
-    execlp("./tracer", "./tracer", child, (char*)NULL);
+    char child_str[16];
+    snprintf(child_str, sizeof(child_str), "%d", child);
+    execle(tracer_path, "tracer", child_str, (char*)NULL, envs);
+    errx(EXIT_FAILURE,"ERROR TRACER %s\n", strerror(errno));
     return;
-  } 
+  } else {
+    int d = prctl(PR_SET_DUMPABLE, (long)1);
+    if (d == -1) 
+      errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
 
-  prctl(PR_SET_DUMPABLE, (long)1);
-  prctl(PR_SET_PTRACER, (long)getppid());
- 
-  state.dump_initialized = true;
+    ptrace_me();
+    send_to_tracer((register_t) &state);
+    send_to_tracer(sizeof(state));
+    send_to_tracer((register_t)__errno_location());
+    send_to_tracer((register_t) state.str_tmp);
+    send_to_tracer((register_t)(&writing_buff));
+
+    /* fprintf(stderr, "WB : %p\n", (void*)(&writing_buff)); */
+    /* fprintf(stderr,"STATE : %p\n", &state);  */
+    /* fprintf(stderr,"SIZE_STATE : %lu\n", sizeof(state));  */
+    /* fprintf(stderr,"ERRNO_LOCATION : %p\n", __errno_location());  */
+    /* fprintf(stderr,"STRING TMP : %p\n", state.str_tmp);  */
+  
+    /* Must be conserved ? */
+    state.dump_initialized = true;
+  }
 
 #ifdef _DEBUG
   printf("DUMP_INIT DONE\n");
@@ -149,32 +136,47 @@ void dump_close() {
  *  ...args...: the arguments to dump
  */
 void dump(char *loop_name, int invocation, int count, ...) {
+
+  /* Must be conserved ? */
   //Avoid doing something before initializing
   //the dump.
   if (!state.dump_initialized)
     return;
 
-  sigtrap();
-  
-  fake_syscall(loop_name);
-  fake_syscall(invocation);
-  fake_syscall(count);
+  times_called++;
 
-  bool good_invocation;
-  fake_syscall(&good_invocation);
+  /* fprintf(stderr, "Times called %p\n", &times_called); */
 
-  if (good_invocation) {
-    /* Dump addresses */
-    int i;
-    va_list ap;
-    va_start(ap, count);
-    for (i = 0; i < count; i++) {
-      fake_syscall(va_arg(ap, void *));
-    }
-    va_end(ap);
-
-    state.kill_after_dump = true;
+  /* Happens only once */
+  if ((invocation <= PAST_INV && times_called == 1) || (times_called == invocation - PAST_INV)) {
+    state.mtrace_active = false;
+    sigtrap();
   }
+
+  if (times_called != invocation) {
+    state.mtrace_active = true;
+    return;
+  }
+
+  assert(times_called == invocation);
+
+  /* Send args */
+  strcpy(state.str_tmp, loop_name); 
+  send_to_tracer(0);
+  send_to_tracer(invocation);
+  send_to_tracer(count);
+
+  /* Dump addresses */
+  int i;
+  va_list ap;
+  va_start(ap, count);
+  for (i = 0; i < count; i++) {
+    send_to_tracer((register_t) va_arg(ap, void*));
+  }
+  va_end(ap);
+  
+  state.kill_after_dump = true;
+  sigtrap();
 }
 
 void after_dump(void) {
@@ -183,6 +185,7 @@ void after_dump(void) {
   if (!state.dump_initialized)
     return;
 
-  if (state.kill_after_dump)
+  if (state.kill_after_dump) {
     exit(EXIT_SUCCESS);
+  }
 }

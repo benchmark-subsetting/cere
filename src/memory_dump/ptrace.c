@@ -1,3 +1,4 @@
+
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
@@ -8,6 +9,7 @@
 #include <sys/ptrace.h>
 #include <sys/user.h>
 #include <string.h>
+#include <signal.h>
 
 #if __WORDSIZE == 64
 #  define WORDSIZE 8
@@ -15,7 +17,8 @@
 #  define WORDSIZE 4
 #endif
 
-#define _DEBUG 
+#define _DEBUG 1
+/* #undef _DEBUG  */
 
 void ptrace_getsiginfo(pid_t pid, siginfo_t *sig) {
   if(ptrace(PTRACE_GETSIGINFO, pid, (void*)0 , sig) == -1)
@@ -50,12 +53,26 @@ void ptrace_singlestep(pid_t pid) {
   } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO || errno == ESRCH));
 }
 
+void ptrace_me(void) {
+  if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1){
+    errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
+  }
+}
+
+void ptrace_interrupt(pid_t pid) {
+  if (ptrace(PTRACE_INTERRUPT, pid, 0, 0) == -1) {
+    errx(EXIT_FAILURE, "ptrace(PTRACE_INTERRUPT) : %s\n", strerror(errno));
+  }
+}
+
 void attach_all_threads(pid_t tid[], int nbthread) {
+  fprintf(stderr, "Attach %d\n" ,PTRACE_O_TRACESYSGOOD);
+
   long t,r;
   unsigned long c = 0L;
   for (t = 0; t < nbthread; t++) {
     do {
-      r = ptrace(PTRACE_SEIZE, tid[t], (void *)0, PTRACE_O_EXITKILL | PTRACE_O_TRACESYSGOOD);
+      r = ptrace(PTRACE_SEIZE, tid[t], (void *)0, PTRACE_O_TRACESYSGOOD);
 
 #ifdef _DEBUG
       if (c++ % 10000000 == 0)
@@ -83,20 +100,11 @@ void attach_all_threads(pid_t tid[], int nbthread) {
 
 }
 
-void ptrace_attach(pid_t pid) {
-  pid_t tids[] = {pid};
-  attach_all_threads(tids, 1);
-}
-
-void ptrace_detach(pid_t pid) {
-  pid_t tids[] = {pid};
-  detach_all_threads(tids, 1);
-}
-
 void detach_all_threads(pid_t tid[], int nbthread) {
   
   long t,r;
   unsigned long c = 0L;
+
 
   /* Detach from all tasks. */
   for (t = 0; t < nbthread; t++) {
@@ -108,7 +116,7 @@ void detach_all_threads(pid_t tid[], int nbthread) {
 	fprintf(stderr, "Try detach %d\n", tid[t]);
 #endif 
 
-    } while (r == -1 && (errno == EBUSY || errno == EFAULT || errno == ESRCH));
+    } while (r == -1 && (errno == EBUSY || errno == EFAULT || errno != ESRCH));
   }
 
 #ifdef _DEBUG
@@ -118,19 +126,24 @@ void detach_all_threads(pid_t tid[], int nbthread) {
 
 void ptrace_getdata(pid_t child, long addr, char *str, int len) {
   
+  int save_errno = errno;
+
   union u {
     long val;
     char chars[WORDSIZE];
   }data;
   
- char *laddr;
+  char *laddr;
   int i, j;
   i = 0;
   j = len / WORDSIZE;
   laddr = str;
 
   while(i < j) {
+    save_errno = errno;
     data.val = ptrace(PTRACE_PEEKDATA, child, addr + i * WORDSIZE, NULL);
+    if (data.val == -1 && save_errno != errno)
+      errx(EXIT_FAILURE, "Error get data : %s\n",strerror(errno));
     memcpy(laddr, data.chars, WORDSIZE);
     ++i;
     laddr += WORDSIZE;
@@ -141,6 +154,16 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
     memcpy(laddr, data.chars, j);
   }
   str[len] = '\0';
+}
+
+void ptrace_attach(pid_t pid) {
+  pid_t tids[] = {pid};
+  attach_all_threads(tids, 1);
+}
+
+void ptrace_detach(pid_t pid) {
+  pid_t tids[] = {pid};
+  detach_all_threads(tids, 1);
 }
   
 void ptrace_putdata(pid_t child, long addr, char *str, int len)
@@ -164,64 +187,125 @@ void ptrace_putdata(pid_t child, long addr, char *str, int len)
   j = len % WORDSIZE;
   if(j != 0) {
     memcpy(data.chars, laddr, j);
-    ptrace(PTRACE_POKEDATA, child, addr + i * WORDSIZE, data.val);
+    if (ptrace(PTRACE_POKEDATA, child, addr + i * WORDSIZE, data.val) == -1)
+      errx(EXIT_FAILURE, "Error put data : %s\n", strerror(errno));
   }
 }
 
-void wait_process(pid_t pid) {
+siginfo_t wait_process(pid_t pid) {
 
+  int r, status = 0;
   siginfo_t sig;
-  waitid(P_PID, pid, &sig, WSTOPPED);
+  
+  do {
+    r = waitpid(pid, &status, WSTOPPED);
+  } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH || errno == EIO));
 
-#ifdef _DEBUG
-  fprintf(stderr, "Signal receive from %d %d\n", pid, sig.si_status);
-#endif 
+  ptrace_getsiginfo(pid, &sig);
+  int sicode = sig.si_code;
 
+  if (WIFEXITED(status)) errx(EXIT_FAILURE, "%d exit %d\n", pid, WEXITSTATUS(status));
+  if (WIFSIGNALED(status)) errx(EXIT_FAILURE,  "Process %d terminate by signal : %d\n", pid, WTERMSIG(status));
+  if (WIFCONTINUED(status)) errx(EXIT_FAILURE, "%d continue\n", pid);
+
+  if (WIFSTOPPED(status)) {
+    int num = WSTOPSIG(status);
+    fprintf(stderr, "Process %d stop by signal : %d -> ", pid, num);
+    switch (num) {
+
+    case SIGSEGV:
+      switch (sicode) {
+      case SEGV_MAPERR:
+	fprintf(stderr, "SEGV_MAPERR address not mapped to object\n");
+	break;
+      case SEGV_ACCERR:
+	fprintf(stderr, "SEGV_ACCERR invalid permissions for mapped object\n");
+	break;
+      default:
+	errx(EXIT_FAILURE, "SEGV bad si_code : %d\n", sicode);
+      }
+      break;
+      
+    case SIGTRAP:
+    case SIGTRAP|0x80:
+      switch (sicode) {
+      case TRAP_BRKPT:
+	fprintf(stderr, "process breakpoint\n");
+	  break;
+      case TRAP_TRACE: 
+	fprintf(stderr, "process trace trap\n");
+	break;
+      case SIGTRAP:
+      case SIGTRAP|0x80:
+	fprintf(stderr, "This is a syscall-stop\n");
+	  break;
+      case 0x80:
+	fprintf(stderr, "SIGTRAP was sent by the kernel\n");
+	break;
+      default:
+	errx(EXIT_FAILURE, "TRAP bad si_code : %d\n", sicode);
+      }
+      break;
+
+    default:
+	errx(EXIT_FAILURE, "??? signo : %d\n", num);
+    }
+  }    
+  return sig;
+}
+
+void ptrace_listen(pid_t pid) {
+  ptrace(PTRACE_LISTEN, pid, 0, 0);
 }
 
 void ptrace_syscall(pid_t pid) {
   int ret = ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-  assert(ret != -1);
+  if (ret == -1)
+    errx(EXIT_FAILURE, "PTRACE SYSCALL %s\n", strerror(errno));
 }
 
+
+void ptrace_syscall_flag(pid_t pid, int flag) {
+  int ret = ptrace(PTRACE_SYSCALL, pid, NULL, flag);
+  if (ret == -1)
+    errx(EXIT_FAILURE, "PTRACE SYSCALL %s\n", strerror(errno));
+}
+
+void* ptrace_ripat(pid_t pid, void *addr) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  void *ret = (void*)regs.rip;
+  regs.rip = (long long unsigned)addr;
+  ptrace_setregs(pid, &regs);
+  return ret;
+}
 
 void show_registers(FILE *const out, pid_t tid, const char *const note)
 {
   struct user_regs_struct regs;
-  long r;
-  int i;
-
-  union u {
-    long val;
-    char chars[WORDSIZE];
-  }data;
-
   ptrace_getregs(tid, &regs);
-
 #if (defined(__x86_64__) || defined(__i386__)) && __WORDSIZE == 64
-  if (note && *note)
-    fprintf(out, "Task %d: RIP=0x%016llx, RSP=0x%016llx. %s\n", (int)tid, regs.rip, regs.rsp, note);
-  else
-    fprintf(out, "Task %d: RIP=0x%016llx, RSP=0x%016llx.\n ", (int)tid, regs.rip, regs.rsp);
-
-  ptrace_getdata(tid, regs.rip, (char*)&data.val, 1);
-
-  for(i = 0; i < 8; i++)
-    fprintf(out, "%02hhX ", data.chars[i]);
-  fprintf(out, "\n");
+  fprintf(out, "Task %d: RIP=%p, RSP=%p, RAX=%p, RDI=%p, RSI=%p, RDX=%p, ORIG_RAX=%p . %s\n", 
+	  (int)tid, (void*)regs.rip, (void*)regs.rsp, (void*)regs.rax, (void*)regs.rdi, (void*)regs.rsi, (void*)regs.rdx, (void*)regs.orig_rax,  note);
 
 #elif (defined(__arm__))
-  if (note && *note)
-    fprintf(out, "Task %d: EIP=0x%08xx, ESP=0x%08x. %s\n", (int)tid, regs.ip, regs.sp, note);
-  else
-    fprintf(out, "Task %d: EIP=0x%08xx, ESP=0x%08x.\n", (int)tid, regs.ip, regs.sp);
-
+  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp, note);
 #elif (defined(__aarch64__)) 
-  if (note && *note)
-    fprintf(out, "Task %d: EIP=0x%08xx, ESP=0x%08x. %s\n", (int)tid, regs.ip, regs.sp, note);
-  else
-    fprintf(out, "Task %d: EIP=0x%08xx, ESP=0x%08x.\n", (int)tid, regs.ip, regs.sp);
+  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp, note);
+#endif
+}
 
+
+void print_registers(FILE *const out, struct user_regs_struct *regs, const char *const note)
+{
+#if (defined(__x86_64__) || defined(__i386__)) && __WORDSIZE == 64
+  fprintf(out, "RIP=%p, RSP=%p, RAX=%p, RDI=%p, RSI=%p, RDX=%p, ORIG_RAX=%p . %s\n", 
+	   (void*)regs->rip, (void*)regs->rsp, (void*)regs->rax, (void*)regs->rdi, (void*)regs->rsi, (void*)regs->rdx, (void*)regs->orig_rax,  note);
+
+#elif (defined(__arm__))
+  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp, note);
+#elif (defined(__aarch64__)) 
+  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp, note);
 #endif
 }
 

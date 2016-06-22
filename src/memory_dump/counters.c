@@ -18,7 +18,9 @@
  *****************************************************************************/
 #include <string.h>
 #include <err.h>
-#include "dump.h"
+
+#include "../ccan/ccan/htable/htable.h"
+
 #include "counters.h"
 
 // Comparison function.
@@ -37,13 +39,13 @@ static size_t rehash(const void *e, void *unused) {
   return hash_string(((struct region_counter *)e)->name);
 }
 
-void init_counters() { htable_init(&state.counters, rehash, NULL); }
+void init_counters(struct htable *counters) { htable_init(counters, rehash, NULL); }
 
-struct region_counter *get_region(char *loop_name) {
+struct region_counter *get_region(struct htable *counters, char *loop_name) {
   struct region_counter *r = NULL;
 
   /* Try to get region */
-  r = htable_get(&state.counters, hash_string(loop_name), streq, loop_name);
+  r = htable_get(counters, hash_string(loop_name), streq, loop_name);
 
   /* If it exists return it */
   if (r)
@@ -61,6 +63,6 @@ struct region_counter *get_region(char *loop_name) {
 
   /* Initialize call count to zero and add entry to hash table */
   r->call_count = 0;
-  htable_add(&state.counters, hash_string(r->name), r);
+  htable_add(counters, hash_string(r->name), r);
   return r;
 }

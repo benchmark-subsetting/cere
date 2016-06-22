@@ -89,6 +89,8 @@ char *get_filename_without_ext(char *filename) {
 void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
+  
+  fprintf(stderr,"LOAD\n");
 
   /* Read warmup type from environment variable */
   char *ge = getenv("CERE_WARMUP");
