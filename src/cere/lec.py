@@ -163,8 +163,8 @@ def extract_function(mode_opt, regions, BASE):
                     "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                     globRename=GLOB_RENAME, base=BASE), EXIT=False)
           #Then extract this function into a new file
-          safe_system("llvm-extract -S -func={0} {1}.ll -o {0}.ll".format(to_extract, baseName), EXIT=False)
-          safe_system("llvm-extract -S -func={0} {1}.ll -o {1}.ll -delete".format(to_extract, baseName), EXIT=False)
+          safe_system("{llvm_bindir}/llvm-extract -S -func={0} {1}.ll -o {0}.ll".format(to_extract, baseName, llvm_bindir=LLVM_BINDIR), EXIT=False)
+          safe_system("{llvm_bindir}/llvm-extract -S -func={0} {1}.ll -o {1}.ll -delete".format(to_extract, baseName, llvm_bindir=LLVM_BINDIR), EXIT=False)
 
           global REGION_EXTRACTED
           REGION_EXTRACTED = True
@@ -250,15 +250,15 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     if REGION_EXTRACTED:
         #Regions have been extracted from this file. So we must change globals
         #definitions.
-        safe_system("opt -S -O3 {base}.ll -o {base}.ll".format(opts=" ".join(COMPIL_OPT),
-                                                               base=BASE))
+        safe_system("{llvm_bindir}/opt -S -O3 {base}.ll -o {base}.ll".format(opts=" ".join(COMPIL_OPT),
+                                                               base=BASE, llvm_bindir=LLVM_BINDIR))
         os.system("sed -i 's/internal constant/hidden constant/' {base}.ll".format(base=BASE))
         #This prevent from new globals optimizations
-        os.system("llc -O3 {base}.ll -o {base}.s".format(opts=" ".join(COMPIL_OPT), base=BASE))
+        os.system("{llvm_bindir}/llc -O3 {base}.ll -o {base}.s".format(opts=" ".join(COMPIL_OPT), base=BASE, llvm_bindir=LLVM_BINDIR))
         if "-g" in COMPIL_OPT:
             COMPIL_OPT = [x for x in COMPIL_OPT if x != "-g"]
-        safe_system("clang -c {opts} {base}.s -o {object}".format(opts=" ".join(COMPIL_OPT),
-                                                                  base=BASE, object=OBJECT))
+        safe_system("{llvm_bindir}/clang -c {opts} {base}.s -o {object}".format(opts=" ".join(COMPIL_OPT),
+                                                                  base=BASE, object=OBJECT, llvm_bindir=LLVM_BINDIR))
     else:
         # Can choose llc as llvm backend
         failure = False
