@@ -35,6 +35,8 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
@@ -43,13 +45,6 @@
 #include <fstream>
 #include <set>
 #include "RegionDump.h"
-
-#if LLVM_VERSION_MINOR >= 5
-#include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Dominators.h"
-#else
-#include "llvm/Support/InstIterator.h"
-#endif
 
 using namespace llvm;
 
