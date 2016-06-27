@@ -26,6 +26,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#undef LLVM_BINDIR
+#include "config.h"
+
 #define DEBUG_TYPE "region-instrumentation"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
@@ -33,21 +36,14 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include <fstream>
 #include <sstream>
 #include <errno.h>
 #include "RegionInstrumentation.h"
-
-#undef LLVM_BINDIR
-#include "config.h"
-#if LLVM_VERSION_MINOR >= 5
-#include "llvm/IR/Dominators.h"
-#include "llvm/IR/DebugInfo.h"
-#else
-#include "llvm/DebugInfo.h"
-#endif
 
 using namespace llvm;
 enum {
@@ -115,12 +111,8 @@ struct LoopRegionInstrumentation : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-#if LLVM_VERSION_MINOR >= 5
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
-#else
-    AU.addRequired<DominatorTree>();
-#endif
   }
 };
 }

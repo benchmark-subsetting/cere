@@ -33,23 +33,15 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
 #include <fstream>
 #include <sstream>
 #include <errno.h>
 #include "RegionInstrumentation.h"
-
-#undef LLVM_BINDIR
-#include "config.h"
-#if LLVM_VERSION_MINOR >= 5
-#include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Dominators.h"
-#include "llvm/IR/DebugInfo.h"
-#else
-#include "llvm/DebugInfo.h"
-#include "llvm/Support/InstIterator.h"
-#endif
 
 using namespace llvm;
 enum {
@@ -121,11 +113,7 @@ struct OmpRegionInstrumentation : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-#if LLVM_VERSION_MINOR >= 5
     AU.addRequired<DominatorTreeWrapperPass>();
-#else
-    AU.addRequired<DominatorTree>();
-#endif
   }
 };
 }
