@@ -413,21 +413,6 @@ void RegionExtractor::add_region_to_file(
     //~return StringRef("indirect call");
 //~}
 
-/// Find omp microtask name for the parralel region
-std::string findMicrotaskName(CallInst *callInst) {
-  std::string str;
-  llvm::raw_string_ostream rso(str);
-  callInst->print(rso);
-
-  size_t place = str.find(".omp_microtask.");
-  if (place == std::string::npos) {
-    exit(0);
-  } else {
-    size_t place2 = str.substr(place).find(" ");
-    return str.substr(place, place2);
-  }
-}
-
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
 std::string RegionExtractor::createFunctionName(Function *oldFunction,

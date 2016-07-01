@@ -18,6 +18,7 @@
 
 import os
 import re
+import shutil
 import subprocess
 import cere_configure
 import logging
@@ -185,6 +186,14 @@ def create_graph(force):
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
+        return False
+
+    if cere_configure.cere_config["omp"]:
+      try:
+        shutil.move("omp_outlined_to_cere", "{0}/omp_outlined_to_cere".format(var.CERE_PROFILE_PATH))
+      except IOError as err:
+        logger.error(str(err))
+        logger.error("File containing connection between OpenMP regions and cere regions is missing.")
         return False
 
     binary = which(run_cmd)
