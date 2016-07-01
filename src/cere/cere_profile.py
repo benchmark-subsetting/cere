@@ -89,6 +89,9 @@ def instrument_application(run_cmd, build_cmd, clean_cmd, force):
     if not os.path.isfile("{0}/app.prof".format(var.CERE_PROFILE_PATH)):
         logger.critical("Instrumentation failed: No output file")
         return False
-    logger.info('Instrumentation success')
-    create_graph(force)
+
+    if not create_graph(force):
+      logger.error("Call graph creation failed.")
+      return False
+    logger.info('Profile success')
     return True
