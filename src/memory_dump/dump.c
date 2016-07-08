@@ -44,9 +44,8 @@
 #define _DEBUG 1
 /* #undef _DEBUG */
 
-char writing_buff[1024];
-
 static int times_called = 0;
+char writing_buff[1024];
 
 struct dump_state state __attribute__((aligned(PAGESIZE)));
 extern const char *__progname;
@@ -103,6 +102,7 @@ void dump_init(void) {
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
 
     ptrace_me();
+
     send_to_tracer((register_t) &state);
     send_to_tracer(sizeof(state));
     send_to_tracer((register_t)__errno_location());
@@ -122,7 +122,6 @@ void dump_init(void) {
 #ifdef _DEBUG
   printf("DUMP_INIT DONE\n");
 #endif
-
 }
 
 void dump_close() {
@@ -138,14 +137,12 @@ void dump_close() {
 void dump(char *loop_name, int invocation, int count, ...) {
 
   /* Must be conserved ? */
-  //Avoid doing something before initializing
-  //the dump.
+  /* Avoid doing something before initializing */
+  /* the dump. */
   if (!state.dump_initialized)
     return;
 
   times_called++;
-
-  /* fprintf(stderr, "Times called %p\n", &times_called); */
 
   /* Happens only once */
   if ((invocation <= PAST_INV && times_called == 1) || (times_called == invocation - PAST_INV)) {
@@ -180,8 +177,8 @@ void dump(char *loop_name, int invocation, int count, ...) {
 }
 
 void after_dump(void) {
-  //Avoid doing something before initializing
-  //the dump.
+  /* Avoid doing something before initializing */
+  /* the dump. */
   if (!state.dump_initialized)
     return;
 

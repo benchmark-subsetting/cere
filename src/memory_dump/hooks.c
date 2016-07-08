@@ -25,9 +25,11 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdbool.h>
+
 #include "pages.h"
 #include "dump.h"
 #include "tracer.h"
+#include "syscall_interface.h"
 
 static void *(*real_malloc)(size_t) = NULL;
 static void *(*real_calloc)(size_t nmemb, size_t size) = NULL;
@@ -77,10 +79,17 @@ static void hooks_init(void) {
 
 static void lock_range(void * from, void * to) {
   if (state.mtrace_active) {
+    hook_sigtrap();
     long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
+    fprintf(stderr, "NB_PAGES_TO_ALLOCATE : %p -> %p (%lu)\n", from, to, nb_pages_to_allocate);
+
     for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
       if (!is_mru(from + PAGESIZE * i)) {
-        int result =
+
+	if ((from + PAGESIZE * i) <= (register_t)(0x659000) && (from + PAGESIZE * (i+1)) <= (register_t)(0x659000))
+	  fprintf(stderr, " PAGE : %p\n", (from + PAGESIZE * i));
+
+	int result =
           mprotect(round_to_page(from + PAGESIZE * i), PAGESIZE, PROT_NONE);
         assert(result != -1);
       }

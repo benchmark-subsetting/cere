@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
+#ifndef __DUMP__H
+#define __DUMP__H
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <signal.h>
@@ -52,3 +55,5 @@ struct dump_state {
 } __attribute__((packed));
 
 extern struct dump_state state;
+
+#endif /* DUMP__H */

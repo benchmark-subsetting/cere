@@ -1,5 +1,3 @@
-#define _LARGEFILE64_SOURCE
-
 #include <assert.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -23,7 +21,6 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <fcntl.h>
-#include <stdint.h>
 
 #include "../ccan/ccan/htable/htable.h"
 
@@ -32,7 +29,7 @@
 #include "pages.h"
 #include "ptrace.h"
 #include "tracer.h"
-
+#include "types.h"
 
 #define _DEBUG 1
 /* #undef _DEBUG */
@@ -47,24 +44,50 @@ char *dump_root = "dumps";
 char *pages_cache[LOG_SIZE];
 char dump_path[MAX_PATH];
 char *pages_trace[TRACE_SIZE];
+
 void *addr_state = NULL;
 size_t size_state = 0;
 void* errnol = NULL;
+
 char loop_name[SIZE_LOOP];
 int invocation;
 int count;
+
 void *writing_map = NULL;
 void *str_tmp_tracee = NULL;
 
+extern enum tracer_state_t tracer_state;
 
-enum tracer_state_t {
-  TRACER_UNLOCKED = 1,
-  TRACER_LOCKED = 2,
-  TRACER_DUMPING = 3
-};
+static void read_map(pid_t pid) {
+  char maps_path[MAX_PATH];
+  sprintf(maps_path, "/proc/%d/maps", pid);
+  FILE *maps = fopen(maps_path, "r");
+  if (!maps)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+  char buf[BUFSIZ + 1];
+  while (fgets(buf, BUFSIZ, maps)) {
+    fprintf(stderr, "%s", buf);
+  }
+  fclose(maps);
+}
 
-enum tracer_state_t tracer_state = 0;
 
+static void read_map_page(pid_t pid, void * page) {
+  char addr[16];
+  snprintf(addr, sizeof(addr), "%lx", (long unsigned int)page);
+
+  char maps_path[MAX_PATH];
+  sprintf(maps_path, "/proc/%d/maps", pid);
+  FILE *maps = fopen(maps_path, "r");
+  if (!maps)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+  char buf[BUFSIZ + 1];
+  while (fgets(buf, BUFSIZ, maps)) {
+    if (strstr(buf, addr) != NULL)
+      fprintf(stderr, "%s", buf);
+  }
+  fclose(maps);
+}
 
 bool is_mru(void *addr) {
   char *start_of_page = round_to_page(addr);
@@ -83,34 +106,36 @@ static void write_binary(pid_t pid, int out, void *in, int nbyte) {
 }
 
 static void dump_core(int count, void *addresses[]) {
+#ifdef _DEBUG
   fprintf(stderr, "\nDUMP CORE\n");
+#endif
 
   char path[MAX_PATH];
   snprintf(path, sizeof(path), "%s/%s", dump_path, core_suffix);
 
   FILE *core_map = fopen(path, "w");
-  if (!core_map) {
+  if (!core_map)
     errx(EXIT_FAILURE, "Could not create core.map file : %s\n", strerror(errno));
-  }
 
   int i;
-  for (i = 0; i < count; i++) {
-    fprintf(core_map, "%d %lx\n", i, (off64_t) addresses[i]);
-  }
+  for (i = 0; i < count; i++)
+    fprintf(core_map, "%d %lx\n", i, (register_t) addresses[i]);
   fclose(core_map);
  
+#ifdef _DEBUG
   fprintf(stderr, "END DUMP CORE\n\n");
+#endif 
 
 }
 
 static void dump_page(pid_t pid, void* start) {
   char current_path[MAX_PATH];
-  snprintf(current_path, sizeof(current_path), "%s/%012llx.memdump", dump_path, (long long unsigned int)start);
+  snprintf(current_path, sizeof(current_path), "%s/%012lx.memdump", dump_path, (register_t)start);
   put_string(pid, current_path, str_tmp_tracee, MAX_PATH); 
   if (access(current_path, F_OK) != -1)
     return;
 
-  int out = (int)openat_i(pid, str_tmp_tracee);
+  int out = openat_i(pid, str_tmp_tracee);
   write_binary(pid, out, start, PAGESIZE);
   close_i(pid, out);
 }
@@ -126,11 +151,19 @@ static void dump_handler(int pid, void *start_of_page) {
   ptrace_ripat(pid, old_addr);
 }
 
+bool b = false;
+
 static void mru_handler(int pid, void *start_of_page) {
 #ifdef _DEBUG
   fprintf(stderr, "MRU Detected access at %p\n", start_of_page);
 #endif
 
+
+  /* if (start_of_page == (void*)0x659000 || b) { */
+  /*   b = true; */
+  /*   read_map_page(pid, start_of_page); */
+  /* } */
+  
   bool present = is_mru(start_of_page);
   assert(present == false);
 
@@ -139,6 +172,9 @@ static void mru_handler(int pid, void *start_of_page) {
   unprotect(pid, start_of_page, PAGESIZE);
   ptrace_ripat(pid, old_addr);
 
+  /* if (start_of_page == (void*)0x659000 || b) */
+  /*   read_map_page(pid, start_of_page); */
+  
   /* Add page to page cache */
   /* we need to evict one of the pages, reprotect it ! */
   if (pages_cache[last_page] != 0) {    
@@ -149,9 +185,13 @@ static void mru_handler(int pid, void *start_of_page) {
 #ifdef _DEBUG
     fprintf(stderr, "MRU Reprotecting page %p\n", pages_cache[last_page]);
 #endif
-    void * old_addr = ptrace_ripat(pid, writing_map);
+ 
+   void * old_addr = ptrace_ripat(pid, writing_map);
     protect(pid, pages_cache[last_page], PAGESIZE);
     ptrace_ripat(pid, old_addr);
+
+    /* if (start_of_page == (void*)0x659000 || b) */
+    /*   read_map_page(pid, pages_cache[last_page]); */
   }
 
   pages_cache[last_page] = start_of_page;
@@ -170,14 +210,19 @@ siginfo_t wait_sigtrap(pid_t child) {
   while (true) {
     siginfo_t sig;
     sig = wait_process(child);
-    show_registers(stderr, child, "wait_sigtrap");
+    /* show_registers(stderr, child, "wait_sigtrap"); */
     
     if (sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP|0x80)) {
+      if (tracer_state == TRACER_LOCKED && !check_callid(child)) {
+	/* read_map(child); */
+	continue;
+      }
       return sig;
-    } 
+    }
+
     else if (sig.si_signo == SIGSEGV) {
       void *addr = round_to_page(sig.si_addr);
-      fprintf(stderr, "state = %d\n", tracer_state);
+      /* fprintf(stderr, "state = %d\n", tracer_state); */
       switch(tracer_state) {
       case TRACER_UNLOCKED: 
 	/* We should never get a sigsegv in unlocked state ! */
@@ -191,7 +236,7 @@ siginfo_t wait_sigtrap(pid_t child) {
       default: assert(false); /* we should never be here */
       }
 
-      show_registers(stderr, child, "after sigsegv");
+      /* show_registers(stderr, child, "after sigsegv"); */
       ptrace_cont(child);
     } 
     else {
@@ -212,11 +257,6 @@ static register_t receive_from_tracee(pid_t child) {
   return ret;
 }
 
-
-void debug(const char msg[]) { 
-  fprintf(stderr, "%s", msg);
-}
-
 void create_dump_dir(void) {
   struct stat sb;
   /* Check that dump exists or try to create it, then enter it */
@@ -232,19 +272,6 @@ void create_dump_dir(void) {
     if (mkdir(dump_root_, 0777) != 0)
       errx(EXIT_FAILURE, "Could not create %s: %s", dump_root_, strerror(errno));
   }
-}
-
-static void read_map(pid_t pid) {
-  char maps_path[MAX_PATH];
-  sprintf(maps_path, "/proc/%d/maps", pid);
-  FILE *maps = fopen(maps_path, "r");
-  if (!maps)
-    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
-  char buf[BUFSIZ + 1];
-  while (fgets(buf, BUFSIZ, maps)) {
-    fprintf(stderr, "%s", buf);
-  }
-  fclose(maps);
 }
 
 void tracer_lock_mem(pid_t pid) {
@@ -361,14 +388,20 @@ void tracer_lock_mem(pid_t pid) {
 
   read_map(pid);
 
+#ifdef _DEBUG
   fprintf(stderr, "***\tLOCK MEM END\t***\n\n");
+#endif
+
 }
 
 void flush_hot_pages_trace_to_disk(pid_t pid) {
+
+#ifdef _DEBUG
+    fprintf(stderr, "\nFLUSH HOT PAGE\n");
+#endif
+
   char path[MAX_PATH];
   char buf[14];
-
-  fprintf(stderr, "\nFLUSH HOT PAGE\n");
   
   snprintf(path, sizeof(path), "%s/%s", dump_path, pagelog_suffix);
   FILE *out = fopen(path, "w");
@@ -391,8 +424,10 @@ void flush_hot_pages_trace_to_disk(pid_t pid) {
   }
 
   fclose(out);
-  fprintf(stderr, "END FLUSH HOT PAGE\n\n");
 
+#ifdef _DEBUG
+  fprintf(stderr, "END FLUSH HOT PAGE\n\n");
+#endif
 }
 
 void dump_unprotected_pages(pid_t pid) {
@@ -457,8 +492,9 @@ void dump_arg(pid_t pid) {
 }
 
 void read_args(pid_t pid) {
-  fprintf(stderr, "HERE 2\n");
+
   wait_sigtrap(pid);
+
   ptrace_getdata(pid, (long long unsigned)str_tmp_tracee, loop_name, SIZE_LOOP);
   ptrace_cont(pid);
   invocation = (int)receive_from_tracee(pid);
@@ -486,15 +522,13 @@ void tracer_init(pid_t pid) {
   size_state = (size_t)receive_from_tracee(pid);
   errnol = round_to_page((void*)receive_from_tracee(pid));
   str_tmp_tracee = (void*)receive_from_tracee(pid);
-
   writing_map = (void*)receive_from_tracee(pid);
-  fprintf(stderr, "WM : %p\n", writing_map);
 
 #ifdef _DEBUG
   /* fprintf(stderr,"STATE : %p\n", addr_state);  */
   /* fprintf(stderr,"SIZE_STATE : %lu\n", size_state);  */
   /* fprintf(stderr,"ERRNO_LOCATION : %p\n", errnol);  */
-  fprintf(stderr,"STRING TMP : %p\n", str_tmp_tracee);
+  /* fprintf(stderr,"STRING TMP : %p\n", str_tmp_tracee); */
 
   fprintf(stderr, "***\tTRACER INIT DONE\t***\n\n");
 #endif
@@ -520,7 +554,6 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "******* TRACER_LOCKED\n");
   tracer_state = TRACER_LOCKED;
   ptrace_cont(child);
-
 
   // Dump arguments 
   tracer_dump(child);

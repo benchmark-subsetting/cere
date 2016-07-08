@@ -5,15 +5,13 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+#include "types.h"
 #include "tracer.h"
 #include "pages.h"
 #include "ptrace.h"
 #include "syscall_interface.h"
 
 #define _DEBUG 1
-
-#define SYS_FAKE (-1)
-#define LOOP_SIZE 256
 
 #ifdef __x86_64__
 static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_struct *regs, va_list vargs) {
@@ -22,43 +20,43 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
 
   case PROTECT:
     regs->rax = SYS_mprotect;
-    regs->rdi = (long long unsigned) va_arg(vargs, void *);
-    regs->rsi = (long long unsigned) va_arg(vargs, void *);
+    regs->rdi = (register_t) va_arg(vargs, void *);
+    regs->rsi = (register_t) va_arg(vargs, void *);
     regs->rdx = 0x0;
     break;
 
   case UNPROTECT:
     regs->rax = SYS_mprotect;
-    regs->rdi = (long long unsigned) va_arg(vargs , void *);
-    regs->rsi = (long long unsigned) va_arg(vargs , void *);
+    regs->rdi = (register_t) va_arg(vargs , void *);
+    regs->rsi = (register_t) va_arg(vargs , void *);
     regs->rdx = 0x7;
-    break;
-
-  case WRITE:
-    regs->rax = SYS_write;
-    regs->rdi = (long long unsigned) va_arg(vargs, void *);
-    regs->rsi = (long long unsigned) va_arg(vargs, void *);
-    regs->rdx = (long long unsigned) va_arg(vargs, void *);
     break;
 
   case UNPROTECT_STATE:
     regs->rax = SYS_mprotect;
-    regs->rdi = (long long unsigned) va_arg(vargs , void *);
-    regs->rsi = (long long unsigned) va_arg(vargs , void *);
-    regs->rdx = (long long unsigned) (PROT_READ | PROT_WRITE);
+    regs->rdi = (register_t)va_arg(vargs , void *);
+    regs->rsi = (register_t)va_arg(vargs , void *);
+    regs->rdx = (PROT_READ | PROT_WRITE);
     break;
 
   case OPENAT:
     regs->rax = SYS_openat;
-    regs->rdi = (long long unsigned) AT_FDCWD;
-    regs->rsi = (long long unsigned) va_arg(vargs, void *);
-    regs->rdx = (long long unsigned) (O_WRONLY | O_CREAT | O_EXCL);
-    regs->r10 = (long long unsigned) S_IRWXU;
+    regs->rdi = AT_FDCWD;
+    regs->rsi = (register_t) va_arg(vargs, void *);
+    regs->rdx = (O_WRONLY | O_CREAT | O_EXCL);
+    regs->r10 = S_IRWXU;
+    break;
+
+  case WRITE:
+    regs->rax = SYS_write;
+    regs->rdi = (register_t)va_arg(vargs, void *);
+    regs->rsi = (register_t) va_arg(vargs, void *);
+    regs->rdx = (register_t) va_arg(vargs, void *);
     break;
 
   case CLOSE:
     regs->rax = SYS_close;
-    regs->rdi = (long long unsigned) va_arg(vargs, void *);
+    regs->rdi = (register_t) va_arg(vargs, void *);
     break;
 
   default:
@@ -86,13 +84,16 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
   switch (syscallid) {
 
   case PROTECT:
+    /* We can try to protect a page that has been remove from memory */
+    /* beetween the lock_mem() and dumping args  */
+    if (tracer_state == TRACER_LOCKED && regs->rax == -ENOMEM)
+      break;
   case UNPROTECT:
   case UNPROTECT_STATE:
     assert(regs->rax == 0);
     break;
 
   case WRITE:
-    fprintf(stderr, "RAX : %llx\n", regs->rax);
     assert((int)regs->rax >= 0);
     break;
 
@@ -101,7 +102,7 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
     break;
 
   case CLOSE:
-    assert(regs->rax != ((long long unsigned)-1));
+    assert(regs->rax != -1L);
     break;
 
   default:
@@ -115,9 +116,9 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
 }
 
 void send_to_tracer(register_t arg) {
+  asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_send));
   asm volatile ("mov %0,%%rdi" : : "r" (arg));
   sigtrap();
-  /* sigtrap; */
 }
 
 register_t get_arg_from_regs(pid_t pid) {
@@ -133,12 +134,36 @@ void put_string(pid_t pid, char *src, void *dst, size_t nbyte) {
   ptrace_putdata(pid, (long long unsigned) dst, src, nbyte);
 }
 
-
-/*  __attribute__((always_inline)) */
 void inline sigtrap(void) {
   asm volatile ("int $3");
-  /* asm volatile ("push"); */
 }
+
+bool check_callid(pid_t pid) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  if (regs.rax == SYS_send) {
+    /* It's our sending function*/
+    fprintf(stderr, "SEND \n");
+    return true;
+  } else if (regs.rax == SYS_hook) {
+    /* It's one of hooking function */
+    fprintf(stderr, "HOOK \n");
+    ptrace_cont(pid);
+    return false;
+  } else {
+    errx(EXIT_FAILURE, "Error bad callid %d\n", (int)regs.rax);
+  }
+}
+
+void hook_sigtrap(void) {
+#ifdef _DEBUG
+  fprintf(stderr, "Hook sigtrap ! \n");
+#endif
+
+  asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_hook));
+  sigtrap();
+}
+
 
 #endif
 
@@ -164,10 +189,11 @@ static register_t injection_code(syscallID syscallid, pid_t tid, int nargs, ...)
   va_start(vargs, nargs);
   ret = inject_syscall(syscallid, tid, &regs, vargs);
   va_end(vargs);
+
   ptrace_getregs(tid, &regs);
 
-  print_registers(stderr, &regs_backup, "regs bfr");
-  print_registers(stderr, &regs, "regs aft");
+  /* print_registers(stderr, &regs_backup, "regs bfr"); */
+  /* print_registers(stderr, &regs, "regs aft"); */
 
   ptrace_setregs(tid, &regs_backup);
   
