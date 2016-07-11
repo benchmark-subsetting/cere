@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include "pages.h"
+#include "types.h"
 
 /* Public Interface */
 void dump_init(void);
@@ -31,13 +32,6 @@ void dump_close(void);
 void dump(char *, int, int, ...);
 void after_dump(void);
 
-#define PAST_INV 30
-#define MAX_DIGITS 12
-#define TRACE_SIZE (16384 * 100)
-#define LOG_SIZE 64
-#define MAX_STACK 64
-#define MAX_PATH 256
-#define MAX_IGNORE 32
 #define CALLOC_INIT 512
 
 struct dump_state {
@@ -46,7 +40,6 @@ struct dump_state {
   void *(*real_realloc)(void *ptr, size_t size);
   void *(*real_memalign)(size_t alignment, size_t size);
   bool dump_initialized;
-  bool mtrace_init_called;
   bool kill_after_dump;
   bool mtrace_active;
   char str_tmp[MAX_PATH];

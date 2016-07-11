@@ -71,7 +71,7 @@ void dump_init(void) {
   
   state.mtrace_active = false;
 
-  char tracer_path[] = "/home/yohan/Documents/cere/src/memory_dump/.libs/tracer";
+  char tracer_path[] = "/usr/local/bin/tracer";
   
   /* Copy the original binary */
   copy("/proc/self/exe", "lel_bin");
@@ -96,12 +96,15 @@ void dump_init(void) {
     execle(tracer_path, "tracer", child_str, (char*)NULL, envs);
     errx(EXIT_FAILURE,"ERROR TRACER %s\n", strerror(errno));
     return;
+
   } else {
+
     int d = prctl(PR_SET_DUMPABLE, (long)1);
     if (d == -1) 
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
 
     ptrace_me();
+    raise(SIGSTOP);
 
     send_to_tracer((register_t) &state);
     send_to_tracer(sizeof(state));
@@ -109,12 +112,13 @@ void dump_init(void) {
     send_to_tracer((register_t) state.str_tmp);
     send_to_tracer((register_t)(&writing_buff));
 
-    /* fprintf(stderr, "WB : %p\n", (void*)(&writing_buff)); */
-    /* fprintf(stderr,"STATE : %p\n", &state);  */
-    /* fprintf(stderr,"SIZE_STATE : %lu\n", sizeof(state));  */
-    /* fprintf(stderr,"ERRNO_LOCATION : %p\n", __errno_location());  */
-    /* fprintf(stderr,"STRING TMP : %p\n", state.str_tmp);  */
-  
+#ifdef _DEBUG
+    fprintf(stderr,"STATE : %p\n", &state);
+    fprintf(stderr,"SIZE_STATE : %lu\n", sizeof(state));
+    fprintf(stderr,"ERRNO_LOCATION : %p\n", __errno_location());
+    fprintf(stderr,"STRING TMP : %p\n", state.str_tmp);
+#endif
+
     /* Must be conserved ? */
     state.dump_initialized = true;
   }
@@ -146,17 +150,17 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
   /* Happens only once */
   if ((invocation <= PAST_INV && times_called == 1) || (times_called == invocation - PAST_INV)) {
-    state.mtrace_active = false;
+    state.mtrace_active = true;
     sigtrap();
   }
 
   if (times_called != invocation) {
-    state.mtrace_active = true;
     return;
   }
 
   assert(times_called == invocation);
-
+  state.mtrace_active = false;
+  
   /* Send args */
   strcpy(state.str_tmp, loop_name); 
   send_to_tracer(0);

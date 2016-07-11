@@ -11,15 +11,9 @@ int openat_i(pid_t pid, char *pathname);
 void close_i(pid_t pid, int fd);
 
 register_t get_arg_from_regs(pid_t pid);
-
 void send_to_tracer(register_t arg);
 void hook_sigtrap(void);
-
-bool check_callid(pid_t pid);
-
-void get_string(pid_t pid, char *src_tracee, char *dst_tracer, size_t nbyte);
-void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
-
+bool is_hook_sigtrap(pid_t pid);
 void sigtrap(void);
 
 #endif /* __SYSCALL_INTERFACE__H */ 

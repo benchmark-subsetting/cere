@@ -6,12 +6,12 @@
 #include <sys/mman.h>
 
 #include "types.h"
-#include "tracer.h"
 #include "pages.h"
 #include "ptrace.h"
 #include "syscall_interface.h"
 
 #define _DEBUG 1
+/* #undef _DEBUG */
 
 #ifdef __x86_64__
 static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_struct *regs, va_list vargs) {
@@ -64,7 +64,7 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
   }
 
   int len = 3;
-  long long unsigned rip_backup = regs->rip;
+  register_t rip_backup = regs->rip;
   char backup_instr[len];
 
   /* 0f 05 syscall          */
@@ -115,55 +115,35 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
   return ret;
 }
 
-void send_to_tracer(register_t arg) {
-  asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_send));
-  asm volatile ("mov %0,%%rdi" : : "r" (arg));
-  sigtrap();
-}
-
 register_t get_arg_from_regs(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
   return regs.rdi;
 }
 
-void put_string(pid_t pid, char *src, void *dst, size_t nbyte) {
-#ifdef _DEBUG
-  fprintf(stderr, "PUT STRING %s at %p\n", src, dst);
-#endif
-  ptrace_putdata(pid, (long long unsigned) dst, src, nbyte);
+void send_to_tracer(register_t arg) {
+  asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_send));
+  asm volatile ("mov %0,%%rdi" : : "r" (arg));
+  sigtrap();
 }
 
 void inline sigtrap(void) {
   asm volatile ("int $3");
 }
 
-bool check_callid(pid_t pid) {
-  struct user_regs_struct regs;
-  ptrace_getregs(pid, &regs);
-  if (regs.rax == SYS_send) {
-    /* It's our sending function*/
-    fprintf(stderr, "SEND \n");
-    return true;
-  } else if (regs.rax == SYS_hook) {
-    /* It's one of hooking function */
-    fprintf(stderr, "HOOK \n");
-    ptrace_cont(pid);
-    return false;
-  } else {
-    errx(EXIT_FAILURE, "Error bad callid %d\n", (int)regs.rax);
-  }
-}
-
 void hook_sigtrap(void) {
 #ifdef _DEBUG
   fprintf(stderr, "Hook sigtrap ! \n");
 #endif
-
   asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_hook));
   sigtrap();
 }
 
+bool is_hook_sigtrap(pid_t pid) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  return (regs.rax == SYS_hook);
+}
 
 #endif
 
@@ -189,11 +169,6 @@ static register_t injection_code(syscallID syscallid, pid_t tid, int nargs, ...)
   va_start(vargs, nargs);
   ret = inject_syscall(syscallid, tid, &regs, vargs);
   va_end(vargs);
-
-  ptrace_getregs(tid, &regs);
-
-  /* print_registers(stderr, &regs_backup, "regs bfr"); */
-  /* print_registers(stderr, &regs, "regs aft"); */
 
   ptrace_setregs(tid, &regs_backup);
   

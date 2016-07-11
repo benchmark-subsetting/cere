@@ -28,6 +28,7 @@ void ptrace_syscall(pid_t pid);
 void ptrace_syscall_flag(pid_t pid, int flag);
 void* ptrace_ripat(pid_t pid, void *addr);
 siginfo_t wait_process(pid_t pid);
+void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
 
 /* Debug functions */
 void print_registers(FILE *const out, struct user_regs_struct *regs, const char *const note);

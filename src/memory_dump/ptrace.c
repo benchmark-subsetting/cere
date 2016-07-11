@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
@@ -11,6 +10,8 @@
 #include <string.h>
 #include <signal.h>
 
+#include "types.h"
+
 #if __WORDSIZE == 64
 #  define WORDSIZE 8
 #elif __WORDSIZE == 32
@@ -19,6 +20,10 @@
 
 #define _DEBUG 1
 /* #undef _DEBUG  */
+
+
+#define debug_print(fmt, ...) \
+            do { if (_DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
 void ptrace_getsiginfo(pid_t pid, siginfo_t *sig) {
   if(ptrace(PTRACE_GETSIGINFO, pid, (void*)0 , sig) == -1)
@@ -204,53 +209,43 @@ siginfo_t wait_process(pid_t pid) {
   ptrace_getsiginfo(pid, &sig);
   int sicode = sig.si_code;
 
-  if (WIFEXITED(status)) errx(EXIT_FAILURE, "%d exit %d\n", pid, WEXITSTATUS(status));
-  if (WIFSIGNALED(status)) errx(EXIT_FAILURE,  "Process %d terminate by signal : %d\n", pid, WTERMSIG(status));
-  if (WIFCONTINUED(status)) errx(EXIT_FAILURE, "%d continue\n", pid);
+  if (WIFEXITED(status)) 
+    errx(EXIT_FAILURE, "%d exit %d\n", pid, WEXITSTATUS(status));
+
+  if (WIFSIGNALED(status)) 
+    errx(EXIT_FAILURE,  "Process %d terminate by signal : %d\n", pid, WTERMSIG(status));
+
+  if (WIFCONTINUED(status)) 
+    errx(EXIT_FAILURE, "%d continue\n", pid);
 
   if (WIFSTOPPED(status)) {
     int num = WSTOPSIG(status);
-    fprintf(stderr, "Process %d stop by signal : %d -> ", pid, num);
-    switch (num) {
 
-    case SIGSEGV:
-      switch (sicode) {
-      case SEGV_MAPERR:
-	fprintf(stderr, "SEGV_MAPERR address not mapped to object\n");
-	break;
-      case SEGV_ACCERR:
-	fprintf(stderr, "SEGV_ACCERR invalid permissions for mapped object\n");
-	break;
-      default:
+    debug_print("Process %d stop by signal : %d -> ", pid, num);
+   
+    if (num == SIGSEGV) {
+      if (sicode == SEGV_MAPERR)
+	debug_print("SEGV_MAPERR address not mapped to object : %p\n", sig.si_addr);
+      else if (sicode == SEGV_ACCERR)
+	debug_print("SEGV_ACCERR invalid permissions for mapped object : %p\n", sig.si_addr);
+      else
 	errx(EXIT_FAILURE, "SEGV bad si_code : %d\n", sicode);
-      }
-      break;
-      
-    case SIGTRAP:
-    case SIGTRAP|0x80:
-      switch (sicode) {
-      case TRAP_BRKPT:
-	fprintf(stderr, "process breakpoint\n");
-	  break;
-      case TRAP_TRACE: 
-	fprintf(stderr, "process trace trap\n");
-	break;
-      case SIGTRAP:
-      case SIGTRAP|0x80:
-	fprintf(stderr, "This is a syscall-stop\n");
-	  break;
-      case 0x80:
-	fprintf(stderr, "SIGTRAP was sent by the kernel\n");
-	break;
-      default:
+    } else if (num == SIGTRAP || num == (SIGTRAP|0x80)) {
+      if (sicode <= 0)
+	debug_print("%s","SIGTRAP  was  delivered  as  a result of a user-space action\n");
+      else if (sicode == 0x80)
+	debug_print("%s", "SIGTRAP was sent by the kernel\n");
+      else if (sicode == SIGTRAP || sicode == (SIGTRAP|0x80))
+	fprintf(stderr, "%s", "This is a syscall-stop\n");
+      else 
 	errx(EXIT_FAILURE, "TRAP bad si_code : %d\n", sicode);
-      }
-      break;
-
-    default:
-	errx(EXIT_FAILURE, "??? signo : %d\n", num);
+    } else if (num == SIGSTOP && tracer_state == 0) {
+      debug_print("%s", "SIGSTOP receive from tracee\n");
+    } else {
+      errx(EXIT_FAILURE, "??? signo : %d\n", num);
     }
-  }    
+  }
+ 
   return sig;
 }
 
@@ -275,7 +270,7 @@ void* ptrace_ripat(pid_t pid, void *addr) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
   void *ret = (void*)regs.rip;
-  regs.rip = (long long unsigned)addr;
+  regs.rip = (register_t)addr;
   ptrace_setregs(pid, &regs);
   return ret;
 }
@@ -327,4 +322,11 @@ void print_step(pid_t tid, pid_t tids[], int nbthread, int nb_step) {
       fprintf(stderr, "Single-step failed: %s.\n", strerror(errno));
     }
   }
+}
+
+void put_string(pid_t pid, char *src, void *dst, size_t nbyte) {
+#ifdef _DEBUG
+  fprintf(stderr, "PUT STRING %s at %p\n", src, dst);
+#endif
+  ptrace_putdata(pid, (long long unsigned) dst, src, nbyte);
 }

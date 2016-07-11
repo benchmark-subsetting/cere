@@ -40,12 +40,15 @@ static size_t (*real_fread)(void *ptr, size_t size, size_t nmemb, FILE *stream);
 static size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb,
                              FILE *stream);
 
-void mtrace_activate(void) { state.mtrace_active = true; }
+static bool mtrace_init_called = false;
 
-void mtrace_deactivate(void) { state.mtrace_active = false; }
+/* void mtrace_activate(void) { state.mtrace_active = true; } */
+
+/* void mtrace_deactivate(void) { state.mtrace_active = false; } */
 
 static void hooks_init(void) {
-  state.mtrace_init_called = true;
+
+  mtrace_init_called = true;
 
   real_malloc = dlsym(RTLD_NEXT, "malloc");
   if (NULL == real_malloc) {
@@ -77,23 +80,12 @@ static void hooks_init(void) {
   }
 }
 
-static void lock_range(void * from, void * to) {
+static void lock_range(void *from, void *to){
   if (state.mtrace_active) {
     hook_sigtrap();
-    long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
-    fprintf(stderr, "NB_PAGES_TO_ALLOCATE : %p -> %p (%lu)\n", from, to, nb_pages_to_allocate);
-
-    for (long unsigned i = 0; i < nb_pages_to_allocate; i++) {
-      if (!is_mru(from + PAGESIZE * i)) {
-
-	if ((from + PAGESIZE * i) <= (register_t)(0x659000) && (from + PAGESIZE * (i+1)) <= (register_t)(0x659000))
-	  fprintf(stderr, " PAGE : %p\n", (from + PAGESIZE * i));
-
-	int result =
-          mprotect(round_to_page(from + PAGESIZE * i), PAGESIZE, PROT_NONE);
-        assert(result != -1);
-      }
-    }
+    send_to_tracer((register_t)from);
+    send_to_tracer((register_t)to);
+    hook_sigtrap();
   }
 }
 
@@ -114,7 +106,7 @@ void *calloc(size_t nmemb, size_t size) {
      hooks_init(). To avoid this, we return a statically allocated block of
      memory in that case. Reported by Sebastien Valat. */
 
-  if (real_calloc == NULL && state.mtrace_init_called) {
+  if (real_calloc == NULL && mtrace_init_called) {
     assert(size < CALLOC_INIT);
     assert(nmemb * size < CALLOC_INIT);
     return state.calloc_init_mem;

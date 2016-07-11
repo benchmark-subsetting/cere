@@ -1,8 +1,6 @@
 #ifndef __TYPES__H
 #define __TYPES__H
 
-#include <stdint.h>
-
 #define PAST_INV 30
 #define MAX_PATH 256
 #define MAX_IGNORE 32
@@ -19,6 +17,6 @@ enum tracer_state_t {
   TRACER_DUMPING = 3
 };
 
-enum tracer_state_t tracer_state = 0;
+extern enum tracer_state_t tracer_state;
 
 #endif /* __TYPES__H */

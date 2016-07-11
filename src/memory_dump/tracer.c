@@ -22,14 +22,10 @@
 #include <stdbool.h>
 #include <fcntl.h>
 
-#include "../ccan/ccan/htable/htable.h"
-
-#include "counters.h"
-#include "syscall_interface.h"
 #include "pages.h"
 #include "ptrace.h"
+#include "syscall_interface.h"
 #include "tracer.h"
-#include "types.h"
 
 #define _DEBUG 1
 /* #undef _DEBUG */
@@ -56,7 +52,9 @@ int count;
 void *writing_map = NULL;
 void *str_tmp_tracee = NULL;
 
-extern enum tracer_state_t tracer_state;
+enum tracer_state_t tracer_state = 0;
+
+static void tracer_lock_range(pid_t child);
 
 static void read_map(pid_t pid) {
   char maps_path[MAX_PATH];
@@ -151,19 +149,11 @@ static void dump_handler(int pid, void *start_of_page) {
   ptrace_ripat(pid, old_addr);
 }
 
-bool b = false;
-
 static void mru_handler(int pid, void *start_of_page) {
 #ifdef _DEBUG
-  fprintf(stderr, "MRU Detected access at %p\n", start_of_page);
+  fprintf(stderr, "\nMRU Detected access at %p\n", start_of_page);
 #endif
 
-
-  /* if (start_of_page == (void*)0x659000 || b) { */
-  /*   b = true; */
-  /*   read_map_page(pid, start_of_page); */
-  /* } */
-  
   bool present = is_mru(start_of_page);
   assert(present == false);
 
@@ -172,9 +162,6 @@ static void mru_handler(int pid, void *start_of_page) {
   unprotect(pid, start_of_page, PAGESIZE);
   ptrace_ripat(pid, old_addr);
 
-  /* if (start_of_page == (void*)0x659000 || b) */
-  /*   read_map_page(pid, start_of_page); */
-  
   /* Add page to page cache */
   /* we need to evict one of the pages, reprotect it ! */
   if (pages_cache[last_page] != 0) {    
@@ -190,31 +177,27 @@ static void mru_handler(int pid, void *start_of_page) {
     protect(pid, pages_cache[last_page], PAGESIZE);
     ptrace_ripat(pid, old_addr);
 
-    /* if (start_of_page == (void*)0x659000 || b) */
-    /*   read_map_page(pid, pages_cache[last_page]); */
   }
 
   pages_cache[last_page] = start_of_page;
   last_page = (last_page + 1) % log_size;
 
-/* #ifdef _DEBUG */
-/*   fprintf(stderr, "     >>>> page cache\n"); */
-/*   for (int i = 0; i < log_size; i++) { */
-/*     int c = (i + last_page) % log_size; */
-/*     fprintf(stderr, "     >>>> %p\n", pages_cache[c]); */
-/*   } */
-/* #endif */
+#ifdef _DEBUG
+  /* fprintf(stderr, "     >>>> page cache\n"); */
+  /* for (int i = 0; i < log_size; i++) { */
+  /*   int c = (i + last_page) % log_size; */
+  /*   fprintf(stderr, "     >>>> %p\n", pages_cache[c]); */
+  /* } */
+#endif
 }
 
-siginfo_t wait_sigtrap(pid_t child) {
+static siginfo_t wait_sigtrap(pid_t child) {
   while (true) {
     siginfo_t sig;
     sig = wait_process(child);
-    /* show_registers(stderr, child, "wait_sigtrap"); */
-    
     if (sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP|0x80)) {
-      if (tracer_state == TRACER_LOCKED && !check_callid(child)) {
-	/* read_map(child); */
+      if (tracer_state == TRACER_LOCKED && is_hook_sigtrap(child)) {
+	tracer_lock_range(child);
 	continue;
       }
       return sig;
@@ -222,7 +205,6 @@ siginfo_t wait_sigtrap(pid_t child) {
 
     else if (sig.si_signo == SIGSEGV) {
       void *addr = round_to_page(sig.si_addr);
-      /* fprintf(stderr, "state = %d\n", tracer_state); */
       switch(tracer_state) {
       case TRACER_UNLOCKED: 
 	/* We should never get a sigsegv in unlocked state ! */
@@ -236,7 +218,6 @@ siginfo_t wait_sigtrap(pid_t child) {
       default: assert(false); /* we should never be here */
       }
 
-      /* show_registers(stderr, child, "after sigsegv"); */
       ptrace_cont(child);
     } 
     else {
@@ -246,7 +227,6 @@ siginfo_t wait_sigtrap(pid_t child) {
   fprintf(stderr, "\n");
 }
 
-
 static register_t receive_from_tracee(pid_t child) {
   register_t ret;
   siginfo_t sig;
@@ -255,6 +235,40 @@ static register_t receive_from_tracee(pid_t child) {
   ret = get_arg_from_regs(child);
   ptrace_cont(child);
   return ret;
+}
+
+static void receive_string_from_tracee(pid_t child, char *src_tracee, void *dst_tracer, size_t size) {
+  wait_sigtrap(child);
+  ptrace_getdata(child, (long long unsigned)src_tracee, dst_tracer, size);
+  ptrace_cont(child);
+}
+
+static void tracer_lock_range(pid_t child) {
+#ifdef _DEBUG
+  fprintf(stderr, "\n***\tSTART LOCK RANGE\t***\n");
+#endif
+
+  assert(tracer_state == TRACER_LOCKED);
+
+  ptrace_cont(child);
+  void *from = (void*)receive_from_tracee(child);
+  void *to = (void*)receive_from_tracee(child);
+  /* We need that the process be stopped to protect */
+  wait_process(child);
+
+  long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
+  void * old_addr = ptrace_ripat(child, writing_map);
+
+  for (long unsigned i = 0; i < nb_pages_to_allocate; i++)
+    if (!is_mru(from + PAGESIZE * i))
+      protect(child, round_to_page(from + PAGESIZE * i), PAGESIZE);
+
+  ptrace_ripat(child, old_addr);
+  ptrace_cont(child);
+
+#ifdef _DEBUG
+  fprintf(stderr, "\n***\tEND LOCK RANGE\t***\n");
+#endif
 }
 
 void create_dump_dir(void) {
@@ -431,7 +445,9 @@ void flush_hot_pages_trace_to_disk(pid_t pid) {
 }
 
 void dump_unprotected_pages(pid_t pid) {
+#ifdef _DEBUG
   fprintf(stderr, "\nDUMP UNPROTECTED PAGE\n");
+#endif
 
   /* Dump the unprotected pages before entering the codelet region. */
   for (int i = 0; i < log_size; i++) {
@@ -440,12 +456,15 @@ void dump_unprotected_pages(pid_t pid) {
       dump_page(pid, pages_cache[c]);
     }
   }
+
+#ifdef _DEBUG
   fprintf(stderr, "END DUMP UNPROTECTED PAGE\n\n");
+#endif
 }
 
 void dump_arg(pid_t pid) {
   
-  fprintf(stderr, "DUMP( %s %d count = %d) \n", loop_name, invocation, count);
+  printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
 
   /* Ensure that the dump directory exists */
   snprintf(dump_path, sizeof(dump_path), "%s/%s/%s",
@@ -459,13 +478,12 @@ void dump_arg(pid_t pid) {
   if (mkdir(dump_path, 0777) != 0)
     errx(EXIT_FAILURE, "dump %s already exists, stop\n", dump_path);
 
-
   int i;
   void* addresses[count];
   for (i = 0; i < count; i++)
     addresses[i] = (void*) receive_from_tracee(pid);
   
-  // Wait for end of arguments sigtrap
+  /* Wait for end of arguments sigtrap */
   wait_sigtrap(pid);
 
   /*Dump hotpages to disk*/
@@ -493,10 +511,7 @@ void dump_arg(pid_t pid) {
 
 void read_args(pid_t pid) {
 
-  wait_sigtrap(pid);
-
-  ptrace_getdata(pid, (long long unsigned)str_tmp_tracee, loop_name, SIZE_LOOP);
-  ptrace_cont(pid);
+  receive_string_from_tracee(pid, str_tmp_tracee, loop_name, SIZE_LOOP);
   invocation = (int)receive_from_tracee(pid);
   count = (int)receive_from_tracee(pid);
 
@@ -515,8 +530,10 @@ void tracer_dump(pid_t pid) {
 
 void tracer_init(pid_t pid) {
 
+  wait_process(pid);
   ptrace_attach(pid);
   create_dump_dir();
+  ptrace_cont(pid);
 
   addr_state = (void*)receive_from_tracee(pid);
   size_state = (size_t)receive_from_tracee(pid);
@@ -525,11 +542,10 @@ void tracer_init(pid_t pid) {
   writing_map = (void*)receive_from_tracee(pid);
 
 #ifdef _DEBUG
-  /* fprintf(stderr,"STATE : %p\n", addr_state);  */
-  /* fprintf(stderr,"SIZE_STATE : %lu\n", size_state);  */
-  /* fprintf(stderr,"ERRNO_LOCATION : %p\n", errnol);  */
-  /* fprintf(stderr,"STRING TMP : %p\n", str_tmp_tracee); */
-
+  fprintf(stderr,"STATE : %p\n", addr_state);
+  fprintf(stderr,"SIZE_STATE : %lu\n", size_state);
+  fprintf(stderr,"ERRNO_LOCATION : %p\n", errnol);
+  fprintf(stderr,"STRING TMP : %p\n", str_tmp_tracee);
   fprintf(stderr, "***\tTRACER INIT DONE\t***\n\n");
 #endif
 }
@@ -545,7 +561,7 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "******* TRACER_UNLOCKED\n");
   tracer_state = TRACER_UNLOCKED;
 
-  // Wait for lock_mem trap
+  /* Wait for lock_mem trap */
   wait_sigtrap(child);
   fprintf(stderr, "******* Start Locking\n");
   unprotect(child, round_to_page(writing_map), PAGESIZE);
@@ -555,7 +571,7 @@ int main(int argc, char *argv[]) {
   tracer_state = TRACER_LOCKED;
   ptrace_cont(child);
 
-  // Dump arguments 
+  /* Dump arguments  */
   tracer_dump(child);
 
   fprintf(stderr, "******* TRACER_DUMPING */\n");
