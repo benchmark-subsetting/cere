@@ -42,10 +42,6 @@ static size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb,
 
 static bool mtrace_init_called = false;
 
-/* void mtrace_activate(void) { state.mtrace_active = true; } */
-
-/* void mtrace_deactivate(void) { state.mtrace_active = false; } */
-
 static void hooks_init(void) {
 
   mtrace_init_called = true;

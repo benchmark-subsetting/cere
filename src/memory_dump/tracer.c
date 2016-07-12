@@ -22,13 +22,16 @@
 #include <stdbool.h>
 #include <fcntl.h>
 
+#include "types.h"
 #include "pages.h"
 #include "ptrace.h"
 #include "syscall_interface.h"
 #include "tracer.h"
 
 #define _DEBUG 1
-/* #undef _DEBUG */
+#undef _DEBUG
+
+#include "debug.h"
 
 int log_size = LOG_SIZE;
 int last_trace = 0;
@@ -59,31 +62,15 @@ static void tracer_lock_range(pid_t child);
 static void read_map(pid_t pid) {
   char maps_path[MAX_PATH];
   sprintf(maps_path, "/proc/%d/maps", pid);
+
   FILE *maps = fopen(maps_path, "r");
   if (!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+
   char buf[BUFSIZ + 1];
-  while (fgets(buf, BUFSIZ, maps)) {
+  while (fgets(buf, BUFSIZ, maps))
     fprintf(stderr, "%s", buf);
-  }
-  fclose(maps);
-}
 
-
-static void read_map_page(pid_t pid, void * page) {
-  char addr[16];
-  snprintf(addr, sizeof(addr), "%lx", (long unsigned int)page);
-
-  char maps_path[MAX_PATH];
-  sprintf(maps_path, "/proc/%d/maps", pid);
-  FILE *maps = fopen(maps_path, "r");
-  if (!maps)
-    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
-  char buf[BUFSIZ + 1];
-  while (fgets(buf, BUFSIZ, maps)) {
-    if (strstr(buf, addr) != NULL)
-      fprintf(stderr, "%s", buf);
-  }
   fclose(maps);
 }
 
@@ -104,9 +91,7 @@ static void write_binary(pid_t pid, int out, void *in, int nbyte) {
 }
 
 static void dump_core(int count, void *addresses[]) {
-#ifdef _DEBUG
-  fprintf(stderr, "\nDUMP CORE\n");
-#endif
+  debug_print("%s","DUMP CORE\n");
 
   char path[MAX_PATH];
   snprintf(path, sizeof(path), "%s/%s", dump_path, core_suffix);
@@ -120,10 +105,7 @@ static void dump_core(int count, void *addresses[]) {
     fprintf(core_map, "%d %lx\n", i, (register_t) addresses[i]);
   fclose(core_map);
  
-#ifdef _DEBUG
-  fprintf(stderr, "END DUMP CORE\n\n");
-#endif 
-
+  debug_print("%s", "END DUMP CORE\n");
 }
 
 static void dump_page(pid_t pid, void* start) {
@@ -139,9 +121,8 @@ static void dump_page(pid_t pid, void* start) {
 }
 
 static void dump_handler(int pid, void *start_of_page) {
-#ifdef _DEBUG
-  fprintf(stderr, "Dump handler detected access at %p\n", start_of_page);
-#endif
+  debug_print("Dump handler detected access at %p\n", start_of_page);
+
   /* Unprotect Page */
   void * old_addr = ptrace_ripat(pid, writing_map);
   unprotect(pid, start_of_page, PAGESIZE);
@@ -150,9 +131,7 @@ static void dump_handler(int pid, void *start_of_page) {
 }
 
 static void mru_handler(int pid, void *start_of_page) {
-#ifdef _DEBUG
-  fprintf(stderr, "\nMRU Detected access at %p\n", start_of_page);
-#endif
+  debug_print("MRU Detected access at %p\n", start_of_page);
 
   bool present = is_mru(start_of_page);
   assert(present == false);
@@ -169,11 +148,9 @@ static void mru_handler(int pid, void *start_of_page) {
     pages_trace[last_trace] = pages_cache[last_page];
     last_trace = (last_trace + 1) % TRACE_SIZE;
 
-#ifdef _DEBUG
-    fprintf(stderr, "MRU Reprotecting page %p\n", pages_cache[last_page]);
-#endif
+    debug_print("MRU Reprotecting page %p\n", pages_cache[last_page]);
  
-   void * old_addr = ptrace_ripat(pid, writing_map);
+    void * old_addr = ptrace_ripat(pid, writing_map);
     protect(pid, pages_cache[last_page], PAGESIZE);
     ptrace_ripat(pid, old_addr);
 
@@ -183,26 +160,31 @@ static void mru_handler(int pid, void *start_of_page) {
   last_page = (last_page + 1) % log_size;
 
 #ifdef _DEBUG
-  /* fprintf(stderr, "     >>>> page cache\n"); */
-  /* for (int i = 0; i < log_size; i++) { */
-  /*   int c = (i + last_page) % log_size; */
-  /*   fprintf(stderr, "     >>>> %p\n", pages_cache[c]); */
-  /* } */
+  debug_print("%s", "     >>>> page cache\n");
+  for (int i = 0; i < log_size; i++) {
+    int c = (i + last_page) % log_size;
+    debug_print("     >>>> %p\n", pages_cache[c]);
+  }
 #endif
 }
 
 static siginfo_t wait_sigtrap(pid_t child) {
   while (true) {
-    siginfo_t sig;
-    sig = wait_process(child);
+    siginfo_t sig = wait_process(child);
+
     if (sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP|0x80)) {
       if (tracer_state == TRACER_LOCKED && is_hook_sigtrap(child)) {
 	tracer_lock_range(child);
 	continue;
+      } else if (is_send_sigtrap(child)) {
+	return sig;
+      } else if (is_syscall_io(child)) {
+	/* Make an handle IO */
+	return sig;
+      } else {
+	  errx(EXIT_FAILURE, "Unknow syscallid of sigtrap : %d\n", get_syscallid(child)); 
       }
-      return sig;
     }
-
     else if (sig.si_signo == SIGSEGV) {
       void *addr = round_to_page(sig.si_addr);
       switch(tracer_state) {
@@ -217,14 +199,13 @@ static siginfo_t wait_sigtrap(pid_t child) {
 	break;
       default: assert(false); /* we should never be here */
       }
-
       ptrace_cont(child);
     } 
     else {
       errx(EXIT_FAILURE, "Error after lock_mem and before dump %s\n", strerror(sig.si_signo));
     }
   }
-  fprintf(stderr, "\n");
+  debug_print("%s","\n");
 }
 
 static register_t receive_from_tracee(pid_t child) {
@@ -244,9 +225,8 @@ static void receive_string_from_tracee(pid_t child, char *src_tracee, void *dst_
 }
 
 static void tracer_lock_range(pid_t child) {
-#ifdef _DEBUG
-  fprintf(stderr, "\n***\tSTART LOCK RANGE\t***\n");
-#endif
+  
+  debug_print("%s\n","START LOCK RANGE");
 
   assert(tracer_state == TRACER_LOCKED);
 
@@ -257,18 +237,16 @@ static void tracer_lock_range(pid_t child) {
   wait_process(child);
 
   long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
-  void * old_addr = ptrace_ripat(child, writing_map);
 
+  void * old_addr = ptrace_ripat(child, writing_map);
   for (long unsigned i = 0; i < nb_pages_to_allocate; i++)
     if (!is_mru(from + PAGESIZE * i))
       protect(child, round_to_page(from + PAGESIZE * i), PAGESIZE);
-
   ptrace_ripat(child, old_addr);
+
   ptrace_cont(child);
 
-#ifdef _DEBUG
-  fprintf(stderr, "\n***\tEND LOCK RANGE\t***\n");
-#endif
+  debug_print("%s\n", "END LOCK RANGE");
 }
 
 void create_dump_dir(void) {
@@ -297,22 +275,21 @@ void tracer_lock_mem(pid_t pid) {
   if (!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
 
+  debug_print("%s\n", "START LOCK MEM");
+
   void *addresses[65536];
   char buf[BUFSIZ + 1];
   int counter = 0;
-
-#ifdef _DEBUG
-  fprintf(stderr, "\n***\tSTART LOCK MEM\t***\n");
-#endif 
-
   char *start_of_stack, *end_of_stack;
 
   while (fgets(buf, BUFSIZ, maps)) {
     void *start, *end;
 
-    fprintf(stderr, "%s", buf);
+    debug_print("%s",buf);
     sscanf(buf, "%p-%p", &start, &end);
     
+    /* Special place where injected code will be put and execute */
+    /* this memory need to be writable and executable */
     if (start == writing_map)
       continue;
     
@@ -400,19 +377,12 @@ void tracer_lock_mem(pid_t pid) {
 
   protect(pid, start_of_stack, (end_of_stack - start_of_stack));
 
-  read_map(pid);
-
-#ifdef _DEBUG
-  fprintf(stderr, "***\tLOCK MEM END\t***\n\n");
-#endif
-
+  debug_print("%s\n", "END LOCK MEM");
 }
 
 void flush_hot_pages_trace_to_disk(pid_t pid) {
 
-#ifdef _DEBUG
-    fprintf(stderr, "\nFLUSH HOT PAGE\n");
-#endif
+  debug_print("%s\n", "START FLUSH HOT PAGE");
 
   char path[MAX_PATH];
   char buf[14];
@@ -439,15 +409,11 @@ void flush_hot_pages_trace_to_disk(pid_t pid) {
 
   fclose(out);
 
-#ifdef _DEBUG
-  fprintf(stderr, "END FLUSH HOT PAGE\n\n");
-#endif
+  debug_print("%s\n","END FLUSH HOT PAGE");
 }
 
 void dump_unprotected_pages(pid_t pid) {
-#ifdef _DEBUG
-  fprintf(stderr, "\nDUMP UNPROTECTED PAGE\n");
-#endif
+  debug_print("%s\n", "START DUMP UNPROTECTED PAGE");
 
   /* Dump the unprotected pages before entering the codelet region. */
   for (int i = 0; i < log_size; i++) {
@@ -457,13 +423,11 @@ void dump_unprotected_pages(pid_t pid) {
     }
   }
 
-#ifdef _DEBUG
-  fprintf(stderr, "END DUMP UNPROTECTED PAGE\n\n");
-#endif
+  debug_print("%s\n", "END DUMP UNPROTECTED PAGE");
 }
 
 void dump_arg(pid_t pid) {
-  
+
   printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
 
   /* Ensure that the dump directory exists */
@@ -515,12 +479,9 @@ void read_args(pid_t pid) {
   invocation = (int)receive_from_tracee(pid);
   count = (int)receive_from_tracee(pid);
 
-#ifdef _DEBUG
-  fprintf(stderr,"LOOP NAME : %s\n",loop_name); 
-  fprintf(stderr,"INVOCATION : %d\n",invocation); 
-  fprintf(stderr,"COUNT : %d\n",count); 
-#endif
-
+  debug_print("LOOP NAME : %s\n",loop_name);
+  debug_print("INVOCATION : %d\n",invocation);
+  debug_print("COUNT : %d\n",count);
 }
 
 void tracer_dump(pid_t pid) {
@@ -541,13 +502,11 @@ void tracer_init(pid_t pid) {
   str_tmp_tracee = (void*)receive_from_tracee(pid);
   writing_map = (void*)receive_from_tracee(pid);
 
-#ifdef _DEBUG
-  fprintf(stderr,"STATE : %p\n", addr_state);
-  fprintf(stderr,"SIZE_STATE : %lu\n", size_state);
-  fprintf(stderr,"ERRNO_LOCATION : %p\n", errnol);
-  fprintf(stderr,"STRING TMP : %p\n", str_tmp_tracee);
-  fprintf(stderr, "***\tTRACER INIT DONE\t***\n\n");
-#endif
+  debug_print("STATE : %p\n", addr_state);
+  debug_print("SIZE_STATE : %lu\n", size_state);
+  debug_print("ERRNO_LOCATION : %p\n", errnol);
+  debug_print("STRING TMP : %p\n", str_tmp_tracee);
+  debug_print("%s\n", "TRACER INIT DONE");
 }
 
 
@@ -558,23 +517,23 @@ int main(int argc, char *argv[]) {
   child = atoi(argv[1]);
 
   tracer_init(child);
-  fprintf(stderr, "******* TRACER_UNLOCKED\n");
+  debug_print("%s\n", "******* TRACER_UNLOCKED");
   tracer_state = TRACER_UNLOCKED;
 
   /* Wait for lock_mem trap */
   wait_sigtrap(child);
-  fprintf(stderr, "******* Start Locking\n");
+  debug_print("%s\n", "******* Start Locking");
   unprotect(child, round_to_page(writing_map), PAGESIZE);
   tracer_lock_mem(child);
 
-  fprintf(stderr, "******* TRACER_LOCKED\n");
+  debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;
   ptrace_cont(child);
 
   /* Dump arguments  */
   tracer_dump(child);
 
-  fprintf(stderr, "******* TRACER_DUMPING */\n");
+  debug_print("%s\n", "******* TRACER_DUMPING");
   tracer_state = TRACER_DUMPING;
   ptrace_cont(child);
 

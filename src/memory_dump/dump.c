@@ -42,7 +42,9 @@
 #include "syscall_interface.h"
 
 #define _DEBUG 1
-/* #undef _DEBUG */
+#undef _DEBUG
+
+#include "debug.h"
 
 static int times_called = 0;
 char writing_buff[1024];
@@ -112,20 +114,16 @@ void dump_init(void) {
     send_to_tracer((register_t) state.str_tmp);
     send_to_tracer((register_t)(&writing_buff));
 
-#ifdef _DEBUG
-    fprintf(stderr,"STATE : %p\n", &state);
-    fprintf(stderr,"SIZE_STATE : %lu\n", sizeof(state));
-    fprintf(stderr,"ERRNO_LOCATION : %p\n", __errno_location());
-    fprintf(stderr,"STRING TMP : %p\n", state.str_tmp);
-#endif
+    debug_print("STATE : %p\n", &state);
+    debug_print("SIZE_STATE : %lu\n", sizeof(state));
+    debug_print("ERRNO_LOCATION : %p\n", __errno_location());
+    debug_print("STRING TMP : %p\n", state.str_tmp);
 
     /* Must be conserved ? */
     state.dump_initialized = true;
   }
 
-#ifdef _DEBUG
-  printf("DUMP_INIT DONE\n");
-#endif
+  debug_print("%s", "DUMP_INIT DONE\n");
 }
 
 void dump_close() {

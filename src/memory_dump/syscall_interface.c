@@ -11,7 +11,9 @@
 #include "syscall_interface.h"
 
 #define _DEBUG 1
-/* #undef _DEBUG */
+#undef _DEBUG
+
+#include "debug.h"
 
 #ifdef __x86_64__
 static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_struct *regs, va_list vargs) {
@@ -67,7 +69,7 @@ static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_stru
   register_t rip_backup = regs->rip;
   char backup_instr[len];
 
-  /* 0f 05 syscall          */
+  /* 0f 05 syscall
   /* cc    int $3 (SIGTRAP) */
   char inject_instr[] = "\x0f\x05\xcc";
 
@@ -121,6 +123,36 @@ register_t get_arg_from_regs(pid_t pid) {
   return regs.rdi;
 }
 
+int get_syscallid(pid_t pid) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  return (int)regs.orig_rax;
+}
+
+bool is_syscall_io(pid_t pid) {
+  char name_syscall[16];
+  int syscallid = get_syscallid(pid);
+  switch(-syscallid) {
+  case SYS_read:
+    strcpy(name_syscall, "read");
+    break;
+  case SYS_write:
+    strcpy(name_syscall, "write");
+    break;
+  case SYS_open:
+    strcpy(name_syscall, "open");
+    break;
+  case SYS_close:
+    strcpy(name_syscall, "close");
+    break;
+  default:
+    return false;
+  }
+
+  debug_print("Syscall IO detected : %s\n", name_syscall); 
+  return true;
+}
+
 void send_to_tracer(register_t arg) {
   asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_send));
   asm volatile ("mov %0,%%rdi" : : "r" (arg));
@@ -132,9 +164,7 @@ void inline sigtrap(void) {
 }
 
 void hook_sigtrap(void) {
-#ifdef _DEBUG
-  fprintf(stderr, "Hook sigtrap ! \n");
-#endif
+  debug_print("%s\n", "Hook sigtrap !");
   asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_hook));
   sigtrap();
 }
@@ -143,6 +173,12 @@ bool is_hook_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
   return (regs.rax == SYS_hook);
+}
+
+bool is_send_sigtrap(pid_t pid) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  return (regs.rax == SYS_send);
 }
 
 #endif
@@ -176,42 +212,30 @@ static register_t injection_code(syscallID syscallid, pid_t tid, int nargs, ...)
 }
 
 void protect(pid_t pid, char* start, size_t size) {
-#ifdef _DEBUG
-  fprintf(stderr, "TO BE PROTECTED :  %p\n", start);
-#endif
+  debug_print("TO BE PROTECTED :  %p\n", start);
   injection_code(PROTECT, pid, 2, start, size);
 }
 
 void unprotect(pid_t pid, char* start, size_t size) {
-#ifdef _DEBUG
-  fprintf(stderr, "TO BE UNPROTECTED :  %p\n", start);
-#endif
+  debug_print("TO BE UNPROTECTED :  %p\n", start);
   injection_code(UNPROTECT, pid, 2, start, size);
 }
 void unprotect_state(pid_t pid, char* start, size_t size) {
-#ifdef _DEBUG
-  fprintf(stderr, "TO BE UNPROTECTED :  %p\n", start);
-#endif
+  debug_print("TO BE UNPROTECTED :  %p\n", start);
   injection_code(UNPROTECT_STATE, pid, 2, start, size);
 }
 
 void write_page(pid_t pid, int fd, const void *buf, size_t nbyte){
-#ifdef _DEBUG
-  fprintf(stderr, "TO BE WROTE\n");
-#endif
+  debug_print("%s\n","TO BE WROTE");
   injection_code(WRITE, pid, 2, fd, buf, nbyte);
 }
 
 int openat_i(pid_t pid, char *pathname) {
-#ifdef _DEBUG
-  fprintf(stderr, "TO BE OPEN\n");
-#endif  
+  debug_print("%s\n", "TO BE OPEN");
   return (int) injection_code(OPENAT, pid, 1, pathname);
 }
 
 void close_i(pid_t pid, int fd) {
-#ifdef _DEBUG
-  fprintf(stderr, "TO BE CLOSE :  %d\n", fd);
-#endif  
+  debug_print("TO BE CLOSE :  %d\n", fd);
   injection_code(CLOSE, pid, 1, fd);
 }
