@@ -30,7 +30,7 @@ install:
   - make
   - sudo make install
 
-after_failure:
+before_script:
   - cat config.log
 
 script:
