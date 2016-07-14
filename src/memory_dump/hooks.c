@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2013-2015, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2013-2016, Universite de Versailles St-Quentin-en-Yvelines  *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -17,19 +17,16 @@
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
 #define _GNU_SOURCE
-#include <dlfcn.h>
 #include <assert.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <malloc.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <dlfcn.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <sys/types.h>
 
-#include "pages.h"
 #include "dump.h"
-#include "tracer.h"
 #include "syscall_interface.h"
+#include "types.h"
 
 static void *(*real_malloc)(size_t) = NULL;
 static void *(*real_calloc)(size_t nmemb, size_t size) = NULL;
@@ -76,8 +73,9 @@ static void hooks_init(void) {
   }
 }
 
-static void lock_range(void *from, void *to){
-  if (state.mtrace_active) {
+static void lock_range(void *from, void *to) {
+  /* if (state.mtrace_active) { */
+  if (mtrace_active) {
     hook_sigtrap();
     send_to_tracer((register_t)from);
     send_to_tracer((register_t)to);
@@ -91,21 +89,22 @@ void *malloc(size_t size) {
 
   void *p = NULL;
   p = real_malloc(size);
-  lock_range(p, p+size);
+  lock_range(p, p + size);
   return p;
 }
 
 void *calloc(size_t nmemb, size_t size) {
 
-  /* On certain versions of linux and when linking with pthreads,
-     dlsym uses calloc. This can cause an infinite loop when calling
-     hooks_init(). To avoid this, we return a statically allocated block of
-     memory in that case. Reported by Sebastien Valat. */
+  /* On certain versions of linux and when linking with pthreads, */
+  /* dlsym uses calloc. This can cause an infinite loop when calling */
+  /* hooks_init(). To avoid this, we return a statically allocated block of */
+  /* memory in that case. Reported by Sebastien Valat. */
 
   if (real_calloc == NULL && mtrace_init_called) {
     assert(size < CALLOC_INIT);
     assert(nmemb * size < CALLOC_INIT);
-    return state.calloc_init_mem;
+    /* return state.calloc_init_mem; */
+    return calloc_init_mem;
   }
 
   if (real_calloc == NULL)
@@ -113,7 +112,7 @@ void *calloc(size_t nmemb, size_t size) {
 
   void *p = NULL;
   p = real_calloc(nmemb, size);
-  lock_range(p, p+size);
+  lock_range(p, p + size);
   return p;
 }
 
@@ -123,7 +122,7 @@ void *realloc(void *ptr, size_t size) {
 
   void *p = NULL;
   p = real_realloc(ptr, size);
-  lock_range(p, p+size);
+  lock_range(p, p + size);
   return p;
 }
 
@@ -133,7 +132,7 @@ void *memalign(size_t alignment, size_t size) {
 
   void *p = NULL;
   p = real_memalign(alignment, size);
-  lock_range(p, p+size);
+  lock_range(p, p + size);
   return p;
 }
 
@@ -159,19 +158,19 @@ FILE *fopen(const char *path, const char *mode) {
     hooks_init();
   touch_string(path);
   touch_string(mode);
-  real_fopen(path, mode);
+  return real_fopen(path, mode);
 }
 
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
   if (real_fread == NULL)
     hooks_init();
   touch_mem(ptr, size, nmemb);
-  real_fread(ptr, size, nmemb, stream);
+  return real_fread(ptr, size, nmemb, stream);
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
   if (real_fwrite == NULL)
     hooks_init();
   touch_mem(ptr, size, nmemb);
-  real_fwrite(ptr, size, nmemb, stream);
+  return real_fwrite(ptr, size, nmemb, stream);
 }

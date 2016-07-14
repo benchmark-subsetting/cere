@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2013-2015, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2013-2016, Universite de Versailles St-Quentin-en-Yvelines  *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -16,30 +16,25 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#define _LARGEFILE64_SOURCE
-#include <stdarg.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <malloc.h>
-#include <errno.h>
-#include <sys/syscall.h>
-#include <sys/ptrace.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/prctl.h>
-
 #include "dump.h"
+#include <assert.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/prctl.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "err.h"
+#include "pages.h"
 #include "ptrace.h"
 #include "syscall_interface.h"
+#include "types.h"
 
 #define _DEBUG 1
 #undef _DEBUG
@@ -47,10 +42,16 @@
 #include "debug.h"
 
 static int times_called = 0;
-char writing_buff[1024];
+static bool dump_initialized;
+static bool kill_after_dump;
 
-struct dump_state state __attribute__((aligned(PAGESIZE)));
-extern const char *__progname;
+void *(*real_malloc)(size_t);
+void *(*real_calloc)(size_t nmemb, size_t size);
+void *(*real_realloc)(void *ptr, size_t size);
+void *(*real_memalign)(size_t alignment, size_t size);
+bool mtrace_active;
+char *calloc_init_mem[CALLOC_INIT];
+char writing_buff[PAGESIZE] __attribute__((aligned(PAGESIZE)));
 
 void copy(char *source, char *dest) {
   char buf[BUFSIZ + 1];
@@ -70,11 +71,10 @@ void copy(char *source, char *dest) {
 }
 
 void dump_init(void) {
-  
-  state.mtrace_active = false;
 
-  char tracer_path[] = "/usr/local/bin/tracer";
-  
+  /* state.mtrace_active = false; */
+  mtrace_active = false;
+
   /* Copy the original binary */
   copy("/proc/self/exe", "lel_bin");
 
@@ -82,9 +82,7 @@ void dump_init(void) {
   atexit(dump_close);
 
   pid_t child = 0;
-  int status = 0;
 
-  char *const envs[] = {"LD_PRELOAD=/usr/local/lib/libcere_syscall.so",NULL};
   child = fork();
 
   if (child == (pid_t)-1) {
@@ -95,40 +93,30 @@ void dump_init(void) {
   if (child != 0) {
     char child_str[16];
     snprintf(child_str, sizeof(child_str), "%d", child);
-    execle(tracer_path, "tracer", child_str, (char*)NULL, envs);
-    errx(EXIT_FAILURE,"ERROR TRACER %s\n", strerror(errno));
+    execlp("cere-tracer", "cere-tracer", child_str, (char *)NULL);
+    errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
     return;
 
   } else {
 
     int d = prctl(PR_SET_DUMPABLE, (long)1);
-    if (d == -1) 
+    if (d == -1)
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
 
     ptrace_me();
     raise(SIGSTOP);
 
-    send_to_tracer((register_t) &state);
-    send_to_tracer(sizeof(state));
-    send_to_tracer((register_t)__errno_location());
-    send_to_tracer((register_t) state.str_tmp);
+    /* Send memeory map address use to inject code */
     send_to_tracer((register_t)(&writing_buff));
 
-    debug_print("STATE : %p\n", &state);
-    debug_print("SIZE_STATE : %lu\n", sizeof(state));
-    debug_print("ERRNO_LOCATION : %p\n", __errno_location());
-    debug_print("STRING TMP : %p\n", state.str_tmp);
-
     /* Must be conserved ? */
-    state.dump_initialized = true;
+    dump_initialized = true;
   }
 
   debug_print("%s", "DUMP_INIT DONE\n");
 }
 
-void dump_close() {
-  unlink("lel_bin");
-}
+void dump_close() { unlink("lel_bin"); }
 
 /* dumps memory
  *  loop_name: name of dumped loop
@@ -141,14 +129,15 @@ void dump(char *loop_name, int invocation, int count, ...) {
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
-  if (!state.dump_initialized)
+  if (!dump_initialized)
     return;
 
   times_called++;
 
   /* Happens only once */
-  if ((invocation <= PAST_INV && times_called == 1) || (times_called == invocation - PAST_INV)) {
-    state.mtrace_active = true;
+  if ((invocation <= PAST_INV && times_called == 1) ||
+      (times_called == invocation - PAST_INV)) {
+    mtrace_active = true;
     sigtrap();
   }
 
@@ -157,10 +146,10 @@ void dump(char *loop_name, int invocation, int count, ...) {
   }
 
   assert(times_called == invocation);
-  state.mtrace_active = false;
-  
+  mtrace_active = false;
+
   /* Send args */
-  strcpy(state.str_tmp, loop_name); 
+  strcpy(writing_buff + OFFSET_STR, loop_name);
   send_to_tracer(0);
   send_to_tracer(invocation);
   send_to_tracer(count);
@@ -170,21 +159,20 @@ void dump(char *loop_name, int invocation, int count, ...) {
   va_list ap;
   va_start(ap, count);
   for (i = 0; i < count; i++) {
-    send_to_tracer((register_t) va_arg(ap, void*));
+    send_to_tracer((register_t)va_arg(ap, void *));
   }
   va_end(ap);
-  
-  state.kill_after_dump = true;
+
+  kill_after_dump = true;
   sigtrap();
 }
 
 void after_dump(void) {
   /* Avoid doing something before initializing */
   /* the dump. */
-  if (!state.dump_initialized)
+  if (!dump_initialized)
     return;
 
-  if (state.kill_after_dump) {
+  if (kill_after_dump)
     exit(EXIT_SUCCESS);
-  }
 }

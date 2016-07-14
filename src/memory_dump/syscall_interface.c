@@ -1,14 +1,37 @@
-#include <assert.h>
-#include <sys/syscall.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+/*****************************************************************************
+ * This file is part of CERE.                                                *
+ *                                                                           *
+ * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines  *
+ *                                                                           *
+ * CERE is free software: you can redistribute it and/or modify it under     *
+ * the terms of the GNU Lesser General Public License as published by        *
+ * the Free Software Foundation, either version 3 of the License,            *
+ * or (at your option) any later version.                                    *
+ *                                                                           *
+ * CERE is distributed in the hope that it will be useful,                   *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
+ * GNU General Public License for more details.                              *
+ *                                                                           *
+ * You should have received a copy of the GNU General Public License         *
+ * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
+ *****************************************************************************/
 
-#include "types.h"
-#include "pages.h"
-#include "ptrace.h"
 #include "syscall_interface.h"
+#include <assert.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/user.h>
+#include <syscall.h>
+
+#include "ptrace.h"
+#include "types.h"
 
 #define _DEBUG 1
 #undef _DEBUG
@@ -16,103 +39,62 @@
 #include "debug.h"
 
 #ifdef __x86_64__
-static register_t inject_syscall(int syscallid, pid_t tid, struct user_regs_struct *regs, va_list vargs) {
 
-  switch (syscallid) {
+/* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
+/* ────────────────────────────────────────────────────────── */
+/* x86_64     rdi    rsi    rdx    r10    r8     r9      -    */
 
-  case PROTECT:
-    regs->rax = SYS_mprotect;
-    regs->rdi = (register_t) va_arg(vargs, void *);
-    regs->rsi = (register_t) va_arg(vargs, void *);
-    regs->rdx = 0x0;
-    break;
+static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
+                                 ...) {
 
-  case UNPROTECT:
-    regs->rax = SYS_mprotect;
-    regs->rdi = (register_t) va_arg(vargs , void *);
-    regs->rsi = (register_t) va_arg(vargs , void *);
-    regs->rdx = 0x7;
-    break;
+  /* We do the backup of registers */
 
-  case UNPROTECT_STATE:
-    regs->rax = SYS_mprotect;
-    regs->rdi = (register_t)va_arg(vargs , void *);
-    regs->rsi = (register_t)va_arg(vargs , void *);
-    regs->rdx = (PROT_READ | PROT_WRITE);
-    break;
+  long r;
+  register_t ret;
+  struct user_regs_struct regs, regs_backup;
 
-  case OPENAT:
-    regs->rax = SYS_openat;
-    regs->rdi = AT_FDCWD;
-    regs->rsi = (register_t) va_arg(vargs, void *);
-    regs->rdx = (O_WRONLY | O_CREAT | O_EXCL);
-    regs->r10 = S_IRWXU;
-    break;
+  ptrace_getregs(pid, &regs);
+  regs_backup = regs;
 
-  case WRITE:
-    regs->rax = SYS_write;
-    regs->rdi = (register_t)va_arg(vargs, void *);
-    regs->rsi = (register_t) va_arg(vargs, void *);
-    regs->rdx = (register_t) va_arg(vargs, void *);
-    break;
+  /* We get back arguments and adequately put them in registers */
 
-  case CLOSE:
-    regs->rax = SYS_close;
-    regs->rdi = (register_t) va_arg(vargs, void *);
-    break;
+  int i = 0;
+  va_list vargs;
+  va_start(vargs, syscallid);
 
-  default:
-    errx(EXIT_FAILURE, "Bad syscall id %d\n", syscallid);
-  }
+  /* If we have more than 7 arguments, we must put them on the stack */
+  /* For the moment, we don't handle this case  */
+  long long unsigned *regs_ptr[] = {&(regs.rdi), &(regs.rsi), &(regs.rdx),
+                                    &(regs.r10), &(regs.r8),  &(regs.r9)};
+  size_t nb_max_args = sizeof(regs_ptr) / sizeof(register_t);
+  assert(nb_max_args >= nb_args);
+
+  regs.rax = syscallid;
+  for (i = 0; i < nb_args; i++)
+    *(regs_ptr[i]) = (register_t)va_arg(vargs, void *);
+  va_end(vargs);
+
+  /* We will inject syscall code */
 
   int len = 3;
-  register_t rip_backup = regs->rip;
   char backup_instr[len];
 
-  /* 0f 05 syscall
-  /* cc    int $3 (SIGTRAP) */
+  /* 0f 05 syscall */
+  /* cc    int $3 (SIGTRAP)  */
   char inject_instr[] = "\x0f\x05\xcc";
 
-  ptrace_getdata(tid, regs->rip, backup_instr, len);
-  ptrace_putdata(tid, regs->rip, inject_instr, len);
-  
-  ptrace_setregs(tid,regs);
+  ptrace_getdata(pid, regs.rip, backup_instr, len);
+  ptrace_putdata(pid, regs.rip, inject_instr, len);
 
-  ptrace_cont(tid);
-  wait_process(tid);
+  ptrace_setregs(pid, &regs);
 
-  ptrace_getregs(tid, regs);
+  ptrace_cont(pid);
+  wait_process(pid);
 
-  switch (syscallid) {
-
-  case PROTECT:
-    /* We can try to protect a page that has been remove from memory */
-    /* beetween the lock_mem() and dumping args  */
-    if (tracer_state == TRACER_LOCKED && regs->rax == -ENOMEM)
-      break;
-  case UNPROTECT:
-  case UNPROTECT_STATE:
-    assert(regs->rax == 0);
-    break;
-
-  case WRITE:
-    assert((int)regs->rax >= 0);
-    break;
-
-  case OPENAT:
-    assert((int)regs->rax > 0);
-    break;
-
-  case CLOSE:
-    assert(regs->rax != -1L);
-    break;
-
-  default:
-    errx(EXIT_FAILURE, "Bad syscall id %d\n", syscallid);
-  }
-
-  int ret = regs->rax;
-  ptrace_putdata(tid, rip_backup, backup_instr, len);
+  ptrace_getregs(pid, &regs);
+  ret = regs.rax;
+  ptrace_putdata(pid, regs_backup.rip, backup_instr, len);
+  ptrace_setregs(pid, &regs_backup);
 
   return ret;
 }
@@ -126,13 +108,31 @@ register_t get_arg_from_regs(pid_t pid) {
 int get_syscallid(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return (int)regs.orig_rax;
+  return -(int)regs.orig_rax;
+}
+
+bool is_valid_io(pid_t pid) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  int syscallid = -regs.orig_rax;
+  switch (syscallid) {
+  case SYS_write:
+    return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
+  case SYS_read:
+  case SYS_open:
+  case SYS_openat:
+  case SYS_close:
+    /* Add all ios forbidden */
+    return false;
+  default:
+    return true;
+  }
 }
 
 bool is_syscall_io(pid_t pid) {
   char name_syscall[16];
   int syscallid = get_syscallid(pid);
-  switch(-syscallid) {
+  switch (syscallid) {
   case SYS_read:
     strcpy(name_syscall, "read");
     break;
@@ -149,23 +149,21 @@ bool is_syscall_io(pid_t pid) {
     return false;
   }
 
-  debug_print("Syscall IO detected : %s\n", name_syscall); 
+  debug_print("Syscall IO detected : %s\n", name_syscall);
   return true;
 }
 
 void send_to_tracer(register_t arg) {
-  asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_send));
-  asm volatile ("mov %0,%%rdi" : : "r" (arg));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_send));
+  asm volatile("mov %0,%%rdi" : : "r"(arg));
   sigtrap();
 }
 
-void inline sigtrap(void) {
-  asm volatile ("int $3");
-}
+void inline sigtrap(void) { asm volatile("int $3"); }
 
 void hook_sigtrap(void) {
   debug_print("%s\n", "Hook sigtrap !");
-  asm volatile ("mov %0,%%rax" : : "r" ((register_t)SYS_hook));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_hook));
   sigtrap();
 }
 
@@ -184,58 +182,48 @@ bool is_send_sigtrap(pid_t pid) {
 #endif
 
 #ifdef __arm__
-void inject_syscall(int syscallid, pid_t tid, struct user_regs_struct *regs-> va_list vargs);
+void inject_syscall(int syscallid, pid_t tid,
+                    struct user_regs_struct * regs->va_list vargs);
 #endif
 
 #ifdef __aarch64__
-void inject_syscall(int syscallid, pid_t tid, struct user_regs_struct *regs-> va_list vargs);
+void inject_syscall(int syscallid, pid_t tid,
+                    struct user_regs_struct * regs->va_list vargs);
 #endif
 
-static register_t injection_code(syscallID syscallid, pid_t tid, int nargs, ...) {
-
-  long r;
-  register_t ret;
-  struct user_regs_struct regs, regs_backup;
-  
-  ptrace_getregs(tid, &regs);
-  regs_backup = regs;
-
-  int i;
-  va_list vargs;
-  va_start(vargs, nargs);
-  ret = inject_syscall(syscallid, tid, &regs, vargs);
-  va_end(vargs);
-
-  ptrace_setregs(tid, &regs_backup);
-  
-  return ret;
+void protect(pid_t pid, char *start, size_t size) {
+  debug_print("TO BE PROTECTED :  %p (%lu)\n", start, size);
+  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size, PROT_NONE);
+  /* We can try to protect a page that has been removed from memory */
+  /* beetween the lock_mem() and dumping args */
+  if (tracer_state == TRACER_LOCKED && ret == -ENOMEM)
+    return;
+  assert(ret == 0);
 }
 
-void protect(pid_t pid, char* start, size_t size) {
-  debug_print("TO BE PROTECTED :  %p\n", start);
-  injection_code(PROTECT, pid, 2, start, size);
+void unprotect(pid_t pid, char *start, size_t size) {
+  debug_print("TO BE UNPROTECTED :  %p (%lu)\n", start, size);
+  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
+                                  (PROT_READ | PROT_WRITE | PROT_EXEC));
+  assert(ret == 0);
 }
 
-void unprotect(pid_t pid, char* start, size_t size) {
-  debug_print("TO BE UNPROTECTED :  %p\n", start);
-  injection_code(UNPROTECT, pid, 2, start, size);
-}
-void unprotect_state(pid_t pid, char* start, size_t size) {
-  debug_print("TO BE UNPROTECTED :  %p\n", start);
-  injection_code(UNPROTECT_STATE, pid, 2, start, size);
-}
-
-void write_page(pid_t pid, int fd, const void *buf, size_t nbyte){
-  debug_print("%s\n","TO BE WROTE");
-  injection_code(WRITE, pid, 2, fd, buf, nbyte);
+void write_page(pid_t pid, int fd, const void *buf, size_t nbyte) {
+  debug_print("%s\n", "TO BE WROTE");
+  register_t ret = inject_syscall(pid, 3, SYS_write, fd, buf, nbyte);
+  assert((int)ret >= 0);
 }
 
 int openat_i(pid_t pid, char *pathname) {
   debug_print("%s\n", "TO BE OPEN");
-  return (int) injection_code(OPENAT, pid, 1, pathname);
+  register_t ret = inject_syscall(pid, 4, SYS_openat, AT_FDCWD, pathname,
+                                  (O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
+  assert((int)ret > 0);
+  return ret;
 }
 
 void close_i(pid_t pid, int fd) {
   debug_print("TO BE CLOSE :  %d\n", fd);
-  injection_code(CLOSE, pid, 1, fd);
+  register_t ret = inject_syscall(pid, 1, SYS_close, fd);
+  assert(ret != -1L);
 }

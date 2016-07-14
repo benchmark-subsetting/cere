@@ -36,12 +36,12 @@
 #define CACHE_SIZE_MB 20
 
 void cacheflush(void) {
-    const size_t size = CACHE_SIZE_MB*1024*1024;
-    int i, j;
-    char *c = malloc(size);
-    for (i = 0; i < 5; i++)
-      for (j = 0; j < size; j++)
-        c[j] = i*j;
+  const size_t size = CACHE_SIZE_MB * 1024 * 1024;
+  int i, j;
+  char *c = malloc(size);
+  for (i = 0; i < 5; i++)
+    for (j = 0; j < size; j++)
+      c[j] = i * j;
 }
 
 /**********************************************************************
@@ -89,16 +89,14 @@ char *get_filename_without_ext(char *filename) {
 void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
-  
+
   /* Read warmup type from environment variable */
   char *ge = getenv("CERE_WARMUP");
   if (ge && strcmp("COLD", ge) == 0) {
     type_of_warmup = WARMUP_COLD;
-  }
-  else if (ge && strcmp("PAGETRACE", ge) == 0) {
+  } else if (ge && strcmp("PAGETRACE", ge) == 0) {
     type_of_warmup = WARMUP_PAGETRACE;
-  }
-  else {
+  } else {
     /* WARMUP_WORKLOAD is the default warmup */
     type_of_warmup = WARMUP_WORKLOAD;
   }
@@ -195,7 +193,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       if ((warmup[i] >= (char *)address) &&
           (warmup[i] < ((char *)address + read_bytes))) {
         valid[i] = true;
-        //printf("warmup = %p\n", warmup[i]);
+        // printf("warmup = %p\n", warmup[i]);
       }
     }
 
@@ -214,7 +212,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   for (int i = start; i < hotpages_counter; i++) {
     if (!valid[i]) {
       warmup[i] =
-          &cold[((unsigned long long) warmup[i]) % ((MAX_COLD - 1) * PAGESIZE)];
+          &cold[((unsigned long long)warmup[i]) % ((MAX_COLD - 1) * PAGESIZE)];
     }
   }
 
@@ -239,5 +237,4 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     for (char *j = warmup[i]; j < warmup[i] + PAGESIZE; j++)
       __builtin_prefetch(j);
   }
-
 }
