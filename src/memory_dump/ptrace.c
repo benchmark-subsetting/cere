@@ -16,17 +16,6 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-/* #include <err.h> */
-/* #include <errno.h> */
-/* #include <signal.h> */
-/* #include <stdlib.h> */
-/* #include <stdio.h> */
-/* #include <sys/types.h> */
-/* #include <sys/wait.h> */
-/* #include <sys/ptrace.h> */
-/* #include <sys/user.h> */
-/* #include <string.h> */
-
 #include "ptrace.h"
 #include <bits/wordsize.h>
 #include <err.h>

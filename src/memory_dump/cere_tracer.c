@@ -16,36 +16,6 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-/* #include <assert.h> */
-/* #include <unistd.h> */
-/* #include <stdlib.h> */
-/* #include <sys/types.h> */
-/* #include <sys/ptrace.h> */
-/* #include <sys/prctl.h> */
-/* #include <sys/wait.h> */
-/* #include <sys/syscall.h> */
-/* #include <sys/user.h> */
-/* #include <sys/stat.h> */
-/* #include <dirent.h> */
-/* #include <string.h> */
-/* #include <signal.h> */
-/* #include <errno.h> */
-/* #include <stdio.h> */
-/* #include <omp.h> */
-/* #include <err.h> */
-/* #include <features.h> */
-/* #include <sys/mman.h> */
-/* #include <dlfcn.h> */
-/* #include <stdarg.h> */
-/* #include <stdbool.h> */
-/* #include <fcntl.h> */
-
-/* #include "types.h" */
-/* #include "pages.h" */
-/* #include "ptrace.h" */
-/* #include "syscall_interface.h" */
-/* #include "cere_tracer.h" */
-
 #include "cere_tracer.h"
 #include <assert.h>
 #include <fcntl.h>
