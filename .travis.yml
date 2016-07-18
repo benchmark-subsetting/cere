@@ -35,6 +35,10 @@ before_script:
 
 script:
   - cd tests/
+  - cd test_01/; ./test.sh; cd ..
+  - cd test_02/; ./test.sh; cd ..
+  - cd test_03/; ./test.sh; cd ..
+  - cd test_04/; ./test.sh; cd ..
   - ./test.sh
   - cd ..
   - for i in $(find tests/ -maxdepth 1 -type d -name 'test_*' | sort ); do echo "************** TEST $i"; cat $i/test.log; done;
