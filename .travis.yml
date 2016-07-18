@@ -29,8 +29,9 @@ install:
   - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
   - make
   - sudo make install
+  - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
-after_failure:
+before_script:
   - cat config.log
 
 script:

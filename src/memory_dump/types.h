@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2013-2015, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -16,10 +16,27 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-struct region_counter {
-  char *name;
-  unsigned int call_count;
+#ifndef __TYPES__H
+#define __TYPES__H
+
+#define PAST_INV 30
+#define MAX_PATH 256
+#define MAX_IGNORE 32
+#define TRACE_SIZE (16384 * 100)
+#define LOG_SIZE 64
+#define SIZE_LOOP 256
+#define CALLOC_INIT 512
+#define OFFSET_STR 0x100 /* Offset for write string */
+
+#define SYS_send (-1)
+#define SYS_hook (-2)
+
+enum tracer_state_t {
+  TRACER_UNLOCKED = 1,
+  TRACER_LOCKED = 2,
+  TRACER_DUMPING = 3
 };
 
-void init_counters(void);
-struct region_counter *get_region(char *loop_name);
+extern enum tracer_state_t tracer_state;
+
+#endif /* __TYPES__H */
