@@ -14,7 +14,6 @@ function do_test()
 
     cat $TMPDIR/test.dump.out | grep "&a" | head -n1 > test.a
     cat $TMPDIR/test.replay.out | grep "&a" | head -n1 > test.b
-
     if [ ! -s test.a ]; then
         return 1
     fi
