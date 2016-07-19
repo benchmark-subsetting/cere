@@ -77,37 +77,27 @@ def fix_self_coverage(graph, samples):
         graph.node[n]['_self_coverage'] = round(((in_degree - out_degree)/float(samples))*100, 1)
     return True
 
-def add_node(digraph, matchObj):
-    _id = matchObj.group(1)
-    name = matchObj.group(2)
+def add_node(digraph, _id, name, self_coverage, coverage):
+  if "__cere__"  in name: valid = True
+  else:
+    valid = False
 
-    try:
-        coverage = float(matchObj.group(6))
-    except IndexError:
-        coverage = float(matchObj.group(4))
-
-    if "__cere__"  in name: valid = True
-    else:
-        valid = False
-
-    digraph.add_node(_id, _name = name)
-    digraph.graph['coverage'] = 0
-    digraph.graph['selector'] = None
-    digraph.node[_id]['_self_coverage'] = float(matchObj.group(4))
-    digraph.node[_id]['_coverage'] = coverage
-    digraph.node[_id]['_matching'] = False
-    digraph.node[_id]['_error'] = 100.0
-    digraph.node[_id]['_error_message'] = None
-    digraph.node[_id]['_valid'] = valid
-    digraph.node[_id]['_tested'] = False
-    digraph.node[_id]['_to_test'] = False
-    digraph.node[_id]['_transfered'] = False
-    digraph.node[_id]['_small'] = False
-    digraph.node[_id]['_selected'] = False
-    digraph.node[_id]['_invivo'] = 0.0
-    digraph.node[_id]['_invitro'] = 0.0
-    digraph.node[_id]['_invocations'] = []
-    return digraph
+  digraph.add_node(_id, _name = name)
+  digraph.node[_id]['_self_coverage'] = self_coverage
+  digraph.node[_id]['_coverage'] = coverage
+  digraph.node[_id]['_matching'] = False
+  digraph.node[_id]['_error'] = 100.0
+  digraph.node[_id]['_error_message'] = None
+  digraph.node[_id]['_valid'] = valid
+  digraph.node[_id]['_tested'] = False
+  digraph.node[_id]['_to_test'] = False
+  digraph.node[_id]['_transfered'] = False
+  digraph.node[_id]['_small'] = False
+  digraph.node[_id]['_selected'] = False
+  digraph.node[_id]['_invivo'] = 0.0
+  digraph.node[_id]['_invitro'] = 0.0
+  digraph.node[_id]['_invocations'] = []
+  return digraph
 
 def remove_cycle(digraph, cycle, samples):
     #Avoid having the same node appears multiple times
@@ -153,6 +143,41 @@ def remove_cycle(digraph, cycle, samples):
     digraph.node[toKeep]['_coverage'] = round(((in_degree)/float(samples))*100, 1)
     return digraph
 
+def find_cere_region(omp_region, _id):
+  with open("{0}/omp_outlined_to_cere".format(var.CERE_PROFILE_PATH)) as regions_file:
+    for line in regions_file:
+      infos = line.strip().split()
+      if omp_region == str(infos[1]):
+        return str(infos[0])
+  return "__cere__Unknown_"+_id
+
+#In OMP mode, cere regions are too small, thus they don't appear in the graph.
+#We have to add them manually.
+def add_missing_cere_regions(digraph):
+  ID = len(digraph.nodes()) + 1
+  for n, d in digraph.nodes(data=True):
+    if d["_name"] == "__kmp_invoke_microtask":
+      #find childs
+      for successor in digraph.successors(n):
+        if ".omp_outlined." in digraph.node[successor]['_name']:
+          _id = "N"+str(ID)
+          #We have to insert here the corresponding cere region
+          cere_region = find_cere_region(digraph.node[successor]['_name'], _id)
+          digraph = add_node(digraph, _id, cere_region, 0.0, digraph.node[successor]['_coverage'])
+          w = int(digraph.edge[n][successor]['weight'])
+          digraph.remove_edge(n, successor)
+          digraph.add_edge(n, _id, weight=w)
+          digraph.add_edge(_id, successor, weight=w)
+          ID = ID+1
+  return digraph
+
+def remove_kmp_wait_sleep(digraph):
+  for n, d in digraph.nodes(data=True):
+    if d["_name"] == "__kmp_wait_sleep":
+      digraph.remove_node(n)
+      break
+  return digraph
+
 def remove_cycles(digraph, sample):
     cycles = list(nx.simple_cycles(digraph))
     while cycles:
@@ -165,7 +190,14 @@ def parse_gPerfTool(digraph, cmd, regex_list):
     for line in cmd.stdout:
         matchObj, step = parse_line(regex_list, line)
         if step < 2:
-            digraph = add_node(digraph, matchObj)
+          _id = matchObj.group(1)
+          name = matchObj.group(2)
+          try:
+            coverage = float(matchObj.group(6))
+          except IndexError:
+            coverage = float(matchObj.group(4))
+          self_coverage = float(matchObj.group(4))
+          digraph = add_node(digraph, _id, name, self_coverage, coverage)
         elif step == 2:
             digraph.add_edge(matchObj.group(1), matchObj.group(2), weight=int(matchObj.group(3)))
         elif step == 3:
@@ -215,8 +247,16 @@ def create_graph(force):
     cmd = subprocess.Popen("{0} -dot {1} {2}".format(var.PPROF, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
+    digraph.graph['coverage'] = 0
+    digraph.graph['selector'] = None
     samples, digraph = parse_gPerfTool(digraph, cmd, regex_list)
+    #If OMP is enabled we have to manually add cere regions in the graph
+    if cere_configure.cere_config["omp"]:
+      digraph = add_missing_cere_regions(digraph)
+    if not digraph: return False
     plot(digraph, "debug")
+    if cere_configure.cere_config["omp"]:
+      digraph = remove_kmp_wait_sleep(digraph)
     digraph = remove_cycles(digraph, samples)
     if not fix_self_coverage(digraph, samples):
         return False
