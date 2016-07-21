@@ -37,6 +37,7 @@ bool is_send_sigtrap(pid_t pid);
 void hook_sigtrap(void);
 bool is_hook_sigtrap(pid_t pid);
 bool is_syscall_io(pid_t pid);
+bool is_valid_io(pid_t pid);
 void sigtrap(void);
 
 #endif /* __SYSCALL_INTERFACE__H */

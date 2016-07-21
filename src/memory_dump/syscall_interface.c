@@ -114,7 +114,7 @@ int get_syscallid(pid_t pid) {
 bool is_valid_io(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  int syscallid = -regs.orig_rax;
+  int syscallid = regs.orig_rax;
   switch (syscallid) {
   case SYS_write:
     return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
@@ -122,6 +122,7 @@ bool is_valid_io(pid_t pid) {
   case SYS_open:
   case SYS_openat:
   case SYS_close:
+  case SYS_mmap:
     /* Add all ios forbidden */
     return false;
   default:
