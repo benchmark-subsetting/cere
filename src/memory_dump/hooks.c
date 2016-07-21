@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 #include "dump.h"
+#include "pages.h"
 #include "syscall_interface.h"
 #include "types.h"
 
@@ -37,8 +38,21 @@ static size_t (*real_fread)(void *ptr, size_t size, size_t nmemb, FILE *stream);
 static size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb,
                              FILE *stream);
 
+static char *calloc_init_mem[CALLOC_INIT];
 static bool mtrace_init_called = false;
 
+/* lock_range: requests protection of the memory range [from; to] */
+static void lock_range(void *from, void *to) {
+  if (mtrace_active) {
+    hook_sigtrap();
+    send_to_tracer((register_t)from);
+    send_to_tracer((register_t)to);
+    hook_sigtrap();
+  }
+}
+
+/* hooks_init: replace memory allocation functions by our own hooks that
+ * protect memory before returning it to the user */
 static void hooks_init(void) {
 
   mtrace_init_called = true;
@@ -70,16 +84,6 @@ static void hooks_init(void) {
   real_fwrite = dlsym(RTLD_NEXT, "fwrite");
   if (NULL == real_malloc) {
     fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
-  }
-}
-
-static void lock_range(void *from, void *to) {
-  /* if (state.mtrace_active) { */
-  if (mtrace_active) {
-    hook_sigtrap();
-    send_to_tracer((register_t)from);
-    send_to_tracer((register_t)to);
-    hook_sigtrap();
   }
 }
 
@@ -136,23 +140,26 @@ void *memalign(size_t alignment, size_t size) {
   return p;
 }
 
+/* touch_string: touch all the memory in a char* string */
 static void touch_string(const char *str) {
   const char *c;
   for (c = str; *c != '\0'; c++)
     ;
 }
 
+/* touch_mem: touches all the pages in the memory range [mem; mem + size*nmemb]
+ */
 static void touch_mem(const void *mem, size_t size, size_t nmemb) {
   size_t i;
-  char *c = (char *)mem;
-  while (nmemb--) {
-    for (i = 0; i < size; i++) {
-      char touched = *c;
-      c++;
-    }
+  char* last = ((char*)mem)+size*nmemb-1;
+  for (char *c = (char*) mem; c <= last; c+=PAGESIZE) {
+    volatile char touched = *c;
   }
+  volatile char touched = *last;
 }
 
+/* Before performing standard syscall, we must unlock memory before calling the
+ * kernel */
 FILE *fopen(const char *path, const char *mode) {
   if (real_fopen == NULL)
     hooks_init();

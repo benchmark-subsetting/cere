@@ -50,7 +50,6 @@ void *(*real_calloc)(size_t nmemb, size_t size);
 void *(*real_realloc)(void *ptr, size_t size);
 void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
-char *calloc_init_mem[CALLOC_INIT];
 char writing_buff[PAGESIZE] __attribute__((aligned(PAGESIZE)));
 
 void copy(char *source, char *dest) {

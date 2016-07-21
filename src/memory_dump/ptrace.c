@@ -87,7 +87,7 @@ void ptrace_interrupt(pid_t pid) {
   }
 }
 
-void attach_all_threads(pid_t tid[], int nbthread) {
+void attach_all_threads(int nbthread, pid_t tid[nbthread]) {
   long t, r;
   unsigned long c = 0L;
 
@@ -112,7 +112,6 @@ void attach_all_threads(pid_t tid[], int nbthread) {
           debug_print("Detach of %d\n", tid[t]);
         } while (r == -1L &&
                  (errno == EBUSY || errno == EFAULT || errno == ESRCH));
-      nbthread = 0;
       errno = saved_errno;
       break;
     }
@@ -120,7 +119,7 @@ void attach_all_threads(pid_t tid[], int nbthread) {
   debug_print("Attach to %d ... %d\n", tid[0], tid[nbthread - 1]);
 }
 
-void detach_all_threads(pid_t tid[], int nbthread) {
+void detach_all_threads(int nbthread, pid_t tid[nbthread]) {
 
   long t, r;
   unsigned long c = 0L;
@@ -142,7 +141,6 @@ void detach_all_threads(pid_t tid[], int nbthread) {
 
 void ptrace_getdata(pid_t child, long addr, char *str, int len) {
 
-  int save_errno = errno;
 
   union u {
     long val;
@@ -156,7 +154,7 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
   laddr = str;
 
   while (i < j) {
-    save_errno = errno;
+    int save_errno = errno;
     data.val = ptrace(PTRACE_PEEKDATA, child, addr + i * WORDSIZE, NULL);
     if (data.val == -1 && save_errno != errno)
       errx(EXIT_FAILURE, "Error get data : %s\n", strerror(errno));
@@ -174,12 +172,12 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
 
 void ptrace_attach(pid_t pid) {
   pid_t tids[] = {pid};
-  attach_all_threads(tids, 1);
+  attach_all_threads(1, tids);
 }
 
 void ptrace_detach(pid_t pid) {
   pid_t tids[] = {pid};
-  detach_all_threads(tids, 1);
+  detach_all_threads(1, tids);
 }
 
 void ptrace_putdata(pid_t child, long addr, char *str, int len) {
@@ -322,25 +320,6 @@ void print_registers(FILE *const out, struct user_regs_struct *regs,
   fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp,
           note);
 #endif
-}
-
-void print_step(pid_t tid, pid_t tids[], int nbthread, int nb_step) {
-
-  long r, s, t;
-  struct user_regs_struct regs_bfr, regs_aft;
-
-  for (s = 0; s < nb_step; s++) {
-    ptrace_getregs(tid, &regs_bfr);
-    ptrace_singlestep(tid);
-
-    if (!r) {
-      ptrace_getregs(tid, &regs_aft);
-      for (t = 0; t < nbthread; t++)
-        show_registers(stderr, tids[t], "");
-    } else {
-      fprintf(stderr, "Single-step failed: %s.\n", strerror(errno));
-    }
-  }
 }
 
 void put_string(pid_t pid, char *src, void *dst, size_t nbyte) {

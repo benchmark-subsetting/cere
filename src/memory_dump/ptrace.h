@@ -25,6 +25,10 @@
 #include <sys/types.h>
 #include <sys/user.h>
 
+
+/* Wrapper interface for ptrace calls.
+ * The following functions, wrap the equivalent ptrace
+ * calls and perform error checking */
 void ptrace_getsiginfo(pid_t pid, siginfo_t *sig);
 void ptrace_cont(pid_t pid);
 void ptrace_listen(pid_t pid);
@@ -35,20 +39,31 @@ void ptrace_attach(pid_t pid);
 void ptrace_detach(pid_t pid);
 void ptrace_me(void);
 void ptrace_singlestep(pid_t pid);
-void attach_all_threads(pid_t tasks[], int nbthread);
-void detach_all_threads(pid_t tasks[], int nbthread);
+
+/* attach_all_threads: attach all the threads ids passed in tid */
+void attach_all_threads(int nbthread, pid_t tid[nbthread]);
+/* detach_all_threads: detach all the threads ids passed in tid */
+void detach_all_threads(int nbthread, pid_t tid[nbthread]);
+
+/* ptrace_getdata and ptrace_putdata write and read in the memory of a
+ * tracee process */
 void ptrace_getdata(pid_t pid, long readAddr, char *readBuf, int size);
 void ptrace_putdata(pid_t pid, long writeAddr, char *writeBuf, int size);
+
+void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
+
+/* ptrace_ripat: sets the rip register */
+void *ptrace_ripat(pid_t pid, void *addr);
+
 void ptrace_syscall(pid_t pid);
 void ptrace_syscall_flag(pid_t pid, int flag);
-void *ptrace_ripat(pid_t pid, void *addr);
+
+
 siginfo_t wait_process(pid_t pid);
-void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
 
 /* Debug functions */
 void print_registers(FILE *const out, struct user_regs_struct *regs,
                      const char *const note);
 void show_registers(FILE *const out, pid_t tid, const char *const note);
-void print_step(pid_t tid, pid_t tids[], int nbthread, int nb_step);
 
 #endif /* __PTRACE__H */

@@ -63,21 +63,17 @@ static int hotpages_counter = 0;
 
 static int type_of_warmup = 0;
 
-char *get_filename_ext(const char *filename) {
+static char *get_filename_ext(const char *filename) {
   char *dot = strrchr(filename, '.');
   if (!dot || dot == filename)
     return "";
   return dot + 1;
 }
 
-char *get_filename_without_ext(char *filename) {
-  char *dot = strrchr(filename, '.');
-  if (!dot || dot == filename)
-    return filename;
-  int retstrlen = strlen(filename) - strlen(dot);
-  char *retstr = malloc(retstrlen + 1);
-  strncpy(retstr, filename, retstrlen);
-  return retstr;
+static off64_t get_address_from_filename(char *filename) {
+  off64_t address;
+  sscanf(filename, "%lx.", &address);
+  return address;
 }
 
 /* load: restores memory before replay
@@ -179,8 +175,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       exit(EXIT_FAILURE);
     }
 
-    off64_t address;
-    sscanf(get_filename_without_ext(ent->d_name), "%lx", &address);
+    off64_t address = get_address_from_filename(ent->d_name);
 
     int read_bytes = 0;
     while ((len = read(fp, (char *)(address + read_bytes), PAGESIZE)) > 0) {

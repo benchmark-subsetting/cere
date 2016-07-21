@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#include "cere_tracer.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <err.h>
@@ -78,7 +77,7 @@ static void read_map(pid_t pid) {
   fclose(maps);
 }
 
-bool is_mru(void *addr) {
+static bool is_mru(void *addr) {
   char *start_of_page = round_to_page(addr);
   bool present = false;
   for (int i = 0; i < log_size; i++) {
@@ -261,7 +260,7 @@ static void tracer_lock_range(pid_t child) {
   debug_print("%s\n", "END LOCK RANGE");
 }
 
-void create_dump_dir(void) {
+static void create_dump_dir(void) {
   struct stat sb;
   /* Check that dump exists or try to create it, then enter it  */
   if (stat(dump_prefix, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
@@ -280,7 +279,7 @@ void create_dump_dir(void) {
   }
 }
 
-void tracer_lock_mem(pid_t pid) {
+static void tracer_lock_mem(pid_t pid) {
 
   char maps_path[MAX_PATH];
   sprintf(maps_path, "/proc/%d/maps", pid);
@@ -359,7 +358,7 @@ void tracer_lock_mem(pid_t pid) {
   debug_print("%s\n", "END LOCK MEM");
 }
 
-void flush_hot_pages_trace_to_disk(pid_t pid) {
+static void flush_hot_pages_trace_to_disk(pid_t pid) {
 
   debug_print("%s\n", "START FLUSH HOT PAGE");
 
@@ -391,7 +390,7 @@ void flush_hot_pages_trace_to_disk(pid_t pid) {
   debug_print("%s\n", "END FLUSH HOT PAGE");
 }
 
-void dump_unprotected_pages(pid_t pid) {
+static void dump_unprotected_pages(pid_t pid) {
   debug_print("%s\n", "START DUMP UNPROTECTED PAGE");
 
   /* Dump the unprotected pages before entering the codelet region. */
@@ -405,7 +404,7 @@ void dump_unprotected_pages(pid_t pid) {
   debug_print("%s\n", "END DUMP UNPROTECTED PAGE");
 }
 
-void dump_arg(pid_t pid) {
+static void dump_arg(pid_t pid) {
 
   printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
 
@@ -452,7 +451,7 @@ void dump_arg(pid_t pid) {
   dump_unprotected_pages(pid);
 }
 
-void read_args(pid_t pid) {
+static void read_args(pid_t pid) {
 
   receive_string_from_tracee(pid, str_tmp_tracee, loop_name, SIZE_LOOP);
   invocation = (int)receive_from_tracee(pid);
@@ -463,12 +462,12 @@ void read_args(pid_t pid) {
   debug_print("COUNT : %d\n", count);
 }
 
-void tracer_dump(pid_t pid) {
+static void tracer_dump(pid_t pid) {
   read_args(pid);
   dump_arg(pid);
 }
 
-void tracer_init(pid_t pid) {
+static void tracer_init(pid_t pid) {
 
   wait_process(pid);
   ptrace_attach(pid);
