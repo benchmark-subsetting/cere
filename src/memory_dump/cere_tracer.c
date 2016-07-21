@@ -47,16 +47,19 @@ char *pagelog_suffix = "hotpages.map";
 char *core_suffix = "core.map";
 char *dump_prefix = ".cere";
 char *dump_root = "dumps";
+char *replay_root = "replays";
 char *pages_cache[LOG_SIZE];
 char dump_path[MAX_PATH];
 char *pages_trace[TRACE_SIZE];
 
 char loop_name[SIZE_LOOP];
-int invocation;
+int invocation = -1;
 int count;
 
 void *writing_map = NULL;
 void *str_tmp_tracee = NULL;
+
+char *cere_errors_EIO = "Not replayables IOs";
 
 enum tracer_state_t tracer_state = 0;
 
@@ -175,10 +178,27 @@ static void mru_handler(int pid, void *start_of_page) {
 #endif
 }
 
+static void mark_invalid() {
+  char buff[BUFSIZ];
+  snprintf(buff, sizeof(buff), "%s/invalid_regions", replay_root);
+  FILE *ir_file = fopen(buff, "r");
+  if (ir_file == NULL)
+    errx(EXIT_FAILURE, "Error creating %s : %s\n", buff, strerror(errno));
+
+  /* If invocation is -1 the path has not been created*/
+  if (invocation != -1) {
+    snprintf(buff, sizeof(buff), "rm -f %s/%s/%s/%d", dump_prefix, dump_root, loop_name, invocation);
+    int ret = system(buff);
+    if (ret == -1)
+      errx(EXIT_FAILURE, "Error deleting %s : %s\n", buff, strerror(errno));
+  }
+
+  errx(EXIT_FAILURE, "%s", cere_errors_EIO);
+}
+
 static siginfo_t wait_sigtrap(pid_t child) {
   while (true) {
     siginfo_t sig = wait_process(child);
-
     if (sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP | 0x80)) {
       if (tracer_state == TRACER_LOCKED && is_hook_sigtrap(child)) {
         tracer_lock_range(child);
@@ -186,7 +206,9 @@ static siginfo_t wait_sigtrap(pid_t child) {
       } else if (is_send_sigtrap(child)) {
         return sig;
       } else if (is_syscall_io(child)) {
-        /* Make an handle IO */
+	if (!is_valid_io(child)) {
+	  mark_invalid();
+	} 
         return sig;
       } else {
         errx(EXIT_FAILURE, "Unknow syscallid of sigtrap : %d\n",

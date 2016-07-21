@@ -35,7 +35,7 @@ tolerated_fd = [1,2]
 forbidden_ios = ["read", "write", "mmap"]
 
 def init_module(subparsers, cere_plugins):
-    cere_plugins["check-io"] = run
+    cere_plugins["io-checker"] = run
     io_checker_parser = subparsers.add_parser("io-checker", help="Check if a region does IOs")
     io_checker_parser.add_argument('--region', help="Region to check")
     io_checker_parser.add_argument('--regions-file', help="File containing the list of regions to check")
