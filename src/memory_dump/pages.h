@@ -28,7 +28,7 @@
 
 /* rounds up an address to the upper page address */
 #define round_up_page(addr)                                                    \
-  ((((long unsigned)(addr)-1) / PAGESIZE + 1) * PAGESIZE)
+  ((char*)((((long unsigned)(addr)-1) / PAGESIZE + 1) * PAGESIZE))
 
 /* number of memory pages that contain the memory range [from;to] */
 #define nb_pages_in_range(from, to)                                            \

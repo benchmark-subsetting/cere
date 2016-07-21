@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 #include "dump.h"
+#include "pages.h"
 #include "syscall_interface.h"
 #include "types.h"
 
@@ -143,14 +144,12 @@ static void touch_string(const char *str) {
     ;
 }
 
+/* touch_mem: touches all the pages in the memory range [mem; mem + size*nmemb]
+ */
 static void touch_mem(const void *mem, size_t size, size_t nmemb) {
   size_t i;
-  char *c = (char *)mem;
-  while (nmemb--) {
-    for (i = 0; i < size; i++) {
-      volatile char touched = *c;
-      c++;
-    }
+  for (char *c = round_to_page(mem); c <= round_up_page(mem+size*nmemb); c+=PAGESIZE) {
+    volatile char touched = *c;
   }
 }
 
