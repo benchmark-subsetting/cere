@@ -140,6 +140,7 @@ void rdtsc_markerClose()
         strcpy(fileName, p->name);
         strcat(fileName, ".csv");
         FILE *result = fopen(fileName, "w");
+        free(fileName);
         if(result == NULL) {
             fprintf(stderr, "RDTSC: Cannot open result file for region %s.\n",p->name);
             exit(EXIT_FAILURE);
@@ -217,6 +218,7 @@ void rdtsc_markerStartRegion(char *reg, bool vivo) {
             strcpy(fileName, r->name);
             strcat(fileName, ".bin");
             r->trace_results = fopen(fileName, "ab");
+            free(fileName);
             if(r->trace_results == NULL) {
                 perror("RDTSC: Cannot open Binary File!");
                 exit(EXIT_FAILURE);
