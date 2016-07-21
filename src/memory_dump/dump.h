@@ -20,17 +20,33 @@
 #define __DUMP__H
 
 #include <stdbool.h>
-
 #include "types.h"
 
-/* Public Interface */
+/* Public Interface for the memory tracer */
+
+/* dump_init: initialises the memory tracer. Must be called at the very begin
+ * of the tracee execution. Ideally it should be the first thing done in tha
+ * tracee main() */
 void dump_init(void);
+
+/* dump_close: cleans-up the memory tracer. Must be called before exiting the
+ * tracee. */
 void dump_close(void);
 
-void dump(char *, int, int, ...);
+/* dump: requests capture of a outlined region of interest. Must be called
+ * before any other code in the function to be captured.
+ *   - loop_name is the name of the region of interest
+ *   - invocation is the target invocation that must be captured
+ *   - count is the current invocation counter (the user must update this)
+ *   when invocation == count the capture starts */
+void dump(char *loop_name, int invocation, int count, ...);
+
+/* after_dump: terminates capture of a region of interest. must be called
+   at the end of the function to be captured */
 void after_dump(void);
 
+/* mtrace_active: true when the memory protection hooks in hooks.c are
+ * active */
 extern bool mtrace_active;
-extern char *calloc_init_mem[CALLOC_INIT];
 
 #endif /* DUMP__H */

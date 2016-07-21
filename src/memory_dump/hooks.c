@@ -37,6 +37,8 @@ static size_t (*real_fread)(void *ptr, size_t size, size_t nmemb, FILE *stream);
 static size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb,
                              FILE *stream);
 
+
+static char *calloc_init_mem[CALLOC_INIT];
 static bool mtrace_init_called = false;
 
 static void hooks_init(void) {
@@ -74,7 +76,6 @@ static void hooks_init(void) {
 }
 
 static void lock_range(void *from, void *to) {
-  /* if (state.mtrace_active) { */
   if (mtrace_active) {
     hook_sigtrap();
     send_to_tracer((register_t)from);
