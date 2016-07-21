@@ -131,7 +131,8 @@ bool OmpRegionInstrumentation::runOnFunction(Function &F) {
   prepareInstrumentation(F, RegionFile, MeasureAppli, Mode, RequestedInvoc);
   Module *mod = F.getParent();
 
-  insertOmpProbe(mod, &F);
+  if(!MeasureAppli)
+    insertOmpProbe(mod, &F);
 
   return true;
 }
