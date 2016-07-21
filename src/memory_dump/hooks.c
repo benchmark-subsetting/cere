@@ -148,7 +148,7 @@ static void touch_mem(const void *mem, size_t size, size_t nmemb) {
   char *c = (char *)mem;
   while (nmemb--) {
     for (i = 0; i < size; i++) {
-      char touched = *c;
+      volatile char touched = *c;
       c++;
     }
   }

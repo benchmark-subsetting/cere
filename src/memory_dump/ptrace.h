@@ -65,6 +65,5 @@ siginfo_t wait_process(pid_t pid);
 void print_registers(FILE *const out, struct user_regs_struct *regs,
                      const char *const note);
 void show_registers(FILE *const out, pid_t tid, const char *const note);
-void print_step(pid_t tid, pid_t tids[], int nbthread, int nb_step);
 
 #endif /* __PTRACE__H */
