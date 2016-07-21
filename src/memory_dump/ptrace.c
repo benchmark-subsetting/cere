@@ -87,7 +87,7 @@ void ptrace_interrupt(pid_t pid) {
   }
 }
 
-void attach_all_threads(pid_t tid[], int nbthread) {
+void attach_all_threads(int nbthread, pid_t tid[nbthread]) {
   long t, r;
   unsigned long c = 0L;
 
@@ -120,7 +120,7 @@ void attach_all_threads(pid_t tid[], int nbthread) {
   debug_print("Attach to %d ... %d\n", tid[0], tid[nbthread - 1]);
 }
 
-void detach_all_threads(pid_t tid[], int nbthread) {
+void detach_all_threads(int nbthread, pid_t tid[nbthread]) {
 
   long t, r;
   unsigned long c = 0L;
@@ -174,12 +174,12 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
 
 void ptrace_attach(pid_t pid) {
   pid_t tids[] = {pid};
-  attach_all_threads(tids, 1);
+  attach_all_threads(1, tids);
 }
 
 void ptrace_detach(pid_t pid) {
   pid_t tids[] = {pid};
-  detach_all_threads(tids, 1);
+  detach_all_threads(1, tids);
 }
 
 void ptrace_putdata(pid_t child, long addr, char *str, int len) {
