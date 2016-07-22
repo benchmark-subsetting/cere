@@ -14,7 +14,7 @@ cere instrument [-h] --region REGION | --regions-file REGIONS_FILE
 **cere instrument** allows the user to instrument a region inside the original
 application with probes around the region. These probes are defined via the
 **--plugin-instr** flag to perform measures on the region. For instance,
-**cere instrument** is used by cere-trace(1) and cere-check-io(1).
+**cere instrument** is used by cere-trace(1).
 
 ## OPTIONS
 
@@ -45,8 +45,8 @@ application with probes around the region. These probes are defined via the
 
 ## COPYRIGHT
 
-cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
+cere is Copyright (C) 2014-2016 Université de Versailles St-Quentin-en-Yvelines
 
 ## SEE ALSO
 
-cere-regions(1) cere-trace(1) cere-configure(1) cere-plugin-instr(1) cere-check-io(1)
+cere-regions(1) cere-trace(1) cere-configure(1) cere-plugin-instr(1)

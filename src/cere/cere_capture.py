@@ -28,7 +28,6 @@ import utils
 import vars as var
 import errors as cere_error
 import cere_configure
-import cere_check_io
 
 logger = logging.getLogger('Capture')
 
@@ -38,7 +37,6 @@ def init_module(subparsers, cere_plugins):
     capture_parser.add_argument('--region', required=True, help="region to capture")
     capture_parser.add_argument('--invocation', type=int, help="invocation to capture (default 1)")
     capture_parser.add_argument('--norun', action='store_true', help="builds the capture-instrumented binary without running it")
-    capture_parser.add_argument('--no-io-trace', action='store_true', help="do not check ios")
     capture_parser.add_argument('--force', '-f', action='store_true', help="overwrites previous existing dump (default False)")
 
 def find_invocations(chosen_invoc, region):
@@ -70,12 +68,6 @@ def run(args):
       if utils.dump_exist(args.region, invocation):
         logger.info("Dump already exists for region {0} invocation {1}".format(args.region, invocation))
         return True
-
-      if not args.no_io_trace:
-        #Check IOs
-        if not cere_check_io.run_io_checker(args.region, None, invocation, args.force):
-          utils.mark_invalid(args.region, "Failed to run IO checker")
-
       if utils.is_invalid(args.region):
         logger.warning("{0} is invalid. Skipping capture".format(args.region))
         return False

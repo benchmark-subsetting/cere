@@ -136,7 +136,6 @@ AC_CONFIG_FILES([Makefile
                  src/RegionReplay/Makefile
                  src/GlobalRename/Makefile
                  src/rdtsc/Makefile
-                 src/io_detector/Makefile
                  src/memory_dump/Makefile
                  tests/Makefile])
 

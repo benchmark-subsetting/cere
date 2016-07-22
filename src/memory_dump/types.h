@@ -19,6 +19,8 @@
 #ifndef __TYPES__H
 #define __TYPES__H
 
+#include <limits.h>
+
 #define PAST_INV 30
 #define MAX_PATH 256
 #define MAX_IGNORE 32
@@ -28,8 +30,8 @@
 #define CALLOC_INIT 512
 #define OFFSET_STR 0x100 /* Offset for write string */
 
-#define SYS_send (-1)
-#define SYS_hook (-2)
+#define SYS_dump (INT_MAX-1)
+#define SYS_hook (INT_MAX-2)
 
 enum tracer_state_t {
   TRACER_UNLOCKED = 1,

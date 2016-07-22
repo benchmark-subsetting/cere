@@ -108,21 +108,23 @@ register_t get_arg_from_regs(pid_t pid) {
 int get_syscallid(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return -(int)regs.orig_rax;
+  return regs.orig_rax;
 }
 
 bool is_valid_io(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  int syscallid = -regs.orig_rax;
+  int syscallid = regs.orig_rax;
   switch (syscallid) {
   case SYS_write:
     return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
+  /* Add all ios forbidden */
   case SYS_read:
+    return false;
   case SYS_open:
   case SYS_openat:
   case SYS_close:
-    /* Add all ios forbidden */
+  case SYS_mmap:
     return false;
   default:
     return true;
@@ -148,13 +150,12 @@ bool is_syscall_io(pid_t pid) {
   default:
     return false;
   }
-
   debug_print("Syscall IO detected : %s\n", name_syscall);
   return true;
 }
 
 void send_to_tracer(register_t arg) {
-  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_send));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
   asm volatile("mov %0,%%rdi" : : "r"(arg));
   sigtrap();
 }
@@ -173,10 +174,10 @@ bool is_hook_sigtrap(pid_t pid) {
   return (regs.rax == SYS_hook);
 }
 
-bool is_send_sigtrap(pid_t pid) {
+bool is_dump_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return (regs.rax == SYS_send);
+  return (regs.rax == SYS_dump);
 }
 
 #endif
