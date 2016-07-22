@@ -43,11 +43,11 @@
 int log_size = LOG_SIZE;
 int last_trace = 0;
 int last_page = 0;
-char *pagelog_suffix = "hotpages.map";
-char *core_suffix = "core.map";
-char *dump_prefix = ".cere";
-char *dump_root = "dumps";
-char *replay_root = "replays";
+const char *pagelog_suffix = "hotpages.map";
+const char *core_suffix = "core.map";
+const char *dump_prefix = ".cere";
+const char *dump_root = "dumps";
+const char *replay_root = "replays";
 char *pages_cache[LOG_SIZE];
 char dump_path[MAX_PATH];
 char *pages_trace[TRACE_SIZE];
@@ -59,7 +59,7 @@ int count;
 void *writing_map = NULL;
 void *str_tmp_tracee = NULL;
 
-char *cere_errors_EIO = "Not replayables IOs";
+char *cere_errors_EIO = "IO not replayable";
 
 enum tracer_state_t tracer_state = 0;
 
@@ -169,6 +169,7 @@ static void mru_handler(int pid, void *start_of_page) {
   pages_cache[last_page] = start_of_page;
   last_page = (last_page + 1) % log_size;
 
+  /*
 #ifdef _DEBUG
   debug_print("%s", "     >>>> page cache\n");
   for (int i = 0; i < log_size; i++) {
@@ -176,25 +177,35 @@ static void mru_handler(int pid, void *start_of_page) {
     debug_print("     >>>> %p\n", pages_cache[c]);
   }
 #endif
+  */
 }
 
 static void mark_invalid() {
   char buff[BUFSIZ];
-  snprintf(buff, sizeof(buff), "%s/invalid_regions", replay_root);
-  FILE *ir_file = fopen(buff, "r");
-  if (ir_file == NULL)
+  snprintf(buff, sizeof(buff), "%s/%s/invalid_regions", dump_prefix, replay_root);
+  FILE *ir_file = fopen(buff, "a");
+  if (!ir_file)
     errx(EXIT_FAILURE, "Error creating %s : %s\n", buff, strerror(errno));
+  fprintf(ir_file, "%s %s\n", loop_name, cere_errors_EIO);
+  fclose(ir_file);
 
-  /* If invocation is -1 the path has not been created*/
-  if (invocation != -1) {
-    snprintf(buff, sizeof(buff), "rm -f %s/%s/%s/%d", dump_prefix, dump_root, loop_name, invocation);
-    int ret = system(buff);
-    if (ret == -1)
-      errx(EXIT_FAILURE, "Error deleting %s : %s\n", buff, strerror(errno));
-  }
+  snprintf(buff, sizeof(buff), "rm -rf %s/%s/%s/%d", dump_prefix, dump_root, loop_name, invocation);
+  int ret = system(buff);
+  if (ret == -1)
+    errx(EXIT_FAILURE, "Error deleting %s : %s\n", buff, strerror(errno));
 
   errx(EXIT_FAILURE, "%s", cere_errors_EIO);
 }
+
+static void handle_syscall(pid_t child) {
+   /* IO Syscall require special care */
+   if (is_syscall_io(child)) {
+     if (tracer_state == TRACER_DUMPING && !is_valid_io(child)) {
+       mark_invalid();
+   }
+   }
+}
+/* Catch all for other syscalls (not IO ones)*/
 
 static siginfo_t wait_sigtrap(pid_t child) {
   while (true) {
@@ -203,16 +214,12 @@ static siginfo_t wait_sigtrap(pid_t child) {
       if (tracer_state == TRACER_LOCKED && is_hook_sigtrap(child)) {
         tracer_lock_range(child);
         continue;
-      } else if (is_send_sigtrap(child)) {
+      } else if (is_dump_sigtrap(child)) {
         return sig;
-      } else if (is_syscall_io(child)) {
-	if (!is_valid_io(child)) {
-	  mark_invalid();
-	} 
-        return sig;
-      } else {
-        errx(EXIT_FAILURE, "Unknow syscallid of sigtrap : %d\n",
-             get_syscallid(child));
+      } else { // If we arrive here, it is a syscall
+        handle_syscall(child);
+        ptrace_syscall(child);
+        continue;
       }
     } else if (sig.si_signo == SIGSEGV) {
       void *addr = round_to_page(sig.si_addr);
@@ -231,7 +238,7 @@ static siginfo_t wait_sigtrap(pid_t child) {
       default:
         assert(false); /* we should never be here */
       }
-      ptrace_cont(child);
+      ptrace_syscall(child);
     } else {
       errx(EXIT_FAILURE, "Error after lock_mem and before dump %s\n",
            strerror(sig.si_signo));
@@ -246,7 +253,7 @@ static register_t receive_from_tracee(pid_t child) {
   sig = wait_sigtrap(child);
   assert(sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP | 0x80));
   ret = get_arg_from_regs(child);
-  ptrace_cont(child);
+  ptrace_syscall(child);
   return ret;
 }
 
@@ -254,7 +261,7 @@ static void receive_string_from_tracee(pid_t child, char *src_tracee,
                                        void *dst_tracer, size_t size) {
   wait_sigtrap(child);
   ptrace_getdata(child, (long long unsigned)src_tracee, dst_tracer, size);
-  ptrace_cont(child);
+  ptrace_syscall(child);
 }
 
 static void tracer_lock_range(pid_t child) {
@@ -263,7 +270,7 @@ static void tracer_lock_range(pid_t child) {
 
   assert(tracer_state == TRACER_LOCKED);
 
-  ptrace_cont(child);
+  ptrace_syscall(child);
   void *from = (void *)receive_from_tracee(child);
   void *to = (void *)receive_from_tracee(child);
   /* We need that the process be stopped to protect  */
@@ -277,7 +284,7 @@ static void tracer_lock_range(pid_t child) {
       protect(child, round_to_page(from + PAGESIZE * i), PAGESIZE);
   ptrace_ripat(child, old_addr);
 
-  ptrace_cont(child);
+  ptrace_syscall(child);
 
   debug_print("%s\n", "END LOCK RANGE");
 }
@@ -494,7 +501,7 @@ static void tracer_init(pid_t pid) {
   wait_process(pid);
   ptrace_attach(pid);
   create_dump_dir();
-  ptrace_cont(pid);
+  ptrace_syscall(pid);
 
   writing_map = (void *)receive_from_tracee(pid);
   str_tmp_tracee = writing_map + OFFSET_STR;
@@ -524,14 +531,14 @@ int main(int argc, char *argv[]) {
 
   debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;
-  ptrace_cont(child);
+  ptrace_syscall(child);
 
   /* Dump arguments */
   tracer_dump(child);
 
   debug_print("%s\n", "******* TRACER_DUMPING");
   tracer_state = TRACER_DUMPING;
-  ptrace_cont(child);
+  ptrace_syscall(child);
 
   while (1) {
     wait_sigtrap(child);

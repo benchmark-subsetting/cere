@@ -122,7 +122,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   if ((invocation <= PAST_INV && times_called == 1) ||
       (times_called == invocation - PAST_INV)) {
     mtrace_active = true;
-    sigtrap();
+    send_to_tracer(0);
   }
 
   if (times_called != invocation) {
@@ -148,7 +148,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   va_end(ap);
 
   kill_after_dump = true;
-  sigtrap();
+  send_to_tracer(0);
 }
 
 void after_dump(void) {
