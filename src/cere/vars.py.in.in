@@ -37,7 +37,6 @@ GLOB_RENAME = LIBDIR + "/libcere_globalrename.so"
 
 LIBDIR_FLAGS = "-L {libdir} -Wl,--rpath={libdir}".format(libdir=LIBDIR)
 RDTSC_WRAPPER = "-lcere_rdtsc"
-IO_CHECKER_LIB = "-lcere_iodetector"
 LIKWID = "-llikwid"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
 DUMPS_DIR = ".cere/dumps/"
@@ -55,7 +54,6 @@ CERE_TRACES = "traces"
 CERE_DUMPS = "dumps"
 CERE_PLOTS = "plots"
 CERE_REPORT = "report"
-CERE_IO_TRACES = "io_traces"
 CERE_FLAGS = "flags"
 
 def create_path(top_dir, sub_dir):
@@ -69,5 +67,4 @@ CERE_TRACES_PATH = create_path(CERE_MAIN_DIR, CERE_TRACES)
 CERE_DUMPS_PATH = create_path(CERE_MAIN_DIR, CERE_DUMPS)
 CERE_PLOTS_PATH = create_path(CERE_MAIN_DIR, CERE_PLOTS)
 CERE_REPORT_PATH = create_path(CERE_MAIN_DIR, CERE_REPORT)
-CERE_IO_TRACES_PATH = create_path(CERE_MAIN_DIR, CERE_IO_TRACES)
 CERE_FLAGS_PATH = create_path(CERE_MAIN_DIR, CERE_FLAGS)

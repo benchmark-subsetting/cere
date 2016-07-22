@@ -27,7 +27,6 @@ import cere_capture
 import cere_replay
 import cere_trace
 import cere_selectinv
-import cere_check_io
 import vars as var
 import utils
 from graph_utils import *
@@ -63,7 +62,6 @@ class Region():
         self.status = True
         self.invocation=1
         self.norun = False
-        self.no_io_trace = True
         self.read = False
         self.regions_file = None
         self.noinstrumentation = False
@@ -201,25 +199,6 @@ def update_nodes(graph, max_allowed_error):
     save_graph(graph)
     plot(graph)
 
-def create_region_to_trace_file(regions):
-    trace_filename = os.path.join(var.CERE_IO_TRACES_PATH, "regions_to_trace")
-    with open(trace_filename, 'w') as trace_file:
-        for r in regions:
-            if not os.path.isfile("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, r)):
-                logger.warning("Can't trace region {0}".format(r))
-                continue
-            trace_file.write(r)
-            with open("{0}/{1}.invocations".format(var.CERE_TRACES_PATH, r)) as invocation_file:
-                for line in invocation_file:
-                    infos = line.strip().split()
-                    invocation = infos[0]
-                    trace_file.write(" "+invocation)
-                trace_file.write("\n")
-    return trace_filename
-
-def run_io_checker(trace_filename):
-    cere_check_io.run_io_checker(None, trace_filename, 0, False)
-
 def run(args):
     if not cere_configure.init():
         return False
@@ -255,9 +234,6 @@ def run(args):
         #We can clusterize invocations in performance classes
         res = cere_selectinv.run(allRegions[-1])
         if not res: err=True
-
-    trace_filename = create_region_to_trace_file(regions)
-    run_io_checker(trace_filename)
 
     for idx, region in enumerate(allRegions):
         #Replay representative invocations

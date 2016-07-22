@@ -31,7 +31,6 @@ import cere_trace
 import cere_regions
 import cere_sanity_check
 import cere_report
-import cere_check_io
 import cere_selectinv
 import cere_flag
 import cere_hybrid
@@ -76,7 +75,6 @@ cere_trace.init_module(subparsers, cere_plugins)
 cere_sanity_check.init_module(subparsers, cere_plugins)
 cere_regions.init_module(subparsers, cere_plugins)
 cere_report.init_module(subparsers, cere_plugins)
-#cere_check_io.init_module(subparsers, cere_plugins)
 cere_selectinv.init_module(subparsers, cere_plugins)
 cere_flag.init_module(subparsers, cere_plugins)
 cere_hybrid.init_module(subparsers, cere_plugins)

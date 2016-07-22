@@ -1,4 +1,4 @@
-SUBDIRS=ccan rdtsc io_detector memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
+SUBDIRS=ccan rdtsc memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
 
 dist_bin_SCRIPTS=cerec
 pkgpython_PYTHON= \
@@ -11,7 +11,6 @@ pkgpython_PYTHON= \
 	cere/__main__.py \
 	cere/cere_select_max_cov.py \
 	cere/cere_selectinv.py \
-	cere/cere_check_io.py \
 	cere/graph_utils.py \
 	cere/vars.py \
 	cere/compress.py \
