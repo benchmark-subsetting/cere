@@ -52,30 +52,15 @@ void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
 char writing_buff[PAGESIZE] __attribute__((aligned(PAGESIZE)));
 
-void copy(char *source, char *dest) {
-  char buf[BUFSIZ + 1];
-  FILE *input = fopen(source, "r");
-  FILE *output = fopen(dest, "w");
-  if (!input || !output)
-    errx(EXIT_FAILURE, "Error while copying the original binary");
-
-  size_t bytes;
-  while (0 < (bytes = fread(buf, 1, sizeof(buf), input))) {
-    if (bytes != fwrite(buf, 1, bytes, output)) {
-      errx(EXIT_FAILURE, "Error while copying the original binary");
-    }
-  }
-  fclose(input);
-  fclose(output);
-}
-
 void dump_init(void) {
 
   /* state.mtrace_active = false; */
   mtrace_active = false;
 
   /* Copy the original binary */
-  copy("/proc/self/exe", "lel_bin");
+  char buf[BUFSIZ];
+  snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
+  system(buf);
 
   /* configure atexit */
   atexit(dump_close);

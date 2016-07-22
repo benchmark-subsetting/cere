@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 PROJECT_ROOT=../../
-CC=../../src/cerec
-FLINK=../../src/cerec
+CC=cerec
+FLINK=cerec
 
 FLAGS=-g -O0
 
