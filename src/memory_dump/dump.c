@@ -43,7 +43,7 @@
 
 static int times_called = 0;
 static bool dump_initialized;
-static bool kill_after_dump;
+volatile static bool kill_after_dump = false;
 
 void *(*real_malloc)(size_t);
 void *(*real_calloc)(size_t nmemb, size_t size);
@@ -158,5 +158,5 @@ void after_dump(void) {
     return;
 
   if (kill_after_dump)
-    exit(EXIT_SUCCESS);
+    abort();
 }

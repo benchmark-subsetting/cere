@@ -254,8 +254,12 @@ siginfo_t wait_process(pid_t pid) {
         debug_print("%s\n", "This is a syscall-stop");
       else
         errx(EXIT_FAILURE, "TRAP bad si_code : %d\n", sicode);
-    } else if (num == SIGSTOP && tracer_state == 0)
+    } else if (num == SIGSTOP && tracer_state == 0) {
       debug_print("%s\n", "SIGSTOP receive from tracee");
+    } else if (num == SIGABRT) {
+      debug_print("Finished capture\n");
+      exit(0);
+    }
     else
       errx(EXIT_FAILURE, "??? signo : %d\n", num);
   }

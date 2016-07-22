@@ -118,12 +118,13 @@ bool is_valid_io(pid_t pid) {
   switch (syscallid) {
   case SYS_write:
     return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
+  /* Add all ios forbidden */
   case SYS_read:
+    return false;
   case SYS_open:
   case SYS_openat:
   case SYS_close:
   case SYS_mmap:
-    /* Add all ios forbidden */
     return false;
   default:
     return true;
