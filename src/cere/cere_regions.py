@@ -26,6 +26,7 @@ import logging
 import shutil
 import argparse
 import vars as var
+from graph_utils import load_graph
 
 logger = logging.getLogger('Regions')
 
@@ -63,30 +64,17 @@ def add_header(regions_file, new_regions_file):
     w = csv.writer(tmp_regions)
     w.writerow(header)
 
-def add_coverage(regions_file, new_regions_file, matchObj):
-  name = matchObj.group(2)
-  if "__cere__"  not in name: return
-
-  try:
-    self_coverage = float(matchObj.group(4))
-  except IndexError:
-    self_coverage = "NA"
-
-  try:
-      coverage = float(matchObj.group(6))
-  except IndexError:
-      coverage = self_coverage
-
+def add_coverage(regions_file, new_regions_file, d):
   with open(regions_file, 'rb') as regions:
     r = csv.reader(regions)
     found=False
     for row in r:
-      if row[0] == name:
+      if row[0] == d['_name']:
         found=True
         break
   if(found):
-    row[5] = self_coverage
-    row[6] = coverage
+    row[5] = d['_self_coverage']
+    row[6] = d['_coverage']
     with open(new_regions_file, 'ab') as tmp_regions:
       w = csv.writer(tmp_regions)
       w.writerow(row)
@@ -97,6 +85,7 @@ def run(args):
   profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
   regions_file = cere_configure.cere_config["regions_infos"]
   new_regions_file = "tmp.csv"
+  graph = load_graph()
   build_cmd = cere_configure.cere_config["build_cmd"]
   run_cmd = cere_configure.cere_config["run_cmd"]
   clean_cmd = cere_configure.cere_config["clean_cmd"]
@@ -119,8 +108,8 @@ def run(args):
   logger.info("Regions list dumped in {0} file".format(regions_file))
 
   if not args.static:
-    if not os.path.isfile(profile_file):
-      logger.critical('No profiling file. Please first run cere profile or run cere regions --static')
+    if not os.path.isfile(profile_file) or not graph:
+      logger.warning('No profiling file. Cannot add coverage for regions. Please first run cere profile and then run cere regions again')
       return False
 
     binary = which(run_cmd)
@@ -130,19 +119,9 @@ def run(args):
 
     add_header(regions_file, new_regions_file)
 
-    #regular expression to parse the gperf tool output
-    regex_list = [r'(N.*)\s\[label\=\"(.*?)\\n([0-9]*)\s\((.*)\%\)\\rof\s(.*)\s\((.*)\%\)\\r',
-              r'(N.*)\s\[label\=\"(.*)\\n([0-9]*)\s\((.*)\%\)\\r',
-              r'(N.*)\s\-\>\s(N.*)\s\[label\=([0-9]*)\,']
+    for n, d in graph.nodes(data=True):
+      add_coverage(regions_file, new_regions_file, d)
 
-    cmd = subprocess.Popen("{0} -dot {1} {2}".format(var.PPROF, binary, profile_file), shell=True, stdout=subprocess.PIPE)
-
-    for line in cmd.stdout:
-      matchObj, step = parse_line(regex_list, line)
-      if step < 2 :
-        add_coverage(regions_file, new_regions_file, matchObj)
-      else:
-        continue
     try:
       shutil.move(new_regions_file, regions_file)
     except IOError as err:
