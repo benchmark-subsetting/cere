@@ -25,7 +25,6 @@
 #include <sys/types.h>
 #include <sys/user.h>
 
-
 /* Wrapper interface for ptrace calls.
  * The following functions, wrap the equivalent ptrace
  * calls and perform error checking */
@@ -57,7 +56,6 @@ void *ptrace_ripat(pid_t pid, void *addr);
 
 void ptrace_syscall(pid_t pid);
 void ptrace_syscall_flag(pid_t pid, int flag);
-
 
 siginfo_t wait_process(pid_t pid);
 

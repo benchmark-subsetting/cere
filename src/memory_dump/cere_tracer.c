@@ -56,12 +56,11 @@ char loop_name[SIZE_LOOP];
 int invocation = -1;
 int count;
 
-void *writing_map = NULL;
-void *str_tmp_tracee = NULL;
-
 char *cere_errors_EIO = "IO not replayable";
 
 enum tracer_state_t tracer_state = 0;
+
+struct tracer_buff_t tracer_buff;
 
 static void tracer_lock_range(pid_t child);
 
@@ -122,11 +121,11 @@ static void dump_page(pid_t pid, void *start) {
   snprintf(current_path, sizeof(current_path), "%s/%012lx.memdump", dump_path,
            (register_t)start);
 
-  put_string(pid, current_path, str_tmp_tracee, MAX_PATH);
+  put_string(pid, current_path, tracer_buff.str_tmp, MAX_PATH);
   if (access(current_path, F_OK) != -1)
     return;
 
-  int out = openat_i(pid, str_tmp_tracee);
+  int out = openat_i(pid, tracer_buff.str_tmp);
   write_binary(pid, out, start, PAGESIZE);
   close_i(pid, out);
 }
@@ -135,10 +134,8 @@ static void dump_handler(int pid, void *start_of_page) {
   debug_print("Dump handler detected access at %p\n", start_of_page);
 
   /* Unprotect Page */
-  void *old_addr = ptrace_ripat(pid, writing_map);
   unprotect(pid, start_of_page, PAGESIZE);
   dump_page(pid, start_of_page);
-  ptrace_ripat(pid, old_addr);
 }
 
 static void mru_handler(int pid, void *start_of_page) {
@@ -147,13 +144,6 @@ static void mru_handler(int pid, void *start_of_page) {
   bool present = is_mru(start_of_page);
   assert(present == false);
 
-  /* Unprotect Page */
-  void *old_addr = ptrace_ripat(pid, writing_map);
-  unprotect(pid, start_of_page, PAGESIZE);
-  ptrace_ripat(pid, old_addr);
-
-  /* Add page to page cache */
-  /* we need to evict one of the pages, reprotect it ! */
   if (pages_cache[last_page] != 0) {
     /* add the evicted page to the trace */
     pages_trace[last_trace] = pages_cache[last_page];
@@ -161,9 +151,11 @@ static void mru_handler(int pid, void *start_of_page) {
 
     debug_print("MRU Reprotecting page %p\n", pages_cache[last_page]);
 
-    void *old_addr = ptrace_ripat(pid, writing_map);
-    protect(pid, pages_cache[last_page], PAGESIZE);
-    ptrace_ripat(pid, old_addr);
+    unprotect_protect(pid, start_of_page, PAGESIZE, pages_cache[last_page],
+                      PAGESIZE);
+
+  } else {
+    unprotect(pid, start_of_page, PAGESIZE);
   }
 
   pages_cache[last_page] = start_of_page;
@@ -182,14 +174,16 @@ static void mru_handler(int pid, void *start_of_page) {
 
 static void mark_invalid() {
   char buff[BUFSIZ];
-  snprintf(buff, sizeof(buff), "%s/%s/invalid_regions", dump_prefix, replay_root);
+  snprintf(buff, sizeof(buff), "%s/%s/invalid_regions", dump_prefix,
+           replay_root);
   FILE *ir_file = fopen(buff, "a");
   if (!ir_file)
     errx(EXIT_FAILURE, "Error creating %s : %s\n", buff, strerror(errno));
   fprintf(ir_file, "%s %s\n", loop_name, cere_errors_EIO);
   fclose(ir_file);
 
-  snprintf(buff, sizeof(buff), "rm -rf %s/%s/%s/%d", dump_prefix, dump_root, loop_name, invocation);
+  snprintf(buff, sizeof(buff), "rm -rf %s/%s/%s/%d", dump_prefix, dump_root,
+           loop_name, invocation);
   int ret = system(buff);
   if (ret == -1)
     errx(EXIT_FAILURE, "Error deleting %s : %s\n", buff, strerror(errno));
@@ -198,12 +192,12 @@ static void mark_invalid() {
 }
 
 static void handle_syscall(pid_t child) {
-   /* IO Syscall require special care */
-   if (is_syscall_io(child)) {
-     if (tracer_state == TRACER_DUMPING && !is_valid_io(child)) {
-       mark_invalid();
-   }
-   }
+  /* IO Syscall require special care */
+  if (is_syscall_io(child)) {
+    if (tracer_state == TRACER_DUMPING && !is_valid_io(child)) {
+      mark_invalid();
+    }
+  }
 }
 /* Catch all for other syscalls (not IO ones)*/
 
@@ -260,7 +254,7 @@ static register_t receive_from_tracee(pid_t child) {
 static void receive_string_from_tracee(pid_t child, char *src_tracee,
                                        void *dst_tracer, size_t size) {
   wait_sigtrap(child);
-  ptrace_getdata(child, (long long unsigned)src_tracee, dst_tracer, size);
+  ptrace_getdata(child, (long)src_tracee, dst_tracer, size);
   ptrace_syscall(child);
 }
 
@@ -278,11 +272,9 @@ static void tracer_lock_range(pid_t child) {
 
   long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
 
-  void *old_addr = ptrace_ripat(child, writing_map);
   for (long unsigned i = 0; i < nb_pages_to_allocate; i++)
     if (!is_mru(from + PAGESIZE * i))
       protect(child, round_to_page(from + PAGESIZE * i), PAGESIZE);
-  ptrace_ripat(child, old_addr);
 
   ptrace_syscall(child);
 
@@ -328,11 +320,6 @@ static void tracer_lock_mem(pid_t pid) {
 
     debug_print("%s", buf);
     sscanf(buf, "%p-%p", &start, &end);
-
-    /* Special place where injected code will be put and execute  */
-    /* this memory need to be writable and executable  */
-    if (start == writing_map)
-      continue;
 
     /* Ignore libdump mem zones  */
     if (strstr(buf, "libcere_dump.so") != NULL)
@@ -482,7 +469,7 @@ static void dump_arg(pid_t pid) {
 
 static void read_args(pid_t pid) {
 
-  receive_string_from_tracee(pid, str_tmp_tracee, loop_name, SIZE_LOOP);
+  receive_string_from_tracee(pid, tracer_buff.str_tmp, loop_name, SIZE_LOOP);
   invocation = (int)receive_from_tracee(pid);
   count = (int)receive_from_tracee(pid);
 
@@ -503,10 +490,6 @@ static void tracer_init(pid_t pid) {
   create_dump_dir();
   ptrace_syscall(pid);
 
-  writing_map = (void *)receive_from_tracee(pid);
-  str_tmp_tracee = writing_map + OFFSET_STR;
-
-  debug_print("STRING TMP : %p\n", str_tmp_tracee);
   debug_print("%s\n", "TRACER INIT DONE");
 }
 
@@ -515,6 +498,9 @@ int main(int argc, char *argv[]) {
   pid_t child = 0;
 
   child = atoi(argv[1]);
+  sscanf(argv[2], "%p", &tracer_buff.syscall);
+  sscanf(argv[3], "%p", &tracer_buff.unprotect_protect);
+  sscanf(argv[4], "%p", &tracer_buff.str_tmp);
 
   tracer_init(child);
   debug_print("%s\n", "******* TRACER_UNLOCKED");
@@ -524,10 +510,8 @@ int main(int argc, char *argv[]) {
   wait_sigtrap(child);
   debug_print("%s\n", "******* Start Locking");
 
-  unprotect(child, round_to_page(writing_map), PAGESIZE);
-  void *old_addr = ptrace_ripat(child, writing_map);
+  /* unprotect(child, round_to_page(&writing_buff), PAGESIZE); */
   tracer_lock_mem(child);
-  ptrace_ripat(child, old_addr);
 
   debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;

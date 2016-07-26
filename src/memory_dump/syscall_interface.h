@@ -25,7 +25,8 @@
 
 void protect(pid_t pid, char *start, size_t size);
 void unprotect(pid_t pid, char *start, size_t size);
-void unprotect_state(pid_t pid, char *start, size_t size);
+void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
+                       size_t size_p);
 void write_page(pid_t pid, int fd, const void *buf, size_t nbyte);
 int openat_i(pid_t pid, char *pathname);
 void close_i(pid_t pid, int fd);

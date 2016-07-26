@@ -40,15 +40,19 @@
 
 #ifdef __x86_64__
 
+#define NB_MAX_ARGS 6
+
 /* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
 /* ────────────────────────────────────────────────────────── */
 /* x86_64     rdi    rsi    rdx    r10    r8     r9      -    */
-
 static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
                                  ...) {
 
-  /* We do the backup of registers */
+  /* If we have more than 6 arguments, we must put them on the stack */
+  /* For the moment, we don't handle this case  */
+  assert(NB_MAX_ARGS >= nb_args);
 
+  /* We do the backup of registers */
   long r;
   register_t ret;
   struct user_regs_struct regs, regs_backup;
@@ -62,29 +66,25 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   va_list vargs;
   va_start(vargs, syscallid);
 
-  /* If we have more than 7 arguments, we must put them on the stack */
-  /* For the moment, we don't handle this case  */
-  long long unsigned *regs_ptr[] = {&(regs.rdi), &(regs.rsi), &(regs.rdx),
-                                    &(regs.r10), &(regs.r8),  &(regs.r9)};
-  size_t nb_max_args = sizeof(regs_ptr) / sizeof(register_t);
-  assert(nb_max_args >= nb_args);
+  long long unsigned *regs_ptr[NB_MAX_ARGS] = {&(regs.rdi), &(regs.rsi),
+                                               &(regs.rdx), &(regs.r10),
+                                               &(regs.r8),  &(regs.r9)};
 
+  regs.rip = (register_t)tracer_buff.syscall;
   regs.rax = syscallid;
+
+  if (syscallid == SYS_unprotect_protect) {
+    regs.rip = (register_t)tracer_buff.unprotect_protect;
+    regs.rax = SYS_mprotect;
+    regs.r12 = SYS_mprotect;
+    regs_ptr[3] = &(regs.r13);
+    regs_ptr[4] = &(regs.r14);
+    regs_ptr[5] = &(regs.r15);
+  }
+
   for (i = 0; i < nb_args; i++)
     *(regs_ptr[i]) = (register_t)va_arg(vargs, void *);
   va_end(vargs);
-
-  /* We will inject syscall code */
-
-  int len = 3;
-  char backup_instr[len];
-
-  /* 0f 05 syscall */
-  /* cc    int $3 (SIGTRAP)  */
-  char inject_instr[] = "\x0f\x05\xcc";
-
-  ptrace_getdata(pid, regs.rip, backup_instr, len);
-  ptrace_putdata(pid, regs.rip, inject_instr, len);
 
   ptrace_setregs(pid, &regs);
 
@@ -93,7 +93,7 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
 
   ptrace_getregs(pid, &regs);
   ret = regs.rax;
-  ptrace_putdata(pid, regs_backup.rip, backup_instr, len);
+
   ptrace_setregs(pid, &regs_backup);
 
   return ret;
@@ -206,6 +206,18 @@ void unprotect(pid_t pid, char *start, size_t size) {
   debug_print("TO BE UNPROTECTED :  %p (%lu)\n", start, size);
   register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
                                   (PROT_READ | PROT_WRITE | PROT_EXEC));
+  assert(ret == 0);
+}
+
+void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
+                       size_t size_p) {
+  debug_print("TO BE UNPROTECTED :  %p (%lu) ... ", start_u, size_u);
+  debug_print("TO BE PROTECTED :  %p (%lu)\n", start_p, size_p);
+  register_t ret = inject_syscall(pid, 6, SYS_unprotect_protect, start_u,
+                                  size_u, (PROT_READ | PROT_WRITE | PROT_EXEC),
+                                  start_p, size_p, PROT_NONE);
+  if (tracer_state == TRACER_LOCKED && ret == -ENOMEM)
+    return;
   assert(ret == 0);
 }
 
