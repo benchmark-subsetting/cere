@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -45,12 +46,25 @@ static int times_called = 0;
 static bool dump_initialized;
 volatile static bool kill_after_dump = false;
 
+struct tracee_buff_t tracee_buff = {
+    .syscall = "\x0f\x05"               /* syscall          */
+               "\xcc",                  /* int $3 (SIGTRAP) */
+    .unprotect_protect = "\x0f\x05"     /* syscall          */
+                         "\x48\x89\xc3" /* mov    %rax,%rbx */
+                         "\x4c\x89\xe0" /* mov    %r12,%rax */
+                         "\x4c\x89\xef" /* mov    %r13,%rdi */
+                         "\x4c\x89\xf6" /* mov    %r14,%rsi */
+                         "\x4c\x89\xfa" /* mov    %r15,%rdx */
+                         "\x0f\x05"     /* syscall          */
+                         "\x49\x09\xd8" /* or     %rbx,%rax */
+                         "\xcc"         /* int $3 (SIGTRAP) */
+};
+
 void *(*real_malloc)(size_t);
 void *(*real_calloc)(size_t nmemb, size_t size);
 void *(*real_realloc)(void *ptr, size_t size);
 void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
-char writing_buff[PAGESIZE] __attribute__((aligned(PAGESIZE)));
 
 void dump_init(void) {
 
@@ -60,7 +74,7 @@ void dump_init(void) {
   /* Copy the original binary */
   char buf[BUFSIZ];
   snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
-  system(buf);
+  int ret = system(buf);
 
   /* configure atexit */
   atexit(dump_close);
@@ -75,9 +89,16 @@ void dump_init(void) {
 
   /* If we are the parent */
   if (child != 0) {
-    char child_str[16];
-    snprintf(child_str, sizeof(child_str), "%d", child);
-    execlp("cere-tracer", "cere-tracer", child_str, (char *)NULL);
+
+    char args[5][32];
+    snprintf(args[0], sizeof(args[0]), "%d", child);
+    snprintf(args[1], sizeof(args[1]), "%p", tracee_buff.syscall);
+    snprintf(args[2], sizeof(args[2]), "%p", tracee_buff.unprotect_protect);
+    snprintf(args[3], sizeof(args[3]), "%p", tracee_buff.str_tmp);
+
+    char *const arg[] = {"cere-tracer", args[0], args[1],
+                         args[2],       args[3], NULL};
+    execvp("cere-tracer", arg);
     errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
     return;
 
@@ -87,11 +108,12 @@ void dump_init(void) {
     if (d == -1)
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
 
+    int ret = mprotect(round_to_page(&tracee_buff), PAGESIZE,
+                       (PROT_READ | PROT_WRITE | PROT_EXEC));
+    assert(ret == 0);
+
     ptrace_me();
     raise(SIGSTOP);
-
-    /* Send memeory map address use to inject code */
-    send_to_tracer((register_t)(&writing_buff));
 
     /* Must be conserved ? */
     dump_initialized = true;
@@ -133,7 +155,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   mtrace_active = false;
 
   /* Send args */
-  strcpy(writing_buff + OFFSET_STR, loop_name);
+  strcpy(tracee_buff.str_tmp, loop_name);
   send_to_tracer(0);
   send_to_tracer(invocation);
   send_to_tracer(count);

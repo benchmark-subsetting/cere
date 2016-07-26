@@ -28,10 +28,13 @@
 #define LOG_SIZE 64
 #define SIZE_LOOP 256
 #define CALLOC_INIT 512
-#define OFFSET_STR 0x100 /* Offset for write string */
 
-#define SYS_dump (INT_MAX-1)
-#define SYS_hook (INT_MAX-2)
+#define SYS_dump (INT_MAX - 1)
+#define SYS_hook (INT_MAX - 2)
+#define SYS_unprotect_protect (INT_MAX - 3)
+
+#define SIZE_SYSCALL_BIN (3 + 1)
+#define SIZE_UNPROTECT_PROTECT_BIN (23 + 1)
 
 enum tracer_state_t {
   TRACER_UNLOCKED = 1,
@@ -40,5 +43,21 @@ enum tracer_state_t {
 };
 
 extern enum tracer_state_t tracer_state;
+
+struct tracee_buff_t {
+  char syscall[SIZE_SYSCALL_BIN];
+  char unprotect_protect[SIZE_UNPROTECT_PROTECT_BIN];
+  char str_tmp[MAX_PATH];
+} __attribute__((packed));
+
+extern struct tracee_buff_t tracee_buff;
+
+struct tracer_buff_t {
+  char *syscall;
+  char *unprotect_protect;
+  char *str_tmp;
+};
+
+extern struct tracer_buff_t tracer_buff;
 
 #endif /* __TYPES__H */

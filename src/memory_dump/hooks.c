@@ -151,8 +151,8 @@ static void touch_string(const char *str) {
  */
 static void touch_mem(const void *mem, size_t size, size_t nmemb) {
   size_t i;
-  char* last = ((char*)mem)+size*nmemb-1;
-  for (char *c = (char*) mem; c <= last; c+=PAGESIZE) {
+  char *last = ((char *)mem) + size * nmemb - 1;
+  for (char *c = (char *)mem; c <= last; c += PAGESIZE) {
     volatile char touched = *c;
   }
   volatile char touched = *last;
