@@ -90,8 +90,6 @@ def add_node(digraph, matchObj):
         valid = False
 
     digraph.add_node(_id, _name = name)
-    digraph.graph['coverage'] = 0
-    digraph.graph['selector'] = None
     digraph.node[_id]['_self_coverage'] = float(matchObj.group(4))
     digraph.node[_id]['_coverage'] = coverage
     digraph.node[_id]['_matching'] = False
@@ -206,6 +204,8 @@ def create_graph(force):
     cmd = subprocess.Popen("{0} -dot {1} {2}".format(var.PPROF, binary, profile_file), shell=True, stdout=subprocess.PIPE)
 
     digraph = nx.DiGraph()
+    digraph.graph['coverage'] = 0
+    digraph.graph['selector'] = None
     samples, digraph = parse_gPerfTool(digraph, cmd, regex_list)
     plot(digraph, "debug")
     digraph = remove_cycles(digraph, samples)
