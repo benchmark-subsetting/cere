@@ -276,8 +276,7 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
       if (!startFunction) {
         Function *func_start =
             createFunction(FuncTy_1, mod, "cere_markerStartRegion");
-        CallInst *start =
-            CallInst::Create(func_start, funcParameter, "", &firstBB->front());
+        CallInst::Create(func_start, funcParameter, "", &firstBB->front());
       }
       // Create stop function if it does not exists yet
       if (!stopFunction) {

@@ -23,14 +23,18 @@ prediction or piecewise code optimization.
 Please follow the instructions in
 [INSTALL.md](https://github.com/benchmark-subsetting/cere/blob/master/INSTALL.md).
 
+For OpenMP support please switch to OpenMP branch and follow the instructions in
+[INSTALL.md](https://github.com/benchmark-subsetting/cere/blob/OpenMP/INSTALL.md).
+
 ### Supported platforms
 
 For now CERE only supports the Linux operating system. We have tested different
 versions of kernels in the 2.6 series. CERE has been tested mainly on x86_64
-Debian and Ubuntu distributions using llvm 3.3 and gcc-4.7.
+Debian and Ubuntu distributions. It has been tested mainly with LLVM versions ranging
+from 3.3 to 3.5. But the OpenMP branch works with LLVM 3.8.
 
 CERE capture and replay is performed in user mode, but requires that
-`/proc/sys/kernel/randomize_va_space` is set to 1. This is the default on most
+`/proc/sys/kernel/randomize_va_space` is set to 1 or 2. This is the default on most
 linux distribution.
 
 CERE is an alpha release, if you experience bugs during capture and

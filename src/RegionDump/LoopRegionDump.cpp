@@ -195,13 +195,13 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   std::vector<Value *> funcParameter =
       createDumpFunctionParameters(mod, currFunc, PredBB, InvocationToDump);
 
-  // Call dup function just before the region
+  // Call dump function just before the region
   CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
   // Call after dump in each exit blocks
   for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
                                                E = exitblocks.end();
        I != E; ++I) {
-    CallInst::Create(func_after_dump, "", &((*I)->front()));
+    CallInst::Create(func_after_dump, "", &(*I)->front());
   }
 
   return true;

@@ -36,12 +36,12 @@
 #define CACHE_SIZE_MB 20
 
 void cacheflush(void) {
-    const size_t size = CACHE_SIZE_MB*1024*1024;
-    int i, j;
-    char *c = malloc(size);
-    for (i = 0; i < 5; i++)
-      for (j = 0; j < size; j++)
-        c[j] = i*j;
+  const size_t size = CACHE_SIZE_MB * 1024 * 1024;
+  int i, j;
+  char *c = malloc(size);
+  for (i = 0; i < 5; i++)
+    for (j = 0; j < size; j++)
+      c[j] = i * j;
 }
 
 /**********************************************************************
@@ -63,21 +63,17 @@ static int hotpages_counter = 0;
 
 static int type_of_warmup = 0;
 
-char *get_filename_ext(const char *filename) {
+static char *get_filename_ext(const char *filename) {
   char *dot = strrchr(filename, '.');
   if (!dot || dot == filename)
     return "";
   return dot + 1;
 }
 
-char *get_filename_without_ext(char *filename) {
-  char *dot = strrchr(filename, '.');
-  if (!dot || dot == filename)
-    return filename;
-  int retstrlen = strlen(filename) - strlen(dot);
-  char *retstr = malloc(retstrlen + 1);
-  strncpy(retstr, filename, retstrlen);
-  return retstr;
+static off64_t get_address_from_filename(char *filename) {
+  off64_t address;
+  sscanf(filename, "%lx.", &address);
+  return address;
 }
 
 /* load: restores memory before replay
@@ -94,11 +90,9 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char *ge = getenv("CERE_WARMUP");
   if (ge && strcmp("COLD", ge) == 0) {
     type_of_warmup = WARMUP_COLD;
-  }
-  else if (ge && strcmp("PAGETRACE", ge) == 0) {
+  } else if (ge && strcmp("PAGETRACE", ge) == 0) {
     type_of_warmup = WARMUP_PAGETRACE;
-  }
-  else {
+  } else {
     /* WARMUP_WORKLOAD is the default warmup */
     type_of_warmup = WARMUP_WORKLOAD;
   }
@@ -181,8 +175,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       exit(EXIT_FAILURE);
     }
 
-    off64_t address;
-    sscanf(get_filename_without_ext(ent->d_name), "%lx", &address);
+    off64_t address = get_address_from_filename(ent->d_name);
 
     int read_bytes = 0;
     while ((len = read(fp, (char *)(address + read_bytes), PAGESIZE)) > 0) {
@@ -195,7 +188,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       if ((warmup[i] >= (char *)address) &&
           (warmup[i] < ((char *)address + read_bytes))) {
         valid[i] = true;
-        //printf("warmup = %p\n", warmup[i]);
+        // printf("warmup = %p\n", warmup[i]);
       }
     }
 
@@ -214,7 +207,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   for (int i = start; i < hotpages_counter; i++) {
     if (!valid[i]) {
       warmup[i] =
-          &cold[((unsigned long long) warmup[i]) % ((MAX_COLD - 1) * PAGESIZE)];
+          &cold[((unsigned long long)warmup[i]) % ((MAX_COLD - 1) * PAGESIZE)];
     }
   }
 
@@ -239,5 +232,4 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     for (char *j = warmup[i]; j < warmup[i] + PAGESIZE; j++)
       __builtin_prefetch(j);
   }
-
 }

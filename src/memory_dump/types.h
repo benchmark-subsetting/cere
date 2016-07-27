@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2013-2015, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -16,27 +16,48 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#ifndef __TYPES__H
+#define __TYPES__H
 
-extern void init_io_detection(char*);
-extern void close_io_detection(void);
-extern void start_io_detection(char*);
-extern void stop_io_detection(char*);
+#include <limits.h>
 
-void cere_markerInit(char* filename) {
-    init_io_detection(filename);
-}
+#define PAST_INV 30
+#define MAX_PATH 256
+#define MAX_IGNORE 32
+#define TRACE_SIZE (16384 * 100)
+#define LOG_SIZE 64
+#define SIZE_LOOP 256
+#define CALLOC_INIT 512
 
-void cere_markerClose() {
-    close_io_detection();
-}
+#define SYS_dump (INT_MAX - 1)
+#define SYS_hook (INT_MAX - 2)
+#define SYS_unprotect_protect (INT_MAX - 3)
 
-void cere_markerStartRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc) {
-    start_io_detection(regName);
-}
+#define SIZE_SYSCALL_BIN (3 + 1)
+#define SIZE_UNPROTECT_PROTECT_BIN (23 + 1)
 
-void cere_markerStopRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc) {
-    stop_io_detection(regName);
-}
+enum tracer_state_t {
+  TRACER_UNLOCKED = 1,
+  TRACER_LOCKED = 2,
+  TRACER_DUMPING = 3
+};
+
+extern enum tracer_state_t tracer_state;
+
+struct tracee_buff_t {
+  char syscall[SIZE_SYSCALL_BIN];
+  char unprotect_protect[SIZE_UNPROTECT_PROTECT_BIN];
+  char str_tmp[MAX_PATH];
+} __attribute__((packed));
+
+extern struct tracee_buff_t tracee_buff;
+
+struct tracer_buff_t {
+  char *syscall;
+  char *unprotect_protect;
+  char *str_tmp;
+};
+
+extern struct tracer_buff_t tracer_buff;
+
+#endif /* __TYPES__H */

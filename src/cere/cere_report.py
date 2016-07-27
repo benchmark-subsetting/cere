@@ -340,7 +340,7 @@ class Report:
         If not the child._parent is changed to "none"
         '''
         if (len(self._tree) == 0):
-            raise MyError("/selected_codelets empty")
+            logger.error("No codelets selected")
         for node in self._tree:
             if (node._parent is not "none"):
                 orphan = True
