@@ -10,7 +10,7 @@ OBJS = test.o
 PROGRAM=test
 
 ${PROGRAM}: ${OBJS}
-	${FLINK} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB} 
+	${FLINK} ${FLAGS} -o ${PROGRAM} ${OBJS} ${F_LIB}
 
 %.o: %.c
 	${CC} ${FLAGS} -c $<
