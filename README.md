@@ -1,6 +1,6 @@
 # CERE v0.2.2
 
-[![Build Status](https://travis-ci.org/benchmark-subsetting/cere.svg?branch=master)](https://travis-ci.org/benchmark-subsetting/cere)
+[![Build Status](https://travis-ci.org/benchmark-subsetting/cere.svg?branch=OpenMP)](https://travis-ci.org/benchmark-subsetting/cere)
 
 [Codelet Extractor and REplayer
 (CERE)](https://benchmark-subsetting.github.io/cere/) is an open source framework
@@ -21,9 +21,6 @@ prediction or piecewise code optimization.
 ### Installation
 
 Please follow the instructions in
-[INSTALL.md](https://github.com/benchmark-subsetting/cere/blob/master/INSTALL.md).
-
-For OpenMP support please switch to OpenMP branch and follow the instructions in
 [INSTALL.md](https://github.com/benchmark-subsetting/cere/blob/OpenMP/INSTALL.md).
 
 ### Supported platforms
@@ -31,7 +28,8 @@ For OpenMP support please switch to OpenMP branch and follow the instructions in
 For now CERE only supports the Linux operating system. We have tested different
 versions of kernels in the 2.6 series. CERE has been tested mainly on x86_64
 Debian and Ubuntu distributions. It has been tested mainly with LLVM versions ranging
-from 3.3 to 3.5. But the OpenMP branch works with LLVM 3.8.
+from 3.3 to 3.5. But the OpenMP branch works with LLVM 3.8 and doest not support
+Fortran code.
 
 CERE capture and replay is performed in user mode, but requires that
 `/proc/sys/kernel/randomize_va_space` is set to 1 or 2. This is the default on most
@@ -43,7 +41,7 @@ replay please report them using the issue tracker. Thanks !
 ### Documentation
 
 New users should start by reading [CERE
-tutorial](https://github.com/benchmark-subsetting/cere/blob/master/doc/cere-tutorial.1.md).
+tutorial](https://github.com/benchmark-subsetting/cere/blob/OpenMP/doc/cere-omp-tutorial.1.md).
 
 Once installation is complete, a set of man pages for cere commands is available
 in the `doc/` directory. To check a command use `man -M <cere-path>/doc
