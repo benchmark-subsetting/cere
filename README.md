@@ -38,7 +38,7 @@ CERE capture and replay is performed in user mode, but requires that
 linux distribution.
 
 CERE is an alpha release, if you experience bugs during capture and
-replay please report them using the issue tracker. Thanks !
+replay please report them using the issue tracker. Thanks!
 
 ### Documentation
 
