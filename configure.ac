@@ -24,6 +24,7 @@ AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
 
 AX_LLVM([3.3],[3.5.2],[all])
+AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
 AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
 AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))

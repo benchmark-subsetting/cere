@@ -1,5 +1,4 @@
-LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags)
-libcere_regionoutliner_la_CXXFLAGS = $(LLVMCXXFLAGS)
+libcere_regionoutliner_la_CXXFLAGS = @LLVM_CPPFLAGS@
 
 
 lib_LTLIBRARIES = libcere_regionoutliner.la
