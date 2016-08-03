@@ -1,5 +1,4 @@
-LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags)
-libcere_globalrename_la_CXXFLAGS = $(LLVMCXXFLAGS)
+libcere_globalrename_la_CXXFLAGS = @LLVM_CPPFLAGS@
 
 
 lib_LTLIBRARIES = libcere_globalrename.la

@@ -83,6 +83,7 @@ AC_DEFUN([AX_LLVM],
   LLVM_BINDIR=`$LLVM_CONFIG --bindir`
   AC_DEFINE_UNQUOTED([LLVM_BINDIR], ["$LLVM_BINDIR"], [The llvm bin dir])
   LLVM_CPPFLAGS=`$LLVM_CONFIG --cxxflags`
+  AC_DEFINE_UNQUOTED([LLVM_CPPFLAGS], ["$LLVM_CPPFLAGS"], [The llvm CPPFLAGS])
   if test "$LLVM_VERSION_MINOR" = 5; then
     LLVM_LDFLAGS=`$LLVM_CONFIG --system-libs`
   else
