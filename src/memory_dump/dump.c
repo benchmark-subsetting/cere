@@ -28,12 +28,12 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "err.h"
 #include "pages.h"
-#include "ptrace.h"
 #include "syscall_interface.h"
 #include "types.h"
 
@@ -41,6 +41,12 @@
 #undef _DEBUG
 
 #include "debug.h"
+
+void ptrace_me(void) {
+  if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1) {
+    errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
+  }
+}
 
 static int times_called = 0;
 static bool dump_initialized;

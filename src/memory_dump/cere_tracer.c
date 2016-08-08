@@ -36,7 +36,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+//#undef _DEBUG
 
 #include "debug.h"
 
@@ -142,7 +142,10 @@ static void mru_handler(int pid, void *start_of_page) {
   debug_print("MRU Detected access at %p\n", start_of_page);
 
   bool present = is_mru(start_of_page);
-  assert(present == false);
+  if (present) {
+    return;
+  }
+  //assert(present == false);
 
   if (pages_cache[last_page] != 0) {
     /* add the evicted page to the trace */
@@ -199,43 +202,47 @@ static void handle_syscall(pid_t child) {
     }
   }
 }
-/* Catch all for other syscalls (not IO ones)*/
 
-static siginfo_t wait_sigtrap(pid_t child) {
+/* Catch all for other syscalls (not IO ones)*/
+static pid_t wait_sigtrap(pid_t wait_for, siginfo_t * sig) {
   while (true) {
-    siginfo_t sig = wait_process(child);
-    if (sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP | 0x80)) {
-      if (tracer_state == TRACER_LOCKED && is_hook_sigtrap(child)) {
-        tracer_lock_range(child);
+    pid_t pid = wait_process(wait_for, sig);
+    if (sig->si_signo == SIGTRAP || sig->si_signo == (SIGTRAP | 0x80)) {
+      if (tracer_state == TRACER_LOCKED && is_hook_sigtrap(pid)) {
+        tracer_lock_range(pid);
         continue;
-      } else if (is_dump_sigtrap(child)) {
-        return sig;
+      } else if (is_dump_sigtrap(pid)) {
+        return pid;
       } else { // If we arrive here, it is a syscall
-        handle_syscall(child);
-        ptrace_syscall(child);
+        handle_syscall(pid);
+        ptrace_syscall(pid);
         continue;
       }
-    } else if (sig.si_signo == SIGSEGV) {
-      void *addr = round_to_page(sig.si_addr);
+    } else if (sig->si_signo == SIGSEGV) {
+      void *addr = round_to_page(sig->si_addr);
       switch (tracer_state) {
       case TRACER_UNLOCKED:
         /* We should never get a sigsegv in unlocked state ! */
         errx(EXIT_FAILURE,
              "SIGSEGV at %p before locking memory during capture\n",
-             sig.si_addr);
+             sig->si_addr);
       case TRACER_LOCKED:
-        mru_handler(child, addr);
+        mru_handler(pid, addr);
         break;
       case TRACER_DUMPING:
-        dump_handler(child, addr);
+        dump_handler(pid, addr);
         break;
       default:
         assert(false); /* we should never be here */
       }
-      ptrace_syscall(child);
+      ptrace_syscall(pid);
+    } else if (sig->si_signo == SIGSTOP) {
+      debug_print("%s\n", "Cleared SIGSTOP");
+      // Non cleared SIGSTOP after a stop-all
+      continue;
     } else {
       errx(EXIT_FAILURE, "Error after lock_mem and before dump %s\n",
-           strerror(sig.si_signo));
+           strerror(sig->si_signo));
     }
   }
   debug_print("%s", "\n");
@@ -244,7 +251,8 @@ static siginfo_t wait_sigtrap(pid_t child) {
 static register_t receive_from_tracee(pid_t child) {
   register_t ret;
   siginfo_t sig;
-  sig = wait_sigtrap(child);
+  debug_print("receive from tracee %d\n", child);
+  wait_sigtrap(child, &sig);
   assert(sig.si_signo == SIGTRAP || sig.si_signo == (SIGTRAP | 0x80));
   ret = get_arg_from_regs(child);
   ptrace_syscall(child);
@@ -253,9 +261,12 @@ static register_t receive_from_tracee(pid_t child) {
 
 static void receive_string_from_tracee(pid_t child, char *src_tracee,
                                        void *dst_tracer, size_t size) {
-  wait_sigtrap(child);
+  siginfo_t sig;
+  debug_print("receive string from tracee %d\n", child);
+  wait_sigtrap(-1, &sig);
   ptrace_getdata(child, (long)src_tracee, dst_tracer, size);
   ptrace_syscall(child);
+  debug_print("DONE receiving string from tracee\n", child);
 }
 
 static void tracer_lock_range(pid_t child) {
@@ -268,7 +279,8 @@ static void tracer_lock_range(pid_t child) {
   void *from = (void *)receive_from_tracee(child);
   void *to = (void *)receive_from_tracee(child);
   /* We need that the process be stopped to protect  */
-  wait_process(child);
+  siginfo_t sig;
+  wait_process(child, &sig);
 
   long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
 
@@ -442,7 +454,8 @@ static void dump_arg(pid_t pid) {
     addresses[i] = (void *)receive_from_tracee(pid);
 
   /* Wait for end of arguments sigtrap */
-  wait_sigtrap(pid);
+  siginfo_t sig;
+  wait_sigtrap(pid, &sig);
 
   /* Dump hotpages to disk */
   flush_hot_pages_trace_to_disk(pid);
@@ -484,8 +497,8 @@ static void tracer_dump(pid_t pid) {
 }
 
 static void tracer_init(pid_t pid) {
-
-  wait_process(pid);
+  siginfo_t sig;
+  wait_process(pid, &sig);
   ptrace_attach(pid);
   create_dump_dir();
   ptrace_syscall(pid);
@@ -496,6 +509,7 @@ static void tracer_init(pid_t pid) {
 int main(int argc, char *argv[]) {
 
   pid_t child = 0;
+  siginfo_t sig;
 
   child = atoi(argv[1]);
   sscanf(argv[2], "%p", &tracer_buff.syscall);
@@ -507,25 +521,28 @@ int main(int argc, char *argv[]) {
   tracer_state = TRACER_UNLOCKED;
 
   /* Wait for lock_mem trap */
-  wait_sigtrap(child);
+  pid_t locking_pid = wait_sigtrap(-1, &sig);
   debug_print("%s\n", "******* Start Locking");
 
-  /* unprotect(child, round_to_page(&writing_buff), PAGESIZE); */
-  tracer_lock_mem(child);
 
+  stop_all_except(locking_pid);
+  tracer_lock_mem(locking_pid);
   debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;
-  ptrace_syscall(child);
+
+  continue_all();
+
+  //ptrace_syscall(child);
 
   /* Dump arguments */
-  tracer_dump(child);
+  tracer_dump(locking_pid);
 
   debug_print("%s\n", "******* TRACER_DUMPING");
   tracer_state = TRACER_DUMPING;
-  ptrace_syscall(child);
+  continue_all();
 
   while (1) {
-    wait_sigtrap(child);
+    wait_sigtrap(-1, &sig);
   }
 
   ptrace_detach(child);

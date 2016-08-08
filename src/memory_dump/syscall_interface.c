@@ -34,7 +34,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+//#undef _DEBUG
 
 #include "debug.h"
 
@@ -89,7 +89,8 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   ptrace_setregs(pid, &regs);
 
   ptrace_cont(pid);
-  wait_process(pid);
+  siginfo_t sig;
+  wait_process(pid, &sig);
 
   ptrace_getregs(pid, &regs);
   ret = regs.rax;

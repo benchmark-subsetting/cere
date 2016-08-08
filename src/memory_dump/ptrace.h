@@ -36,7 +36,6 @@ void ptrace_setregs(pid_t pid, struct user_regs_struct *regs);
 void ptrace_getregs(pid_t pid, struct user_regs_struct *regs);
 void ptrace_attach(pid_t pid);
 void ptrace_detach(pid_t pid);
-void ptrace_me(void);
 void ptrace_singlestep(pid_t pid);
 
 /* attach_all_threads: attach all the threads ids passed in tid */
@@ -55,9 +54,11 @@ void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
 void *ptrace_ripat(pid_t pid, void *addr);
 
 void ptrace_syscall(pid_t pid);
-void ptrace_syscall_flag(pid_t pid, int flag);
 
-siginfo_t wait_process(pid_t pid);
+pid_t wait_process(pid_t pid, siginfo_t * siginfo);
+
+void stop_all_except(pid_t pid);
+void continue_all(void);
 
 /* Debug functions */
 void print_registers(FILE *const out, struct user_regs_struct *regs,
