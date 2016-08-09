@@ -84,8 +84,10 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
     regs_ptr[5] = &(regs.r15);
   }
 
-  for (i = 0; i < nb_args; i++)
-    *(regs_ptr[i]) = (register_t)va_arg(vargs, void *);
+  for (i = 0; i < nb_args; i++) {
+    *(regs_ptr[i]) = va_arg(vargs, long long unsigned);
+
+  }
   va_end(vargs);
 
   ptrace_setregs(pid, &regs);
@@ -93,7 +95,6 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   ptrace_cont(pid);
   siginfo_t sig;
   wait_process(pid, &sig);
-
   ptrace_getregs(pid, &regs);
   ret = regs.rax;
 
@@ -197,7 +198,8 @@ void inject_syscall(int syscallid, pid_t tid,
 
 void protect(pid_t pid, char *start, size_t size) {
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start, size);
-  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size, PROT_NONE);
+  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
+          (long long unsigned) PROT_NONE);
   /* We can try to protect a page that has been removed from memory */
   /* beetween the lock_mem() and dumping args */
   if (tracer_state == TRACER_LOCKED && ret == -ENOMEM)
@@ -208,7 +210,7 @@ void protect(pid_t pid, char *start, size_t size) {
 void unprotect(pid_t pid, char *start, size_t size) {
   debug_print("TO BE UNPROTECTED :  %p (%lu)\n", start, size);
   register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
-                                  (PROT_READ | PROT_WRITE | PROT_EXEC));
+                  (long long unsigned) (PROT_READ | PROT_WRITE | PROT_EXEC));
   assert(ret == 0);
 }
 
@@ -217,9 +219,10 @@ void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
   debug_print("TO BE UNPROTECTED :  %p (%lu) ... ", start_u, size_u);
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start_p, size_p);
   register_t ret = inject_syscall(pid, 6, SYS_unprotect_protect,
-                                  start_p, size_p, PROT_NONE,
-                                  start_u, size_u,
-                                       (PROT_READ | PROT_WRITE | PROT_EXEC));
+                  start_p, size_p,
+                  (long long unsigned) PROT_NONE,
+                  start_u, size_u,
+                  (long long unsigned) (PROT_READ | PROT_WRITE | PROT_EXEC));
 
   if (ret != 0) {
     errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
@@ -239,7 +242,7 @@ void write_page(pid_t pid, int fd, const void *buf, size_t nbyte) {
 int openat_i(pid_t pid, char *pathname) {
   debug_print("%s\n", "TO BE OPEN");
   register_t ret = inject_syscall(pid, 4, SYS_openat, AT_FDCWD, pathname,
-                                  (O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
+                 (long long unsigned) (O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
   assert((int)ret > 0);
   return ret;
 }
