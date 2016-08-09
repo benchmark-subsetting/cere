@@ -184,116 +184,29 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
   str[len] = '\0';
 }
 
-size_t get_tids(pid_t **const listptr, size_t *const sizeptr, const pid_t pid)
-{
-    char     dirname[64];
-    DIR     *dir;
-    pid_t   *list;
-    size_t   size, used = 0;
-
-    if (!listptr || !sizeptr || pid < (pid_t)1) {
-        errno = EINVAL;
-        return (size_t)0;
-    }
-
-    if (*sizeptr > 0) {
-        list = *listptr;
-        size = *sizeptr;
-    } else {
-        list = *listptr = NULL;
-        size = *sizeptr = 0;
-    }
-
-    if (snprintf(dirname, sizeof dirname, "/proc/%d/task/", (int)pid) >= (int)sizeof dirname) {
-        errno = ENOTSUP;
-        return (size_t)0;
-    }
-
-    dir = opendir(dirname);
-    if (!dir) {
-        errno = ESRCH;
-        return (size_t)0;
-    }
-
-    while (1) {
-        struct dirent *ent;
-        int            value;
-        char           dummy;
-
-        errno = 0;
-        ent = readdir(dir);
-        if (!ent)
-            break;
-
-        /* Parse TIDs. Ignore non-numeric entries. */
-        if (sscanf(ent->d_name, "%d%c", &value, &dummy) != 1)
-            continue;
-
-        /* Ignore obviously invalid entries. */
-        if (value < 1)
-            continue;
-
-        /* Make sure there is room for another TID. */
-        if (used >= size) {
-            size = (used | 127) + 128;
-            list = realloc(list, size * sizeof list[0]);
-            if (!list) {
-                closedir(dir);
-                errno = ENOMEM;
-                return (size_t)0;
-            }
-            *listptr = list;
-            *sizeptr = size;
-        }
-
-        /* Add to list. */
-        list[used++] = (pid_t)value;
-    }
-    if (errno) {
-        const int saved_errno = errno;
-        closedir(dir);
-        errno = saved_errno;
-        return (size_t)0;
-    }
-    if (closedir(dir)) {
-        errno = EIO;
-        return (size_t)0;
-    }
-
-    /* None? */
-    if (used < 1) {
-        errno = ESRCH;
-        return (size_t)0;
-    }
-
-    /* Make sure there is room for a terminating (pid_t)0. */
-    if (used >= size) {
-        size = used + 1;
-        list = realloc(list, size * sizeof list[0]);
-        if (!list) {
-            errno = ENOMEM;
-            return (size_t)0;
-        }
-        *listptr = list;
-        *sizeptr = size;
-    }
-
-    /* Terminate list; done. */
-    list[used] = (pid_t)0;
-    errno = 0;
-    return used;
-}
-
-
 void ptrace_attach(pid_t pid) {
-  tids[ntids++] = pid;
-  // XXX: must do with get_tids ? in case of helper thread
-  attach_all_threads(ntids, tids);
-}
 
-void ptrace_detach(pid_t pid) {
-  pid_t tids[] = {pid};
-  detach_all_threads(1, tids);
+  DIR *proc_dir;
+  char dirname[BUFSIZ];
+  snprintf(dirname, sizeof dirname, "/proc/%d/task", pid);
+  if (!(proc_dir = opendir(dirname))) {
+    errx(EXIT_FAILURE, "Error opening "
+      "/proc/%d/task : %s\n", pid, strerror(errno));
+  }
+
+  struct dirent *entry;
+  while ((entry = readdir(proc_dir)) != NULL) {
+    // ignore . and ..
+    if(entry->d_name[0] == '.')
+      continue;
+
+    int tid = atoi(entry->d_name);
+    tids[ntids++] = tid;
+    debug_print("read tid = %d\n", tid);
+  }
+  closedir(proc_dir);
+
+  attach_all_threads(ntids, tids);
 }
 
 void ptrace_putdata(pid_t child, long addr, char *str, int len) {
