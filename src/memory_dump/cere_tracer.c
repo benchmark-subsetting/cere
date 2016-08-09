@@ -36,7 +36,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-//#undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 

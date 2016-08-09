@@ -43,7 +43,7 @@
 #define WORDSIZE (sizeof(register_t))
 
 #define _DEBUG 1
-//#undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
@@ -95,62 +95,30 @@ void ptrace_interrupt(pid_t pid) {
   }
 }
 
-void attach_all_threads(int nbthread, pid_t tid[nbthread]) {
-  long t, r;
-  unsigned long c = 0L;
+static void attach_tids_and_set_ptrace_options(pid_t pid) {
+  int r;
 
-  /* Attach all threads  */
-  for (t = 0; t < nbthread; t++) {
-    do {
-      r = ptrace(PTRACE_SEIZE, tid[t], (void *)0, 0);
+  /* Attach all tids except main one which requested TRACEME in dump.c */
+  for (int t = 0; t < ntids; t++) {
+    if (tids[t] != pid) {
+      do {
+        r = ptrace(PTRACE_ATTACH, tids[t], (void *)0, 0);
+      } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
+                            errno == ESRCH));
+      if (r == -1L) {
+        errx(EXIT_FAILURE, "Cannot attach thread %d: %s\n",
+             tids[t], strerror(errno));
+      }
 
-#ifdef _DEBUG
-      if (c++ % 10000000 == 0)
-        debug_print("Try attach %d\n", tid[t]);
-#endif
-
-    } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
-                          errno == ESRCH));
-
-    ptrace(PTRACE_SETOPTIONS, tid[t], NULL, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
-
-
-
-    // XXX: Why do we do this. Should not we just fail  with
-    //  errx(EXIT_FAILURE, "Cannot attach thread %s\n", strerror(errno));
-    if (r == -1L) {
-      const int saved_errno = errno;
-      while (t-- > 0)
-        do {
-          r = ptrace(PTRACE_DETACH, tid[t], (void *)0, (void *)0);
-          debug_print("Detach of %d\n", tid[t]);
-        } while (r == -1L &&
-                 (errno == EBUSY || errno == EFAULT || errno == ESRCH));
-      errno = saved_errno;
-      break;
+      /* Wait for SIGSTOP */
+      siginfo_t sig;
+      wait_process(tids[t], &sig);
     }
+
+    ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
+           PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
+    debug_print("Attached to %d\n", tids[t]);
   }
-  debug_print("Attach to %d ... %d\n", tid[0], tid[nbthread - 1]);
-}
-
-void detach_all_threads(int nbthread, pid_t tid[nbthread]) {
-
-  long t, r;
-  unsigned long c = 0L;
-
-  /* Detach from all tasks. */
-  for (t = 0; t < nbthread; t++) {
-    do {
-      r = ptrace(PTRACE_DETACH, tid[t], (void *)0, (void *)0);
-
-#ifdef _DEBUG
-      if (c++ % 10000000 == 0)
-        debug_print("Try detach %d\n", tid[t]);
-#endif
-
-    } while (r == -1 && (errno == EBUSY || errno == EFAULT || errno != ESRCH));
-  }
-  debug_print("Detach of %d ... %d\n", tid[0], tid[nbthread - 1]);
 }
 
 void ptrace_getdata(pid_t child, long addr, char *str, int len) {
@@ -205,8 +173,7 @@ void ptrace_attach(pid_t pid) {
     debug_print("read tid = %d\n", tid);
   }
   closedir(proc_dir);
-
-  attach_all_threads(ntids, tids);
+  attach_tids_and_set_ptrace_options(pid);
 }
 
 void ptrace_putdata(pid_t child, long addr, char *str, int len) {
@@ -285,9 +252,6 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
   do {
     pid = waitpid(wait_for, &status, __WALL);
     sched_yield();
-    if (count++ % 100000000 == 0) {
-      debug_print("stuck in waitpid: %s\n", strerror(errno));
-    }
   } while (pid == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH ||
                         errno == EIO));
 

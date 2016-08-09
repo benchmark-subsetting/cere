@@ -38,7 +38,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-//#undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
@@ -47,17 +47,15 @@ static bool dump_initialized;
 volatile static bool kill_after_dump = false;
 
 struct tracee_buff_t tracee_buff = {
-    .syscall = "\x0f\x05"               /* syscall          */
-               "\xcc",                  /* int $3 (SIGTRAP) */
-    .unprotect_protect = "\x0f\x05"     /* syscall          */
-                         "\x48\x89\xc3" /* mov    %rax,%rbx */
-                         "\x4c\x89\xe0" /* mov    %r12,%rax */
-                         "\x4c\x89\xef" /* mov    %r13,%rdi */
-                         "\x4c\x89\xf6" /* mov    %r14,%rsi */
-                         "\x4c\x89\xfa" /* mov    %r15,%rdx */
-                         "\x0f\x05"     /* syscall          */
-                         "\x49\x09\xd8" /* or     %rbx,%rax */
-                         "\xcc"         /* int $3 (SIGTRAP) */
+    .syscall = "\x0f\x05"               /* syscall           */
+               "\xcc",                  /* int $3 (SIGTRAP)  */
+    .unprotect_protect = "\x0f\x05"     /* syscall protect   */
+                         "\x4c\x89\xe0" /* mov    %r12,%rax  */
+                         "\x4c\x89\xef" /* mov    %r13,%rdi  */
+                         "\x4c\x89\xf6" /* mov    %r14,%rsi  */
+                         "\x4c\x89\xfa" /* mov    %r15,%rdx  */
+                         "\x0f\x05"     /* syscall unprotect */
+                         "\xcc"         /* int $3 (SIGTRAP)  */
 };
 
 void *(*real_malloc)(size_t);

@@ -35,13 +35,7 @@ void ptrace_interrupt(pid_t pid);
 void ptrace_setregs(pid_t pid, struct user_regs_struct *regs);
 void ptrace_getregs(pid_t pid, struct user_regs_struct *regs);
 void ptrace_attach(pid_t pid);
-void ptrace_detach(pid_t pid);
 void ptrace_singlestep(pid_t pid);
-
-/* attach_all_threads: attach all the threads ids passed in tid */
-void attach_all_threads(int nbthread, pid_t tid[nbthread]);
-/* detach_all_threads: detach all the threads ids passed in tid */
-void detach_all_threads(int nbthread, pid_t tid[nbthread]);
 
 /* ptrace_getdata and ptrace_putdata write and read in the memory of a
  * tracee process */

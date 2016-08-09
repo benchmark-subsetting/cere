@@ -34,7 +34,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-//#undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
@@ -214,12 +214,13 @@ void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
                        size_t size_p) {
   debug_print("TO BE UNPROTECTED :  %p (%lu) ... ", start_u, size_u);
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start_p, size_p);
-  register_t ret = inject_syscall(pid, 6, SYS_unprotect_protect, start_u,
-                                  size_u, (PROT_READ | PROT_WRITE | PROT_EXEC),
-                                  start_p, size_p, PROT_NONE);
-  if (tracer_state == TRACER_LOCKED && ret == -ENOMEM)
-    return;
-  assert(ret == 0);
+  register_t ret = inject_syscall(pid, 6, SYS_unprotect_protect,
+                                  start_p, size_p, PROT_NONE,
+                                  start_u, size_u,
+                                       (PROT_READ | PROT_WRITE | PROT_EXEC));
+
+  /* it is ok here for reprotect to fail, when we reprotect a page that has
+     since been deallocated. */
 }
 
 void write_page(pid_t pid, int fd, const void *buf, size_t nbyte) {
