@@ -501,7 +501,7 @@ static void tracer_init(pid_t pid) {
   wait_process(pid, &sig);
   ptrace_attach(pid);
   create_dump_dir();
-  ptrace_syscall(pid);
+  continue_all();
 
   debug_print("%s\n", "TRACER INIT DONE");
 }

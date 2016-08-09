@@ -334,7 +334,7 @@ void stop_all_except(pid_t pid) {
   for (int i=0; i<ntids; i++) {
     if (tids[i] == pid) continue;
     debug_print("SEND SIGSTOP to %d\n", tids[i]);
-    int r = syscall(__NR_tkill, tids[i], SIGSTOP);
+    int r = syscall(SYS_tkill, tids[i], SIGSTOP);
     if (r != 0) {
       errx(EXIT_FAILURE, "tkill failed : %s\n", strerror(errno));
     }

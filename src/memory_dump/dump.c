@@ -38,15 +38,9 @@
 #include "types.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+//#undef _DEBUG
 
 #include "debug.h"
-
-void ptrace_me(void) {
-  if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1) {
-    errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
-  }
-}
 
 static int times_called = 0;
 static bool dump_initialized;
@@ -81,6 +75,9 @@ void dump_init(void) {
   char buf[BUFSIZ];
   snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
   int ret = system(buf);
+  if (ret != 0) {
+    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
+  }
 
   /* configure atexit */
   atexit(dump_close);
@@ -110,18 +107,27 @@ void dump_init(void) {
 
   } else {
 
-    int d = prctl(PR_SET_DUMPABLE, (long)1);
-    if (d == -1)
+    /* Give DUMPABLE capability, required by ptrace */
+    if (prctl(PR_SET_DUMPABLE, (long)1) != 0) {
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
+    }
 
-    int ret = mprotect(round_to_page(&tracee_buff), PAGESIZE,
-                       (PROT_READ | PROT_WRITE | PROT_EXEC));
-    assert(ret == 0);
+    /* Make tracee buff executable */
+    if (mprotect(round_to_page(&tracee_buff), PAGESIZE,
+                 (PROT_READ | PROT_WRITE | PROT_EXEC)) != 0) {
+      errx(EXIT_FAILURE, "Failed to make tracee buff executable : %s\n",
+           strerror(errno));
+    }
 
-    ptrace_me();
+    /* Request trace */
+    if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1) {
+      errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
+    }
+
+    debug_print("requesting ptrace from %d\n", getpid());
+
     raise(SIGSTOP);
 
-    /* Must be conserved ? */
     dump_initialized = true;
   }
 
