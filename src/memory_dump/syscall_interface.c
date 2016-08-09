@@ -20,11 +20,13 @@
 #include "syscall_interface.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/user.h>
@@ -219,8 +221,13 @@ void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
                                   start_u, size_u,
                                        (PROT_READ | PROT_WRITE | PROT_EXEC));
 
+  if (ret != 0) {
+    errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
+      start_u, ret);
+  }
+
   /* it is ok here for reprotect to fail, when we reprotect a page that has
-     since been deallocated. */
+     since been deallocated. Therefore we only check the result of unprotect */
 }
 
 void write_page(pid_t pid, int fd, const void *buf, size_t nbyte) {
