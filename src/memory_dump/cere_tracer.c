@@ -238,7 +238,7 @@ static pid_t wait_sigtrap(pid_t wait_for, siginfo_t * sig) {
       ptrace_syscall(pid);
     } else if (sig->si_signo == SIGSTOP) {
       debug_print("%s\n", "Cleared SIGSTOP");
-      // Non cleared SIGSTOP after a stop-all
+      ptrace_syscall(pid);
       continue;
     } else {
       errx(EXIT_FAILURE, "Error after lock_mem and before dump %s\n",
@@ -539,7 +539,7 @@ int main(int argc, char *argv[]) {
 
   debug_print("%s\n", "******* TRACER_DUMPING");
   tracer_state = TRACER_DUMPING;
-  continue_all();
+  ptrace_syscall(locking_pid);
 
   while (1) {
     wait_sigtrap(-1, &sig);

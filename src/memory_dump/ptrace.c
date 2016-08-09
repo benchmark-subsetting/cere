@@ -24,6 +24,7 @@
 #include <err.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sched.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -49,6 +50,7 @@
 #define MAX_TIDS 2048
 size_t ntids = 0;
 pid_t tids[MAX_TIDS];
+bool stopped[MAX_TIDS] = {false};
 bool pending[MAX_TIDS] = {false};
 siginfo_t sigs[MAX_TIDS] = {0};
 
@@ -58,10 +60,9 @@ void ptrace_getsiginfo(pid_t pid, siginfo_t *sig) {
 }
 
 void ptrace_cont(pid_t pid) {
-  int r = 0;
-  do {
-    r = ptrace(PTRACE_CONT, pid, NULL, NULL);
-  } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH));
+  if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
+    errx(EXIT_FAILURE, "ptrace_cont : %s\n", strerror(errno));
+  }
 }
 
 void ptrace_setregs(pid_t pid, struct user_regs_struct *regs) {
@@ -323,7 +324,8 @@ void ptrace_putdata(pid_t child, long addr, char *str, int len) {
 
 void continue_all(void) {
   for (int i=0; i<ntids; i++) {
-    ptrace_syscall(tids[i]);
+    if (!pending[i])
+      ptrace_syscall(tids[i]);
   }
   debug_print("%s\n", "--continue_all--");
 }
@@ -366,8 +368,13 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
     }
   }
 
+  int count = 0;
   do {
     pid = waitpid(wait_for, &status, __WALL);
+    sched_yield();
+    if (count++ % 100000000 == 0) {
+      debug_print("stuck in waitpid: %s\n", strerror(errno));
+    }
   } while (pid == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH ||
                         errno == EIO));
 
@@ -383,6 +390,7 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
           tids[i] = tids[ntids];
           sigs[i] = sigs[ntids];
           pending[i] = pending[ntids];
+          stopped[i] = stopped[ntids];
           if (wait_for == pid) {
             return pid;
           }
@@ -468,19 +476,20 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
 void ptrace_listen(pid_t pid) { ptrace(PTRACE_LISTEN, pid, 0, 0); }
 
 void ptrace_syscall(pid_t pid) {
-  assert(pid != -1);
+  /* assert(pid != -1); */
   int r;
-  int count = 0;
-  do {
+  /* int count = 0; */
+  /* do { */
     r = ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-    count ++;
-    if (count % 100000 == 0) {
-      debug_print("stuck in trace syscall with %d\n",pid);
-    }
-    } while(r != 1 && errno == ESRCH);
+    /* count ++; */
+    /* if (count % 100000 == 0) { */
+    /*   debug_print("stuck in trace syscall with %d\n",pid); */
+    /* } */
+    /* } while(r != 1 && errno == ESRCH); */
   if (r == -1) {
     errx(EXIT_FAILURE, "Failed PTRACE_SYSCALL %d: %s\n", pid, strerror(errno));
   }
+  sched_yield();
   debug_print("ptrace_syscall %d ...\n\n", pid);
 }
 
