@@ -20,6 +20,7 @@
 #define __TYPES__H
 
 #include <limits.h>
+#include <sys/types.h>
 
 #define PAST_INV 30
 #define MAX_PATH 256
@@ -44,20 +45,16 @@ enum tracer_state_t {
 
 extern enum tracer_state_t tracer_state;
 
-struct tracee_buff_t {
+struct tracer_buff_t {
   char syscall[SIZE_SYSCALL_BIN];
   char unprotect_protect[SIZE_UNPROTECT_PROTECT_BIN];
   char str_tmp[MAX_PATH];
-} __attribute__((packed));
-
-extern struct tracee_buff_t tracee_buff;
-
-struct tracer_buff_t {
-  char *syscall;
-  char *unprotect_protect;
-  char *str_tmp;
 };
 
-extern struct tracer_buff_t tracer_buff;
+typedef struct {
+  int signo;
+  void * sigaddr;
+  pid_t tid;
+} event_t;
 
 #endif /* __TYPES__H */

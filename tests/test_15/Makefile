@@ -3,7 +3,7 @@ PROJECT_ROOT=../../
 CC=../../src/cerec
 FLINK=../../src/cerec
 
-FLAGS=-O3
+FLAGS=-O0
 
 OBJS = test.o
 

@@ -1,5 +1,4 @@
-LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags | sed s/-Wcovered-switch-default// | sed s/-Werror=date-time//)
-libcere_regioninstrumentation_la_CXXFLAGS = $(LLVMCXXFLAGS)
+libcere_regioninstrumentation_la_CXXFLAGS = @LLVM_CPPFLAGS@
 
 
 lib_LTLIBRARIES = libcere_regioninstrumentation.la
