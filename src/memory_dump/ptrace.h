@@ -25,6 +25,8 @@
 #include <sys/types.h>
 #include <sys/user.h>
 
+#include "types.h"
+
 
 void ptrace_cont(pid_t pid);
 void ptrace_setregs(pid_t pid, struct user_regs_struct *regs);
@@ -34,7 +36,7 @@ void ptrace_putdata(pid_t pid, long writeAddr, char * writeBuf, int size);
 void ptrace_syscall(pid_t pid);
 
 void follow_threads(pid_t pid);
-pid_t wait_process(pid_t pid, siginfo_t * siginfo);
+event_t wait_event(pid_t wait_for);
 void stop_all_except(pid_t pid);
 void continue_all(void);
 

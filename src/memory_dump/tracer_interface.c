@@ -96,8 +96,7 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   ptrace_setregs(pid, &regs);
 
   ptrace_cont(pid);
-  siginfo_t sig;
-  wait_process(pid, &sig);
+  wait_event(pid);
   ptrace_getregs(pid, &regs);
   ret = regs.rax;
 
