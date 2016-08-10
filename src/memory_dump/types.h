@@ -20,6 +20,7 @@
 #define __TYPES__H
 
 #include <limits.h>
+#include <sys/types.h>
 
 #define PAST_INV 30
 #define MAX_PATH 256
@@ -49,5 +50,11 @@ struct tracer_buff_t {
   char unprotect_protect[SIZE_UNPROTECT_PROTECT_BIN];
   char str_tmp[MAX_PATH];
 };
+
+typedef struct {
+  int signo;
+  void * sigaddr;
+  pid_t tid;
+} event_t;
 
 #endif /* __TYPES__H */

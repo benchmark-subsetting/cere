@@ -106,8 +106,7 @@ void dump_init(void) {
     }
 
     debug_print("requesting ptrace from %d\n", getpid());
-
-    raise(SIGSTOP);
+    send_to_tracer(0);
 
     dump_initialized = true;
   }

@@ -50,9 +50,9 @@
 #define MAX_TIDS 2048
 size_t ntids = 0;
 pid_t tids[MAX_TIDS];
+int npending = 0;
 bool pending[MAX_TIDS] = {false};
-siginfo_t sigs[MAX_TIDS] = {0};
-
+event_t queued[MAX_TIDS];
 
 void ptrace_cont(pid_t pid) {
   if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
@@ -159,42 +159,42 @@ void stop_all_except(pid_t pid) {
   for (int i=0; i<ntids; i++) {
     if (tids[i] == pid) continue;
     debug_print("WAITING for SIGSTOP from %d\n", tids[i]);
-    siginfo_t sig;
-    wait_process(tids[i], &sig);
-    if (sig.si_signo != SIGSTOP) {
+    event_t e = wait_event(tids[i]);
+    if (e.signo != SIGSTOP) {
+      npending += 1;
       pending[i] = true;
-      sigs[i] = sig;
+      queued[i] = e;
     }
   }
 }
 
-pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
+event_t wait_event(pid_t wait_for) {
   int r, status = 0;
-  pid_t pid;
+  event_t event;
 
-  debug_print("wait_process : %d -> ", wait_for);
+  debug_print("wait_event: %d -> ", wait_for);
 
-  for (int i=0; i < ntids; i++) {
+  /* First check if there are any pending events */
+  for (int i=0; npending > 0 && i < ntids ; i++) {
     if (wait_for != -1 && tids[i] != wait_for) continue;
     if (pending[i]) {
       pending[i] = false;
-      *sig = sigs[i];
-      debug_print("tid %d kept signal : %d -> ", tids[i], sig->si_signo);
-      return tids[i];
+      npending -= 1;
+      debug_print("return queued signal : %d for %d  -> ", queued[i].signo, queued[i].tid);
+      return queued[i];
     }
   }
 
-  int count = 0;
   do {
-    pid = waitpid(wait_for, &status, __WALL);
+    event.tid = waitpid(wait_for, &status, __WALL);
     sched_yield();
-  } while (pid == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH ||
-                        errno == EIO));
+  } while (event.tid == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH ||
+                          errno == EIO));
 
   if (WIFEXITED(status)) {
-    debug_print("tid %d exited\n", pid);
+    debug_print("tid %d exited\n", event.tid);
     for (int i=0; i < ntids; i++) {
-      if (tids[i] == pid) {
+      if (tids[i] == event.tid) {
         ntids--;
         if (ntids == 0) {
           debug_print("%s\n", "Finished capture\n");
@@ -202,91 +202,81 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
         }
         else {
           tids[i] = tids[ntids];
-          sigs[i] = sigs[ntids];
+          queued[i] = queued[ntids];
+          if (pending[i]) npending -=1;
           pending[i] = pending[ntids];
-          if (wait_for == pid) {
-            return pid;
+          if (wait_for == event.tid) {
+            errx(EXIT_FAILURE,
+                 "wait_event waiting on an exited process %d\n", event.tid);
           }
           else {
-            return wait_process(wait_for, sig);
+            return wait_event(wait_for);
           }
         }
       }
     }
-    errx(EXIT_FAILURE, "Non tracked tid %d exited", pid);
+    errx(EXIT_FAILURE, "Non tracked tid %d exited", event.tid);
   }
 
   if (WIFSIGNALED(status))
     raise(WTERMSIG(status));
 
-  if (!WIFSTOPPED(status)) {
-    debug_print("%s\n", "bad place to be!");
-  }
+  /* If the process is not stopped, we cannot do much... */
+  if (!WIFSTOPPED(status))
+    errx(EXIT_FAILURE, "%d is not stopped\n", event.tid);
 
-  /* If the process has continue instead of be stopped */
-  /* the process is beyond the control of ptrace  */
-  /* So we fail*/
-  if (WIFCONTINUED(status))
-    errx(EXIT_FAILURE, "%d continue\n", pid);
+  event.signo = WSTOPSIG(status) & ~0x80;
 
-  if (ptrace(PTRACE_GETSIGINFO, pid, (void *)0, sig) == -1) {
-    errx(EXIT_FAILURE, "ptrace(PTRACE_GETSIGINFO) : %s\n", strerror(errno));
-  }
-
-  int sicode = sig->si_code;
-
-  if (WIFSTOPPED(status)) {
-    int num = WSTOPSIG(status);
-    debug_print("%d received signal : %d -> ", pid, num);
-
-    if (num == SIGSEGV) {
-      if (sicode == SEGV_MAPERR)
-        debug_print("SEGV_MAPERR address not mapped to object : %p\n",
-                    sig->si_addr);
-      else if (sicode == SEGV_ACCERR)
-        debug_print("SEGV_ACCERR invalid permissions for mapped object : %p\n",
-                    sig->si_addr);
-      else
-        errx(EXIT_FAILURE, "SEGV bad si_code : %d\n", sicode);
-    } else if (num == SIGTRAP || num == (SIGTRAP | 0x80)) {
-      if (sicode <= 0)
-        debug_print(
-            "%s\n",
-            "SIGTRAP  was  delivered  as  a result of a user-space action");
-      else if (sicode == 0x80)
-        debug_print("%s\n", "SIGTRAP was sent by the kernel");
-      else if (sicode == SIGTRAP || sicode == (SIGTRAP | 0x80))
-        debug_print("%s\n", "This is a syscall-stop");
-      else if (status>>8 == (SIGTRAP | (PTRACE_EVENT_CLONE<<8))) {
-        debug_print("%s\n", "PTRACE_EVENT_CLONE received");
-        pid_t new_thread;
-        int r = ptrace(PTRACE_GETEVENTMSG, pid, NULL, &new_thread);
-        if (r == -1) {
-          errx(EXIT_FAILURE, "Failed to get get tid of newly cloned thread: %s\n", strerror(errno));
-        }
-
-        debug_print("Following new thread %d.\n", new_thread);
-        tids[ntids++] = new_thread;
-
-        siginfo_t sig2;
-        wait_process(new_thread, &sig2);
-
-        ptrace_syscall(new_thread);
-        ptrace_syscall(pid);
-        return wait_process(wait_for, sig);
+  debug_print("%d received signal : %d %d\n", event.tid, event.signo);
+  switch(event.signo) {
+  case SIGSEGV:
+    /* In case of SEGV we want to retrieve the si_addr */
+    { siginfo_t sig;
+      if (ptrace(PTRACE_GETSIGINFO, event.tid, (void *)0, &sig) == -1) {
+        errx(EXIT_FAILURE, "ptrace(PTRACE_GETSIGINFO) : %s\n", strerror(errno));
       }
-      else
-        errx(EXIT_FAILURE, "TRAP bad si_code : %d\n", sicode);
-    } else if (num == SIGSTOP) {
-      debug_print("%s\n", "SIGSTOP received from tracee");
-    } else if (num == SIGABRT) {
-      debug_print("%s\n", "Finished capture\n");
-      exit(0);
+      event.sigaddr = sig.si_addr;
     }
-    else
-      errx(EXIT_FAILURE, "??? signo : %d\n", num);
+    return event;
+  case SIGTRAP:
+    if (status>>8 == (SIGTRAP | (PTRACE_EVENT_CLONE<<8))) {
+      debug_print("%s\n", "PTRACE_EVENT_CLONE received");
+
+      pid_t new_thread;
+      if (ptrace(PTRACE_GETEVENTMSG, event.tid, NULL, &new_thread) == -1) {
+        errx(EXIT_FAILURE, "Failed to get get tid of "
+             "newly cloned thread: %s\n", strerror(errno));
+      }
+
+      debug_print("Following new thread %d.\n", new_thread);
+      tids[ntids++] = new_thread;
+
+      /* New thread starts with a SIGSTOP */
+      event_t e = wait_event(new_thread);
+      assert(e.signo == SIGSTOP);
+
+      /* Let both parent and child thread continue */
+      ptrace_syscall(new_thread);
+      ptrace_syscall(event.tid);
+
+      /* Continue waiting */
+      return wait_event(wait_for);
+    }
+    return event;
+  case SIGSTOP:
+    /* This can happen if a tid is already stopped when we
+       call stop_all_except. The SIGSTOP is queued and must be
+       cleared */
+    debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
+    ptrace_syscall(event.tid);
+    return wait_event(wait_for);
+  case SIGABRT:
+    debug_print("%s\n", "Finished capture\n");
+    exit(0);
+  default:
+    /* Return all other events */
+    return event;
   }
-  return pid;
 }
 
 static void parse_proc_task(pid_t pid) {
@@ -330,8 +320,8 @@ void follow_threads(pid_t pid) {
       }
 
       /* Wait for SIGSTOP */
-      siginfo_t sig;
-      wait_process(tids[t], &sig);
+      event_t e = wait_event(tids[t]);
+      assert(e.signo == SIGSTOP);
     }
 
     ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
