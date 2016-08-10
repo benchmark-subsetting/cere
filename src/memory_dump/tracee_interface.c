@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -16,29 +16,33 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#ifndef __SYSCALL_INTERFACE__H
-#define __SYSCALL_INTERFACE__H
 
-#include <stdbool.h>
-#include <stddef.h>
 #include <sys/types.h>
+#include "types.h"
 
-void protect(pid_t pid, char *start, size_t size);
-void unprotect(pid_t pid, char *start, size_t size);
-void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
-                       size_t size_p);
-void write_page(pid_t pid, int fd, const void *buf, size_t nbyte);
-int openat_i(pid_t pid, char *pathname);
-void close_i(pid_t pid, int fd);
+static inline void sigtrap(void) {
+  asm volatile("int $3");
+}
 
-register_t get_arg_from_regs(pid_t pid);
-int get_syscallid(pid_t pid);
-void send_to_tracer(register_t arg);
-bool is_dump_sigtrap(pid_t pid);
-void hook_sigtrap(void);
-bool is_hook_sigtrap(pid_t pid);
-bool is_syscall_io(pid_t pid);
-bool is_valid_io(pid_t pid);
-void sigtrap(void);
+void hook_sigtrap(void) {
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_hook));
+  sigtrap();
+}
 
-#endif /* __SYSCALL_INTERFACE__H */
+void send_to_tracer(register_t arg) {
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
+  asm volatile("mov %0,%%rdi" : : "r"(arg));
+  sigtrap();
+}
+
+struct tracer_buff_t tracer_buff = {
+  .syscall = "\x0f\x05"               /* syscall           */
+             "\xcc",                  /* int $3 (SIGTRAP)  */
+  .unprotect_protect = "\x0f\x05"     /* syscall protect   */
+                       "\x4c\x89\xe0" /* mov    %r12,%rax  */
+                       "\x4c\x89\xef" /* mov    %r13,%rdi  */
+                       "\x4c\x89\xf6" /* mov    %r14,%rsi  */
+                       "\x4c\x89\xfa" /* mov    %r15,%rdx  */
+                       "\x0f\x05"     /* syscall unprotect */
+                       "\xcc"         /* int $3 (SIGTRAP)  */
+};

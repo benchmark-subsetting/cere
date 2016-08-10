@@ -16,28 +16,30 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#ifndef __PTRACE__H
-#define __PTRACE__H
+#ifndef __TRACER_INTERFACE__H
+#define __TRACER_INTERFACE__H
 
-#include <signal.h>
+#include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <sys/types.h>
-#include <sys/user.h>
 
-#include "types.h"
+/* The following functions call the equivalent syscall in the tracee.
+   unprotect_protect is a special syscall which
+   combines two successive mprotect syscalls for performance reasons.
+*/
+void protect_i(pid_t pid, char *start, size_t size);
+void unprotect_i(pid_t pid, char *start, size_t size);
+void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
+                         size_t size_p);
+void write_i(pid_t pid, int fd, const void *buf, size_t nbyte);
+int openat_i(pid_t pid, char *pathname);
+void close_i(pid_t pid, int fd);
 
 
-void ptrace_cont(pid_t pid);
-void ptrace_setregs(pid_t pid, struct user_regs_struct *regs);
-void ptrace_getregs(pid_t pid, struct user_regs_struct *regs);
-void ptrace_getdata(pid_t pid, long readAddr, char * readBuf, int size);
-void ptrace_putdata(pid_t pid, long writeAddr, char * writeBuf, int size);
-void ptrace_syscall(pid_t pid);
+register_t get_arg_from_regs(pid_t pid);
+int get_syscallid(pid_t pid);
+bool is_dump_sigtrap(pid_t pid);
+bool is_hook_sigtrap(pid_t pid);
 
-void follow_threads(pid_t pid);
-event_t wait_event(pid_t wait_for);
-void stop_all_except(pid_t pid);
-void continue_all(void);
 
-#endif /* __PTRACE__H */
+#endif /* __TRACER_INTERFACE__H */

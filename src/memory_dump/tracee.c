@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#include "dump.h"
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
@@ -28,14 +27,15 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "err.h"
 #include "pages.h"
-#include "ptrace.h"
-#include "syscall_interface.h"
 #include "types.h"
+#include "tracee.h"
+#include "tracee_interface.h"
 
 #define _DEBUG 1
 #undef _DEBUG
@@ -45,20 +45,6 @@
 static int times_called = 0;
 static bool dump_initialized;
 volatile static bool kill_after_dump = false;
-
-struct tracee_buff_t tracee_buff = {
-    .syscall = "\x0f\x05"               /* syscall          */
-               "\xcc",                  /* int $3 (SIGTRAP) */
-    .unprotect_protect = "\x0f\x05"     /* syscall          */
-                         "\x48\x89\xc3" /* mov    %rax,%rbx */
-                         "\x4c\x89\xe0" /* mov    %r12,%rax */
-                         "\x4c\x89\xef" /* mov    %r13,%rdi */
-                         "\x4c\x89\xf6" /* mov    %r14,%rsi */
-                         "\x4c\x89\xfa" /* mov    %r15,%rdx */
-                         "\x0f\x05"     /* syscall          */
-                         "\x49\x09\xd8" /* or     %rbx,%rax */
-                         "\xcc"         /* int $3 (SIGTRAP) */
-};
 
 void *(*real_malloc)(size_t);
 void *(*real_calloc)(size_t nmemb, size_t size);
@@ -75,6 +61,9 @@ void dump_init(void) {
   char buf[BUFSIZ];
   snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
   int ret = system(buf);
+  if (ret != 0) {
+    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
+  }
 
   /* configure atexit */
   atexit(dump_close);
@@ -90,32 +79,35 @@ void dump_init(void) {
   /* If we are the parent */
   if (child != 0) {
 
-    char args[5][32];
+    char args[2][32];
     snprintf(args[0], sizeof(args[0]), "%d", child);
-    snprintf(args[1], sizeof(args[1]), "%p", tracee_buff.syscall);
-    snprintf(args[2], sizeof(args[2]), "%p", tracee_buff.unprotect_protect);
-    snprintf(args[3], sizeof(args[3]), "%p", tracee_buff.str_tmp);
+    snprintf(args[1], sizeof(args[1]), "%p", &tracer_buff);
 
-    char *const arg[] = {"cere-tracer", args[0], args[1],
-                         args[2],       args[3], NULL};
+    char *const arg[] = {"cere-tracer", args[0], args[1], NULL};
     execvp("cere-tracer", arg);
     errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
-    return;
-
   } else {
 
-    int d = prctl(PR_SET_DUMPABLE, (long)1);
-    if (d == -1)
+    /* Give DUMPABLE capability, required by ptrace */
+    if (prctl(PR_SET_DUMPABLE, (long)1) != 0) {
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
+    }
 
-    int ret = mprotect(round_to_page(&tracee_buff), PAGESIZE,
-                       (PROT_READ | PROT_WRITE | PROT_EXEC));
-    assert(ret == 0);
+    /* Make tracer buff executable */
+    if (mprotect(round_to_page(&tracer_buff), PAGESIZE,
+                 (PROT_READ | PROT_WRITE | PROT_EXEC)) != 0) {
+      errx(EXIT_FAILURE, "Failed to make tracer buff executable : %s\n",
+           strerror(errno));
+    }
 
-    ptrace_me();
+    /* Request trace */
+    if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1) {
+      errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
+    }
+
+    debug_print("requesting ptrace from %d\n", getpid());
     raise(SIGSTOP);
 
-    /* Must be conserved ? */
     dump_initialized = true;
   }
 
@@ -155,7 +147,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   mtrace_active = false;
 
   /* Send args */
-  strcpy(tracee_buff.str_tmp, loop_name);
+  strcpy(tracer_buff.str_tmp, loop_name);
   send_to_tracer(0);
   send_to_tracer(invocation);
   send_to_tracer(count);

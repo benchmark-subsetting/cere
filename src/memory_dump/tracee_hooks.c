@@ -24,9 +24,9 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#include "dump.h"
+#include "tracee.h"
 #include "pages.h"
-#include "syscall_interface.h"
+#include "tracee_interface.h"
 #include "types.h"
 
 static void *(*real_malloc)(size_t) = NULL;

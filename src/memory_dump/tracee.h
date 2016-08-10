@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#ifndef __DUMP__H
-#define __DUMP__H
+#ifndef __TRACEE__H
+#define __TRACEE__H
 
 #include <stdbool.h>
 #include "types.h"
@@ -49,4 +49,4 @@ void after_dump(void);
  * active */
 extern bool mtrace_active;
 
-#endif /* DUMP__H */
+#endif /* TRACEE__H */
