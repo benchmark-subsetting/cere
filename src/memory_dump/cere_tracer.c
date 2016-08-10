@@ -290,7 +290,7 @@ static void receive_string_from_tracee(pid_t child, char *src_tracee,
                                        void *dst_tracer, size_t size) {
   siginfo_t sig;
   debug_print("receive string from tracee %d\n", child);
-  handle_events_until_dump_trap(child);
+  handle_events_until_dump_trap(-1);
   ptrace_getdata(child, (long) src_tracee, dst_tracer, size);
   ptrace_syscall(child);
   debug_print("DONE receiving string from tracee\n", child);
@@ -521,7 +521,8 @@ static void tracer_dump(pid_t pid) {
 
 static void tracer_init(pid_t pid) {
   siginfo_t sig;
-  handle_events_until_dump_trap(pid);
+  event_t e = wait_event(pid);
+  assert(e.signo == SIGSTOP);
   follow_threads(pid);
   create_dump_dir();
   continue_all();
