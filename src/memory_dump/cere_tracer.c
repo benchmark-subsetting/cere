@@ -95,7 +95,6 @@ static bool is_valid_io(pid_t pid) {
   case SYS_open:
   case SYS_openat:
   case SYS_close:
-  case SYS_mmap:
     return false;
   default:
     return true;
@@ -110,7 +109,6 @@ static bool is_syscall_io(pid_t pid) {
   case SYS_open:
   case SYS_openat:
   case SYS_close:
-  case SYS_mmap:
     debug_print("Syscall IO detected : %d\n", syscallid);
    return true;
   default:
@@ -327,6 +325,18 @@ static void tracer_lock_range(pid_t child) {
   debug_print("%s\n", "END LOCK RANGE");
 }
 
+static void create_root_dir(const char * root) {
+  struct stat sb;
+  char dump_root_[MAX_PATH];
+  snprintf(dump_root_, sizeof(dump_root_), "%s/%s", dump_prefix, root);
+
+  if (stat(dump_root_, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
+    if (mkdir(dump_root_, 0777) != 0)
+      errx(EXIT_FAILURE, "Could not create %s: %s", dump_root_,
+           strerror(errno));
+  }
+}
+
 static void create_dump_dir(void) {
   struct stat sb;
   /* Check that dump exists or try to create it, then enter it  */
@@ -336,14 +346,8 @@ static void create_dump_dir(void) {
            strerror(errno));
   }
 
-  char dump_root_[MAX_PATH];
-  snprintf(dump_root_, sizeof(dump_root_), "%s/%s", dump_prefix, dump_root);
-
-  if (stat(dump_root_, &sb) == -1 || (!S_ISDIR(sb.st_mode))) {
-    if (mkdir(dump_root_, 0777) != 0)
-      errx(EXIT_FAILURE, "Could not create %s: %s", dump_root_,
-           strerror(errno));
-  }
+  create_root_dir(dump_root);
+  create_root_dir(replay_root);
 }
 
 static void tracer_lock_mem(pid_t pid) {
