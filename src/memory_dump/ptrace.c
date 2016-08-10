@@ -50,7 +50,6 @@
 #define MAX_TIDS 2048
 size_t ntids = 0;
 pid_t tids[MAX_TIDS];
-bool stopped[MAX_TIDS] = {false};
 bool pending[MAX_TIDS] = {false};
 siginfo_t sigs[MAX_TIDS] = {0};
 
@@ -59,6 +58,14 @@ void ptrace_cont(pid_t pid) {
   if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
     errx(EXIT_FAILURE, "ptrace_cont : %s\n", strerror(errno));
   }
+  debug_print("ptrace_cont %d ...\n\n", pid);
+}
+
+void ptrace_syscall(pid_t pid) {
+  if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) != 0) {
+    errx(EXIT_FAILURE, "Failed ptrace_syscall %d: %s\n", pid, strerror(errno));
+  }
+  debug_print("ptrace_syscall %d ...\n\n", pid);
 }
 
 void ptrace_setregs(pid_t pid, struct user_regs_struct *regs) {
@@ -78,8 +85,6 @@ void ptrace_getregs(pid_t pid, struct user_regs_struct *regs) {
 }
 
 void ptrace_getdata(pid_t child, long addr, char *str, int len) {
-
-
   union u {
     long val;
     char chars[WORDSIZE];
@@ -108,56 +113,6 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
   str[len] = '\0';
 }
 
-static void parse_proc_task(pid_t pid) {
-  DIR *proc_dir;
-  char dirname[BUFSIZ];
-  struct dirent *entry;
-
-  snprintf(dirname, sizeof dirname, "/proc/%d/task", pid);
-  if (!(proc_dir = opendir(dirname))) {
-    errx(EXIT_FAILURE, "Error opening "
-         "/proc/%d/task : %s\n", pid, strerror(errno));
-  }
-
-  while ((entry = readdir(proc_dir)) != NULL) {
-    // ignore . and ..
-    if(entry->d_name[0] == '.')
-      continue;
-
-    int tid = atoi(entry->d_name);
-    tids[ntids++] = tid;
-    debug_print("read tid = %d\n", tid);
-  }
-  closedir(proc_dir);
-}
-
-void ptrace_follow_threads(pid_t pid) {
-
-  parse_proc_task(pid);
-
-  /* Attach all tids except main one which requested TRACEME in dump.c */
-  for (int t = 0; t < ntids; t++) {
-    int r;
-    if (tids[t] != pid) {
-      do {
-        r = ptrace(PTRACE_ATTACH, tids[t], (void *)0, 0);
-      } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
-                            errno == ESRCH));
-      if (r == -1L) {
-        errx(EXIT_FAILURE, "Cannot attach thread %d: %s\n",
-             tids[t], strerror(errno));
-      }
-
-      /* Wait for SIGSTOP */
-      siginfo_t sig;
-      wait_process(tids[t], &sig);
-    }
-
-    ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
-           PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
-    debug_print("Attached to %d\n", tids[t]);
-  }
-}
 
 void ptrace_putdata(pid_t child, long addr, char *str, int len) {
   union u {
@@ -190,7 +145,6 @@ void continue_all(void) {
     if (!pending[i])
       ptrace_syscall(tids[i]);
   }
-  debug_print("%s\n", "--continue_all--");
 }
 
 void stop_all_except(pid_t pid) {
@@ -220,7 +174,6 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
 
   debug_print("wait_process : %d -> ", wait_for);
 
-
   for (int i=0; i < ntids; i++) {
     if (wait_for != -1 && tids[i] != wait_for) continue;
     if (pending[i]) {
@@ -244,13 +197,13 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
       if (tids[i] == pid) {
         ntids--;
         if (ntids == 0) {
-          return;
+          debug_print("%s\n", "Finished capture\n");
+          exit(1);
         }
         else {
           tids[i] = tids[ntids];
           sigs[i] = sigs[ntids];
           pending[i] = pending[ntids];
-          stopped[i] = stopped[ntids];
           if (wait_for == pid) {
             return pid;
           }
@@ -336,62 +289,53 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
   return pid;
 }
 
-void ptrace_listen(pid_t pid) { ptrace(PTRACE_LISTEN, pid, 0, 0); }
+static void parse_proc_task(pid_t pid) {
+  DIR *proc_dir;
+  char dirname[BUFSIZ];
+  struct dirent *entry;
 
-void ptrace_syscall(pid_t pid) {
-  if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) != 0) {
-    errx(EXIT_FAILURE, "Failed ptrace_syscall %d: %s\n", pid, strerror(errno));
+  snprintf(dirname, sizeof dirname, "/proc/%d/task", pid);
+  if (!(proc_dir = opendir(dirname))) {
+    errx(EXIT_FAILURE, "Error opening "
+         "/proc/%d/task : %s\n", pid, strerror(errno));
   }
-  debug_print("ptrace_syscall %d ...\n\n", pid);
+
+  while ((entry = readdir(proc_dir)) != NULL) {
+    // ignore . and ..
+    if(entry->d_name[0] == '.')
+      continue;
+
+    int tid = atoi(entry->d_name);
+    tids[ntids++] = tid;
+    debug_print("read tid = %d\n", tid);
+  }
+  closedir(proc_dir);
 }
 
-void *ptrace_ripat(pid_t pid, void *addr) {
-  struct user_regs_struct regs;
-  ptrace_getregs(pid, &regs);
-  void *ret = (void *)regs.rip;
-  regs.rip = (register_t)addr;
-  ptrace_setregs(pid, &regs);
-  return ret;
-}
+void follow_threads(pid_t pid) {
 
-void show_registers(FILE *const out, pid_t tid, const char *const note) {
-  struct user_regs_struct regs;
-  ptrace_getregs(tid, &regs);
-#if (defined(__x86_64__) || defined(__i386__)) && __WORDSIZE == 64
-  fprintf(out, "Task %d: RIP=%p, RSP=%p, RAX=%p, RDI=%p, RSI=%p, RDX=%p, "
-               "ORIG_RAX=%p . %s\n",
-          (int)tid, (void *)regs.rip, (void *)regs.rsp, (void *)regs.rax,
-          (void *)regs.rdi, (void *)regs.rsi, (void *)regs.rdx,
-          (void *)regs.orig_rax, note);
+  parse_proc_task(pid);
 
-#elif(defined(__arm__))
-  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp,
-          note);
-#elif(defined(__aarch64__))
-  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp,
-          note);
-#endif
-}
+  /* Attach all tids except main one which requested TRACEME in dump.c */
+  for (int t = 0; t < ntids; t++) {
+    int r;
+    if (tids[t] != pid) {
+      do {
+        r = ptrace(PTRACE_ATTACH, tids[t], (void *)0, 0);
+      } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
+                            errno == ESRCH));
+      if (r == -1L) {
+        errx(EXIT_FAILURE, "Cannot attach thread %d: %s\n",
+             tids[t], strerror(errno));
+      }
 
-void print_registers(FILE *const out, struct user_regs_struct *regs,
-                     const char *const note) {
-#if (defined(__x86_64__) || defined(__i386__)) && __WORDSIZE == 64
-  fprintf(out,
-          "RIP=%p, RSP=%p, RAX=%p, RDI=%p, RSI=%p, RDX=%p, ORIG_RAX=%p . %s\n",
-          (void *)regs->rip, (void *)regs->rsp, (void *)regs->rax,
-          (void *)regs->rdi, (void *)regs->rsi, (void *)regs->rdx,
-          (void *)regs->orig_rax, note);
+      /* Wait for SIGSTOP */
+      siginfo_t sig;
+      wait_process(tids[t], &sig);
+    }
 
-#elif(defined(__arm__))
-  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp,
-          note);
-#elif(defined(__aarch64__))
-  fprintf(out, "Task %d: EIP=%p, ESP=%p. %s\n", (int)tid, regs.ip, regs.sp,
-          note);
-#endif
-}
-
-void put_string(pid_t pid, char *src, void *dst, size_t nbyte) {
-  debug_print("PUT STRING %s at %p\n", src, dst);
-  ptrace_putdata(pid, (long long unsigned)dst, src, nbyte);
+    ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
+           PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
+    debug_print("Attached to %d\n", tids[t]);
+  }
 }

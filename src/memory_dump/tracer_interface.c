@@ -17,7 +17,6 @@
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
 
-#include "syscall_interface.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <err.h>
@@ -33,6 +32,7 @@
 #include <syscall.h>
 
 #include "ptrace.h"
+#include "tracer_interface.h"
 #include "types.h"
 
 #define _DEBUG 1
@@ -118,63 +118,6 @@ int get_syscallid(pid_t pid) {
   return regs.orig_rax;
 }
 
-bool is_valid_io(pid_t pid) {
-  struct user_regs_struct regs;
-  ptrace_getregs(pid, &regs);
-  int syscallid = regs.orig_rax;
-  switch (syscallid) {
-  case SYS_write:
-    return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
-  /* Add all ios forbidden */
-  case SYS_read:
-    return false;
-  case SYS_open:
-  case SYS_openat:
-  case SYS_close:
-  case SYS_mmap:
-    return false;
-  default:
-    return true;
-  }
-}
-
-bool is_syscall_io(pid_t pid) {
-  char name_syscall[16];
-  int syscallid = get_syscallid(pid);
-  switch (syscallid) {
-  case SYS_read:
-    strcpy(name_syscall, "read");
-    break;
-  case SYS_write:
-    strcpy(name_syscall, "write");
-    break;
-  case SYS_open:
-    strcpy(name_syscall, "open");
-    break;
-  case SYS_close:
-    strcpy(name_syscall, "close");
-    break;
-  default:
-    return false;
-  }
-  debug_print("Syscall IO detected : %s\n", name_syscall);
-  return true;
-}
-
-void send_to_tracer(register_t arg) {
-  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
-  asm volatile("mov %0,%%rdi" : : "r"(arg));
-  sigtrap();
-}
-
-void inline sigtrap(void) { asm volatile("int $3"); }
-
-void hook_sigtrap(void) {
-  debug_print("%s\n", "Hook sigtrap !");
-  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_hook));
-  sigtrap();
-}
-
 bool is_hook_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
@@ -199,7 +142,7 @@ void inject_syscall(int syscallid, pid_t tid,
                     struct user_regs_struct * regs->va_list vargs);
 #endif
 
-void protect(pid_t pid, char *start, size_t size) {
+void protect_i(pid_t pid, char *start, size_t size) {
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start, size);
   register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
           (long long unsigned) PROT_NONE);
@@ -210,14 +153,14 @@ void protect(pid_t pid, char *start, size_t size) {
   assert(ret == 0);
 }
 
-void unprotect(pid_t pid, char *start, size_t size) {
+void unprotect_i(pid_t pid, char *start, size_t size) {
   debug_print("TO BE UNPROTECTED :  %p (%lu)\n", start, size);
   register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
                   (long long unsigned) (PROT_READ | PROT_WRITE | PROT_EXEC));
   assert(ret == 0);
 }
 
-void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
+void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
                        size_t size_p) {
   debug_print("TO BE UNPROTECTED :  %p (%lu) ... ", start_u, size_u);
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start_p, size_p);
@@ -229,21 +172,19 @@ void unprotect_protect(pid_t pid, char *start_u, size_t size_u, char *start_p,
 
   if (ret != 0) {
     errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
-      start_u, ret);
+         start_u, (int)ret);
   }
 
   /* it is ok here for reprotect to fail, when we reprotect a page that has
      since been deallocated. Therefore we only check the result of unprotect */
 }
 
-void write_page(pid_t pid, int fd, const void *buf, size_t nbyte) {
-  debug_print("%s\n", "TO BE WROTE");
+void write_i(pid_t pid, int fd, const void *buf, size_t nbyte) {
   register_t ret = inject_syscall(pid, 3, SYS_write, fd, buf, nbyte);
   assert((int)ret >= 0);
 }
 
 int openat_i(pid_t pid, char *pathname) {
-  debug_print("%s\n", "TO BE OPEN");
   register_t ret = inject_syscall(pid, 4, SYS_openat, AT_FDCWD, pathname,
                  (long long unsigned) (O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
   assert((int)ret > 0);
@@ -251,7 +192,6 @@ int openat_i(pid_t pid, char *pathname) {
 }
 
 void close_i(pid_t pid, int fd) {
-  debug_print("TO BE CLOSE :  %d\n", fd);
   register_t ret = inject_syscall(pid, 1, SYS_close, fd);
   assert(ret != -1L);
 }

@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -16,26 +16,12 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#ifndef __PTRACE__H
-#define __PTRACE__H
 
-#include <signal.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/user.h>
+#ifndef __TRACEE_INTERFACE__H
+#define __TRACEE_INTERFACE__H
 
+void hook_sigtrap(void);
+void send_to_tracer(register_t arg);
+extern struct tracer_buff_t tracer_buff;
 
-void ptrace_cont(pid_t pid);
-void ptrace_setregs(pid_t pid, struct user_regs_struct *regs);
-void ptrace_getregs(pid_t pid, struct user_regs_struct *regs);
-void ptrace_getdata(pid_t pid, long readAddr, char * readBuf, int size);
-void ptrace_putdata(pid_t pid, long writeAddr, char * writeBuf, int size);
-void ptrace_syscall(pid_t pid);
-
-void follow_threads(pid_t pid);
-pid_t wait_process(pid_t pid, siginfo_t * siginfo);
-void stop_all_except(pid_t pid);
-void continue_all(void);
-
-#endif /* __PTRACE__H */
+#endif /* TRACEE_INTERFACE__H */

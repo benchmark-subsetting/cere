@@ -28,11 +28,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <syscall.h>
 #include <unistd.h>
 
 #include "pages.h"
 #include "ptrace.h"
-#include "syscall_interface.h"
+#include "tracer_interface.h"
 #include "types.h"
 
 #define _DEBUG 1
@@ -48,19 +49,22 @@ const char *core_suffix = "core.map";
 const char *dump_prefix = ".cere";
 const char *dump_root = "dumps";
 const char *replay_root = "replays";
+
 char *pages_cache[LOG_SIZE];
 char dump_path[MAX_PATH];
 char *pages_trace[TRACE_SIZE];
-
-char loop_name[SIZE_LOOP];
-int invocation = -1;
-int count;
 
 char *cere_errors_EIO = "IO not replayable";
 
 enum tracer_state_t tracer_state = 0;
 
 struct tracer_buff_t * tracer_buff;
+
+/* The loop name and invocation, these are received from the tracee
+   in the tracer_dump function
+*/
+char loop_name[SIZE_LOOP];
+int invocation = -1;
 
 static void tracer_lock_range(pid_t child);
 
@@ -79,6 +83,41 @@ static void read_map(pid_t pid) {
   fclose(maps);
 }
 
+static bool is_valid_io(pid_t pid) {
+  struct user_regs_struct regs;
+  ptrace_getregs(pid, &regs);
+  int syscallid = regs.orig_rax;
+  switch (syscallid) {
+  case SYS_write:
+    return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
+    /* All other IOs are forbidden */
+  case SYS_read:
+  case SYS_open:
+  case SYS_openat:
+  case SYS_close:
+  case SYS_mmap:
+    return false;
+  default:
+    return true;
+  }
+}
+
+static bool is_syscall_io(pid_t pid) {
+  int syscallid = get_syscallid(pid);
+  switch (syscallid) {
+  case SYS_read:
+  case SYS_write:
+  case SYS_open:
+  case SYS_openat:
+  case SYS_close:
+  case SYS_mmap:
+    debug_print("Syscall IO detected : %d\n", syscallid);
+   return true;
+  default:
+    return false;
+  }
+}
+
 static bool is_mru(void *addr) {
   char *start_of_page = round_to_page(addr);
   bool present = false;
@@ -91,12 +130,8 @@ static bool is_mru(void *addr) {
   return present;
 }
 
-static void write_binary(pid_t pid, int out, void *in, int nbyte) {
-  write_page(pid, out, in, nbyte);
-}
-
-static void dump_core(int count, void *addresses[]) {
-  debug_print("%s", "DUMP CORE\n");
+static void dump_core(const size_t naddr, void *addresses[naddr]) {
+  debug_print("%s", "Dump core\n");
 
   char path[MAX_PATH];
   snprintf(path, sizeof(path), "%s/%s", dump_path, core_suffix);
@@ -106,12 +141,9 @@ static void dump_core(int count, void *addresses[]) {
     errx(EXIT_FAILURE, "Could not create core.map file : %s\n",
          strerror(errno));
 
-  int i;
-  for (i = 0; i < count; i++)
+  for (unsigned int i = 0; i < naddr; i++)
     fprintf(core_map, "%d %lx\n", i, (register_t)addresses[i]);
   fclose(core_map);
-
-  debug_print("%s", "END DUMP CORE\n");
 }
 
 static void dump_page(pid_t pid, void *start) {
@@ -121,12 +153,12 @@ static void dump_page(pid_t pid, void *start) {
   snprintf(current_path, sizeof(current_path), "%s/%012lx.memdump", dump_path,
            (register_t)start);
 
-  put_string(pid, current_path, tracer_buff->str_tmp, MAX_PATH);
+  ptrace_putdata(pid, (long)tracer_buff->str_tmp, current_path, MAX_PATH);
   if (access(current_path, F_OK) != -1)
     return;
 
   int out = openat_i(pid, tracer_buff->str_tmp);
-  write_binary(pid, out, start, PAGESIZE);
+  write_i(pid, out, start, PAGESIZE);
   close_i(pid, out);
 }
 
@@ -134,7 +166,7 @@ static void dump_handler(int pid, void *start_of_page) {
   debug_print("Dump handler detected access at %p\n", start_of_page);
 
   /* Unprotect Page */
-  unprotect(pid, start_of_page, PAGESIZE);
+  unprotect_i(pid, start_of_page, PAGESIZE);
   dump_page(pid, start_of_page);
 }
 
@@ -143,9 +175,11 @@ static void mru_handler(int pid, void *start_of_page) {
 
   bool present = is_mru(start_of_page);
   if (present) {
+    /* In parallel applications it may happen that two segfaults on the same
+       page are queued. The first handler will unprotect the page, and add it to
+       mru, therefore there is nothing to do in the second handler. */
     return;
   }
-  //assert(present == false);
 
   if (pages_cache[last_page] != 0) {
     /* add the evicted page to the trace */
@@ -154,11 +188,11 @@ static void mru_handler(int pid, void *start_of_page) {
 
     debug_print("MRU Reprotecting page %p\n", pages_cache[last_page]);
 
-    unprotect_protect(pid, start_of_page, PAGESIZE, pages_cache[last_page],
+    unprotect_protect_i(pid, start_of_page, PAGESIZE, pages_cache[last_page],
                       PAGESIZE);
 
   } else {
-    unprotect(pid, start_of_page, PAGESIZE);
+    unprotect_i(pid, start_of_page, PAGESIZE);
   }
 
   pages_cache[last_page] = start_of_page;
@@ -264,7 +298,7 @@ static void receive_string_from_tracee(pid_t child, char *src_tracee,
   siginfo_t sig;
   debug_print("receive string from tracee %d\n", child);
   wait_sigtrap(-1, &sig);
-  ptrace_getdata(child, (long)src_tracee, dst_tracer, size);
+  ptrace_getdata(child, (long) src_tracee, dst_tracer, size);
   ptrace_syscall(child);
   debug_print("DONE receiving string from tracee\n", child);
 }
@@ -286,7 +320,7 @@ static void tracer_lock_range(pid_t child) {
 
   for (long unsigned i = 0; i < nb_pages_to_allocate; i++)
     if (!is_mru(from + PAGESIZE * i))
-      protect(child, round_to_page(from + PAGESIZE * i), PAGESIZE);
+      protect_i(child, round_to_page(from + PAGESIZE * i), PAGESIZE);
 
   ptrace_syscall(child);
 
@@ -375,7 +409,7 @@ static void tracer_lock_mem(pid_t pid) {
   while (counter > 0) {
     void *end = addresses[--counter];
     void *start = addresses[--counter];
-    protect(pid, start, (end - start));
+    protect_i(pid, start, (end - start));
   }
 
   int r = fclose(maps);
@@ -432,9 +466,15 @@ static void dump_unprotected_pages(pid_t pid) {
   debug_print("%s\n", "END DUMP UNPROTECTED PAGE");
 }
 
-static void dump_arg(pid_t pid) {
+static void tracer_dump(pid_t pid) {
 
-  printf("DUMP( %s %d count = %d) \n", loop_name, invocation, count);
+  /* Read arguments from tracee */
+  receive_string_from_tracee(pid, tracer_buff->str_tmp, loop_name, SIZE_LOOP);
+
+  invocation = (int)receive_from_tracee(pid);
+  int arg_count = (int)receive_from_tracee(pid);
+
+  printf("DUMP( %s %d count = %d) \n", loop_name, invocation, arg_count);
 
   /* Ensure that the dump directory exists */
   snprintf(dump_path, sizeof(dump_path), "%s/%s/%s", dump_prefix, dump_root,
@@ -449,8 +489,8 @@ static void dump_arg(pid_t pid) {
     errx(EXIT_FAILURE, "dump %s already exists, stop\n", dump_path);
 
   int i;
-  void *addresses[count];
-  for (i = 0; i < count; i++)
+  void *addresses[arg_count];
+  for (i = 0; i < arg_count; i++)
     addresses[i] = (void *)receive_from_tracee(pid);
 
   /* Wait for end of arguments sigtrap */
@@ -468,51 +508,34 @@ static void dump_arg(pid_t pid) {
   if (res == -1)
     errx(EXIT_FAILURE, "Error copying the dump binary\n");
 
-  for (i = 0; i < count; i++) {
+  for (i = 0; i < arg_count; i++) {
     void *start_of_page = round_to_page(addresses[i]);
     if (start_of_page != NULL) {
-      unprotect(pid, start_of_page, PAGESIZE);
+      unprotect_i(pid, start_of_page, PAGESIZE);
       dump_page(pid, start_of_page);
     }
   }
 
-  dump_core(count, addresses);
+  dump_core(arg_count, addresses);
   dump_unprotected_pages(pid);
-}
-
-static void read_args(pid_t pid) {
-
-  receive_string_from_tracee(pid, tracer_buff->str_tmp, loop_name, SIZE_LOOP);
-  invocation = (int)receive_from_tracee(pid);
-  count = (int)receive_from_tracee(pid);
-
-  debug_print("LOOP NAME : %s\n", loop_name);
-  debug_print("INVOCATION : %d\n", invocation);
-  debug_print("COUNT : %d\n", count);
-}
-
-static void tracer_dump(pid_t pid) {
-  read_args(pid);
-  dump_arg(pid);
 }
 
 static void tracer_init(pid_t pid) {
   siginfo_t sig;
   wait_process(pid, &sig);
-  ptrace_follow_threads(pid);
+  follow_threads(pid);
   create_dump_dir();
   continue_all();
 
-  debug_print("%s\n", "TRACER INIT DONE");
+  debug_print("%s\n", "Tracer initialized");
 }
 
 int main(int argc, char *argv[]) {
-
   pid_t child = 0;
   siginfo_t sig;
 
   if (argc != 3) {
-    errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n");
+    errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n", argv[0]);
   }
 
   child = atoi(argv[1]);
@@ -524,8 +547,6 @@ int main(int argc, char *argv[]) {
 
   /* Wait for lock_mem trap */
   pid_t locking_pid = wait_sigtrap(-1, &sig);
-  debug_print("%s\n", "******* Start Locking");
-
 
   stop_all_except(locking_pid);
   tracer_lock_mem(locking_pid);

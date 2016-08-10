@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#include "dump.h"
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
@@ -34,8 +33,9 @@
 
 #include "err.h"
 #include "pages.h"
-#include "syscall_interface.h"
 #include "types.h"
+#include "tracee.h"
+#include "tracee_interface.h"
 
 #define _DEBUG 1
 #undef _DEBUG
@@ -45,18 +45,6 @@
 static int times_called = 0;
 static bool dump_initialized;
 volatile static bool kill_after_dump = false;
-
-struct tracer_buff_t tracer_buff = {
-    .syscall = "\x0f\x05"               /* syscall           */
-               "\xcc",                  /* int $3 (SIGTRAP)  */
-    .unprotect_protect = "\x0f\x05"     /* syscall protect   */
-                         "\x4c\x89\xe0" /* mov    %r12,%rax  */
-                         "\x4c\x89\xef" /* mov    %r13,%rdi  */
-                         "\x4c\x89\xf6" /* mov    %r14,%rsi  */
-                         "\x4c\x89\xfa" /* mov    %r15,%rdx  */
-                         "\x0f\x05"     /* syscall unprotect */
-                         "\xcc"         /* int $3 (SIGTRAP)  */
-};
 
 void *(*real_malloc)(size_t);
 void *(*real_calloc)(size_t nmemb, size_t size);
