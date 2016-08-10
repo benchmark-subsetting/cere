@@ -25,23 +25,16 @@
 #include <sys/types.h>
 #include <sys/user.h>
 
-/* Wrapper interface for ptrace calls.
- * The following functions, wrap the equivalent ptrace
- * calls and perform error checking */
-void ptrace_getsiginfo(pid_t pid, siginfo_t *sig);
+void ptrace_follow_threads(pid_t pid);
+
 void ptrace_cont(pid_t pid);
-void ptrace_listen(pid_t pid);
-void ptrace_interrupt(pid_t pid);
 void ptrace_setregs(pid_t pid, struct user_regs_struct *regs);
 void ptrace_getregs(pid_t pid, struct user_regs_struct *regs);
-void ptrace_attach(pid_t pid);
-void ptrace_singlestep(pid_t pid);
 
 /* ptrace_getdata and ptrace_putdata write and read in the memory of a
  * tracee process */
 void ptrace_getdata(pid_t pid, long readAddr, char *readBuf, int size);
 void ptrace_putdata(pid_t pid, long writeAddr, char *writeBuf, int size);
-
 void put_string(pid_t pid, char *src, void *dst, size_t nbyte);
 
 /* ptrace_ripat: sets the rip register */

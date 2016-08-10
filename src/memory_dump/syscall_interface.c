@@ -44,6 +44,9 @@
 
 #define NB_MAX_ARGS 6
 
+
+extern struct tracer_buff_t * tracer_buff;
+
 /* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
 /* ────────────────────────────────────────────────────────── */
 /* x86_64     rdi    rsi    rdx    r10    r8     r9      -    */
@@ -72,11 +75,11 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
                                                &(regs.rdx), &(regs.r10),
                                                &(regs.r8),  &(regs.r9)};
 
-  regs.rip = (register_t)tracer_buff.syscall;
+  regs.rip = (register_t)tracer_buff->syscall;
   regs.rax = syscallid;
 
   if (syscallid == SYS_unprotect_protect) {
-    regs.rip = (register_t)tracer_buff.unprotect_protect;
+    regs.rip = (register_t)tracer_buff->unprotect_protect;
     regs.rax = SYS_mprotect;
     regs.r12 = SYS_mprotect;
     regs_ptr[3] = &(regs.r13);

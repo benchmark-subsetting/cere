@@ -60,7 +60,7 @@ char *cere_errors_EIO = "IO not replayable";
 
 enum tracer_state_t tracer_state = 0;
 
-struct tracer_buff_t tracer_buff;
+struct tracer_buff_t * tracer_buff;
 
 static void tracer_lock_range(pid_t child);
 
@@ -121,11 +121,11 @@ static void dump_page(pid_t pid, void *start) {
   snprintf(current_path, sizeof(current_path), "%s/%012lx.memdump", dump_path,
            (register_t)start);
 
-  put_string(pid, current_path, tracer_buff.str_tmp, MAX_PATH);
+  put_string(pid, current_path, tracer_buff->str_tmp, MAX_PATH);
   if (access(current_path, F_OK) != -1)
     return;
 
-  int out = openat_i(pid, tracer_buff.str_tmp);
+  int out = openat_i(pid, tracer_buff->str_tmp);
   write_binary(pid, out, start, PAGESIZE);
   close_i(pid, out);
 }
@@ -482,7 +482,7 @@ static void dump_arg(pid_t pid) {
 
 static void read_args(pid_t pid) {
 
-  receive_string_from_tracee(pid, tracer_buff.str_tmp, loop_name, SIZE_LOOP);
+  receive_string_from_tracee(pid, tracer_buff->str_tmp, loop_name, SIZE_LOOP);
   invocation = (int)receive_from_tracee(pid);
   count = (int)receive_from_tracee(pid);
 
@@ -499,7 +499,7 @@ static void tracer_dump(pid_t pid) {
 static void tracer_init(pid_t pid) {
   siginfo_t sig;
   wait_process(pid, &sig);
-  ptrace_attach(pid);
+  ptrace_follow_threads(pid);
   create_dump_dir();
   continue_all();
 
@@ -511,10 +511,12 @@ int main(int argc, char *argv[]) {
   pid_t child = 0;
   siginfo_t sig;
 
+  if (argc != 3) {
+    errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n");
+  }
+
   child = atoi(argv[1]);
-  sscanf(argv[2], "%p", &tracer_buff.syscall);
-  sscanf(argv[3], "%p", &tracer_buff.unprotect_protect);
-  sscanf(argv[4], "%p", &tracer_buff.str_tmp);
+  sscanf(argv[2], "%p", &tracer_buff);
 
   tracer_init(child);
   debug_print("%s\n", "******* TRACER_UNLOCKED");
@@ -532,8 +534,6 @@ int main(int argc, char *argv[]) {
 
   continue_all();
 
-  //ptrace_syscall(child);
-
   /* Dump arguments */
   tracer_dump(locking_pid);
 
@@ -544,8 +544,4 @@ int main(int argc, char *argv[]) {
   while (1) {
     wait_sigtrap(-1, &sig);
   }
-
-  ptrace_detach(child);
-
-  return EXIT_SUCCESS;
 }

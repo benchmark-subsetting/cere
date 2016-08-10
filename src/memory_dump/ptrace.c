@@ -54,10 +54,6 @@ bool stopped[MAX_TIDS] = {false};
 bool pending[MAX_TIDS] = {false};
 siginfo_t sigs[MAX_TIDS] = {0};
 
-void ptrace_getsiginfo(pid_t pid, siginfo_t *sig) {
-  if (ptrace(PTRACE_GETSIGINFO, pid, (void *)0, sig) == -1)
-    errx(EXIT_FAILURE, "ptrace(PTRACE_GETSIGINFO) : %s\n", strerror(errno));
-}
 
 void ptrace_cont(pid_t pid) {
   if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
@@ -79,46 +75,6 @@ void ptrace_getregs(pid_t pid, struct user_regs_struct *regs) {
     r = ptrace(PTRACE_GETREGS, pid, NULL, regs);
   } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
                         errno == ESRCH));
-}
-
-void ptrace_singlestep(pid_t pid) {
-  int r = 0;
-  do {
-    r = ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
-  } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
-                        errno == ESRCH));
-}
-
-void ptrace_interrupt(pid_t pid) {
-  if (ptrace(PTRACE_INTERRUPT, pid, 0, 0) == -1) {
-    errx(EXIT_FAILURE, "ptrace(PTRACE_INTERRUPT) : %s\n", strerror(errno));
-  }
-}
-
-static void attach_tids_and_set_ptrace_options(pid_t pid) {
-  int r;
-
-  /* Attach all tids except main one which requested TRACEME in dump.c */
-  for (int t = 0; t < ntids; t++) {
-    if (tids[t] != pid) {
-      do {
-        r = ptrace(PTRACE_ATTACH, tids[t], (void *)0, 0);
-      } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
-                            errno == ESRCH));
-      if (r == -1L) {
-        errx(EXIT_FAILURE, "Cannot attach thread %d: %s\n",
-             tids[t], strerror(errno));
-      }
-
-      /* Wait for SIGSTOP */
-      siginfo_t sig;
-      wait_process(tids[t], &sig);
-    }
-
-    ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
-           PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
-    debug_print("Attached to %d\n", tids[t]);
-  }
 }
 
 void ptrace_getdata(pid_t child, long addr, char *str, int len) {
@@ -152,17 +108,17 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
   str[len] = '\0';
 }
 
-void ptrace_attach(pid_t pid) {
-
+static void parse_proc_task(pid_t pid) {
   DIR *proc_dir;
   char dirname[BUFSIZ];
+  struct dirent *entry;
+
   snprintf(dirname, sizeof dirname, "/proc/%d/task", pid);
   if (!(proc_dir = opendir(dirname))) {
     errx(EXIT_FAILURE, "Error opening "
-      "/proc/%d/task : %s\n", pid, strerror(errno));
+         "/proc/%d/task : %s\n", pid, strerror(errno));
   }
 
-  struct dirent *entry;
   while ((entry = readdir(proc_dir)) != NULL) {
     // ignore . and ..
     if(entry->d_name[0] == '.')
@@ -173,7 +129,34 @@ void ptrace_attach(pid_t pid) {
     debug_print("read tid = %d\n", tid);
   }
   closedir(proc_dir);
-  attach_tids_and_set_ptrace_options(pid);
+}
+
+void ptrace_follow_threads(pid_t pid) {
+
+  parse_proc_task(pid);
+
+  /* Attach all tids except main one which requested TRACEME in dump.c */
+  for (int t = 0; t < ntids; t++) {
+    int r;
+    if (tids[t] != pid) {
+      do {
+        r = ptrace(PTRACE_ATTACH, tids[t], (void *)0, 0);
+      } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
+                            errno == ESRCH));
+      if (r == -1L) {
+        errx(EXIT_FAILURE, "Cannot attach thread %d: %s\n",
+             tids[t], strerror(errno));
+      }
+
+      /* Wait for SIGSTOP */
+      siginfo_t sig;
+      wait_process(tids[t], &sig);
+    }
+
+    ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
+           PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
+    debug_print("Attached to %d\n", tids[t]);
+  }
 }
 
 void ptrace_putdata(pid_t child, long addr, char *str, int len) {
@@ -293,7 +276,10 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
   if (WIFCONTINUED(status))
     errx(EXIT_FAILURE, "%d continue\n", pid);
 
-  ptrace_getsiginfo(pid, sig);
+  if (ptrace(PTRACE_GETSIGINFO, pid, (void *)0, sig) == -1) {
+    errx(EXIT_FAILURE, "ptrace(PTRACE_GETSIGINFO) : %s\n", strerror(errno));
+  }
+
   int sicode = sig->si_code;
 
   if (WIFSTOPPED(status)) {
@@ -353,20 +339,9 @@ pid_t wait_process(pid_t wait_for, siginfo_t * sig) {
 void ptrace_listen(pid_t pid) { ptrace(PTRACE_LISTEN, pid, 0, 0); }
 
 void ptrace_syscall(pid_t pid) {
-  /* assert(pid != -1); */
-  int r;
-  /* int count = 0; */
-  /* do { */
-    r = ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-    /* count ++; */
-    /* if (count % 100000 == 0) { */
-    /*   debug_print("stuck in trace syscall with %d\n",pid); */
-    /* } */
-    /* } while(r != 1 && errno == ESRCH); */
-  if (r == -1) {
-    errx(EXIT_FAILURE, "Failed PTRACE_SYSCALL %d: %s\n", pid, strerror(errno));
+  if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) != 0) {
+    errx(EXIT_FAILURE, "Failed ptrace_syscall %d: %s\n", pid, strerror(errno));
   }
-  sched_yield();
   debug_print("ptrace_syscall %d ...\n\n", pid);
 }
 

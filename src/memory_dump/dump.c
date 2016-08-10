@@ -46,7 +46,7 @@ static int times_called = 0;
 static bool dump_initialized;
 volatile static bool kill_after_dump = false;
 
-struct tracee_buff_t tracee_buff = {
+struct tracer_buff_t tracer_buff = {
     .syscall = "\x0f\x05"               /* syscall           */
                "\xcc",                  /* int $3 (SIGTRAP)  */
     .unprotect_protect = "\x0f\x05"     /* syscall protect   */
@@ -91,18 +91,13 @@ void dump_init(void) {
   /* If we are the parent */
   if (child != 0) {
 
-    char args[5][32];
+    char args[2][32];
     snprintf(args[0], sizeof(args[0]), "%d", child);
-    snprintf(args[1], sizeof(args[1]), "%p", tracee_buff.syscall);
-    snprintf(args[2], sizeof(args[2]), "%p", tracee_buff.unprotect_protect);
-    snprintf(args[3], sizeof(args[3]), "%p", tracee_buff.str_tmp);
+    snprintf(args[1], sizeof(args[1]), "%p", &tracer_buff);
 
-    char *const arg[] = {"cere-tracer", args[0], args[1],
-                         args[2],       args[3], NULL};
+    char *const arg[] = {"cere-tracer", args[0], args[1], NULL};
     execvp("cere-tracer", arg);
     errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
-    return;
-
   } else {
 
     /* Give DUMPABLE capability, required by ptrace */
@@ -110,10 +105,10 @@ void dump_init(void) {
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
     }
 
-    /* Make tracee buff executable */
-    if (mprotect(round_to_page(&tracee_buff), PAGESIZE,
+    /* Make tracer buff executable */
+    if (mprotect(round_to_page(&tracer_buff), PAGESIZE,
                  (PROT_READ | PROT_WRITE | PROT_EXEC)) != 0) {
-      errx(EXIT_FAILURE, "Failed to make tracee buff executable : %s\n",
+      errx(EXIT_FAILURE, "Failed to make tracer buff executable : %s\n",
            strerror(errno));
     }
 
@@ -165,7 +160,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   mtrace_active = false;
 
   /* Send args */
-  strcpy(tracee_buff.str_tmp, loop_name);
+  strcpy(tracer_buff.str_tmp, loop_name);
   send_to_tracer(0);
   send_to_tracer(invocation);
   send_to_tracer(count);
