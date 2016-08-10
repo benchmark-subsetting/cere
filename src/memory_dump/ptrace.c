@@ -52,6 +52,7 @@ size_t ntids = 0;
 pid_t tids[MAX_TIDS];
 int npending = 0;
 bool pending[MAX_TIDS] = {false};
+int cleared[MAX_TIDS] = {0};
 event_t queued[MAX_TIDS];
 
 void ptrace_cont(pid_t pid) {
@@ -163,6 +164,7 @@ void stop_all_except(pid_t pid) {
     if (e.signo != SIGSTOP) {
       npending += 1;
       pending[i] = true;
+      cleared[i] += 1;
       queued[i] = e;
     }
   }
@@ -205,6 +207,7 @@ event_t wait_event(pid_t wait_for) {
           queued[i] = queued[ntids];
           if (pending[i]) npending -=1;
           pending[i] = pending[ntids];
+          cleared[i] = cleared[ntids];
           if (wait_for == event.tid) {
             errx(EXIT_FAILURE,
                  "wait_event waiting on an exited process %d\n", event.tid);
@@ -264,12 +267,22 @@ event_t wait_event(pid_t wait_for) {
     }
     return event;
   case SIGSTOP:
-    /* This can happen if a tid is already stopped when we
+    {/* This can happen if a tid is already stopped when we
        call stop_all_except. The SIGSTOP is queued and must be
        cleared */
-    debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
-    ptrace_syscall(event.tid);
-    return wait_event(wait_for);
+    int i;
+    for (i = 0; i < ntids; i++) {
+      if (event.tid == tids[i]) break;
+    }
+    if (cleared[i] > 0) {
+      cleared[i] -= 1;
+      debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
+      ptrace_syscall(event.tid);
+      return wait_event(wait_for);
+    } else {
+      return event;
+    }
+    }
   case SIGABRT:
     debug_print("%s\n", "Finished capture\n");
     exit(0);
