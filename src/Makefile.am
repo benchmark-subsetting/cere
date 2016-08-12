@@ -19,7 +19,6 @@ pkgpython_PYTHON= \
 	cere/cere_profile.py \
 	cere/utils.py \
 	cere/cere_hybrid.py \
-	cere/cere_ccc.py \
 	cere/errors.py \
 	cere/max_cov_update_graph.py \
 	cere/create_graph.py \
