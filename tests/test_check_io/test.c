@@ -12,8 +12,8 @@ int main(int argc, char **argv)
     fflush(f);
   }
   rewind(f);
-  char str[256];
   for(i = 0; i < 2; i ++) {
+    char str[256];
     fscanf(f, "%s", str);
     printf("I read %s\n", str);
   }

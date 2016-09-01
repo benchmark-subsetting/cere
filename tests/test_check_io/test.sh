@@ -10,7 +10,7 @@ function do_test()
       cere capture --region="$region" --invocation 1
     done
 
-    if ! grep "__cere__test_main_16" .cere/replays/invalid_regions ; then
+    if ! grep "__cere__test_main_15" .cere/replays/invalid_regions ; then
       return 1
     fi
 
