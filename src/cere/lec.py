@@ -86,10 +86,10 @@ def dump_fun(mode_opt, BASE, regions):
     if(mode_opt.invocation):
         temp = temp+"--invocation="+mode_opt.invocation+" "
     safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                "{base}.ll -o {base}.ll -disable-verify").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopExt=LOOP_EXT, base=BASE,Omp=OMP_FLAGS), EXIT=False)
     safe_system(("{llvm_bindir}/opt -S -load {LoopMan} {Omp}-region-dump {opts} " +
-                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                "{base}.ll -o {base}.ll -disable-verify").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopMan=LOOP_DUMP, opts=temp, base=BASE,Omp=OMP_FLAGS), EXIT=False)
 
     globalize_variables(BASE, mode_opt)
@@ -108,7 +108,7 @@ def replay_fun(mode_opt, BASE, regions):
     if (mode_opt.invocation):
         temp = temp + "--invocation=" + mode_opt.invocation + " "
     safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
-                "-isolate-region={loop} {base}.ll -o {base}.ll").format(
+                "-isolate-region={loop} {base}.ll -o {base}.ll -disable-verify").format(
                 llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
                 loop=mode_opt.region, base=BASE,Omp=OMP_FLAGS), EXIT=False)
     safe_system(("{llvm_bindir}/opt -S -load {LoopMan} {opts} {Omp}-region-replay -region={loop} " +
@@ -155,7 +155,7 @@ def extract_function(mode_opt, regions, BASE):
             to_extract=region
             #Outline the loop into a function
             safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
-                 "-isolate-region={loop} {base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                 "-isolate-region={loop} {base}.ll -o {base}.ll -disable-verify").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                  LoopExt=LOOP_EXT, loop=to_extract, base=BASE, Omp=OMP_FLAGS), EXIT=False)
 
           #Rename global variables in this module
@@ -208,7 +208,7 @@ def original_fun(mode_opt, BASE, regions):
           if(mode_opt.regions_infos):
             extract_opts = extract_opts + "-regions-infos=" + mode_opt.regions_infos + " "
           safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner {opts} " +
-                      "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                      "{base}.ll -o {base}.ll -disable-verify").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                       LoopExt=LOOP_EXT, opts=extract_opts, base=BASE,Omp=OMP_FLAGS), EXIT=False)
         else:
             safe_system(("{llvm_bindir}/opt -S -load {LoopInstr} " +
@@ -244,13 +244,13 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     '''
     # Optionnal midend optimizations to explore
     if (MIDEND_FLAGS):
-        os.system("{llvm_bindir}/opt -S {midend_flags} {base}.ll -o {base}.ll".format(
+        os.system("{llvm_bindir}/opt -S {midend_flags} {base}.ll -o {base}.ll -disable-verify".format(
                      llvm_bindir=LLVM_BINDIR, midend_flags=MIDEND_FLAGS, base=BASE))
 
     if REGION_EXTRACTED:
         #Regions have been extracted from this file. So we must change globals
         #definitions.
-        safe_system("{llvm_bindir}/opt -S -O3 {base}.ll -o {base}.ll".format(opts=" ".join(COMPIL_OPT),
+        safe_system("{llvm_bindir}/opt -S -O3 {base}.ll -o {base}.ll -disable-verify".format(opts=" ".join(COMPIL_OPT),
                                                                base=BASE, llvm_bindir=LLVM_BINDIR))
         os.system("sed -i 's/internal constant/hidden constant/' {base}.ll".format(base=BASE))
         #This prevent from new globals optimizations
