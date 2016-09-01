@@ -49,14 +49,29 @@ typedef struct
 } region;
 
 __inline__ void serialize(void) {
-    __asm__("cpuid"
+#if defined (__amd64__)
+    __asm__ volatile("cpuid"
             :::"%eax","%ebx","%ecx","%edx");  // clobbered registers
+#elif defined (__aarch64__)
+    __asm__ volatile("isb" : : : "memory");
+#endif
 }
 
 __inline__ unsigned long long int rdtsc() {
-	unsigned long long int a, d;
-	__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
-	return (d<<32) | a;
+    unsigned long long int a, d;
+
+#if defined(__amd64__)
+    __asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+    return (d<<32) | a;
+#elif defined(__aarch64__)
+    __asm__ volatile("mrs %0, cntvct_el0" : "=r" (a));
+    return a;
+#elif defined(__s390__)
+    uint64_t tsc;
+    asm("\tstck\t%0\n" : "=Q" (tsc) : : "cc");
+    tsc >>= 12; /* convert to microseconds just to be consistent */
+    return(tsc);
+#endif
 }
 
 static uint32_t hash_string(const char*);
