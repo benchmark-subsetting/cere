@@ -65,8 +65,11 @@ def create_user_main(mode_opt,LOOP):
     user_main(MAIN, LOOP, mode_opt)
     MAIN.close()
 
-def compile_memory_dump_objects(DIR):
-    DUMP_ARGS="-Wl,--section-start=.text=0x60004000 -Wl,--section-start=.init=0x60000000"
+def compile_memory_dump_objects(mode_opt, DIR):
+    if not mode_opt.static:
+        DUMP_ARGS="-Wl,--section-start=.text=0x6008000 -Wl,--section-start=.init=0x6000000"
+    else:
+        DUMP_ARGS=""
     safe_system("rm -f {0}/objs.S".format(DUMPS_DIR))
     OBJ=open("{0}/objs.S".format(DUMPS_DIR),'w')
     for FILE in os.listdir(DIR):
@@ -184,6 +187,9 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     if(not INVOCATION):
         INVOCATION=1
 
+    if mode_opt.static:
+        COMPIL_OPT += " -static"
+
     if mode_opt.instrument and not mode_opt.wrapper:
         fail_lel("When using --instrument you must provide the --wrapper argument")
 
@@ -207,7 +213,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
     safe_system(CLANG + " -c realmain.c")
-    OPTS = compile_memory_dump_objects(DIR)
+    OPTS = compile_memory_dump_objects(mode_opt, DIR)
     with tempfile.NamedTemporaryFile() as f:
         f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
                  + " objs.o realmain.o {args} "
@@ -225,6 +231,10 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Original mode
     Only call the linker
     '''
+
+    if mode_opt.static:
+        COMPIL_OPT += "-static"
+
     if(mode_opt.instrument_app):
         safe_system(("{link} -o {binary} {opts} {libs} {libdir}").format(
               link=CLANG, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,

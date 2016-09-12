@@ -31,6 +31,8 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <ccan/hash/hash.h>
+#include <ccan/htable/htable.h>
 #include "pages.h"
 #include "ptrace.h"
 #include "tracer_interface.h"
@@ -44,6 +46,7 @@
 int log_size = LOG_SIZE;
 int last_trace = 0;
 int last_page = 0;
+const char *firsttouch_suffix = "firsttouch.map";
 const char *pagelog_suffix = "hotpages.map";
 const char *core_suffix = "core.map";
 const char *dump_prefix = ".cere";
@@ -65,6 +68,24 @@ struct tracer_buff_t * tracer_buff;
 */
 char loop_name[SIZE_LOOP];
 int invocation = -1;
+
+/* This hash table keeps the first touch of each page */
+
+bool firsttouch_active = false;
+
+static struct htable firsttouch;
+typedef struct {
+  int tid;
+  void * start_of_page;
+} ft_entry;
+
+static size_t rehash (const void *e, void *unused) {
+  return hash_pointer(e, 0);
+}
+
+static bool ptrequ(const void *e, void *f) {
+  return e == f;
+}
 
 static void tracer_lock_range(pid_t child);
 
@@ -128,6 +149,30 @@ static bool is_mru(void *addr) {
   return present;
 }
 
+
+static void dump_firsttouch(void) {
+  debug_print("%s", "Dump firsttouch.map\n");
+
+  char path[MAX_PATH];
+  snprintf(path, sizeof(path), "%s/%s", dump_path, firsttouch_suffix);
+
+  FILE *ft_map = fopen(path, "w");
+  if (!ft_map)
+    errx(EXIT_FAILURE, "Could not create %s file : %s\n",
+         firsttouch_suffix, strerror(errno));
+
+  struct htable_iter iter;
+  ft_entry * t;
+  for (t = htable_first(&firsttouch, &iter);
+       t;
+       t = htable_next(&firsttouch, &iter)) {
+    fprintf(ft_map, "%d %lx\n", t->tid, t->start_of_page);
+  }
+  fclose(ft_map);
+}
+
+
+
 static void dump_core(const size_t naddr, void *addresses[naddr]) {
   debug_print("%s", "Dump core\n");
 
@@ -168,6 +213,26 @@ static void dump_handler(int pid, void *start_of_page) {
   dump_page(pid, start_of_page);
 }
 
+static void register_first_touch(int pid, void * start_of_page) {
+  size_t hash = rehash(start_of_page, NULL);
+  /* Is this the first time we touch this page ? */
+  ft_entry * t = htable_get(&firsttouch, hash, ptrequ, start_of_page);
+
+  /* If not record the touching thread to the firsttouch htable */
+  if (!t) {
+    ft_entry * t = malloc(sizeof(ft_entry));
+    t->tid = pid;
+    t->start_of_page = start_of_page;
+    htable_add(&firsttouch, hash, t);
+    debug_print("First touch by %d detected at %p\n", pid, start_of_page);
+  }
+}
+
+static void firsttouch_handler(int pid, void *start_of_page) {
+  unprotect_i(pid, start_of_page, PAGESIZE);
+  register_first_touch(pid, start_of_page);
+}
+
 static void mru_handler(int pid, void *start_of_page) {
   debug_print("MRU Detected access at %p\n", start_of_page);
 
@@ -177,6 +242,10 @@ static void mru_handler(int pid, void *start_of_page) {
        page are queued. The first handler will unprotect the page, and add it to
        mru, therefore there is nothing to do in the second handler. */
     return;
+  }
+
+  if (firsttouch_active) {
+    register_first_touch(pid, start_of_page);
   }
 
   if (pages_cache[last_page] != 0) {
@@ -242,7 +311,7 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
       if (is_dump_sigtrap(e.tid)) {
         return e.tid;
       } else if (is_hook_sigtrap(e.tid)) {
-        assert(tracer_state == TRACER_LOCKED);
+        assert(tracer_state == TRACER_LOCKED || tracer_state == TRACER_FIRSTTOUCH);
         tracer_lock_range(e.tid);
         continue;
       } else { // If we arrive here, it is a syscall
@@ -258,6 +327,9 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
         errx(EXIT_FAILURE,
              "SIGSEGV at %p before locking memory during capture\n",
              e.sigaddr);
+      case TRACER_FIRSTTOUCH:
+        firsttouch_handler(e.tid, addr);
+        break;
       case TRACER_LOCKED:
         mru_handler(e.tid, addr);
         break;
@@ -515,6 +587,10 @@ static void tracer_dump(pid_t pid) {
     }
   }
 
+  if (firsttouch_active) {
+    dump_firsttouch();
+  }
+
   dump_core(arg_count, addresses);
   dump_unprotected_pages(pid);
 }
@@ -525,9 +601,21 @@ static void tracer_init(pid_t pid) {
   assert(e.signo == SIGSTOP);
   follow_threads(pid);
   create_dump_dir();
-  continue_all();
 
   debug_print("%s\n", "Tracer initialized");
+
+  if (firsttouch_active) {
+    htable_init(&firsttouch, rehash, NULL);
+    stop_all_except(pid);
+    tracer_lock_mem(pid);
+    debug_print("%s\n", "******* TRACER_FIRSTTOUCH");
+    tracer_state = TRACER_FIRSTTOUCH;
+  } else {
+    debug_print("%s\n", "******* TRACER_UNLOCKED");
+    tracer_state = TRACER_UNLOCKED;
+  }
+
+  continue_all();
 }
 
 int main(int argc, char *argv[]) {
@@ -538,13 +626,16 @@ int main(int argc, char *argv[]) {
     errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n", argv[0]);
   }
 
+  char * ft = getenv("CERE_FIRSTTOUCH");
+  if (ft && strcmp("TRUE", ft) == 0) {
+    firsttouch_active = true;
+    debug_print("%s\n", "First touch capture is active");
+  }
+
   child = atoi(argv[1]);
   sscanf(argv[2], "%p", &tracer_buff);
 
   tracer_init(child);
-  debug_print("%s\n", "******* TRACER_UNLOCKED");
-  tracer_state = TRACER_UNLOCKED;
-
   /* Wait for lock_mem trap */
 
   pid_t tid = handle_events_until_dump_trap(-1);
@@ -552,7 +643,6 @@ int main(int argc, char *argv[]) {
   tracer_lock_mem(tid);
   debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;
-
   continue_all();
 
   /* Dump arguments */

@@ -2,7 +2,7 @@ SHELL=/bin/sh
 CC=cerec
 FLINK=cerec
 
-FLAGS=-g -O0 -lpthread
+FLAGS=-g -O0 -pthread
 
 OBJS = test.o
 
