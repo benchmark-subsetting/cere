@@ -8,7 +8,7 @@ function do_test()
     cat $TMPDIR/test.dump.out
 
     make clean
-    make -j4 CERE_MODE="replay --region=__cere__test_checksum_7" F_LIB=-lc
+    make -j4 CERE_MODE="replay --region=__cere__test_checksum_7"
     ./test 2> $TMPDIR/test.replay.out
     cat $TMPDIR/test.replay.out
 

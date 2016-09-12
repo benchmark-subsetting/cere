@@ -4,7 +4,7 @@ cere replay(1) -- Replay invocation(s) and predict region time
 ## SYNOPSIS
 
 ```
-cere replay [-h] --region REGION [--invocation INVOCATION]
+cere replay [-h] --region REGION [--invocation INVOCATION] [--static]
           [--invitro-callcount CERE_REPLAY_REPETITIONS] [--plugin-instr PLUGIN_INSTR]
           [--norun] [--noinstrumentation] [--force]
 ```
@@ -42,6 +42,9 @@ available,
   * `--invocation INVOCATION`:
     Selects the invocation to replay. By default, all the representative
     invocations chosen by cere-selectinv(1) are replayed.
+
+  * `--static`:
+    Produces a statically linked replay binary.
 
   * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
     Select the meta-repetition of the replay. By default **cere replay** runs
