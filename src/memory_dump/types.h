@@ -39,8 +39,9 @@
 
 enum tracer_state_t {
   TRACER_UNLOCKED = 1,
-  TRACER_LOCKED = 2,
-  TRACER_DUMPING = 3
+  TRACER_FIRSTTOUCH = 2,
+  TRACER_LOCKED = 3,
+  TRACER_DUMPING = 4
 };
 
 extern enum tracer_state_t tracer_state;
