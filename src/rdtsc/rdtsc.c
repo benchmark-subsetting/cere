@@ -18,7 +18,9 @@
  *****************************************************************************/
 #include <stdio.h>
 #include <string.h>
+#include <ccan/hash/hash.h>
 #include "rdtsc.h"
+
 
 void calibrate_serialize_overhead()
 {
@@ -52,14 +54,6 @@ static bool streq(const void *e, void *string)
 static bool streq2(const void *e, void *string)
 {
 	return strcmp(((global_region_call_count *)e)->name, string) == 0;
-}
-
-static uint32_t hash_string(const char *string)
-{
-	uint32_t ret;
-	for (ret = 0; *string; string++)
-		ret = (ret << 5) - ret + *string;
-	return ret;
 }
 
 static size_t rehash(const void *e, void *unused)

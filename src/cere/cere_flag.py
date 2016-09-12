@@ -91,6 +91,7 @@ def run_replay(flags, args, history):
         set_env(line)
 
         #Set attributes for the replay pass.
+        args.static=False
         args.force=True
         args.invocation=None
         args.noinstrumentation=False
