@@ -37,9 +37,10 @@ void dump_close(void);
  * before any other code in the function to be captured.
  *   - loop_name is the name of the region of interest
  *   - invocation is the target invocation that must be captured
- *   - count is the current invocation counter (the user must update this)
- *   when invocation == count the capture starts */
-void dump(char *loop_name, int invocation, int count, ...);
+ *   - arg_count is the number of arguments passed to the outlined function
+ *   - ... are the arguments passed to the outlined function
+ */
+void dump(char *loop_name, int invocation, int arg_count, ...);
 
 /* after_dump: terminates capture of a region of interest. must be called
    at the end of the function to be captured */
