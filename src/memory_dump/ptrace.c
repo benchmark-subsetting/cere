@@ -69,6 +69,8 @@ void ptrace_syscall(pid_t pid) {
   debug_print("ptrace_syscall %d ...\n\n", pid);
 }
 
+
+#if defined(__amd64__)
 void ptrace_setregs(pid_t pid, struct user_regs_struct *regs) {
   int r = 0;
   do {
@@ -84,6 +86,32 @@ void ptrace_getregs(pid_t pid, struct user_regs_struct *regs) {
   } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
                         errno == ESRCH));
 }
+#elif defined(__aarch64__)
+#define NT_PRSTATUS 1
+
+void ptrace_getregs(pid_t pid, struct user_pt_regs *regs) {
+  int r = 0;
+  *regs = (struct user_pt_regs) {};
+  struct iovec iovec;
+  iovec.iov_base = regs;
+  iovec.iov_len = sizeof *regs;
+  do {
+    r = ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iovec);
+  } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
+                        errno == ESRCH));
+}
+
+void ptrace_setregs(pid_t pid, struct user_pt_regs *regs) {
+  int r = 0;
+  struct iovec iovec;
+	iovec.iov_base = regs;
+	iovec.iov_len = sizeof *regs;
+  do {
+    r = ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iovec);
+  } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
+                        errno == ESRCH));
+}
+#endif
 
 void ptrace_getdata(pid_t child, long addr, char *str, int len) {
   union u {

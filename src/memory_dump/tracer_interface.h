@@ -40,6 +40,6 @@ register_t get_arg_from_regs(pid_t pid);
 int get_syscallid(pid_t pid);
 bool is_dump_sigtrap(pid_t pid);
 bool is_hook_sigtrap(pid_t pid);
-
+void clear_trap(pid_t pid);
 
 #endif /* __TRACER_INTERFACE__H */

@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include "types.h"
 
+#if defined(__amd64__)
 static inline void sigtrap(void) {
   asm volatile("int $3");
 }
@@ -29,7 +30,7 @@ void hook_sigtrap(void) {
   sigtrap();
 }
 
-void send_to_tracer(register_t arg) {
+static void send_to_tracer(register_t arg) {
   asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
   asm volatile("mov %0,%%rdi" : : "r"(arg));
   sigtrap();
@@ -46,3 +47,32 @@ struct tracer_buff_t tracer_buff = {
                        "\x0f\x05"     /* syscall unprotect */
                        "\xcc"         /* int $3 (SIGTRAP)  */
 };
+#elif defined(__aarch64__)
+static inline void sigtrap(void) {
+  asm volatile("brk #0");
+}
+
+void hook_sigtrap(void) {
+  asm volatile("mov x1, %0" : : "r"((register_t)SYS_hook) : "x1");
+  sigtrap();
+}
+
+void send_to_tracer(register_t arg) {
+  asm volatile("mov x1, %0" : : "r"((register_t)SYS_dump) : "x1");
+  asm volatile("mov x0, %0" : : "r"((register_t)arg) : "x0");
+  sigtrap();
+}
+
+struct tracer_buff_t tracer_buff = {
+  .syscall = "\x01\x00\x00\xd4"           /* svc #0 syscall */
+             "\x00\x00\x20\xd4",          /* brk #0 (SIGTRAP) */
+  .unprotect_protect = "\x01\x00\x00\xd4" /* syscall protect */
+                       "\xe0\x03\x13\xaa" /* mov	x0, x19 */
+                       "\xe1\x03\x14\xaa" /* mov	x1, x20 */
+                       "\xe2\x03\x15\xaa" /* mov	x2, x21 */
+                       "\xe8\x03\x16\xaa" /* mov	x8, x22 */
+                       "\x01\x00\x00\xd4" /* syscall unprotect */
+                       "\x00\x00\x20\xd4" /* brk #0 (SIGTRAP) */
+};
+
+#endif
