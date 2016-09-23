@@ -1,4 +1,4 @@
-LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags)
+LLVMCXXFLAGS    := $(shell "$(LLVM_CONFIG)" --cxxflags | sed s/-Wcovered-switch-default// | sed s/-Werror=date-time//)
 libRegionReplay_la_CXXFLAGS = $(LLVMCXXFLAGS)
 
 
