@@ -67,7 +67,7 @@ def create_user_main(mode_opt,LOOP):
 
 def compile_memory_dump_objects(mode_opt, DIR):
     if not mode_opt.static:
-        DUMP_ARGS="-Wl,--section-start=.text=0x6008000 -Wl,--section-start=.init=0x6000000"
+        DUMP_ARGS="-Wl,--section-start=.text=0x60004000 -Wl,--section-start=.init=0x60000000"
     else:
         DUMP_ARGS=""
     safe_system("rm -f {0}/objs.S".format(DUMPS_DIR))
