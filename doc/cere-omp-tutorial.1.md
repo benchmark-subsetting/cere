@@ -201,13 +201,20 @@ to replay. It is important that you carefully set the number of threads when
 capturing invocations with `export OMP_NUM_THREADS=N`.
 This is done with the following command:
 
-    $ export OMP_NUM_THREADS=1
     $ cere capture --region=__cere__bt_adi_211
 
 This step might take a long time depending on your machine.
 This command generates a set of files in
 `.cere/dumps/__cere__bt_adi_211/INVOCATIONS/` which is needed to
 restore the memory and the cache state in order to replay the region.
+
+When capturing parallel programs, one can capture first touch NUMA effects by
+setting CERE_FIRSTTOUCH="TRUE".
+
+Attention, when capturing OpenMP parallel programs one should always export
+KMP_BLOCKTIME=0. This avoids an active loop between the tracer and sched_yield
+calls from the OpenMP runtime that *significantly* slows the trace. In practice
+cere capture exports KMP_BLOCKTIME=0 for you.
 
 ### Replaying the region
 

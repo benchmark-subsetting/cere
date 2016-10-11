@@ -16,6 +16,14 @@ original application with capture probes and runs this instrumented binary.
 If no particular invocation is selected, **cere capture** records all the
 representative invocations selected by cere-selectinv(1).
 
+When capturing parallel programs, one can capture first touch NUMA effects by
+setting CERE_FIRSTTOUCH="TRUE".
+
+Attention, when capturing OpenMP parallel programs one should always export
+KMP_BLOCKTIME=0. This avoids an active loop between the tracer and sched_yield
+calls from the OpenMP runtime that *significantly* slows the trace. In practice
+cere capture exports KMP_BLOCKTIME=0 for you.
+
 ## OPTIONS
 
   * `-h`:

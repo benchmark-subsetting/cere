@@ -87,6 +87,10 @@ def run(args):
     if not args.norun:
       logger.info("Capturing invocation {1} for region {0}".format(args.region, invocation))
       try:
+        # KMP_BLOCKTIME must be set to 0 in case of an OpenMP capture. In some cases interferences between the tracer
+        # and the OpenMP runtime doing continuous sched_yield enter an active loops which slows significantly
+        # the capture.
+        os.environ['KMP_BLOCKTIME']="0"
         logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
       except subprocess.CalledProcessError as err:
         #even if the capture run fails, maybe the region is dumped.
