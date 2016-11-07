@@ -110,6 +110,14 @@ AC_FUNC_REALLOC
 
 AC_CHECK_FUNCS([atexit floor gettimeofday memset mkdir pow sqrt strchr strdup strerror strrchr strstr strtoul tzset utime])
 
+# Required for ccan
+AC_C_BIGENDIAN(
+               [AC_DEFINE(HAVE_BIG_ENDIAN, 1, [Define to 1 if machine is big endian])],
+               [AC_DEFINE(HAVE_LITTLE_ENDIAN, 1, [Define to 1 if machine is little endian])],
+               [AC_MSG_ERROR([endianess of this machine is unknown])],
+               [AC_MSG_ERROR([universal endianess not supported])]
+               )
+
 # Check for Python 2.7
 
 AM_PATH_PYTHON([2.7])

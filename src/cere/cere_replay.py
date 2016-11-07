@@ -40,6 +40,7 @@ def init_module(subparsers, cere_plugins):
   replay_parser.add_argument('--invocation', type=int, help="invocation to replay")
   replay_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetition for the replay (Default 10)")
   replay_parser.add_argument('--plugin-instr', default=var.RDTSC_WRAPPER, help="Plugin to instrument the replay")
+  replay_parser.add_argument('--static', action='store_true', help="Produce a statically linked binary")
   replay_parser.add_argument('--noinstrumentation', action='store_true', help="Replay without instrumentation")
   replay_parser.add_argument('--norun', action='store_true', help="If you don't want to automatically run the replay")
   replay_parser.add_argument('--force', '-f', action='store_true', help="force to replay (Delete previous measure)")
@@ -118,9 +119,18 @@ def run(args):
     else:
       instru_cmd = "--instrument"
       logger.info("Compiling replay mode for region {0} invocation {1} with instrumentation".format(args.region, invocation))
+
+    if args.static:
+      static_cmd = "--static"
+      logger.info("Static mode enabled".format(args.region, invocation))
+    else:
+      static_cmd = ""
+
     try:
-      logger.debug(subprocess.check_output("{0} && {1} CERE_REPLAY_REPETITIONS={6} CERE_MODE=\"replay --region={2} --invocation={3} {4} --wrapper={5}\"".format(cere_configure.cere_config["clean_cmd"],
-                                    cere_configure.cere_config["build_cmd"], args.region, invocation, instru_cmd, args.plugin_instr, args.invitro_callcount), stderr=subprocess.STDOUT, shell=True))
+      logger.debug(
+        subprocess.check_output("{0} && {1} CERE_REPLAY_REPETITIONS={6} CERE_MODE=\"replay --region={2} --invocation={3} {4} --wrapper={5} {7}\"".format(
+        cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"],
+          args.region, invocation, instru_cmd, args.plugin_instr, args.invitro_callcount, static_cmd), stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)

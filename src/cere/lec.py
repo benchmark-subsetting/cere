@@ -223,6 +223,7 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     Detect source language (fortran or C/C++ for the moment)
     and compile SOURCE code
     '''
+
     if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
             safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
@@ -302,9 +303,13 @@ def compile(args, args2):
       args[0].cere_objects = os.path.realpath(args[0].cere_objects)
       regions = read_file(args[0].hybrid_regions, args[0].regions_infos, SOURCES)
 
+    if args[0].static:
+        COMPIL_OPT.append("-static")
+
     for SOURCE in SOURCES:
         BASE, ext = os.path.splitext(SOURCE)
         OBJECT = args[0].o if args[0].o else BASE + '.o'
+
         # call mode_function
         first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT)
         function[args[0].func](args[0], BASE, regions)

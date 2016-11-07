@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
-#include "../ccan/ccan/htable/htable.h"
+#include <ccan/htable/htable.h>
 #define CALL_STACK_SIZE 8192
 #define TRACE_SIZE 100000
 
@@ -68,8 +68,6 @@ __inline__ unsigned long long int rdtsc() {
     return a;
 #endif
 }
-
-static uint32_t hash_string(const char*);
 
 static bool streq(const void*, void*);
 static size_t rehash(const void*, void*);
