@@ -28,6 +28,7 @@ option_forbidden = set([("dump", "--instrument"),
                        ("dump", "--no-nested-regions"),
                        ("dump", "--instrument-app"),
                        ("dump", "--hybrid"),
+                       ("dump", "--static"),
                        ("replay", "--regions-file"),
                        ("replay", "--nested-regions"),
                        ("replay", "--no-nested-regions"),
@@ -75,6 +76,8 @@ def init_subpars(parser, region_required):
     parser.add_argument('--extraction-lvl', action=OptAction, default="")
     parser.add_argument('--cere-objects', action=OptAction, default="")
     parser.add_argument('--hybrid', action=OptAction, nargs=0,
+                        const=True, default=False)
+    parser.add_argument('--static', action=OptAction, nargs=0,
                         const=True, default=False)
     parser.add_argument('--wrapper', action=OptAction, default="")
     parser.add_argument('-o')

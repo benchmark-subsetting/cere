@@ -8,5 +8,6 @@ libcere_load_la_CFLAGS = -g --std=gnu99 -Wl,-z,now
 libcere_load_la_SOURCES = replay.c pages.h
 
 bin_PROGRAMS = cere-tracer
-cere_tracer_CFLAGS = -g --std=gnu99 -Wl,-z,now
+cere_tracer_CFLAGS = -I ../ccan/ -g --std=gnu99 -Wl,-z,now
 cere_tracer_SOURCES = ptrace.c cere_tracer.c tracer_interface.c pages.h tracer_interface.h ptrace.h types.h err.h
+cere_tracer_LDADD = ../ccan/libccan.la

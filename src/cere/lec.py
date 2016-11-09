@@ -223,6 +223,7 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     Detect source language (fortran or C/C++ for the moment)
     and compile SOURCE code
     '''
+
     if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
             opt = [s for s in COMPIL_OPT if s.startswith('-J')]
@@ -304,6 +305,9 @@ def compile(args, args2):
         fail_lec("--cere-objects needed with --hybrid.")
       args[0].cere_objects = os.path.realpath(args[0].cere_objects)
       regions = read_file(args[0].hybrid_regions, args[0].regions_infos, SOURCES)
+
+    if args[0].static:
+        COMPIL_OPT.append("-static")
 
     for SOURCE in SOURCES:
         BASE, ext = os.path.splitext(SOURCE)
