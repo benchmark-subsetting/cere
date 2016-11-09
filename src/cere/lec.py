@@ -225,6 +225,9 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''
     if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
+            opt = [s for s in COMPIL_OPT if s.startswith('-J')]
+            if opt:
+              INCLUDES.append(opt[0])
             safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
                         "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
                         gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
@@ -305,6 +308,7 @@ def compile(args, args2):
     for SOURCE in SOURCES:
         BASE, ext = os.path.splitext(SOURCE)
         OBJECT = args[0].o if args[0].o else BASE + '.o'
+
         # call mode_function
         first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT)
         function[args[0].func](args[0], BASE, regions)
