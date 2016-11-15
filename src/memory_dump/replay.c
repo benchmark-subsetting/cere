@@ -86,6 +86,12 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
+  char* dump_prefix = getenv("CERE_PATH");
+  if(!dump_prefix) {
+    warn("CERE_PATH not defined, using defaut cere dir.\n");
+    dump_prefix = ".cere";
+  }
+
   /* Read warmup type from environment variable */
   char *ge = getenv("CERE_WARMUP");
   if (ge && strcmp("COLD", ge) == 0) {
@@ -98,7 +104,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   }
 
   /* Load adresses */
-  snprintf(path, sizeof(path), ".cere/dumps/%s/%d/core.map", loop_name,
+  snprintf(path, sizeof(path), "%s/dumps/%s/%d/core.map", dump_prefix, loop_name,
            invocation);
   FILE *core_map = fopen(path, "r");
   if (!core_map)
@@ -114,7 +120,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
   if (!loaded) {
     /* load hotpages adresses */
-    snprintf(path, sizeof(path), ".cere/dumps/%s/%d/hotpages.map", loop_name,
+    snprintf(path, sizeof(path), "%s/dumps/%s/%d/hotpages.map", dump_prefix, loop_name,
              invocation);
     FILE *hot_map = fopen(path, "r");
     if (!hot_map)
@@ -150,7 +156,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char filename[1024];
   int total_readed_bytes = 0;
 
-  snprintf(path, sizeof(path), ".cere/dumps/%s/%d/", loop_name, invocation);
+  snprintf(path, sizeof(path), "%s/dumps/%s/%d/", dump_prefix, loop_name, invocation);
   if ((dir = opendir(path)) == NULL) {
     /* could not open directory */
     fprintf(stderr, "REPLAY: Could not open %s", path);

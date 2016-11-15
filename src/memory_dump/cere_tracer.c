@@ -46,10 +46,10 @@
 int log_size = LOG_SIZE;
 int last_trace = 0;
 int last_page = 0;
+char *dump_prefix = NULL;
 const char *firsttouch_suffix = "firsttouch.map";
 const char *pagelog_suffix = "hotpages.map";
 const char *core_suffix = "core.map";
-const char *dump_prefix = ".cere";
 const char *dump_root = "dumps";
 const char *replay_root = "replays";
 
@@ -624,6 +624,12 @@ int main(int argc, char *argv[]) {
 
   if (argc != 3) {
     errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n", argv[0]);
+  }
+
+  dump_prefix = getenv("CERE_PATH");
+  if(!dump_prefix) {
+    debug_print("CERE_PATH not defined, using defaut cere dir.\n");
+    dump_prefix = ".cere";
   }
 
   char * ft = getenv("CERE_FIRSTTOUCH");
