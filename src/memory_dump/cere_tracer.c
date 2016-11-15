@@ -84,7 +84,8 @@ static size_t rehash (const void *e, void *unused) {
 }
 
 static bool ptrequ(const void *e, void *f) {
-  return e == f;
+  const ft_entry * ft = (const ft_entry *) e;
+  return  ft->start_of_page == f;
 }
 
 static void tracer_lock_range(pid_t child);
@@ -220,7 +221,7 @@ static void register_first_touch(int pid, void * start_of_page) {
 
   /* If not record the touching thread to the firsttouch htable */
   if (!t) {
-    ft_entry * t = malloc(sizeof(ft_entry));
+    t = malloc(sizeof(ft_entry));
     t->tid = pid;
     t->start_of_page = start_of_page;
     htable_add(&firsttouch, hash, t);
