@@ -38,7 +38,7 @@ GLOB_RENAME = LIBDIR + "/libcere_globalrename.so"
 LIBDIR_FLAGS = "-L {libdir} -Wl,--rpath={libdir}".format(libdir=LIBDIR)
 RDTSC_WRAPPER = "-lcere_rdtsc"
 LIKWID = "-llikwid"
-FORTRAN_EXTENSIONS=[".f", ".f90", ".f77"]
+FORTRAN_EXTENSIONS=[".f", ".f90", ".f77", ".F90"]
 DUMPS_DIR = ".cere/dumps/"
 
 SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS

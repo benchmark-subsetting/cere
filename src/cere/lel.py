@@ -70,8 +70,8 @@ def compile_memory_dump_objects(mode_opt, DIR):
         DUMP_ARGS="-Wl,--section-start=.text=0x60004000 -Wl,--section-start=.init=0x60000000"
     else:
         DUMP_ARGS=""
-    safe_system("rm -f {0}/objs.S".format(DUMPS_DIR))
-    OBJ=open("{0}/objs.S".format(DUMPS_DIR),'w')
+    safe_system("rm -f {0}/objs.S".format(DIR))
+    OBJ=open("{0}/objs.S".format(DIR),'w')
     for FILE in os.listdir(DIR):
         BASE, ext = os.path.splitext(FILE)
         FILE = DIR+"/"+FILE
@@ -81,7 +81,7 @@ def compile_memory_dump_objects(mode_opt, DIR):
             DUMP_ARGS = (DUMP_ARGS +
                         " -Wl,--section-start=s{n}=0x{n}".format(n=BASE))
     OBJ.close()
-    safe_system(CLANG + " -c {0}/objs.S".format(DUMPS_DIR))
+    safe_system(CLANG + " -c {0}/objs.S".format(DIR))
     return DUMP_ARGS
 
 def dump_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -176,6 +176,21 @@ def extract_symbols(DIR):
                 + " {dump_dir}/static.sym {dump_dir}/static.sym").format(
                     objcopy=OBJCOPY, dump_dir=DIR))
 
+def find_cere_dir():
+  if "CERE_PATH" in os.environ:
+    return os.path.dirname(os.environ["CERE_PATH"])
+  file_name = ".cere" #file to be searched
+  cur_dir = os.getcwd()
+  while True:
+    file_list = os.listdir(cur_dir)
+    parent_dir = os.path.dirname(cur_dir)
+    if file_name in file_list: break
+    else:
+      if "cere.json" in file_list or cur_dir == parent_dir:
+        return False
+      else: cur_dir = parent_dir
+  return cur_dir
+
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
@@ -192,12 +207,16 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
 
     if mode_opt.instrument and not mode_opt.wrapper:
         fail_lel("When using --instrument you must provide the --wrapper argument")
+    #Find the .cere directory
+    cere_dir = find_cere_dir()
+    if not cere_dir:
+      fail_lel("Failed to find .cere directory. try export CERE_PATH=\"path/to/.cere/\"")
+    DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
 
-    DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=DUMPS_DIR, loop=LOOP, invocation=INVOCATION)
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
-        fail_lel("No dump for {loop} invocation {invocation}".format(loop=LOOP,
-                 invocation=INVOCATION))
+        fail_lel("No dump for {loop} invocation {invocation} in {dump_path}".format(loop=LOOP,
+                 invocation=INVOCATION, dump_path=DIR))
     # Compress the traces
     compress(DIR)
     create_user_main(mode_opt,LOOP)

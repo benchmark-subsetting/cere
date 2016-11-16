@@ -226,6 +226,9 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
 
     if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
+            opt = [s for s in COMPIL_OPT if s.startswith('-J')]
+            if opt:
+              INCLUDES.append(opt[0])
             safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
                         "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
                         gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
