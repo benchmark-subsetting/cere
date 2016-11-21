@@ -177,14 +177,13 @@ def extract_symbols(DIR):
                     objcopy=OBJCOPY, dump_dir=DIR))
 
 def find_cere_dir():
-  if "CERE_PATH" in os.environ:
-    return os.path.dirname(os.environ["CERE_PATH"])
-  file_name = ".cere" #file to be searched
+  if "CERE_WORKING_PATH" in os.environ:
+    return os.path.dirname(os.environ["CERE_WORKING_PATH"])
   cur_dir = os.getcwd()
   while True:
     file_list = os.listdir(cur_dir)
     parent_dir = os.path.dirname(cur_dir)
-    if file_name in file_list: break
+    if CERE_MAIN_DIR in file_list: break
     else:
       if "cere.json" in file_list or cur_dir == parent_dir:
         return False

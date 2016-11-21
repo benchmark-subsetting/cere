@@ -42,8 +42,7 @@ def run(args):
     cere_config["run_cmd"] = args.run_cmd
     cere_config["clean_cmd"] = args.clean_cmd
     cere_config["multiple_trace"] = args.multiple_trace
-    cere_config["regions_infos"] = os.path.realpath(args.regions_infos)
-    cere_config["cere_path"] = os.path.realpath(var.CERE_MAIN_DIR)
+    cere_config["regions_infos"] = args.regions_infos
 
     with open("cere.json", 'w') as config_file:
         json.dump(cere_config, config_file)
@@ -60,7 +59,7 @@ def init():
     if not setup_dir():
         logger.critical("Cannot create required directories for CERE. Check permissions?")
         return False
-    os.environ["CERE_PATH"] = cere_config["cere_path"]
+    os.environ["CERE_WORKING_PATH"] = os.path.realpath(var.CERE_MAIN_DIR)
     return True
 
 def setup_dir():
