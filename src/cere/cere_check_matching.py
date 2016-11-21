@@ -65,6 +65,7 @@ class Region():
         self.read = False
         self.regions_file = None
         self.noinstrumentation = False
+        self.static = False
         self.plugin_instr=var.RDTSC_WRAPPER
         self.force = False
         self.invocations_data = []

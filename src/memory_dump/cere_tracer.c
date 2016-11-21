@@ -46,10 +46,10 @@
 int log_size = LOG_SIZE;
 int last_trace = 0;
 int last_page = 0;
+char *dump_prefix = NULL;
 const char *firsttouch_suffix = "firsttouch.map";
 const char *pagelog_suffix = "hotpages.map";
 const char *core_suffix = "core.map";
-const char *dump_prefix = ".cere";
 const char *dump_root = "dumps";
 const char *replay_root = "replays";
 
@@ -80,7 +80,8 @@ typedef struct {
 } ft_entry;
 
 static size_t rehash (const void *e, void *unused) {
-  return hash_pointer(e, 0);
+  const ft_entry * ft = (const ft_entry *) e;
+  return hash_pointer(ft->start_of_page, 0);
 }
 
 static bool ptrequ(const void *e, void *f) {
@@ -215,7 +216,7 @@ static void dump_handler(int pid, void *start_of_page) {
 }
 
 static void register_first_touch(int pid, void * start_of_page) {
-  size_t hash = rehash(start_of_page, NULL);
+  size_t hash = hash_pointer(start_of_page, 0);
   /* Is this the first time we touch this page ? */
   ft_entry * t = htable_get(&firsttouch, hash, ptrequ, start_of_page);
 
@@ -227,6 +228,8 @@ static void register_first_touch(int pid, void * start_of_page) {
     htable_add(&firsttouch, hash, t);
     debug_print("First touch by %d detected at %p\n", pid, start_of_page);
   }
+
+  ft_entry * x = htable_get(&firsttouch, hash, ptrequ, start_of_page);
 }
 
 static void firsttouch_handler(int pid, void *start_of_page) {
@@ -625,6 +628,12 @@ int main(int argc, char *argv[]) {
 
   if (argc != 3) {
     errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n", argv[0]);
+  }
+
+  dump_prefix = getenv("CERE_PATH");
+  if(!dump_prefix) {
+    debug_print("CERE_PATH not defined, using defaut cere dir.\n");
+    dump_prefix = ".cere";
   }
 
   char * ft = getenv("CERE_FIRSTTOUCH");

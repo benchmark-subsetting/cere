@@ -61,10 +61,13 @@ def init():
     if not setup_dir():
         logger.critical("Cannot create required directories for CERE. Check permissions?")
         return False
+    
     if cere_config["omp"]:
-      os.environ["CERE_OMP"]="1"
-      if "OMP_NUM_THREADS" not in os.environ:
-        logger.warning("PCERE enabled but OMP_NUM_THREADS not set.")
+        os.environ["CERE_OMP"]="1"
+        if "OMP_NUM_THREADS" not in os.environ:
+            logger.warning("PCERE enabled but OMP_NUM_THREADS not set.")
+
+    os.environ["CERE_WORKING_PATH"] = os.path.realpath(var.CERE_MAIN_DIR)
     return True
 
 def setup_dir():
