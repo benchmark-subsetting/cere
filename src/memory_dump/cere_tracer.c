@@ -80,7 +80,8 @@ typedef struct {
 } ft_entry;
 
 static size_t rehash (const void *e, void *unused) {
-  return hash_pointer(e, 0);
+  const ft_entry * ft = (const ft_entry *) e;
+  return hash_pointer(ft->start_of_page, 0);
 }
 
 static bool ptrequ(const void *e, void *f) {
@@ -215,7 +216,7 @@ static void dump_handler(int pid, void *start_of_page) {
 }
 
 static void register_first_touch(int pid, void * start_of_page) {
-  size_t hash = rehash(start_of_page, NULL);
+  size_t hash = hash_pointer(start_of_page, 0);
   /* Is this the first time we touch this page ? */
   ft_entry * t = htable_get(&firsttouch, hash, ptrequ, start_of_page);
 
