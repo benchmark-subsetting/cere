@@ -21,6 +21,7 @@ import sys
 import cPickle as pickle
 import networkx as nx
 import cere_configure
+from networkx.drawing.nx_pydot import write_dot
 from graph_utils import *
 import logging
 import argparse
@@ -116,7 +117,7 @@ class Region:
                 else: d['color']="green"
             if d['_to_test']: d['color']="orange"
             if d['_name'] == self._name: d['style']="filled"
-        nx.write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PLOTS_PATH, self._name))
+        write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PLOTS_PATH, self._name))
         try:
             subprocess.check_output("dot -Tpng {0}/graph_{1}.dot -o {0}/graph_{1}.png".format(var.CERE_PLOTS_PATH, self._name), stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as err:
