@@ -11,7 +11,7 @@ Please ensure that CERE's dependencies are installed on your system:
   * GNU autotools (automake, autoconf >= 2.69)
 
   * Python 2, version >= 2.7 and the following modules: matplotlib, jinja2,
-    networkx, numpy, pygraphviz, sklearn
+    networkx, numpy, pygraphviz, pydot, sklearn
 
   * Graphviz, http://www.graphviz.org
 

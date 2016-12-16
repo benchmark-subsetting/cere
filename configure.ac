@@ -22,7 +22,7 @@ AC_SUBST(CERELIBS, $libdir)
 AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
-AX_LLVM([3.8.0],[3.8.0],[all])
+AX_LLVM([3.8.0],[3.8.1],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
 
@@ -125,6 +125,7 @@ AM_PATH_PYTHON([2.7])
 # Check for Python 2 modules
 
 AX_PYTHON_MODULE(networkx, fatal)
+AX_PYTHON_MODULE(pydot, fatal)
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
 AX_PYTHON_MODULE(jinja2, fatal)
 AX_PYTHON_MODULE(sklearn, fatal)
