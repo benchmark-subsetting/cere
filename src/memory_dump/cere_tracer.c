@@ -632,7 +632,7 @@ int main(int argc, char *argv[]) {
 
   dump_prefix = getenv("CERE_PATH");
   if(!dump_prefix) {
-    debug_print("CERE_PATH not defined, using defaut cere dir.\n");
+    debug_print("%s\n", "CERE_PATH not defined, using defaut cere dir.\n");
     dump_prefix = ".cere";
   }
 
