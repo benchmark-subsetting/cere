@@ -17,7 +17,7 @@
 # along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
 
 import networkx as nx
-from networkx.drawing.nx_agraph import write_dot
+from networkx.drawing.nx_pydot import write_dot
 import cPickle as pickle
 import logging
 import os
