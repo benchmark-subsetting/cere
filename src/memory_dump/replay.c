@@ -31,7 +31,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <omp.h>
 #include "pages.h"
+
+#include <ccan/hash/hash.h>
+#include <ccan/htable/htable.h>
 
 #define CACHE_SIZE_MB 20
 
@@ -43,6 +47,44 @@ void cacheflush(void) {
     for (j = 0; j < size; j++)
       c[j] = i * j;
 }
+
+/**********************************************************************
+ * First touch                                                        *
+ **********************************************************************/
+
+bool firsttouch_active = false;
+const char *firsttouch_suffix = "firsttouch.map";
+int offset_pthread_omp = 0;
+
+static struct htable firsttouch;
+typedef struct {
+  int tid;
+  void * start_of_page;
+} ft_entry;
+
+static size_t rehash (const void *e, void *unused) {
+  const ft_entry * ft = (const ft_entry *) e;
+  return hash_pointer(ft->start_of_page, 0);
+}
+
+static bool ptrequ(const void *e, void *f) {
+  const ft_entry * ft = (const ft_entry *) e;
+  return  ft->start_of_page == f;
+}
+static void register_first_touch(int pid, void * start_of_page) {
+  size_t hash = hash_pointer(start_of_page, 0);
+  /* Is this the first time we access this page ? */
+  ft_entry * t = htable_get(&firsttouch, hash, ptrequ, start_of_page);
+
+  /* If not record the touching thread to the firsttouch htable */
+  if (!t) {
+    t = malloc(sizeof(ft_entry));
+    t->tid = pid;
+    t->start_of_page = start_of_page;
+    htable_add(&firsttouch, hash, t);
+  }
+}
+
 
 /**********************************************************************
  * REPLAY MODE                                                        *
@@ -85,11 +127,39 @@ static off64_t get_address_from_filename(char *filename) {
 void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
+  static bool firsttouch_init = true;
 
   char* dump_prefix = getenv("CERE_PATH");
   if(!dump_prefix) {
     warn("CERE_PATH not defined, using defaut cere dir.\n");
     dump_prefix = ".cere";
+  }
+
+  // Initialize first touch policy
+  char * ft = getenv("CERE_FIRSTTOUCH");
+  if (ft && strcmp("TRUE", ft) == 0 && firsttouch_init == true) {
+    firsttouch_active = true;
+
+    // Create the hash containing the pages - threads id
+    htable_init(&firsttouch, rehash, NULL);
+    snprintf(path, sizeof(path), "%s/dumps/%s/%d/%s", dump_prefix, loop_name, invocation, firsttouch_suffix);
+    FILE *first_map = fopen(path, "r");
+    if (first_map == 0)
+      errx(EXIT_FAILURE, "Error open %s : %s\n", path, strerror(errno));
+
+    while (fgets(buf, BUFSIZ, first_map)) {
+      int pid;
+      off64_t address;
+      sscanf(buf, "%d %lx", &pid, &address);
+
+      // Compute offset to translate pthread id to omp thread id
+      // we suppose that: omp thread id = pthread id - offset_pthread_omp
+      // offset_pthread_omp = minimum(all pthread id)
+      if (offset_pthread_omp == 0)
+        offset_pthread_omp = pid;
+      offset_pthread_omp = MIN(offset_pthread_omp,pid);
+      register_first_touch(pid, (char *)(address));
+    }
   }
 
   /* Read warmup type from environment variable */
@@ -144,6 +214,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   // COLD warmup must always be used with CERE_REPLAY_REPETITIONS=1
   if (type_of_warmup == WARMUP_COLD) {
     cacheflush();
+    firsttouch_init = false;
     return;
   }
 
@@ -152,7 +223,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   struct stat st;
   int fp;
   char line[PAGESIZE];
-  int len;
+  int len, i;
   char filename[1024];
   int total_readed_bytes = 0;
 
@@ -183,9 +254,50 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
     off64_t address = get_address_from_filename(ent->d_name);
 
-    int read_bytes = 0;
-    while ((len = read(fp, (char *)(address + read_bytes), PAGESIZE)) > 0) {
-      read_bytes += len;
+    size_t read_bytes = 0;
+    if (firsttouch_active && firsttouch_init) {
+      assert(st.st_size%PAGESIZE==0);
+      int nb_pages = st.st_size/PAGESIZE;
+      char *buff;
+      buff= (char*)malloc(sizeof(char)*PAGESIZE);
+
+      for(i=0; i<nb_pages; i++) {
+        len=0;
+
+        while ((len += read(fp, buff+len, PAGESIZE-len)) < PAGESIZE) {}
+        assert(len == PAGESIZE);
+
+        size_t hash = hash_pointer((void *)(address + read_bytes), 0);
+        ft_entry * t = NULL;
+        t = htable_get(&firsttouch, hash, ptrequ, (void*)(address + read_bytes));
+
+        if (t) {
+          // Each thread touches his recorded pages
+          // XXX formula first touch to do
+          #pragma omp parallel
+          {
+            if (omp_get_thread_num() == (t->tid - offset_pthread_omp)) {
+              //printf("Thread %d touches page %p\n",omp_get_thread_num(),(void *)(address + read_bytes));
+              strncpy(buff,(char *)(address + read_bytes),PAGESIZE);
+            }
+          }
+        }
+        else {
+          // Display pages that were not found
+          // If to many pages are missed it is suspicious
+          printf("NOT FOUND %p\n",(void *)(address + read_bytes));
+          strncpy(buff,(char *)(address + read_bytes),PAGESIZE);
+        }
+        read_bytes += PAGESIZE;
+      }
+
+    free(buff);
+    }
+
+    else {
+      while ((len = read(fp, (char *)(address + read_bytes), PAGESIZE)) > 0) {
+        read_bytes += len;
+      }
     }
 
     // XXX This code should be only done once in the !loaded section
@@ -204,8 +316,10 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   closedir(dir);
 
   /* No flush or warmup for WORKLOAD warmup */
-  if (type_of_warmup == WARMUP_WORKLOAD)
+  if (type_of_warmup == WARMUP_WORKLOAD) {
+    firsttouch_init = false;
     return;
+  }
 
   /* Flush and prepare TRACE warmup */
   /* invalid address should warm cold zone */
@@ -238,4 +352,6 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     for (char *j = warmup[i]; j < warmup[i] + PAGESIZE; j++)
       __builtin_prefetch(j);
   }
+
+  firsttouch_init = false;
 }
