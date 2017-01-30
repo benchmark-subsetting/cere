@@ -7,7 +7,9 @@ function do_test()
     ./IS
 
     make clean
-    make -j4 CERE_REPLAY_REPETITIONS=1 CERE_MODE="replay --region=__cere__is_main_724 --static"
+
+    # removed static for the test in the OpenMP branch to ensure openmp link at replay
+    make -j4 CERE_REPLAY_REPETITIONS=1 CERE_MODE="replay --region=__cere__is_main_724"
     ./IS > $TMPDIR/test.replay.out
 
     cat $TMPDIR/test.replay.out | head -10 > $TMPDIR/test.a
