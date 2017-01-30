@@ -78,13 +78,13 @@ def clusterize(trace):
     cycles = np.reshape(trace['cycles'], (trace['size'],1))
 
     # If the variation is negligeable, a clustering is useless
-    if (np.max(cycles)-np.min(cycles))/np.max(cycles) < 0.05:
+    if (np.max(cycles)-np.min(cycles))/np.max(cycles) < 0.10:
         return np.ones(trace['size'])
 
     # Normalize the distribution
     cycles = preprocessing.scale(cycles)
 
-    min_samples = max(1,trace['size']/1000)
+    min_samples = max(1,trace['size']/100)
     clusterer = cluster.DBSCAN(min_samples=min_samples, eps=.3)
     clusterer.fit(cycles)
     return clusterer.labels_
