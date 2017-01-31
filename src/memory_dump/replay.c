@@ -307,7 +307,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
             The second thread id is 2
             The third thread id is 3
             The omp runtime additionnal thread id will be 1
-            So to correctly remap the pages to the other pages
+            So to correctly remap the pages to the other threads
             We decrease all the no master threads ids by one
             */
             int id_thread_noinit = 0;
