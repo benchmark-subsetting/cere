@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <math.h>
 #include <omp.h>
 #include "pages.h"
 
@@ -54,7 +55,12 @@ void cacheflush(void) {
 
 bool firsttouch_active = false;
 const char *firsttouch_suffix = "firsttouch.map";
+
+// Offset used to calculate omp thread id
 int offset_pthread_omp = 0;
+
+// Number of threads used during capture
+int nb_thread_capture = 0;
 
 static struct htable firsttouch;
 typedef struct {
@@ -158,8 +164,16 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       if (offset_pthread_omp == 0)
         offset_pthread_omp = pid;
       offset_pthread_omp = MIN(offset_pthread_omp,pid);
+
+      // Get the maximal pthread id used during capture
+      if (nb_thread_capture == 0)
+        nb_thread_capture = pid;
+      nb_thread_capture = MAX(nb_thread_capture,pid);
+
       register_first_touch(pid, (char *)(address));
     }
+    // Convert max pthread id to a number of threads
+    nb_thread_capture = nb_thread_capture - offset_pthread_omp + 1;
   }
 
   /* Read warmup type from environment variable */
@@ -272,11 +286,35 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
         t = htable_get(&firsttouch, hash, ptrequ, (void*)(address + read_bytes));
 
         if (t) {
-          // Each thread touches his recorded pages
-          // XXX formula first touch to do
+          // Threads touche their recorded pages
+          // Threads are touched according to the following formula:
+          // t'(p) = ceil((n'/n) * t(p))
+          // n' is the number of threads at replay
+          // n is the number of threads during the capture
+          // t(p) is the thread that touched the page at capture
+          // t'(p) is the thread that must touch the page at replay
           #pragma omp parallel
           {
-            if (omp_get_thread_num() == (t->tid - offset_pthread_omp)) {
+            // N = n'/n
+            float N = (float) omp_get_num_threads() / nb_thread_capture;
+
+            // XXX
+            /*
+            LLVM 3.8 OMP runtime spawns an additionnal thread
+            His id is equal to the master thread id + 1
+            Let us consider an application executed with three threads
+            If the master thread id is 0
+            The second thread id is 2
+            The third thread id is 3
+            The omp runtime additionnal thread id will be 1
+            So to correctly remap the pages to the other threads
+            We decrease all the no master threads ids by one
+            */
+            int id_thread_noinit = 0;
+            if ((t->tid - offset_pthread_omp) != 0)
+              id_thread_noinit = t->tid - offset_pthread_omp - 1;
+
+           if (omp_get_thread_num() == ceil((float) N * (id_thread_noinit)) )  {
               //printf("Thread %d touches page %p\n",omp_get_thread_num(),(void *)(address + read_bytes));
               strncpy(buff,(char *)(address + read_bytes),PAGESIZE);
             }
@@ -284,7 +322,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
         }
         else {
           // Display pages that were not found
-          // If to many pages are missed it is suspicious
+          // To many missing pages is suspicious
+          // enable to check them
           printf("NOT FOUND %p\n",(void *)(address + read_bytes));
           strncpy(buff,(char *)(address + read_bytes),PAGESIZE);
         }
