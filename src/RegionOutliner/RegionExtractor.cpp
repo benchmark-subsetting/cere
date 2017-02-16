@@ -651,6 +651,7 @@ bool checkMDNode(MDNode  &MD, Function * newFunction) {
 /// https://weaponshot.wordpress.com/2012/05/06/extract-all-the-metadata-nodes-in-llvm/
 void RegionExtractor::removeWrongMetadata(Function *newFunction) {
   std::vector<CallInst *> InstToDel;
+  MDNodes.clear();
 
   // Iterate over instructions of the function
   for (Function::iterator BB = newFunction->begin(), E = newFunction->end();
@@ -660,10 +661,8 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction) {
       // If this instruction is a call
       if (CallInst *CI = dyn_cast<CallInst>(I)) {
         if (Function *F = CI->getCalledFunction()){
-          errs() << F->getName() << "\n";
           for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
             // Get Metadata information
-            errs() << *(I->getOperand(i)) << "\n";
             auto *MDV = dyn_cast<MetadataAsValue>(I->getOperand(i));
             if (!MDV) continue;
 

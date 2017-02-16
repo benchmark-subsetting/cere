@@ -3,11 +3,11 @@ sudo: required
 dist: trusty
 
 before_install:
-  # Get llvm 3.8
-  - wget http://llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-  - tar -xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-  - export PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/bin/:$PATH
-  - export LIBRARY_PATH=$PWD/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-14.04/lib/:$LIBRARY_PATH
+  # Get llvm 3.9
+  - wget http://releases.llvm.org/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+  - tar -xf clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+  - export PATH=$PWD/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04/bin/:$PATH
+  - export LIBRARY_PATH=$PWD/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04/lib/:$LIBRARY_PATH
 
   - sudo apt-get -y install autoconf automake build-essential libtool
     python python-pip python-sklearn python-pygraphviz python-pydot libiomp-dev
