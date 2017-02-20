@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
+ * Copyright (c) 2016-2017, Universite de Versailles St-Quentin-en-Yvelines  *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -107,13 +107,14 @@ static void read_map(pid_t pid) {
 }
 
 static bool is_valid_io(pid_t pid) {
-  struct user_regs_struct regs;
-  ptrace_getregs(pid, &regs);
-  int syscallid = regs.orig_rax;
+  int syscallid = get_syscallid(pid);
+  int fd;
+
   switch (syscallid) {
   case SYS_write:
-    return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
-    /* All other IOs are forbidden */
+    fd = get_arg_from_regs(pid);
+    return (fd == fileno(stdout) || fd == fileno(stderr));
+    // All other IOs are forbidden
   case SYS_read:
   case SYS_open:
   case SYS_openat:
@@ -129,7 +130,9 @@ static bool is_syscall_io(pid_t pid) {
   switch (syscallid) {
   case SYS_read:
   case SYS_write:
+#if defined(__amd64__)
   case SYS_open:
+#endif
   case SYS_openat:
   case SYS_close:
     debug_print("Syscall IO detected : %d\n", syscallid);
@@ -313,9 +316,11 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
     event_t e = wait_event(wait_for);
     if (e.signo == SIGTRAP) {
       if (is_dump_sigtrap(e.tid)) {
+        clear_trap(e.tid);
         return e.tid;
       } else if (is_hook_sigtrap(e.tid)) {
         assert(tracer_state == TRACER_LOCKED || tracer_state == TRACER_FIRSTTOUCH);
+        clear_trap(e.tid);
         tracer_lock_range(e.tid);
         continue;
       } else { // If we arrive here, it is a syscall
@@ -354,7 +359,6 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
 
 static register_t receive_from_tracee(pid_t child) {
   register_t ret;
-  siginfo_t sig;
   debug_print("receive from tracee %d\n", child);
   pid_t tid = handle_events_until_dump_trap(-1);
   ret = get_arg_from_regs(tid);
@@ -364,9 +368,7 @@ static register_t receive_from_tracee(pid_t child) {
 
 static void receive_string_from_tracee(pid_t child, char *src_tracee,
                                        void *dst_tracer, size_t size) {
-  siginfo_t sig;
   debug_print("receive string from tracee %d\n", child);
-  handle_events_until_dump_trap(-1);
   ptrace_getdata(child, (long) src_tracee, dst_tracer, size);
   ptrace_syscall(child);
   debug_print("DONE receiving string from tracee\n", child);
@@ -544,6 +546,10 @@ static void dump_unprotected_pages(pid_t pid) {
 static void tracer_dump(pid_t pid) {
 
   /* Read arguments from tracee */
+  handle_events_until_dump_trap(-1);
+  register_t ret = get_arg_from_regs(pid);
+  assert(ret == TRAP_START_ARGS);
+
   receive_string_from_tracee(pid, tracer_buff->str_tmp, loop_name, SIZE_LOOP);
 
   invocation = (int)receive_from_tracee(pid);
@@ -569,8 +575,9 @@ static void tracer_dump(pid_t pid) {
     addresses[i] = (void *)receive_from_tracee(pid);
 
   /* Wait for end of arguments sigtrap */
-  siginfo_t sig;
   handle_events_until_dump_trap(pid);
+  ret = get_arg_from_regs(pid);
+  assert(ret == TRAP_END_ARGS);
 
   /* Dump hotpages to disk */
   flush_hot_pages_trace_to_disk(pid);
@@ -600,7 +607,6 @@ static void tracer_dump(pid_t pid) {
 }
 
 static void tracer_init(pid_t pid) {
-  siginfo_t sig;
   event_t e = wait_event(pid);
   assert(e.signo == SIGSTOP);
   follow_threads(pid);
@@ -646,9 +652,12 @@ int main(int argc, char *argv[]) {
   sscanf(argv[2], "%p", &tracer_buff);
 
   tracer_init(child);
-  /* Wait for lock_mem trap */
 
+  /* Wait for lock_mem trap */
   pid_t tid = handle_events_until_dump_trap(-1);
+  register_t ret = get_arg_from_regs(tid);
+  assert(ret == TRAP_LOCK_MEM);
+
   stop_all_except(tid);
   tracer_lock_mem(tid);
   debug_print("%s\n", "******* TRACER_LOCKED");

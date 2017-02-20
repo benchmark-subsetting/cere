@@ -69,7 +69,7 @@ def compile_memory_dump_objects(mode_opt, DIR):
     if not mode_opt.static:
         DUMP_ARGS="-Wl,--section-start=.text=0x60004000 -Wl,--section-start=.init=0x60000000"
     else:
-        DUMP_ARGS=""
+        DUMP_ARGS="-Wl,--section-start=.text=0x6004000 -Wl,--section-start=.init=0x6000000"
     safe_system("rm -f {0}/objs.S".format(DIR))
     OBJ=open("{0}/objs.S".format(DIR),'w')
     for FILE in os.listdir(DIR):
