@@ -107,15 +107,13 @@ static void read_map(pid_t pid) {
 }
 
 static bool is_valid_io(pid_t pid) {
-  return true;
-  // XXX Comment for now in AARCH64
-  /*
-  struct user_regs_struct regs;
-  ptrace_getregs(pid, &regs);
-  int syscallid = regs.orig_rax;
+  int syscallid = get_syscallid(pid);
+  int fd;
+
   switch (syscallid) {
   case SYS_write:
-    return (regs.rdi == fileno(stdout) || regs.rdi == fileno(stderr));
+    fd = get_arg_from_regs(pid);
+    return (fd == fileno(stdout) || fd == fileno(stderr));
     // All other IOs are forbidden
   case SYS_read:
   case SYS_open:
@@ -124,13 +122,10 @@ static bool is_valid_io(pid_t pid) {
     return false;
   default:
     return true;
-  }*/
+  }
 }
 
 static bool is_syscall_io(pid_t pid) {
-  return false;
-// XXX Comment for now in AARCH64
-/*
   int syscallid = get_syscallid(pid);
   switch (syscallid) {
   case SYS_read:
@@ -145,7 +140,6 @@ static bool is_syscall_io(pid_t pid) {
   default:
     return false;
   }
-*/
 }
 
 static bool is_mru(void *addr) {
