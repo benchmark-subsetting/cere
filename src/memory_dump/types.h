@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
+ * Copyright (c) 2016-2017, Universite de Versailles St-Quentin-en-Yvelines  *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -34,8 +34,17 @@
 #define SYS_hook (INT_MAX - 2)
 #define SYS_unprotect_protect (INT_MAX - 3)
 
+#define TRAP_LOCK_MEM 111
+#define TRAP_START_ARGS 112
+#define TRAP_END_ARGS 113
+
+#if defined(__amd64__)
 #define SIZE_SYSCALL_BIN (3 + 1)
 #define SIZE_UNPROTECT_PROTECT_BIN (23 + 1)
+#elif defined(__aarch64__)
+#define SIZE_SYSCALL_BIN (8 + 1)
+#define SIZE_UNPROTECT_PROTECT_BIN (28 + 1)
+#endif
 
 enum tracer_state_t {
   TRACER_UNLOCKED = 1,
@@ -50,7 +59,7 @@ struct tracer_buff_t {
   char syscall[SIZE_SYSCALL_BIN];
   char unprotect_protect[SIZE_UNPROTECT_PROTECT_BIN];
   char str_tmp[MAX_PATH];
-};
+} __attribute__ ((aligned(8), packed));
 
 typedef struct {
   int signo;
