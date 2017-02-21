@@ -22,7 +22,7 @@ AC_SUBST(CERELIBS, $libdir)
 AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
-AX_LLVM([3.8.0],[3.8.1],[all])
+AX_LLVM([3.8.0],[3.9.1],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
 
