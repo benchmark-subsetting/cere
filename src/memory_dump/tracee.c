@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2013-2016, Universite de Versailles St-Quentin-en-Yvelines  *
+ * Copyright (c) 2013-2017, Universite de Versailles St-Quentin-en-Yvelines  *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -123,7 +123,6 @@ void dump_close() { unlink("lel_bin"); }
  *  ...args...: the arguments to dump
  */
 void dump(char *loop_name, int invocation, int count, ...) {
-
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
@@ -132,11 +131,12 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
   times_called++;
 
+
   /* Happens only once */
   if ((invocation <= PAST_INV && times_called == 1) ||
       (times_called == invocation - PAST_INV)) {
     mtrace_active = true;
-    send_to_tracer(0);
+    send_to_tracer(TRAP_LOCK_MEM);
   }
 
   if (times_called != invocation) {
@@ -146,9 +146,10 @@ void dump(char *loop_name, int invocation, int count, ...) {
   assert(times_called == invocation);
   mtrace_active = false;
 
-  /* Send args */
   strcpy(tracer_buff.str_tmp, loop_name);
-  send_to_tracer(0);
+
+  /* Send args */
+  send_to_tracer(TRAP_START_ARGS);
   send_to_tracer(invocation);
   send_to_tracer(count);
 
@@ -162,7 +163,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
   va_end(ap);
 
   kill_after_dump = true;
-  send_to_tracer(0);
+  send_to_tracer(TRAP_END_ARGS);
 }
 
 void after_dump(void) {

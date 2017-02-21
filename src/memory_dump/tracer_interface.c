@@ -1,7 +1,7 @@
 /*****************************************************************************
  * This file is part of CERE.                                                *
  *                                                                           *
- * Copyright (c) 2016, Universite de Versailles St-Quentin-en-Yvelines       *
+ * Copyright (c) 2016-2017, Universite de Versailles St-Quentin-en-Yvelines  *
  *                                                                           *
  * CERE is free software: you can redistribute it and/or modify it under     *
  * the terms of the GNU Lesser General Public License as published by        *
@@ -40,15 +40,13 @@
 
 #include "debug.h"
 
-#ifdef __x86_64__
-
-#define NB_MAX_ARGS 6
-
 
 extern struct tracer_buff_t * tracer_buff;
 
+#if defined(__amd64__)
+#define NB_MAX_ARGS 6
+
 /* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
-/* ────────────────────────────────────────────────────────── */
 /* x86_64     rdi    rsi    rdx    r10    r8     r9      -    */
 static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
                                  ...) {
@@ -89,7 +87,6 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
 
   for (i = 0; i < nb_args; i++) {
     *(regs_ptr[i]) = va_arg(vargs, long long unsigned);
-
   }
   va_end(vargs);
 
@@ -120,25 +117,125 @@ int get_syscallid(pid_t pid) {
 bool is_hook_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return (regs.rax == SYS_hook);
+  return (regs.rsi == SYS_hook);
 }
 
 bool is_dump_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return (regs.rax == SYS_dump);
+  return (regs.rsi == SYS_dump);
 }
 
-#endif
+void clear_trap(pid_t pid) {
+}
 
-#ifdef __arm__
-void inject_syscall(int syscallid, pid_t tid,
-                    struct user_regs_struct * regs->va_list vargs);
-#endif
+#elif defined(__aarch64__)
+#define NB_MAX_ARGS 6
 
-#ifdef __aarch64__
-void inject_syscall(int syscallid, pid_t tid,
-                    struct user_regs_struct * regs->va_list vargs);
+/* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
+/* aarch64      x0     x1     x2     x3     x4     x5     -  */
+static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
+                                 ...) {
+
+  /* For the moment, we don't handle this case  */
+  assert(NB_MAX_ARGS >= nb_args);
+
+  /* We do the backup of registers */
+  long r;
+  register_t ret;
+  struct user_pt_regs regs, regs_backup;
+
+  ptrace_getregs(pid, &regs);
+  regs_backup = regs;
+
+  /* We get back arguments and adequately put them in registers */
+
+  int i = 0;
+  va_list vargs;
+  va_start(vargs, syscallid);
+
+  long long unsigned *regs_ptr[NB_MAX_ARGS] = {&(regs.regs[0]), &(regs.regs[1]),
+                                               &(regs.regs[2]), &(regs.regs[3]),
+                                               &(regs.regs[4]), &(regs.regs[5]),
+                                              };
+
+  regs.pc = (register_t)tracer_buff->syscall;
+  regs.regs[8] = syscallid;
+
+  if (syscallid == SYS_unprotect_protect) {
+    regs.pc = (register_t)tracer_buff->unprotect_protect;
+    regs.regs[8] = SYS_mprotect;
+    regs.regs[22] = SYS_mprotect;
+    regs_ptr[3] = &(regs.regs[19]);
+    regs_ptr[4] = &(regs.regs[20]);
+    regs_ptr[5] = &(regs.regs[21]);
+  }
+
+  for (i = 0; i < nb_args; i++) {
+    register_t r = va_arg(vargs, long long unsigned);
+    *(regs_ptr[i]) = r;
+  }
+  va_end(vargs);
+
+  // prepare registers for syscall
+  ptrace_setregs(pid, &regs);
+
+  // execute syscall in tracee
+  ptrace_cont(pid);
+
+  // wait for sigtrap in tracee
+  wait_event(pid);
+
+  // restore old registers
+  ptrace_getregs(pid, &regs);
+
+  ret = regs.regs[0];
+
+  ptrace_setregs(pid, &regs_backup);
+
+  return ret;
+}
+
+register_t get_arg_from_regs(pid_t pid) {
+  struct user_pt_regs regs;
+  ptrace_getregs(pid, &regs);
+  return regs.regs[0];
+}
+
+int get_syscallid(pid_t pid) {
+  struct user_pt_regs regs;
+  ptrace_getregs(pid, &regs);
+  return regs.regs[8];
+}
+
+bool is_hook_sigtrap(pid_t pid) {
+  struct user_pt_regs regs;
+  ptrace_getregs(pid, &regs);
+  return (regs.regs[1] == SYS_hook);
+}
+
+bool is_dump_sigtrap(pid_t pid) {
+  struct user_pt_regs regs;
+  ptrace_getregs(pid, &regs);
+  return (regs.regs[1] == SYS_dump);
+}
+
+void clear_trap(pid_t pid) {
+  struct user_pt_regs regs;
+  ptrace_getregs(pid, &regs);
+  regs.pc +=4;
+  ptrace_setregs(pid, &regs);
+}
+
+void debug_regs(pid_t pid) {
+  struct user_pt_regs regs;
+  ptrace_getregs(pid, &regs);
+  fprintf(stderr, "register [pd] = %lld\n", regs.pc);
+  for (int i = 0; i < 9; i++) {
+    fprintf(stderr, "register [%d] = %lld\n", i, regs.regs[i]);
+  }
+}
+
 #endif
 
 void protect_i(pid_t pid, char *start, size_t size) {
