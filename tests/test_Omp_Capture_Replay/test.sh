@@ -8,6 +8,10 @@ function do_test()
     cere capture --region=__cere__test_fct1_25 --invocation=2
     export OMP_NUM_THREADS=4
     cere replay --region=__cere__test_fct1_25 --invocation=2
+    if [ ! -f __cere__test_fct1_25.csv ]
+    then
+         exit 1
+    fi
     exit 0
 }
 
