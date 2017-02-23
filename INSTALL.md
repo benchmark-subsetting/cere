@@ -13,7 +13,7 @@ Please ensure that CERE's dependencies are installed on your system:
   * GNU autotools (automake, autoconf >= 2.69)
 
   * Python 2, version >= 2.7 and the following modules: matplotlib, jinja2,
-    networkx, numpy, pygraphviz, sklearn
+    networkx, numpy, pydot, pygraphviz, sklearn
 
   * Graphviz, http://www.graphviz.org
 
@@ -68,8 +68,9 @@ install procedure:
 ```bash
    $ sudo apt-get install clang-3.5 llvm-3.5-dev \
        gcc-4.7 gfortran-4.7 autoconf automake build-essential libtool ruby-ronn \
-       python python-matplotlib python-jinja2 python-pygraphviz python-sklearn python-numpy \
-       python-networkx python-pip google-perftools libgoogle-perftools-dev numactl dc
+       python python-matplotlib python-jinja2 python-pydot python-pygraphviz \
+       python-sklearn python-numpy python-networkx python-pip google-perftools \
+       libgoogle-perftools-dev numactl dc
 
    $ wget http://llvm.org/releases/3.5.2/dragonegg-3.5.2.src.tar.xz
    $ tar xvf dragonegg-3.5.2.src.tar.xz && cd dragonegg-3.5.2.src
