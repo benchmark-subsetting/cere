@@ -5,7 +5,7 @@ AC_CONFIG_AUX_DIR(autoconf)
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
-AM_INIT_AUTOMAKE([subdir-objects silent-rules foreign])
+AM_INIT_AUTOMAKE([subdir-objects silent-rules foreign serial-tests])
 AC_PROG_LIBTOOL
 
 LT_INIT
