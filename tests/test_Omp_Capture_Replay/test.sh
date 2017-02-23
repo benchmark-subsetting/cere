@@ -2,6 +2,7 @@
 
 function do_test()
 {
+    rm -f *.csv
     make veryclean
     cere configure --build-cmd="make" --run-cmd=./test --clean-cmd="make clean" --omp
     export OMP_NUM_THREADS=4
