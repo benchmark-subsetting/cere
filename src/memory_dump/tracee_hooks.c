@@ -47,7 +47,6 @@ static void lock_range(void *from, void *to) {
     hook_sigtrap();
     send_to_tracer((register_t)from);
     send_to_tracer((register_t)to);
-    hook_sigtrap();
   }
 }
 
@@ -165,19 +164,19 @@ FILE *fopen(const char *path, const char *mode) {
     hooks_init();
   touch_string(path);
   touch_string(mode);
-  real_fopen(path, mode);
+  return real_fopen(path, mode);
 }
 
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
   if (real_fread == NULL)
     hooks_init();
   touch_mem(ptr, size, nmemb);
-  real_fread(ptr, size, nmemb, stream);
+  return real_fread(ptr, size, nmemb, stream);
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
   if (real_fwrite == NULL)
     hooks_init();
   touch_mem(ptr, size, nmemb);
-  real_fwrite(ptr, size, nmemb, stream);
+  return real_fwrite(ptr, size, nmemb, stream);
 }

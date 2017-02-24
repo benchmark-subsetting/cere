@@ -47,7 +47,6 @@
 
 #include "debug.h"
 
-#define MAX_TIDS 2048
 size_t ntids = 0;
 pid_t tids[MAX_TIDS];
 int npending = 0;
@@ -280,6 +279,9 @@ event_t wait_event(pid_t wait_for) {
       }
 
       debug_print("Following new thread %d.\n", new_thread);
+      if (ntids >= MAX_TIDS) {
+        errx(EXIT_FAILURE, "Too many threads MAX_TIDS=%d\n", MAX_TIDS);
+      }
       tids[ntids++] = new_thread;
 
       /* New thread starts with a SIGSTOP */
