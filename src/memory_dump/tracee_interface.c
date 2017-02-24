@@ -26,27 +26,26 @@ static inline void sigtrap(void) {
 }
 
 void hook_sigtrap(void) {
-  asm volatile("mov %0,%%rsi" : : "r"((register_t)SYS_hook));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_hook));
   sigtrap();
 }
 
 void send_to_tracer(register_t arg) {
-  /* rdi and rsi are callee save */
-  asm volatile("mov %0,%%rsi" : : "r"((register_t)SYS_dump));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
   asm volatile("mov %0,%%rdi" : : "r"(arg));
   sigtrap();
 }
 
 struct tracer_buff_t tracer_buff = {
-  .syscall = "\x0f\x05"               /* syscall           */
-             "\xcc",                  /* int $3 (SIGTRAP)  */
-  .unprotect_protect = "\x0f\x05"     /* syscall protect   */
-                       "\x4c\x89\xe0" /* mov    %r12,%rax  */
-                       "\x4c\x89\xef" /* mov    %r13,%rdi  */
-                       "\x4c\x89\xf6" /* mov    %r14,%rsi  */
-                       "\x4c\x89\xfa" /* mov    %r15,%rdx  */
-                       "\x0f\x05"     /* syscall unprotect */
-                       "\xcc"         /* int $3 (SIGTRAP)  */
+  .syscall = {0x0f, 0x05,                 /* syscall           */
+              0xcc},                      /* int $3 (SIGTRAP)  */
+  .unprotect_protect = {0x0f, 0x05,       /* syscall protect   */
+                        0x4c, 0x89, 0xe0, /* mov    %r12,%rax  */
+                        0x4c, 0x89, 0xef, /* mov    %r13,%rdi  */
+                        0x4c, 0x89, 0xf6, /* mov    %r14,%rsi  */
+                        0x4c, 0x89, 0xfa, /* mov    %r15,%rdx  */
+                        0x0f, 0x05,       /* syscall unprotect */
+                        0xcc}             /* int $3 (SIGTRAP)  */
 };
 #elif defined(__aarch64__)
 static inline void sigtrap(void) {
@@ -54,26 +53,26 @@ static inline void sigtrap(void) {
 }
 
 void hook_sigtrap(void) {
-  asm volatile("mov x1, %0" : : "r"((register_t)SYS_hook) : "x1");
+  asm volatile("mov x8, %0" : : "r"((register_t)SYS_hook) : "x8");
   sigtrap();
 }
 
 void send_to_tracer(register_t arg) {
-  asm volatile("mov x1, %0" : : "r"((register_t)SYS_dump) : "x1");
+  asm volatile("mov x8, %0" : : "r"((register_t)SYS_dump) : "x8");
   asm volatile("mov x0, %0" : : "r"((register_t)arg) : "x0");
   sigtrap();
 }
 
 struct tracer_buff_t tracer_buff = {
-  .syscall = "\x01\x00\x00\xd4"           /* svc #0 syscall     */
-             "\x00\x00\x20\xd4",          /* brk #0 (SIGTRAP)   */
-  .unprotect_protect = "\x01\x00\x00\xd4" /* syscall protect    */
-                       "\xe0\x03\x13\xaa" /* mov	x0, x19 */
-                       "\xe1\x03\x14\xaa" /* mov	x1, x20 */
-                       "\xe2\x03\x15\xaa" /* mov	x2, x21 */
-                       "\xe8\x03\x16\xaa" /* mov	x8, x22 */
-                       "\x01\x00\x00\xd4" /* syscall unprotect  */
-                       "\x00\x00\x20\xd4" /* brk #0 (SIGTRAP)   */
+  .syscall = {0x01, 0x00, 0x00, 0xd4,            /* svc #0 syscall     */
+              0x00, 0x00, 0x20, 0xd4},           /* brk #0 (SIGTRAP)   */
+  .unprotect_protect = {0x01, 0x00, 0x00, 0xd4,  /* syscall protect    */
+                        0xe0, 0x03, 0x13, 0xaa,  /* mov	x0, x19 */
+                        0xe1, 0x03, 0x14, 0xaa,  /* mov	x1, x20 */
+                        0xe2, 0x03, 0x15, 0xaa,  /* mov	x2, x21 */
+                        0xe8, 0x03, 0x16, 0xaa,  /* mov	x8, x22 */
+                        0x01, 0x00, 0x00, 0xd4,  /* syscall unprotect  */
+                        0x00, 0x00, 0x20, 0xd4}  /* brk #0 (SIGTRAP)   */
 };
 
 #endif
