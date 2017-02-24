@@ -22,6 +22,8 @@
 #include <limits.h>
 #include <sys/types.h>
 
+#define MAX_TIDS 2048
+
 #define PAST_INV 30
 #define MAX_PATH 256
 #define MAX_IGNORE 32
@@ -39,11 +41,11 @@
 #define TRAP_END_ARGS 113
 
 #if defined(__amd64__)
-#define SIZE_SYSCALL_BIN (3 + 1)
-#define SIZE_UNPROTECT_PROTECT_BIN (23 + 1)
+#define SIZE_SYSCALL_BIN (3)
+#define SIZE_UNPROTECT_PROTECT_BIN (23)
 #elif defined(__aarch64__)
-#define SIZE_SYSCALL_BIN (8 + 1)
-#define SIZE_UNPROTECT_PROTECT_BIN (28 + 1)
+#define SIZE_SYSCALL_BIN (8)
+#define SIZE_UNPROTECT_PROTECT_BIN (28)
 #endif
 
 enum tracer_state_t {
