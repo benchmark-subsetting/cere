@@ -41,6 +41,7 @@
 #define _DEBUG 1
 #undef _DEBUG
 
+
 #include "debug.h"
 
 int log_size = LOG_SIZE;
@@ -116,7 +117,9 @@ static bool is_valid_io(pid_t pid) {
     return (fd == fileno(stdout) || fd == fileno(stderr));
     // All other IOs are forbidden
   case SYS_read:
+#if defined(__amd64__)
   case SYS_open:
+#endif
   case SYS_openat:
   case SYS_close:
     return false;
@@ -171,7 +174,7 @@ static void dump_firsttouch(void) {
   for (t = htable_first(&firsttouch, &iter);
        t;
        t = htable_next(&firsttouch, &iter)) {
-    fprintf(ft_map, "%d %lx\n", t->tid, t->start_of_page);
+    fprintf(ft_map, "%d %lx\n", t->tid, (unsigned long)t->start_of_page);
   }
   fclose(ft_map);
 }
@@ -241,7 +244,7 @@ static void firsttouch_handler(int pid, void *start_of_page) {
 }
 
 static void mru_handler(int pid, void *start_of_page) {
-  debug_print("MRU Detected access at %p\n", start_of_page);
+  debug_print("MRU Detected access at %p from %d\n", start_of_page, pid);
 
   bool present = is_mru(start_of_page);
   if (present) {
@@ -359,7 +362,7 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
 
 static register_t receive_from_tracee(pid_t child) {
   register_t ret;
-  debug_print("start receive from tracee %d\n", child);
+  debug_print("receive from tracee %d\n", child);
 
   /* we should only handle events from the child that started
   the communication here; we should be in safe
@@ -368,15 +371,7 @@ static register_t receive_from_tracee(pid_t child) {
   here could lead to a synchronization problem */
   pid_t tid = handle_events_until_dump_trap(child);
   ret = get_arg_from_regs(tid);
-  debug_print("end received %ld from tracee %d\n", ret, child);
   return ret;
-}
-
-static void receive_string_from_tracee(pid_t child, char *src_tracee,
-                                       void *dst_tracer, size_t size) {
-  debug_print("receive string from tracee %d\n", child);
-  ptrace_getdata(child, (long) src_tracee, dst_tracer, size);
-  debug_print("DONE receiving string from tracee\n", child);
 }
 
 static void tracer_lock_range(pid_t child) {
@@ -555,7 +550,8 @@ static void tracer_dump(pid_t pid) {
   register_t ret = get_arg_from_regs(pid);
   assert(ret == TRAP_START_ARGS);
 
-  receive_string_from_tracee(pid, tracer_buff->str_tmp, loop_name, SIZE_LOOP);
+  debug_print("receive string from tracee %d\n", pid);
+  ptrace_getdata(pid, (long) tracer_buff->str_tmp, loop_name, SIZE_LOOP);
   ptrace_syscall(pid);
 
   invocation = (int)receive_from_tracee(pid);
