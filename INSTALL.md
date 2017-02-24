@@ -11,7 +11,7 @@ Please ensure that CERE's dependencies are installed on your system:
   * GNU autotools (automake, autoconf >= 2.69)
 
   * Python 2, version >= 2.7 and the following modules: matplotlib, jinja2,
-    networkx, numpy, pygraphviz, pydot, sklearn
+    networkx, numpy, pydot, pygraphviz, sklearn
 
   * Graphviz, http://www.graphviz.org
 
@@ -60,7 +60,7 @@ install procedure:
        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
    $ sudo apt-get install autoconf automake build-essential libtool ruby-ronn \
-       python python-matplotlib python-jinja2 python-pygraphviz python-sklearn python-numpy \
+       python python-matplotlib python-jinja2 python-pygraphviz python-pydot python-sklearn python-numpy \
        python-networkx python-pip google-perftools libgoogle-perftools-dev numactl dc libiomp-dev
 
    $ sudo ln -s /usr/lib/libiomp5.so /usr/lib/libomp.so
