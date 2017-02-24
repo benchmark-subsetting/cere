@@ -47,7 +47,6 @@ static void lock_range(void *from, void *to) {
     hook_sigtrap();
     send_to_tracer((register_t)from);
     send_to_tracer((register_t)to);
-    hook_sigtrap();
   }
 }
 

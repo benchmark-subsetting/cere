@@ -368,8 +368,7 @@ static register_t receive_from_tracee(pid_t child) {
   here could lead to a synchronization problem */
   pid_t tid = handle_events_until_dump_trap(child);
   ret = get_arg_from_regs(tid);
-  ptrace_syscall(child);
-  debug_print("end receive from tracee %d (%d)\n", child, ret);
+  debug_print("end received %ld from tracee %d\n", ret, child);
   return ret;
 }
 
@@ -377,7 +376,6 @@ static void receive_string_from_tracee(pid_t child, char *src_tracee,
                                        void *dst_tracer, size_t size) {
   debug_print("receive string from tracee %d\n", child);
   ptrace_getdata(child, (long) src_tracee, dst_tracer, size);
-  ptrace_syscall(child);
   debug_print("DONE receiving string from tracee\n", child);
 }
 
@@ -389,10 +387,10 @@ static void tracer_lock_range(pid_t child) {
 
   ptrace_syscall(child);
   void *from = (void *)receive_from_tracee(child);
+  ptrace_syscall(child);
   void *to = (void *)receive_from_tracee(child);
 
   /* We need that the process be stopped to protect  */
-  wait_event(child);
 
   long unsigned nb_pages_to_allocate = nb_pages_in_range(from, to);
 
@@ -558,9 +556,13 @@ static void tracer_dump(pid_t pid) {
   assert(ret == TRAP_START_ARGS);
 
   receive_string_from_tracee(pid, tracer_buff->str_tmp, loop_name, SIZE_LOOP);
+  ptrace_syscall(pid);
 
   invocation = (int)receive_from_tracee(pid);
+  ptrace_syscall(pid);
+
   int arg_count = (int)receive_from_tracee(pid);
+  ptrace_syscall(pid);
 
   printf("DUMP( %s %d count = %d) \n", loop_name, invocation, arg_count);
 
@@ -578,8 +580,10 @@ static void tracer_dump(pid_t pid) {
 
   int i;
   void *addresses[arg_count];
-  for (i = 0; i < arg_count; i++)
+  for (i = 0; i < arg_count; i++) {
     addresses[i] = (void *)receive_from_tracee(pid);
+    ptrace_syscall(pid);
+  }
 
   /* Wait for end of arguments sigtrap */
   handle_events_until_dump_trap(pid);
