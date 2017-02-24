@@ -246,14 +246,21 @@ void protect_i(pid_t pid, char *start, size_t size) {
   /* beetween the lock_mem() and dumping args */
   if (tracer_state == TRACER_LOCKED && ret == -ENOMEM)
     return;
-  assert(ret == 0);
+
+   if (ret != 0) {
+    errx(EXIT_FAILURE, "Failed to protect page at %p with error %d\n",
+         start, (int) ret);
+  }
 }
 
 void unprotect_i(pid_t pid, char *start, size_t size) {
   debug_print("TO BE UNPROTECTED :  %p (%lu)\n", start, size);
   register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
                   (long long unsigned) (PROT_READ | PROT_WRITE | PROT_EXEC));
-  assert(ret == 0);
+   if (ret != 0) {
+    errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
+         start, (int) ret);
+  }
 }
 
 void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
@@ -272,7 +279,10 @@ void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
   }
 
   /* it is ok here for reprotect to fail, when we reprotect a page that has
-     since been deallocated. Therefore we only check the result of unprotect */
+     since been deallocated. Therefore we only check the result of unprotect.
+     The target of unprotect cannot have been deallocated because it should be
+     protected.
+   */
 }
 
 void write_i(pid_t pid, int fd, const void *buf, size_t nbyte) {
