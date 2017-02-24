@@ -159,9 +159,6 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
                                                &(regs.regs[4]), &(regs.regs[5]),
                                               };
 
-  regs.pc = (register_t)tracer_buff->syscall;
-  regs.regs[8] = syscallid;
-
   if (syscallid == SYS_unprotect_protect) {
     regs.pc = (register_t)tracer_buff->unprotect_protect;
     regs.regs[8] = SYS_mprotect;
@@ -169,6 +166,9 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
     regs_ptr[3] = &(regs.regs[19]);
     regs_ptr[4] = &(regs.regs[20]);
     regs_ptr[5] = &(regs.regs[21]);
+  } else {
+    regs.pc = (register_t)tracer_buff->syscall;
+    regs.regs[8] = syscallid;
   }
 
   for (i = 0; i < nb_args; i++) {
@@ -230,9 +230,9 @@ void clear_trap(pid_t pid) {
 void debug_regs(pid_t pid) {
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
-  fprintf(stderr, "register [pd] = %lld\n", regs.pc);
-  for (int i = 0; i < 9; i++) {
-    fprintf(stderr, "register [%d] = %lld\n", i, regs.regs[i]);
+  debug_print("register [pc] = %llx\n", regs.pc);
+  for (int i = 0; i < 23; i++) {
+    debug_print("register [%d] = %llx\n", i, regs.regs[i]);
   }
 }
 
