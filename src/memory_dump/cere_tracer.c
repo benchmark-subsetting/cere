@@ -305,7 +305,21 @@ static void mark_invalid() {
   errx(EXIT_FAILURE, "%s", cere_errors_EIO);
 }
 
+/* For each syscall we get called twice: before and after entering the
+   kernel handler. In aarch64 orig_x0 does not exist, therefore we have
+   to ignore the second call. sc_pending is true for a given pid, if
+   the second call has not yet been cleared.
+*/
+bool sc_pending[MAX_TIDS] = {false};
+
 static void handle_syscall(pid_t child) {
+  if (sc_pending[child]) {
+    sc_pending[child] = false;
+    return;
+  }
+  else {
+    sc_pending[child] = true;
+  }
   /* IO Syscall require special care */
   if (is_syscall_io(child)) {
     if (tracer_state == TRACER_DUMPING && !is_valid_io(child)) {

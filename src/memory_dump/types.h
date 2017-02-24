@@ -22,6 +22,8 @@
 #include <limits.h>
 #include <sys/types.h>
 
+#define MAX_TIDS 2048
+
 #define PAST_INV 30
 #define MAX_PATH 256
 #define MAX_IGNORE 32

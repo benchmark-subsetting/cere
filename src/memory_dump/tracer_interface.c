@@ -117,13 +117,13 @@ int get_syscallid(pid_t pid) {
 bool is_hook_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return (regs.rsi == SYS_hook);
+  return (regs.rax == SYS_hook);
 }
 
 bool is_dump_sigtrap(pid_t pid) {
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  return (regs.rsi == SYS_dump);
+  return (regs.rax == SYS_dump);
 }
 
 void clear_trap(pid_t pid) {
@@ -211,13 +211,13 @@ int get_syscallid(pid_t pid) {
 bool is_hook_sigtrap(pid_t pid) {
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
-  return (regs.regs[1] == SYS_hook);
+  return (regs.regs[8] == SYS_hook);
 }
 
 bool is_dump_sigtrap(pid_t pid) {
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
-  return (regs.regs[1] == SYS_dump);
+  return (regs.regs[8] == SYS_dump);
 }
 
 void clear_trap(pid_t pid) {

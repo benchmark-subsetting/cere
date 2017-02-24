@@ -26,13 +26,12 @@ static inline void sigtrap(void) {
 }
 
 void hook_sigtrap(void) {
-  asm volatile("mov %0,%%rsi" : : "r"((register_t)SYS_hook));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_hook));
   sigtrap();
 }
 
 void send_to_tracer(register_t arg) {
-  /* rdi and rsi are callee save */
-  asm volatile("mov %0,%%rsi" : : "r"((register_t)SYS_dump));
+  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
   asm volatile("mov %0,%%rdi" : : "r"(arg));
   sigtrap();
 }
@@ -54,12 +53,12 @@ static inline void sigtrap(void) {
 }
 
 void hook_sigtrap(void) {
-  asm volatile("mov x1, %0" : : "r"((register_t)SYS_hook) : "x1");
+  asm volatile("mov x8, %0" : : "r"((register_t)SYS_hook) : "x8");
   sigtrap();
 }
 
 void send_to_tracer(register_t arg) {
-  asm volatile("mov x1, %0" : : "r"((register_t)SYS_dump) : "x1");
+  asm volatile("mov x8, %0" : : "r"((register_t)SYS_dump) : "x8");
   asm volatile("mov x0, %0" : : "r"((register_t)arg) : "x0");
   sigtrap();
 }
