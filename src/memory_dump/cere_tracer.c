@@ -359,10 +359,17 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
 
 static register_t receive_from_tracee(pid_t child) {
   register_t ret;
-  debug_print("receive from tracee %d\n", child);
-  pid_t tid = handle_events_until_dump_trap(-1);
+  debug_print("start receive from tracee %d\n", child);
+
+  /* we should only handle events from the child that started
+  the communication here; we should be in safe
+  non blockable code (send_to_tracee) so we do not care about
+  other threads. Answering to a dump trap from another process
+  here could lead to a synchronization problem */
+  pid_t tid = handle_events_until_dump_trap(child);
   ret = get_arg_from_regs(tid);
   ptrace_syscall(child);
+  debug_print("end receive from tracee %d (%d)\n", child, ret);
   return ret;
 }
 
@@ -376,7 +383,7 @@ static void receive_string_from_tracee(pid_t child, char *src_tracee,
 
 static void tracer_lock_range(pid_t child) {
 
-  debug_print("%s\n", "START LOCK RANGE");
+  debug_print("%s %d\n", "START LOCK RANGE", child);
 
   assert(tracer_state == TRACER_LOCKED);
 
@@ -395,7 +402,7 @@ static void tracer_lock_range(pid_t child) {
 
   ptrace_syscall(child);
 
-  debug_print("%s\n", "END LOCK RANGE");
+  debug_print("%s %d (%p -> %p)\n", "END LOCK RANGE", child, from, to);
 }
 
 static void create_root_dir(const char * root) {
