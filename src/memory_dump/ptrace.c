@@ -48,7 +48,7 @@
 #include "debug.h"
 
 size_t ntids = 0;
-pid_t tids[MAX_TIDS];
+pid_t tids[MAX_TIDS] = {0};
 int npending = 0;
 bool pending[MAX_TIDS] = {false};
 int cleared[MAX_TIDS] = {0};
@@ -197,6 +197,22 @@ void stop_all_except(pid_t pid) {
   }
 }
 
+void register_thread(pid_t new_thread) {
+  debug_print("Following new thread %d.\n", new_thread);
+  if (ntids >= MAX_TIDS) {
+    errx(EXIT_FAILURE, "Too many threads MAX_TIDS=%d\n", MAX_TIDS);
+  }
+  tids[ntids++] = new_thread;
+}
+
+int find_thread_pos(pid_t tid) {
+  int i;
+  for (i=0; i <= ntids; i ++) {
+    if (tids[i] == tid) return i;
+  }
+  return -1;
+}
+
 event_t wait_event(pid_t wait_for) {
   int r, status = 0;
   event_t event;
@@ -278,15 +294,16 @@ event_t wait_event(pid_t wait_for) {
              "newly cloned thread: %s\n", strerror(errno));
       }
 
-      debug_print("Following new thread %d.\n", new_thread);
-      if (ntids >= MAX_TIDS) {
-        errx(EXIT_FAILURE, "Too many threads MAX_TIDS=%d\n", MAX_TIDS);
+      /* Check the thread is already registered (happens if the new child
+         SIGSTOP is received before the parent SIGTRAP) */
+      if (find_thread_pos(new_thread) == -1) {
+        register_thread(new_thread);
+	/* New thread starts with a SIGSTOP, either it was already caught before
+           parent SIGTRAP in that case thread is already registered, either we
+           should catch it now.  */
+	event_t e = wait_event(new_thread);
+	assert(e.signo == SIGSTOP);
       }
-      tids[ntids++] = new_thread;
-
-      /* New thread starts with a SIGSTOP */
-      event_t e = wait_event(new_thread);
-      assert(e.signo == SIGSTOP);
 
       /* Let both parent and child thread continue */
       ptrace_syscall(new_thread);
@@ -300,16 +317,17 @@ event_t wait_event(pid_t wait_for) {
     {/* This can happen if a tid is already stopped when we
        call stop_all_except. The SIGSTOP is queued and must be
        cleared */
-    int i;
-    for (i = 0; i < ntids; i++) {
-      if (event.tid == tids[i]) break;
-    }
-    if (cleared[i] > 0) {
+    int i = find_thread_pos(event.tid);
+
+    if (i != -1 && cleared[i] > 0) {
       cleared[i] -= 1;
       debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
       ptrace_syscall(event.tid);
       return wait_event(wait_for);
-    } else {
+    } else { /* A SIGSTOP here is either the SIGSTOP after stopping a thread,
+                the first thread starting
+                or a spawned thread starting before receiving its
+                parent SIGTRAP */
       return event;
     }
     }

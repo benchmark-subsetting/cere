@@ -367,6 +367,10 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
       }
       ptrace_syscall(e.tid);
     }
+    else if (e.signo == SIGSTOP) {
+      /* A new thread is starting, ignore this event, next wait_event call will
+         unblock the thread once its parents registers it in tids array */
+    }
     else {
       errx(EXIT_FAILURE, "Unexpected signal in wait_sigtrap: %d\n", e.signo);
     }
