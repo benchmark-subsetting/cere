@@ -26,8 +26,6 @@ AC_SUBST(GCC_PATH, $CC)
 AX_LLVM([3.3],[3.5.2],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
-AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
-AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))
 AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google profiler library]))
 
 # Check that the selected GCC is compatible with the selected dragonegg
@@ -48,6 +46,13 @@ EOF
         AC_MSG_ERROR([Your gcc version ($CC) cannot compile Fortran programs with your dragonegg plugin ($DRAGONEGG_PATH)])
     fi
 fi
+
+# The profiler and gfortran libraries added to LIBS by AC_CHECK_LIB are needed only at
+# cere run time, not when building cere. Therefore we have to reset LIBS.
+LIBS=""
+
+AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
+AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))
 
 # Check for common programs and tools
 AC_PATH_PROG(SED,  [sed], [])

@@ -86,9 +86,9 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
-  char* dump_prefix = getenv("CERE_PATH");
+  char* dump_prefix = getenv("CERE_WORKING_PATH");
   if(!dump_prefix) {
-    warn("CERE_PATH not defined, using defaut cere dir.\n");
+    /* If CERE_WORKING_PATH is not defined fallback to default .cere */
     dump_prefix = ".cere";
   }
 
