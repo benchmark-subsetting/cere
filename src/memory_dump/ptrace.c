@@ -167,9 +167,24 @@ void ptrace_putdata(pid_t child, long addr, char *str, int len) {
   }
 }
 
+static void register_thread(pid_t new_thread) {
+  debug_print("Following new thread %d.\n", new_thread);
+  if (ntids >= MAX_TIDS) {
+    errx(EXIT_FAILURE, "Too many threads MAX_TIDS=%d\n", MAX_TIDS);
+  }
+  tids[ntids++] = new_thread;
+}
+
+static int find_thread_pos(pid_t tid) {
+  int i;
+  for (i=0; i < ntids; i ++) {
+    if (tids[i] == tid) return i;
+  }
+  return -1;
+}
 
 void continue_all(void) {
-  for (int i=0; i<ntids; i++) {
+  for (int i=0; i< ntids; i++) {
     if (!pending[i])
       ptrace_syscall(tids[i]);
   }
@@ -195,22 +210,6 @@ void stop_all_except(pid_t pid) {
       queued[i] = e;
     }
   }
-}
-
-void register_thread(pid_t new_thread) {
-  debug_print("Following new thread %d.\n", new_thread);
-  if (ntids >= MAX_TIDS) {
-    errx(EXIT_FAILURE, "Too many threads MAX_TIDS=%d\n", MAX_TIDS);
-  }
-  tids[ntids++] = new_thread;
-}
-
-int find_thread_pos(pid_t tid) {
-  int i;
-  for (i=0; i <= ntids; i ++) {
-    if (tids[i] == tid) return i;
-  }
-  return -1;
 }
 
 event_t wait_event(pid_t wait_for) {
@@ -314,20 +313,28 @@ event_t wait_event(pid_t wait_for) {
     }
     return event;
   case SIGSTOP:
-    {/* This can happen if a tid is already stopped when we
-       call stop_all_except. The SIGSTOP is queued and must be
-       cleared */
+    {
+
+    /* A SIGSTOP here is either the SIGSTOP after stopping a thread,
+       the first thread starting
+       or a spawned thread starting before receiving its
+       parent SIGTRAP */
     int i = find_thread_pos(event.tid);
 
-    if (i != -1 && cleared[i] > 0) {
+    /* If it is a new unregistered thread, register it ! */
+    if (i == -1) {
+      register_thread(event.tid);
+      return event;
+    }
+    else if (cleared[i] > 0) {
+      /* This can happen if a tid is already stopped when we
+         call stop_all_except. The SIGSTOP is queued and must be
+         cleared */
       cleared[i] -= 1;
       debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
       ptrace_syscall(event.tid);
       return wait_event(wait_for);
-    } else { /* A SIGSTOP here is either the SIGSTOP after stopping a thread,
-                the first thread starting
-                or a spawned thread starting before receiving its
-                parent SIGTRAP */
+    } else {
       return event;
     }
     }
@@ -357,7 +364,9 @@ static void parse_proc_task(pid_t pid) {
       continue;
 
     int tid = atoi(entry->d_name);
-    tids[ntids++] = tid;
+    if (find_thread_pos(tid) == -1) {
+      register_thread(tid);
+    }
     debug_print("read tid = %d\n", tid);
   }
   closedir(proc_dir);
