@@ -209,7 +209,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     #Find the .cere directory
     cere_dir = find_cere_dir()
     if not cere_dir:
-      fail_lel("Failed to find .cere directory. try export CERE_PATH=\"path/to/.cere/\"")
+      fail_lel("Failed to find .cere directory. try export CERE_WORKING_PATH=\"path/to/.cere/\"")
     DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
 
     # Check that dumps exists
