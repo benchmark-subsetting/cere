@@ -56,7 +56,7 @@ def user_main(FILE, LOOP, mode_opt):
     template = TEMPLATE.read()
     TEMPLATE.close()
     FILE.write(template.format(time_out=TIMEOUT_SECONDS,
-                               in_vitro_call_count=CERE_REPLAY_REPETITIONS+1,
+                               in_vitro_call_count=CERE_REPLAY_REPETITIONS,
                                loop=LOOP))
 
 def create_user_main(mode_opt,LOOP):
