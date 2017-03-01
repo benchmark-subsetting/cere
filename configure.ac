@@ -22,12 +22,10 @@ AC_SUBST(CERELIBS, $libdir)
 AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
+
 AX_LLVM([3.8.0],[3.9.1],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
-
-AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
-AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))
 AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google profiler library]))
 
 # Check that the selected GCC is compatible with the selected dragonegg
@@ -48,6 +46,13 @@ EOF
         AC_MSG_ERROR([Your gcc version ($CC) cannot compile Fortran programs with your dragonegg plugin ($DRAGONEGG_PATH)])
     fi
 fi
+
+# The profiler and gfortran libraries added to LIBS by AC_CHECK_LIB are needed only at
+# cere run time, not when building cere. Therefore we have to reset LIBS.
+LIBS=""
+
+AC_CHECK_LIB([c], [exit], , AC_MSG_ERROR([Could not find c library]))
+AC_CHECK_LIB([m], [sin], , AC_MSG_ERROR([Could not find math library]))
 
 # Check for common programs and tools
 AC_PATH_PROG(SED,  [sed], [])
@@ -125,7 +130,6 @@ AM_PATH_PYTHON([2.7])
 # Check for Python 2 modules
 
 AX_PYTHON_MODULE(networkx, fatal)
-AX_PYTHON_MODULE(pydot, fatal)
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
 AX_PYTHON_MODULE(jinja2, fatal)
 AX_PYTHON_MODULE(sklearn, fatal)
