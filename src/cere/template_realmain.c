@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <unistd.h>
+#include <errno.h>
 
 void run{loop}(void);
 void anti_dead_code_elimination(int n, ...) {{}}
@@ -13,14 +14,14 @@ void sigcatch(int signal) {{
 static void sigsegv_handler(int sig, siginfo_t *si, void *unused)
 {{
   char * touched_addr = si->si_addr;
-  printf("Detected segfault at: %p\n", touched_addr);
-  printf("Dumping process memory map\n");
-  printf("==========================\n");
+  fprintf(stderr, "Detected segfault at: %p\n", touched_addr);
+  fprintf(stderr, "Dumping process memory map\n");
+  fprintf(stderr, "==========================\n");
   char cmd[255];
   pid_t pid = getpid();
-  snprintf(cmd, sizeof(cmd), "cat /proc/%d/maps", pid);
+  snprintf(cmd, sizeof(cmd), "cat /proc/%d/maps >&2", pid);
   system(cmd);
-  printf("==========================\n");
+  fprintf(stderr, "==========================\n");
   raise(SIGKILL);
 }}
 void real_main() {{
@@ -34,7 +35,17 @@ void real_main() {{
   int res = sigaction(SIGSEGV, &sa, NULL);
   assert(res != -1);
   signal(SIGALRM, sigcatch);
-  for(i=0; i<{in_vitro_call_count}; i++) {{
+  int call_count = {in_vitro_call_count};
+  char * call_count_var = getenv("CERE_REPLAY_REPETITIONS");
+  if (call_count_var != NULL) {{
+    char * endptr;
+    call_count = strtol(call_count_var, &endptr, 10);
+    if (errno != 0 || call_count <= 0) {{
+      fprintf(stderr, "Invalid value for CERE_REPLAY_REPETITIONS");
+      exit(1);
+    }}
+  }}
+  for(i=0; i<call_count+1; i++) {{
     alarm(max_seconds);
     run{loop}();
   }}

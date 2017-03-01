@@ -661,9 +661,9 @@ int main(int argc, char *argv[]) {
     errx(EXIT_FAILURE, "usage: %s pid tracer_buff_address\n", argv[0]);
   }
 
-  dump_prefix = getenv("CERE_PATH");
+  dump_prefix = getenv("CERE_WORKING_PATH");
   if(!dump_prefix) {
-    debug_print("%s\n", "CERE_PATH not defined, using defaut cere dir.\n");
+    debug_print("%s\n", "CERE_WORKING_PATH not defined, using defaut cere dir.\n");
     dump_prefix = ".cere";
   }
 
