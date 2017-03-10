@@ -187,12 +187,12 @@ def create_graph(force):
 
     binary = which(run_cmd)
     if not binary:
-        logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary")
+        logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary.")
         return False
 
     profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
     if not os.path.isfile(profile_file):
-        logger.critical("No profiling file. Please run cere profile")
+        logger.critical("No profiling file. Please run cere profile.")
         return False
 
     #regular expression to parse the gperf tool output
@@ -217,5 +217,5 @@ def create_graph(force):
     plot(digraph)
     save_graph(digraph)
 
-    logger.info('Call graph creation successefull')
+    logger.info('Call graph creation successful')
     return True
