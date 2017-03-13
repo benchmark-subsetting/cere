@@ -34,7 +34,7 @@ def init_module(subparsers, cere_plugins):
     configure_parser.add_argument('--run-cmd', required=True, help="Sets the command used to run the application")
     configure_parser.add_argument('--clean-cmd', required=True, help="Sets the command used to run the application")
     configure_parser.add_argument('--multiple-trace', action='store_true', help="Enables tracing multiple regions in a single run. (default false)")
-    configure_parser.add_argument('--omp', action='store_true', help="Enables PCERE. (default false)")
+    configure_parser.add_argument('--omp', action='store_true', help="Enables OpenMP mode. (default false)")
     configure_parser.add_argument('--regions-infos', default="regions.csv", help="File in which regions infos are stored")
 
 def run(args):
@@ -65,7 +65,7 @@ def init():
     if cere_config["omp"]:
         os.environ["CERE_OMP"]="1"
         if "OMP_NUM_THREADS" not in os.environ:
-            logger.warning("PCERE enabled but OMP_NUM_THREADS not set.")
+            logger.warning("OpenMP mode enabled but OMP_NUM_THREADS not set.")
 
     os.environ["CERE_WORKING_PATH"] = os.path.realpath(var.CERE_MAIN_DIR)
     return True
