@@ -17,7 +17,7 @@ before_install:
   - gem install ronn
 
   # Install pulp and upgrade numpy
-  - sudo pip install pulp numpy --upgrade
+  - sudo pip install pulp pydotplus numpy --upgrade
 
   # Get dragonegg
   - wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz
