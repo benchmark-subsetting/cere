@@ -372,6 +372,11 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
       /* A new thread is starting, ignore this event, next wait_event call will
          unblock the thread once its parents registers it in tids array */
     }
+    else if (e.signo == SIGWINCH) {
+      /* Ignore signal SIGWINCH, tty resize */
+      ptrace_syscall(e.tid);
+      continue;
+    }
     else {
       errx(EXIT_FAILURE, "Unexpected signal in wait_sigtrap: %d\n", e.signo);
     }
