@@ -137,6 +137,7 @@ AX_PYTHON_MODULE(numpy, fatal)
 AX_PYTHON_MODULE(pulp, fatal)
 AX_PYTHON_MODULE(pydot, fatal)
 AX_PYTHON_MODULE(pygraphviz, fatal)
+AX_PYTHON_MODULE(pydotplus, fatal)
 
 # Generate config files
 

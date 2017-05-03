@@ -40,6 +40,8 @@
 
 #define CACHE_SIZE_MB 20
 
+long PAGESIZE;
+
 void cacheflush(void) {
   const size_t size = CACHE_SIZE_MB * 1024 * 1024;
   int i, j;
@@ -100,10 +102,10 @@ static void register_first_touch(int pid, void * start_of_page) {
 #define WARMUP_COLD 0
 #define WARMUP_WORKLOAD 1
 #define WARMUP_PAGETRACE 2
-#define MAX_COLD (4096 * 64)
+#define MAX_COLD (4096 * 64 * 4096)
 #define REPLAY_PAST MAX_COLD
 
-char cold[MAX_COLD * PAGESIZE];
+char cold[MAX_COLD];
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
 static bool valid[MAX_WARMUP];
@@ -134,6 +136,11 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
   static bool firsttouch_init = true;
+
+  /* XXX: If we replay a capture from a system with a different PAGESIZE, this
+     may have unexpected side effects. We should save the PAGESIZE used during
+     the capture */
+  PAGESIZE = sysconf(_SC_PAGESIZE);
 
   char* dump_prefix = getenv("CERE_WORKING_PATH");
   if(!dump_prefix) {
@@ -236,8 +243,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   struct dirent *ent;
   struct stat st;
   int fp;
-  char line[PAGESIZE];
-  int len, i;
+  int len;
   char filename[1024];
   int total_readed_bytes = 0;
 
@@ -275,7 +281,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       char *buff;
       buff= (char*)malloc(sizeof(char)*PAGESIZE);
 
-      for(i=0; i<nb_pages; i++) {
+      for(int i=0; i<nb_pages; i++) {
         len=0;
 
         while ((len += read(fp, buff+len, PAGESIZE-len)) < PAGESIZE) {}
@@ -366,7 +372,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   for (int i = start; i < hotpages_counter; i++) {
     if (!valid[i]) {
       warmup[i] =
-          &cold[((unsigned long long)warmup[i]) % ((MAX_COLD - 1) * PAGESIZE)];
+          &cold[((unsigned long long)warmup[i]) % (MAX_COLD - 1)];
     }
   }
 

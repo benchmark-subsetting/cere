@@ -17,8 +17,8 @@ before_install:
   # Install ronn
   - gem install ronn
 
-  # Install pulp
-  - sudo pip install pulp
+  # Install pulp and pydotplus
+  - sudo pip install pulp pydotplus
 
 install:
   - ./autogen.sh
