@@ -19,6 +19,8 @@
 import os
 import sys
 
+PAGESIZE = os.sysconf("SC_PAGE_SIZE")
+
 def compress(dir):
     owd = os.getcwd()
     os.chdir(dir)
@@ -32,7 +34,7 @@ def compress(dir):
     dumps.sort()
 
     def consecutive(n,m):
-        return abs(dumps[n]-dumps[m]) == 4096
+        return abs(dumps[n]-dumps[m]) == PAGESIZE
 
     ranges = []
 
@@ -54,7 +56,7 @@ def compress(dir):
             for i in range(start+1, stop+1):
                 other_name = "{0:012x}.memdump".format(dumps[i])
                 with open(other_name, "rb") as other:
-                    first.write(other.read(4096))
+                    first.write(other.read(PAGESIZE))
                 os.remove(other_name)
 
     print(ranges)

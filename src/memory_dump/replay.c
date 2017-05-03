@@ -35,6 +35,8 @@
 
 #define CACHE_SIZE_MB 20
 
+long PAGESIZE;
+
 void cacheflush(void) {
   const size_t size = CACHE_SIZE_MB * 1024 * 1024;
   int i, j;
@@ -52,10 +54,10 @@ void cacheflush(void) {
 #define WARMUP_COLD 0
 #define WARMUP_WORKLOAD 1
 #define WARMUP_PAGETRACE 2
-#define MAX_COLD (4096 * 64)
+#define MAX_COLD (4096 * 64 * 4096)
 #define REPLAY_PAST MAX_COLD
 
-char cold[MAX_COLD * PAGESIZE];
+char cold[MAX_COLD];
 static bool loaded = false;
 static char *warmup[MAX_WARMUP];
 static bool valid[MAX_WARMUP];
@@ -85,6 +87,11 @@ static off64_t get_address_from_filename(char *filename) {
 void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
+
+  /* XXX: If we replay a capture from a system with a different PAGESIZE, this
+     may have unexpected side effects. We should save the PAGESIZE used during
+     the capture */
+  PAGESIZE = sysconf(_SC_PAGESIZE);
 
   char* dump_prefix = getenv("CERE_WORKING_PATH");
   if(!dump_prefix) {
@@ -151,7 +158,6 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   struct dirent *ent;
   struct stat st;
   int fp;
-  char line[PAGESIZE];
   int len;
   char filename[1024];
   int total_readed_bytes = 0;
@@ -213,7 +219,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   for (int i = start; i < hotpages_counter; i++) {
     if (!valid[i]) {
       warmup[i] =
-          &cold[((unsigned long long)warmup[i]) % ((MAX_COLD - 1) * PAGESIZE)];
+          &cold[((unsigned long long)warmup[i]) % (MAX_COLD - 1)];
     }
   }
 
