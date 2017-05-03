@@ -44,6 +44,7 @@
 
 #include "debug.h"
 
+long PAGESIZE;
 int log_size = LOG_SIZE;
 int last_trace = 0;
 int last_page = 0;
@@ -632,6 +633,7 @@ static void tracer_dump(pid_t pid) {
 }
 
 static void tracer_init(pid_t pid) {
+  PAGESIZE = sysconf(_SC_PAGESIZE);
   event_t e = wait_event(pid);
   assert(e.signo == SIGSTOP);
   follow_threads(pid);

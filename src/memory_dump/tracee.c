@@ -51,8 +51,11 @@ void *(*real_calloc)(size_t nmemb, size_t size);
 void *(*real_realloc)(void *ptr, size_t size);
 void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
+long PAGESIZE;
 
 void dump_init(void) {
+
+  PAGESIZE = sysconf(_SC_PAGESIZE);
 
   /* state.mtrace_active = false; */
   mtrace_active = false;
