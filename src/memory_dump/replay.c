@@ -19,26 +19,29 @@
 #define _LARGEFILE64_SOURCE
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#include "pages.h"
 #include <assert.h>
-#include <err.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
+#include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <math.h>
 #include <omp.h>
-#include "pages.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable.h>
 
 #define CACHE_SIZE_MB 20
+
+#include <numaif.h>
+#define NUMA_NODES 4
 
 long PAGESIZE;
 
@@ -46,6 +49,7 @@ void cacheflush(void) {
   const size_t size = CACHE_SIZE_MB * 1024 * 1024;
   int i, j;
   char *c = malloc(size);
+
   for (i = 0; i < 5; i++)
     for (j = 0; j < size; j++)
       c[j] = i * j;
@@ -61,28 +65,25 @@ const char *firsttouch_suffix = "firsttouch.map";
 // Offset used to calculate omp thread id
 int offset_pthread_omp = 0;
 
-// Number of threads used during capture
-int nb_thread_capture = 0;
-
 static struct htable firsttouch;
 typedef struct {
   int tid;
-  void * start_of_page;
+  void *start_of_page;
 } ft_entry;
 
-static size_t rehash (const void *e, void *unused) {
-  const ft_entry * ft = (const ft_entry *) e;
+static size_t rehash(const void *e, void *unused) {
+  const ft_entry *ft = (const ft_entry *)e;
   return hash_pointer(ft->start_of_page, 0);
 }
 
 static bool ptrequ(const void *e, void *f) {
-  const ft_entry * ft = (const ft_entry *) e;
-  return  ft->start_of_page == f;
+  const ft_entry *ft = (const ft_entry *)e;
+  return ft->start_of_page == f;
 }
-static void register_first_touch(int pid, void * start_of_page) {
+static void register_first_touch(int pid, void *start_of_page) {
   size_t hash = hash_pointer(start_of_page, 0);
   /* Is this the first time we access this page ? */
-  ft_entry * t = htable_get(&firsttouch, hash, ptrequ, start_of_page);
+  ft_entry *t = htable_get(&firsttouch, hash, ptrequ, start_of_page);
 
   /* If not record the touching thread to the firsttouch htable */
   if (!t) {
@@ -92,7 +93,6 @@ static void register_first_touch(int pid, void * start_of_page) {
     htable_add(&firsttouch, hash, t);
   }
 }
-
 
 /**********************************************************************
  * REPLAY MODE                                                        *
@@ -142,20 +142,21 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
      the capture */
   PAGESIZE = sysconf(_SC_PAGESIZE);
 
-  char* dump_prefix = getenv("CERE_WORKING_PATH");
-  if(!dump_prefix) {
+  char *dump_prefix = getenv("CERE_WORKING_PATH");
+  if (!dump_prefix) {
     /* If CERE_WORKING_PATH is not defined fallback to default .cere */
     dump_prefix = ".cere";
   }
 
   // Initialize first touch policy
-  char * ft = getenv("CERE_FIRSTTOUCH");
+  char *ft = getenv("CERE_FIRSTTOUCH");
   if (ft && strcmp("TRUE", ft) == 0 && firsttouch_init == true) {
     firsttouch_active = true;
 
     // Create the hash containing the pages - threads id
     htable_init(&firsttouch, rehash, NULL);
-    snprintf(path, sizeof(path), "%s/dumps/%s/%d/%s", dump_prefix, loop_name, invocation, firsttouch_suffix);
+    snprintf(path, sizeof(path), "%s/dumps/%s/%d/%s", dump_prefix, loop_name,
+             invocation, firsttouch_suffix);
     FILE *first_map = fopen(path, "r");
     if (first_map == 0)
       errx(EXIT_FAILURE, "Error open %s : %s\n", path, strerror(errno));
@@ -170,17 +171,10 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       // offset_pthread_omp = minimum(all pthread id)
       if (offset_pthread_omp == 0)
         offset_pthread_omp = pid;
-      offset_pthread_omp = MIN(offset_pthread_omp,pid);
-
-      // Get the maximal pthread id used during capture
-      if (nb_thread_capture == 0)
-        nb_thread_capture = pid;
-      nb_thread_capture = MAX(nb_thread_capture,pid);
+      offset_pthread_omp = MIN(offset_pthread_omp, pid);
 
       register_first_touch(pid, (char *)(address));
     }
-    // Convert max pthread id to a number of threads
-    nb_thread_capture = nb_thread_capture - offset_pthread_omp + 1;
   }
 
   /* Read warmup type from environment variable */
@@ -195,8 +189,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   }
 
   /* Load adresses */
-  snprintf(path, sizeof(path), "%s/dumps/%s/%d/core.map", dump_prefix, loop_name,
-           invocation);
+  snprintf(path, sizeof(path), "%s/dumps/%s/%d/core.map", dump_prefix,
+           loop_name, invocation);
   FILE *core_map = fopen(path, "r");
   if (!core_map)
     errx(EXIT_FAILURE, "Could not open %s", path);
@@ -211,8 +205,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
   if (!loaded) {
     /* load hotpages adresses */
-    snprintf(path, sizeof(path), "%s/dumps/%s/%d/hotpages.map", dump_prefix, loop_name,
-             invocation);
+    snprintf(path, sizeof(path), "%s/dumps/%s/%d/hotpages.map", dump_prefix,
+             loop_name, invocation);
     FILE *hot_map = fopen(path, "r");
     if (!hot_map)
       warn("REPLAY: Could not open %s", path);
@@ -247,7 +241,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char filename[1024];
   int total_readed_bytes = 0;
 
-  snprintf(path, sizeof(path), "%s/dumps/%s/%d/", dump_prefix, loop_name, invocation);
+  snprintf(path, sizeof(path), "%s/dumps/%s/%d/", dump_prefix, loop_name,
+           invocation);
   if ((dir = opendir(path)) == NULL) {
     /* could not open directory */
     fprintf(stderr, "REPLAY: Could not open %s", path);
@@ -276,67 +271,81 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
     size_t read_bytes = 0;
     if (firsttouch_active && firsttouch_init) {
-      assert(st.st_size%PAGESIZE==0);
-      int nb_pages = st.st_size/PAGESIZE;
+      assert(st.st_size % PAGESIZE == 0);
+      int nb_pages = st.st_size / PAGESIZE;
+
       char *buff;
-      buff= (char*)malloc(sizeof(char)*PAGESIZE);
+      buff = (char *)malloc(sizeof(char) * PAGESIZE);
 
-      for(int i=0; i<nb_pages; i++) {
-        len=0;
+      // We intitialize one element per array instead of nb_pages
+      // Because we do not necessery know where to map all the pages
+      // We have to call move_pages for each page
+      char *address_migration[1];
+      int node_migration[1];
+      int status_migration[1];
+      int ret_page;
 
-        while ((len += read(fp, buff+len, PAGESIZE-len)) < PAGESIZE) {}
+      for (int i = 0; i < nb_pages; i++) {
+        len = 0;
+        while ((len += read(fp, buff + len, PAGESIZE - len)) < PAGESIZE) {
+        }
         assert(len == PAGESIZE);
 
+        // Load the page data
+        memcpy((char *)(address + read_bytes), buff, PAGESIZE);
+
+        // Check if the page mapping was recorded
         size_t hash = hash_pointer((void *)(address + read_bytes), 0);
-        ft_entry * t = NULL;
-        t = htable_get(&firsttouch, hash, ptrequ, (void*)(address + read_bytes));
+        ft_entry *t = NULL;
+        t = htable_get(&firsttouch, hash, ptrequ,
+                       (void *)(address + read_bytes));
 
+        // XXX
+        // Migrate pages to reproduce the first touch policy
         if (t) {
-          // Threads touche their recorded pages
-          // Threads are touched according to the following formula:
-          // t'(p) = ceil((n'/n) * t(p))
-          // n' is the number of threads at replay
-          // n is the number of threads during the capture
-          // t(p) is the thread that touched the page at capture
-          // t'(p) is the thread that must touch the page at replay
-          #pragma omp parallel
-          {
-            // N = n'/n
-            float N = (float) omp_get_num_threads() / nb_thread_capture;
+          /*
+          *** Thread offset
+          LLVM 3.8 OMP runtime spawns an additionnal thread
+          Its id is equal to the master thread id + 1
+          Let us consider an application executed with three threads
+          If the master thread id is 0
+          The second thread id is 2
+          The third thread id is 3
+          The omp runtime additionnal thread id will be 1
+          So to correctly remap the pages to the other threads
+          We decrease all the no master threads ids by one
 
-            // XXX
-            /*
-            LLVM 3.8 OMP runtime spawns an additionnal thread
-            His id is equal to the master thread id + 1
-            Let us consider an application executed with three threads
-            If the master thread id is 0
-            The second thread id is 2
-            The third thread id is 3
-            The omp runtime additionnal thread id will be 1
-            So to correctly remap the pages to the other threads
-            We decrease all the no master threads ids by one
-            */
-            int id_thread_noinit = 0;
-            if ((t->tid - offset_pthread_omp) != 0)
-              id_thread_noinit = t->tid - offset_pthread_omp - 1;
+          *** Page distribution
+          We use NUMA_NODES to distribute the pages
+          This distribution is correct as long as the target mapping is
+          scattering the threads.
+          The code needs to be updated to support a custom mapping
+          In particular, compact mappings requiere the total number of threads
+          to be known: NUMA NODE = recorded thread id / total number of threads
 
-           if (omp_get_thread_num() == ceil((float) N * (id_thread_noinit)) )  {
-              //printf("Thread %d touches page %p\n",omp_get_thread_num(),(void *)(address + read_bytes));
-              strncpy(buff,(char *)(address + read_bytes),PAGESIZE);
-            }
+          *** Temporary remove the ability to spread pages with reduced number
+          of threads at replay
+          */
+          if (t->tid == offset_pthread_omp)
+            node_migration[0] = t->tid - offset_pthread_omp;
+          else
+            node_migration[0] = (t->tid - offset_pthread_omp - 1) % NUMA_NODES;
+
+          status_migration[0] = -1;
+          address_migration[0] = (char *)(address + read_bytes);
+
+          // Migrate the page
+          ret_page = move_pages(0, 1, address_migration, node_migration,
+                                status_migration, 0);
+
+          // Check the migration
+          if (status_migration[0] < 0) {
+            //printf("Page migration %p fail\n", address_migration);
           }
-        }
-        else {
-          // Display pages that were not found
-          // To many missing pages is suspicious
-          // enable to check them
-          printf("NOT FOUND %p\n",(void *)(address + read_bytes));
-          strncpy(buff,(char *)(address + read_bytes),PAGESIZE);
         }
         read_bytes += PAGESIZE;
       }
-
-    free(buff);
+      free(buff);
     }
 
     else {
@@ -371,8 +380,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   int start = MAX(0, hotpages_counter - REPLAY_PAST);
   for (int i = start; i < hotpages_counter; i++) {
     if (!valid[i]) {
-      warmup[i] =
-          &cold[((unsigned long long)warmup[i]) % (MAX_COLD - 1)];
+      warmup[i] = &cold[((unsigned long long)warmup[i]) % (MAX_COLD - 1)];
     }
   }
 
