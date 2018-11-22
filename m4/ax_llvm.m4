@@ -82,12 +82,12 @@ AC_DEFUN([AX_LLVM],
 
   LLVM_BINDIR=`$LLVM_CONFIG --bindir`
   AC_DEFINE_UNQUOTED([LLVM_BINDIR], ["$LLVM_BINDIR"], [The llvm bin dir])
-  LLVM_CPPFLAGS=`$LLVM_CONFIG --cxxflags`
+  LLVM_CPPFLAGS=`$LLVM_CONFIG --cxxflags | sed s/-Wcovered-switch-default// | sed s/-Werror=date-time// | sed s/-Wl,--no-keep-files-mapped//`
   AC_DEFINE_UNQUOTED([LLVM_CPPFLAGS], ["$LLVM_CPPFLAGS"], [The llvm CPPFLAGS])
-  if test "$LLVM_VERSION_MINOR" = 5; then
-    LLVM_LDFLAGS=`$LLVM_CONFIG --system-libs`
+  if test "$LLVM_VERSION_MINOR" -gt 4; then
+    LLVM_LDFLAGS="`$LLVM_CONFIG --ldflags` `$LLVM_CONFIG --system-libs`"
   else
-    LLVM_LDFLAGS=`$LLVM_CONFIG --ldflags`
+    LLVM_LDFLAGS="`$LLVM_CONFIG --ldflags`"
   fi
   LLVM_LIBS=`$LLVM_CONFIG --libs $3`
   LLVM_LIBDIR=`$LLVM_CONFIG --libdir`
