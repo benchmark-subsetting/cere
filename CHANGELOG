@@ -1,5 +1,16 @@
 CERE CHANGELOG
 
+[v0.3.1] 2018/11/30
+    * Maintainance release, ensure all checks are passing with newer travis images
+
+[v0.3] 2017/10/12
+    * memory tracer: Fixed multiple race-conditions in ptrace functions attaching new threads.
+    * memory_tracer: Fixed a synchronization bug in send_to_tracer function
+    * Tested and validated CERE extraction on Lulesh Lawrence Livermore proto-application and on BWA gene alignment application
+    * Compatibility with LLVM 3.9
+    * Improved thread remapping formula for NUMA domains
+    * Support for ARMv8 complete (tested on Jetson, Juno and Thunder)
+
 [v0.2.2] 2016/06/06
     * Improved cere flag (add a stop/restart feature)
     * Fixed release version number

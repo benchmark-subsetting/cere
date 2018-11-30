@@ -1,4 +1,4 @@
-# CERE v0.3
+# CERE v0.3.1
 
 [![Build Status](https://travis-ci.org/benchmark-subsetting/cere.svg?branch=master)](https://travis-ci.org/benchmark-subsetting/cere)
 
@@ -93,7 +93,7 @@ file](https://github.com/benchmark-subsetting/cere/blob/master/THANKS).
 
 ### License and copyright
 
-Copyright (c) 2013-2017, Universite de Versailles St-Quentin-en-Yvelines
+Copyright (c) 2013-2018, Universite de Versailles St-Quentin-en-Yvelines
 
 CERE is free software: you can redistribute it and/or modify it under the terms of
 the GNU Lesser General Public License as published by the Free Software
