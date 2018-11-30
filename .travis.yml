@@ -6,10 +6,19 @@ before_install:
   - sudo apt-get update
 
   - sudo apt-get -y install clang-3.4 llvm-3.4 llvm-3.4-dev gcc-4.6 g++-4.6
-    gfortran-4.6 gcc-4.6-plugin-dev autoconf automake build-essential libtool
-    python python-pip python-sklearn python-pydot python-pygraphviz
-    python-networkx python-jinja2 python-matplotlib google-perftools
-    libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
+    gfortran-4.6 gcc-4.6-plugin-dev autoconf automake
+    build-essential libtool python python-pip python-sklearn python-pydot
+    python-pygraphviz python-networkx python-jinja2 python-matplotlib
+    google-perftools libgoogle-perftools-dev numactl dc zlib1g-dev libedit-dev
+
+  # Link the correct clang
+  - which clang
+  - sudo ln -s /usr/bin/clang /usr/lib/llvm-3.4/bin/clang
+
+  # Get dragonegg
+  - wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz
+  - tar xvf dragonegg-3.4.src.tar.gz && cd dragonegg-3.4
+  - GCC=gcc-4.6 LLVM_CONFIG=llvm-config-3.4 make && sudo cp dragonegg.so /usr/local/lib/. && cd ..
 
   # Install rdiscount
   - rvm install 2.0.0
@@ -19,20 +28,14 @@ before_install:
   # Install pulp and upgrade numpy
   - sudo pip install pulp pydotplus numpy --upgrade
 
-  # Get dragonegg
-  - wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz
-  - tar xvf dragonegg-3.4.src.tar.gz && cd dragonegg-3.4
-  - make && sudo cp dragonegg.so /usr/local/lib/. && cd ..
 
 install:
   - ./autogen.sh
-  - ./configure --with-dragonegg=/usr/local/lib/dragonegg.so
+  - export LIBRARY_PATH=/usr/bin/../lib/gcc/x86_64-linux-gnu/4.6:/usr/bin/../lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu:/lib/x86_64-linux-gnu:/lib/../lib64:/usr/lib/x86_64-linux-gnu:/usr/bin/../lib/gcc/x86_64-linux-gnu/4.6/../../..:/usr/lib/llvm-3.5/bin/../lib:/lib:/usr/lib:$LIBRARY_PATH
+  - ./configure --with-llvm=/usr/lib/llvm-3.4/bin/ --with-dragonegg=/usr/local/lib/dragonegg.so CC=gcc-4.6 CXX=g++-4.6 || cat config.log
   - make
   - sudo make install
   - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-
-before_script:
-  - cat config.log
 
 script:
   - cd tests/

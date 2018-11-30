@@ -1,4 +1,4 @@
-# CERE v0.2.2
+# CERE v0.3
 
 [![Build Status](https://travis-ci.org/benchmark-subsetting/cere.svg?branch=master)](https://travis-ci.org/benchmark-subsetting/cere)
 
@@ -30,8 +30,8 @@ For OpenMP support please switch to OpenMP branch and follow the instructions in
 
 For now CERE only supports the Linux operating system. We have tested different
 versions of kernels in the 2.6 series. CERE has been tested mainly on x86_64
-and Aarch64 Debian and Ubuntu distributions. It has been tested with LLVM versions ranging
-from 3.3 to 3.5. The OpenMP branch works with LLVM 3.8.
+and Aarch64 (ARMv8 64 bits) Debian and Ubuntu distributions. It has been tested 
+with LLVM versions ranging from 3.3 to 3.9. The OpenMP branch works with LLVM 3.9.
 
 CERE capture and replay is performed in user mode, but requires that
 `/proc/sys/kernel/randomize_va_space` is set to 1 or 2. This is the default on most
