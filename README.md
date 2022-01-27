@@ -1,6 +1,8 @@
 # CERE v0.3.1
 
 [![Build Status](https://travis-ci.org/benchmark-subsetting/cere.svg?branch=master)](https://travis-ci.org/benchmark-subsetting/cere)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5910793.svg)](https://doi.org/10.5281/zenodo.5910793)
+
 
 [Codelet Extractor and REplayer
 (CERE)](https://benchmark-subsetting.github.io/cere/) is an open source framework
