@@ -57,7 +57,7 @@ jobs:
           GCC=gcc-4.6 make
           cp dragonegg.so /usr/local/lib/
 
-      - name: Get dragonegg
+      - name: Get rvm & rdiscount
         run: |
           apt-get install -y software-properties-common
           add-apt-repository -y ppa:rael-gc/rvm
@@ -81,3 +81,10 @@ jobs:
       - name: Run CERE tests
         run: |
           make check
+
+      - name : Archive test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{github.sha}}_test.log
+          path: tests/testplan.log
