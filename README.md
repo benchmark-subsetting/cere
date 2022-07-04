@@ -1,6 +1,7 @@
 # CERE v0.3.1
 
-[![Build status](https://github.com/PurplePachyderm/cere/actions/workflows/test-build.yml/badge.svg)](https://github.com/PurplePachyderm/cere/actions/workflows/test-build.yml)
+[![Build status](https://github.com/benchmark-subsetting/cere/actions/workflows/test-build.yml/badge.svg)](https://github.com/benchmark-subsetting/cere/actions/workflows/test-build.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5910793.svg)](https://doi.org/10.5281/zenodo.5910793)
 
 [Codelet Extractor and REplayer
 (CERE)](https://benchmark-subsetting.github.io/cere/) is an open source framework
