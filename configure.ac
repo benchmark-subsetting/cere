@@ -1,12 +1,12 @@
-AC_PREREQ([2.69])
-AC_INIT([cere], [0.3.1], [cere-dev@googlegroups.com])
+AC_PREREQ([2.71])
+AC_INIT([cere],[0.3.1],[cere-dev@googlegroups.com])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AM_INIT_AUTOMAKE([subdir-objects silent-rules foreign serial-tests])
-AC_PROG_LIBTOOL
+LT_INIT
 
 LT_INIT
 AC_PROG_CXX
@@ -123,11 +123,11 @@ AC_C_BIGENDIAN(
                [AC_MSG_ERROR([universal endianess not supported])]
                )
 
-# Check for Python 2.7
+# Check for Python >= 3.0
 
-AM_PATH_PYTHON([2.7])
+AM_PATH_PYTHON([3.0])
 
-# Check for Python 2 modules
+# Check for Python 3 modules
 
 AX_PYTHON_MODULE(networkx, fatal)
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)

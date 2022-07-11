@@ -75,7 +75,7 @@ def dump_fun(mode_opt, BASE, regions):
     In link mode: Call the linker and copy the original binary
     '''
     temp = ""
-    print "Compiling dump mode"
+    print("Compiling dump mode")
     if(mode_opt.region):
         temp = " --region="+mode_opt.region+" "
         if(mode_opt.regions_file):
@@ -104,7 +104,7 @@ def replay_fun(mode_opt, BASE, regions):
     temp = ""
     if (not (mode_opt.region)):
         fail_lec("Need --region with replay mode")
-    print "Compiling replay mode"
+    print("Compiling replay mode")
     if (mode_opt.invocation):
         temp = temp + "--invocation=" + mode_opt.invocation + " "
     safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
@@ -116,7 +116,7 @@ def replay_fun(mode_opt, BASE, regions):
                     Root=PROJECT_ROOT, LoopMan=LOOP_REPLAY, opts=temp, loop=mode_opt.region,
                     base=BASE,Omp=OMP_FLAGS), EXIT=False)
     if (mode_opt.instrument):
-        print "Instrumentation mode"
+        print("Instrumentation mode")
         temp_instr = "--instrument-region=" + mode_opt.region + " "
         safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR,
