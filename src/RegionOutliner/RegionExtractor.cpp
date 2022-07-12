@@ -42,18 +42,12 @@
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
 #define DEBUG_TYPE "code-extractor"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Verifier.h"
-#else
-#include "llvm/DebugInfo.h"
-#include "llvm/Analysis/Verifier.h"
-#include "llvm/Support/InstIterator.h"
-#endif
 
 using namespace llvm;
 
@@ -119,11 +113,7 @@ static SetVector<BasicBlock *> buildExtractionBlockSet(IteratorT BBBegin,
   }
 
 #ifndef NDEBUG
-#if LLVM_VERSION_MINOR == 5
   for (SetVector<BasicBlock *>::iterator I = std::next(Result.begin()),
-#else
-  for (SetVector<BasicBlock *>::iterator I = llvm::next(Result.begin()),
-#endif
                                          E = Result.end();
                                          I != E; ++I)
     for (pred_iterator PI = pred_begin(*I), PE = pred_end(*I);
@@ -209,7 +199,7 @@ static bool definedInCaller(const SetVector<BasicBlock *> &Blocks, Value *V) {
 }
 
 void RegionExtractor::findInputsOutputs(ValueSet &Inputs,
-                                      ValueSet &Outputs) const {
+                                        ValueSet &Outputs) const {
   for (SetVector<BasicBlock *>::const_iterator I = Blocks.begin(),
                                                E = Blocks.end();
        I != E; ++I) {
@@ -223,15 +213,9 @@ void RegionExtractor::findInputsOutputs(ValueSet &Inputs,
            OI != OE; ++OI)
         if (definedInCaller(Blocks, *OI))
           Inputs.insert(*OI);
-#if LLVM_VERSION_MINOR == 5
       for (User *U : II->users())
         if (!definedInRegion(Blocks, U)) {
-#else
-      for (Value::use_iterator UI = II->use_begin(), UE = II->use_end();
-           UI != UE; ++UI)
-        if (!definedInRegion(Blocks, *UI)) {
-#endif
-          Outputs.insert(II);
+          Outputs.insert(U);
           break;
         }
     }
@@ -267,7 +251,7 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
   // containing PHI nodes merging values from outside of the region, and a
   // second that contains all of the code for the block and merges back any
   // incoming values from inside of the region.
-  BasicBlock::iterator AfterPHIs = Header->getFirstNonPHI();
+  BasicBlock::iterator AfterPHIs = Header->getFirstNonPHI()->getIterator();
   BasicBlock *NewBB = Header->splitBasicBlock(AfterPHIs,
                                               Header->getName()+".ce");
 
@@ -302,7 +286,7 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
       // Create a new PHI node in the new region, which has an incoming value
       // from OldPred of PN.
       PHINode *NewPN = PHINode::Create(PN->getType(), 1 + NumPredsFromRegion,
-                                       PN->getName()+".ce", NewBB->begin());
+                                       PN->getName()+".ce", &*(NewBB->begin()));
       NewPN->addIncoming(PN, OldPred);
 
       // Loop over all of the incoming value in PN, moving them to NewPN if they
@@ -456,11 +440,11 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
+    DILocation *firstLoc = (DILocation*) firstN;
+    oss << firstLoc->getLine();
     std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
-    std::string path = firstLoc.getDirectory();
+    std::string Original_location = firstLoc->getFilename().str();
+    std::string path = firstLoc->getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
     newFunctionName = updateFileFormat(newFunctionName);
@@ -567,15 +551,11 @@ Function *RegionExtractor::constructFunction(
       Idx[1] = ConstantInt::get(Type::getInt32Ty(header->getContext()), i);
       TerminatorInst *TI = newFunction->begin()->getTerminator();
       GetElementPtrInst *GEP =
-        GetElementPtrInst::Create(AI, Idx, "gep_" + inputs[i]->getName(), TI);
+        GetElementPtrInst::Create(&*(AI)->getType(), Idx[0], Idx[1], "gep_" + inputs[i]->getName(), TI);
       RewriteVal = new LoadInst(GEP, "loadgep_" + inputs[i]->getName(), TI);
     } else
       RewriteVal = AI++;
-#if LLVM_VERSION_MINOR == 5
     std::vector<User*> Users(inputs[i]->user_begin(), inputs[i]->user_end());
-#else
-    std::vector<User*> Users(inputs[i]->use_begin(), inputs[i]->use_end());
-#endif
     for (std::vector<User*>::iterator use = Users.begin(), useE = Users.end();
          use != useE; ++use)
       if (Instruction* inst = dyn_cast<Instruction>(*use))
@@ -585,7 +565,7 @@ Function *RegionExtractor::constructFunction(
 
   // Creates Attribute Noalias
   AttributeSet newParamAttr = AttributeSet().addAttribute(
-      newFunction->getContext(), 0, Attribute::NoAlias);
+      newFunction->getContext(), Attribute::NoAlias);
 
   AI = newFunction->arg_begin();
   for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI) {
@@ -594,7 +574,7 @@ Function *RegionExtractor::constructFunction(
       Type *elementType = pointerType->getElementType();
       // Add no alias if it's not an array or a structure
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
-        AI->addAttr(newParamAttr);
+        AI->addAttr(Attribute::NoAlias);
       }
     }
   }
@@ -629,7 +609,6 @@ Function *RegionExtractor::constructFunction(
 /// FindPhiPredForUseInBlock - Given a value and a basic block, find a PHI
 /// that uses the value within the basic block, and return the predecessor
 /// block associated with that use, or return 0 if none is found.
-#if LLVM_VERSION_MINOR == 5
 static BasicBlock* FindPhiPredForUseInBlock(Value* Used, BasicBlock* BB) {
   for (Use &U : Used->uses()) {
      PHINode *P = dyn_cast<PHINode>(U.getUser());
@@ -639,18 +618,6 @@ static BasicBlock* FindPhiPredForUseInBlock(Value* Used, BasicBlock* BB) {
 
   return nullptr;
 }
-#else
-static BasicBlock *FindPhiPredForUseInBlock(Value *Used, BasicBlock *BB) {
-  for (Value::use_iterator UI = Used->use_begin(), UE = Used->use_end();
-       UI != UE; ++UI) {
-    PHINode *P = dyn_cast<PHINode>(*UI);
-    if (P && P->getParent() == BB)
-      return P->getIncomingBlock(UI);
-  }
-
-  return 0;
-}
-#endif
 
 /// Sometimes when outlining code, metadata refers to the original function
 /// and not to the extracted one. This function removes wrong metadata. This
@@ -671,19 +638,20 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction) {
             if (MDNode *MD = dyn_cast_or_null<MDNode>(I->getOperand(i))) {
               for (unsigned j = 0, k = MD->getNumOperands(); j != k; ++j) {
                 Function *ActualF = 0;
-                Value *Op = MD->getOperand(j);
+                const MDOperand *Op = &(MD->getOperand(j));
+
                 if (!Op)
                   continue;
-                if (isa<Constant>(Op) || isa<MDString>(Op))
+                if (isa<Constant>(*Op) || isa<MDString>(*Op))
                   continue;
 
                 // If this was an instruction, bb, or argument, verify that it
                 // is in the function that we expect.
-                if (Instruction *J = dyn_cast<Instruction>(Op))
+                if (Instruction *J = dyn_cast<Instruction>(*Op))
                   ActualF = J->getParent()->getParent();
-                else if (BasicBlock *BB = dyn_cast<BasicBlock>(Op))
+                else if (BasicBlock *BB = dyn_cast<BasicBlock>(*Op))
                   ActualF = BB->getParent();
-                else if (Argument *A = dyn_cast<Argument>(Op))
+                else if (Argument *A = dyn_cast<Argument>(*Op))
                   ActualF = A->getParent();
                 else
                   continue;
@@ -730,15 +698,10 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
     if (AggregateArgs) {
       StructValues.push_back(*i);
     } else {
-#if LLVM_VERSION_MINOR == 5
-      AllocaInst *alloca =
-        new AllocaInst((*i)->getType(), nullptr, (*i)->getName()+".loc",
-                       codeReplacer->getParent()->begin()->begin());
-#else
+      // WARNING Is replacing nullptr by 0 correct in this case ?
       AllocaInst *alloca =
         new AllocaInst((*i)->getType(), 0, (*i)->getName()+".loc",
-                       codeReplacer->getParent()->begin()->begin());
-#endif
+                       &*(codeReplacer->getParent()->begin()->begin()));
       ReloadOutputs.push_back(alloca);
       params.push_back(alloca);
     }
@@ -757,15 +720,10 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
 
     // Allocate a struct at the beginning of this function
     Type *StructArgTy = StructType::get(newFunction->getContext(), ArgTypes);
-#if LLVM_VERSION_MINOR == 5
     Struct =
-      new AllocaInst(StructArgTy, nullptr, "structArg",
-                     codeReplacer->getParent()->begin()->begin());
-#else
-    Struct =
+      // WARNING Is replacing nullptr by 0 correct in this case ?
       new AllocaInst(StructArgTy, 0, "structArg",
-                     codeReplacer->getParent()->begin()->begin());
-#endif
+                     &*(codeReplacer->getParent()->begin()->begin()));
     params.push_back(Struct);
 
     for (unsigned i = 0, e = inputs.size(); i != e; ++i) {
@@ -773,7 +731,7 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(Context), i);
       GetElementPtrInst *GEP =
-        GetElementPtrInst::Create(Struct, Idx,
+        GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
                                   "gep_" + StructValues[i]->getName());
       codeReplacer->getInstList().push_back(GEP);
       StoreInst *SI = new StoreInst(StructValues[i], GEP);
@@ -803,7 +761,7 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(Context), FirstOut + i);
       GetElementPtrInst *GEP
-        = GetElementPtrInst::Create(Struct, Idx,
+        = GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
                                     "gep_reload_" + outputs[i]->getName());
       codeReplacer->getInstList().push_back(GEP);
       Output = GEP;
@@ -925,7 +883,7 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
                 Idx[1] = ConstantInt::get(Type::getInt32Ty(Context),
                                           FirstOut+out);
                 GetElementPtrInst *GEP =
-                  GetElementPtrInst::Create(OAI, Idx,
+                  GetElementPtrInst::Create(&*(OAI)->getType(), Idx[0], Idx[1],
                                             "gep_" + outputs[out]->getName(),
                                             NTRet);
                 new StoreInst(outputs[out], GEP, NTRet);
