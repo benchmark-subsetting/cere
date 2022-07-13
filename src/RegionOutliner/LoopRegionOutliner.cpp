@@ -25,15 +25,14 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-outliner"
+#include "RegionExtractor.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Scalar.h"
-#include "RegionExtractor.h"
+#include "llvm/Transforms/Utils.h"
 
-#if LLVM_VERSION_MINOR == 5
 #include "llvm/IR/Dominators.h"
-#endif
 
 using namespace llvm;
 
@@ -52,7 +51,7 @@ struct LoopRegionOutliner : public LoopPass {
   std::string RegionName;
 
   explicit LoopRegionOutliner(unsigned numLoops = ~0,
-                          const std::string &regionName = "")
+                              const std::string &regionName = "")
       : LoopPass(ID), NumLoops(numLoops), ProfileApp(AppMeasure),
         Pcere(PcereUse), RegionName(regionName) {
     if (regionName.empty())
@@ -64,18 +63,14 @@ struct LoopRegionOutliner : public LoopPass {
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequiredID(LoopSimplifyID);
-#if LLVM_VERSION_MINOR == 5
     AU.addRequired<DominatorTreeWrapperPass>();
-#else
-    AU.addRequired<DominatorTree>();
-#endif
   }
 };
-}
+} // namespace
 
 char LoopRegionOutliner::ID = 0;
-static RegisterPass<LoopRegionOutliner> X("region-outliner", "Outline all loops",
-                                      false, false);
+static RegisterPass<LoopRegionOutliner> X("region-outliner",
+                                          "Outline all loops", false, false);
 
 bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // Only visit top-level loops.
@@ -85,12 +80,9 @@ bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // If LoopSimplify form is not available, stay out of trouble.
   if (!L->isLoopSimplifyForm())
     return false;
-#if LLVM_VERSION_MINOR == 5
-    DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-#else
-    DominatorTree &DT = getAnalysis<DominatorTree>();
-#endif
-  
+
+  DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+
   bool Changed = false;
 
   // Extract the loop if it was not previously extracted:
@@ -113,7 +105,11 @@ bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
       Changed = true;
       // After extraction, the loop is replaced by a function call, so
       // we shouldn't try to run any more loop passes on it.
-      LPM.deleteLoopFromQueue(L);
+
+      // TODO Find a way to remove the loop.
+      // Leaving it for now should work and only result
+      // in "useless" passes being applied.
+      // LPM.deleteLoopFromQueue(L);
     }
     ++NumExtracted;
   }
