@@ -27,27 +27,30 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-instrumentation"
-#include "RegionInstrumentation.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
+#include <llvm/IR/Instructions.h>
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils.h"
-#include <errno.h>
 #include <fstream>
-#include <llvm/IR/Instructions.h>
 #include <sstream>
+#include <errno.h>
+#include "RegionInstrumentation.h"
 
 #undef LLVM_BINDIR
 #include "config.h"
-#include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/DebugInfo.h"
 
 using namespace llvm;
-enum { VIVO, VITRO };
+enum {
+  VIVO,
+  VITRO
+};
 
 STATISTIC(LoopCounter, "Counts number of regions instrumented");
 
@@ -113,11 +116,11 @@ struct LoopRegionInstrumentation : public FunctionPass {
     AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-} // namespace
+}
 
 char LoopRegionInstrumentation::ID = 0;
 static RegisterPass<LoopRegionInstrumentation>
-    X("region-instrumentation", "Instrument regions with probes", false, false);
+X("region-instrumentation", "Instrument regions with probes", false, false);
 
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
@@ -132,7 +135,7 @@ LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
   BasicBlock *firstBB = L->getBlocks()[0];
 
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    DILocation *firstLoc = (DILocation *)firstN;
+    DILocation * firstLoc = (DILocation*) firstN;
     oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
@@ -222,8 +225,7 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
     errs() << "Can't find Prdecessor or successor basick block for region "
            << RegionName << "\n";
     LLVM_DEBUG(dbgs() << "Can't find predecessor or successor basick block for \
-                    region "
-                      << RegionName << "\n");
+                    region " << RegionName << "\n");
     return false;
   }
   std::vector<Value *> funcParameter;

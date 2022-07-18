@@ -27,7 +27,6 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-instrumentation"
-#include "RegionInstrumentation.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/IR/Constants.h"
@@ -40,6 +39,7 @@
 #include <fstream>
 #include <llvm/IR/Instructions.h>
 #include <sstream>
+#include "RegionInstrumentation.h"
 
 #undef LLVM_BINDIR
 #include "config.h"
