@@ -52,7 +52,7 @@ GlobalVariable *create_invocation_counter(Module *mod);
 
 /// Create a vector of parameter to fit the signature of cere init and close
 /// probes.
-std::vector<Value *> createInitParameters(Module *mod, std::string regionN);
+std::vector<Value *> createInitParameters(std::string regionN, BasicBlock *firstBB);
 
 void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
                             bool mode, int RequestedI);
