@@ -26,32 +26,28 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-replay"
-#include "llvm/Support/Debug.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Type.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/DataLayout.h>
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
-#include <string>
-#include <sstream>
+#include "llvm/Support/Debug.h"
 #include <fstream>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 #include <set>
+#include <sstream>
+#include <string>
+
 #include "RegionReplay.h"
 
-#if LLVM_VERSION_MINOR == 5
-#include "llvm/IR/InstIterator.h"
-#else
-#include "llvm/Support/InstIterator.h"
-#endif
-
 using namespace llvm;
-
-STATISTIC(LoopCounter, "Counts number of replayed regions");
 
 extern cl::opt<std::string> RegionName;
 extern cl::opt<int> Invocation;
@@ -60,8 +56,8 @@ namespace {
 struct LoopRegionReplay : public FunctionPass {
   static char ID;
   unsigned NumLoops;
-  int InvocationToReplay;
   std::string RegionToReplay;
+  int InvocationToReplay;
 
   explicit LoopRegionReplay(unsigned numLoops = ~0)
       : FunctionPass(ID), NumLoops(numLoops), RegionToReplay(RegionName),
@@ -71,11 +67,11 @@ struct LoopRegionReplay : public FunctionPass {
   bool visitLoop(Loop *L, Module *mod);
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-}
+} // namespace
 
 char LoopRegionReplay::ID = 0;
 static RegisterPass<LoopRegionReplay> X("region-replay", "Replay regions");
@@ -92,9 +88,8 @@ bool LoopRegionReplay::runOnFunction(Function &F) {
     Main = mod->getFunction("MAIN__");
 
   if (Main) { // We are in the module with the main function
+    IRBuilder<> builder(&(Main->front().front()));
     std::string funcName = "real_main";
-    //~ConstantInt* const_int1_11 = ConstantInt::get(mod->getContext(), APInt(1,
-    //StringRef("0"), 10)); //false
 
     Function *mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
@@ -103,13 +98,16 @@ bool LoopRegionReplay::runOnFunction(Function &F) {
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
+
       Function *mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
       std::vector<Value *> void_16_params;
-      CallInst::Create(mainFunction, "", Main->begin()->begin());
+      builder.CreateCall(mainFunction, void_16_params);
     }
   }
-  LoopInfo &LI = getAnalysis<LoopInfo>();
+
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
   // Get all loops int the current function and visit them
   std::vector<Loop *> SubLoops(LI.begin(), LI.end());
   for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
