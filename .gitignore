@@ -30,3 +30,7 @@ tests/*/*.log
 tests/*/*.b
 testllvm.c
 src/memory_dump/cere-tracer
+doc/html/*.html
+doc/man1/*.1
+tests/testplan.log
+tests/testplan.trs

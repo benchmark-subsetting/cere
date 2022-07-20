@@ -24,28 +24,25 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-dump"
-#include "llvm/Support/Debug.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Type.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/DataLayout.h>
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/Support/CommandLine.h"
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <set>
-#include "RegionDump.h"
-
-#if LLVM_VERSION_MINOR == 5
 #include "llvm/IR/InstIterator.h"
-#else
-#include "llvm/Support/InstIterator.h"
-#endif
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Debug.h"
+#include <fstream>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <set>
+#include <sstream>
+#include <string>
+
+#include "RegionDump.h"
 
 using namespace llvm;
 
@@ -80,27 +77,9 @@ FunctionType *createDumpFunctionType(Module *mod) {
 }
 
 /// \brief Create a pointer to string \p s
-Constant *createStringValue(Module *mod, std::string &s) {
-
-  Constant *const_array_0 =
-      ConstantDataArray::getString(mod->getContext(), s, true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/const_array_0->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0, // has initializer, specified below
-                         /*Name=*/".str");
-
-  gvar_array__str->setAlignment(1);
-  ConstantInt *const_int32_0 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_0_indices;
-  const_ptr_0_indices.push_back(const_int32_0);
-  const_ptr_0_indices.push_back(const_int32_0);
-  gvar_array__str->setInitializer(const_array_0);
-
-  return ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_0_indices);
+Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
+  errs() << mod->getModuleIdentifier() << "\n";
+  return b->CreateGlobalStringPtr(s);
 }
 
 /// Creates parameters for the dump function
@@ -111,15 +90,20 @@ Constant *createStringValue(Module *mod, std::string &s) {
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
                                                   BasicBlock *PredBB, int N) {
+
+  IRBuilder<> builder(PredBB);
+
   // The requested region has been outlined into a function.
   // Give adresses of its arguments to the dump function.
   std::vector<Value *> params;
   for (Function::arg_iterator args = currFunc->arg_begin();
        args != currFunc->arg_end(); args++) {
+
     // If argument is a value get its address
     if (args->getType()->isPointerTy() == false) {
       AllocaInst *ptr_args =
-          new AllocaInst(args->getType(), args->getName(), &PredBB->back());
+          builder.CreateAlloca(args->getType(), nullptr, args->getName());
+
       new StoreInst(args, ptr_args, false, &PredBB->back());
       // If this argument does not have a name, create one
       if ((ptr_args->getName().str()).empty()) {
@@ -129,6 +113,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
       }
       params.push_back(ptr_args);
     }
+
     // If argument is already a pointer, just give the adress
     else {
       Argument *ptr_args = args;
@@ -140,6 +125,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
       params.push_back(ptr_args);
     }
   }
+
   ConstantInt *nbParam =
       ConstantInt::get(mod->getContext(), APInt(32, params.size(), 10));
   ConstantInt *iterToDump =
@@ -153,4 +139,4 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
 
   return params;
 }
-}
+} // namespace llvm
