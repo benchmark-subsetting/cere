@@ -135,7 +135,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
   params.insert(params.begin(), iterToDump);
   /*Convert the regionName as a C type string*/
   std::string tmp = currFunc->getName().str();
-  params.insert(params.begin(), createStringValue(mod, tmp));
+  params.insert(params.begin(), createStringValue(mod, &builder, tmp));
 
   return params;
 }
