@@ -143,6 +143,8 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
                                           BasicBlock *label_entry) {
   std::vector<Value *> params;
   IRBuilder<> builder(label_entry);
+  const DataLayout &DL = mod->getDataLayout();
+
   // get back adresses of loop parameters from the array filled by load
   int i = 0;
   for (Function::arg_iterator args = currFunc->arg_begin();
@@ -156,27 +158,18 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
     LLVM_DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
                       << *args->getType() << "\n");
 
-    if (args->getType()->isPointerTy()) {
+     if (args->getType()->isPointerTy()) {
       ptr = new BitCastInst(ptr_69, args->getType(), "", label_entry); // cast
-                                                                       //
       // if args is a scalar, make a copy and give the copy adress to the func
       PointerType *pointerType = dyn_cast<PointerType>(args->getType());
       Type *elementType = pointerType->getElementType();
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
-
         AllocaInst *ptr_a_addr =
-            builder.CreateAlloca(args->getType(), label_entry, "a");
-
-        // AllocaInst *ptr_tmp = new AllocaInst(
-        //     args->getType()->getPointerElementType(), "b", label_entry);
-        AllocaInst *ptr_tmp = builder.CreateAlloca(
-            args->getType()->getPointerElementType(), label_entry, "b");
-
-        // AllocaInst *ptr_tmp2 = new AllocaInst(
-        //     args->getType()->getPointerElementType(), "c", label_entry);
-        AllocaInst *ptr_tmp2 = builder.CreateAlloca(
-            args->getType()->getPointerElementType(), label_entry, "c");
-
+            new AllocaInst(args->getType(), DL.getAllocaAddrSpace(), "a", label_entry);
+        AllocaInst *ptr_tmp = new AllocaInst(
+            args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "b", label_entry);
+        AllocaInst *ptr_tmp2 = new AllocaInst(
+            args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "c", label_entry);
         // Store ptr adress
         new StoreInst(ptr, ptr_a_addr, false, label_entry);
         LoadInst *ptr_5 = new LoadInst(ptr_a_addr, "", false, label_entry);
@@ -186,7 +179,6 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
         new StoreInst(int32_9, ptr_tmp2, false, label_entry);
         ptr_tmp2->setName(args->getName());
         params.push_back(ptr_tmp2);
-
       } else {
         ptr->setName(args->getName());
         params.push_back(ptr);
