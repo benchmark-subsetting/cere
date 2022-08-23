@@ -37,6 +37,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/IR/Attributes.h"
 #include <fstream>
 #include <sstream>
 
@@ -572,10 +573,6 @@ Function *RegionExtractor::constructFunction(
           inst->replaceUsesOfWith(inputs[i], RewriteVal);
   }
 
-  // Creates Attribute Noalias
-  AttributeSet newParamAttr = AttributeSet().addAttribute(
-      newFunction->getContext(), Attribute::NoAlias);
-
   AI = newFunction->arg_begin();
   for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI) {
     if (AI->getType()->isPointerTy()) {
@@ -628,8 +625,56 @@ static BasicBlock *FindPhiPredForUseInBlock(Value *Used, BasicBlock *BB) {
 /// and not to the extracted one. This function removes wrong metadata. This
 /// code is based on this example:
 /// https://weaponshot.wordpress.com/2012/05/06/extract-all-the-metadata-nodes-in-llvm/
+
+SmallPtrSet<const Metadata *, 32> MDNodes;
+
+bool checkValueAsMetadata(ValueAsMetadata &MD, Function * newFunction) {
+  auto *L = dyn_cast<LocalAsMetadata>(&MD);
+  if (!L)
+    return false;
+
+  // If this was an instruction, bb, or argument, verify that it is in the
+  // function that we expect.
+  Function *ActualF = nullptr;
+  if (Instruction *I = dyn_cast<Instruction>(L->getValue())) {
+    ActualF = I->getParent()->getParent();
+  }
+  else if (BasicBlock *BB = dyn_cast<BasicBlock>(L->getValue())) {
+    ActualF = BB->getParent();
+  }
+  else if (Argument *A = dyn_cast<Argument>(L->getValue())) {
+    ActualF = A->getParent();
+  }
+  return (ActualF == newFunction);
+}
+
+
+bool checkMDNode(MDNode  &MD, Function * newFunction) {
+  // Only visit each node once.  Metadata can be mutually recursive, so this
+  // avoids infinite recursion here, as well as being an optimization.
+  if (!MDNodes.insert(&MD).second)
+    return true;
+
+  for (unsigned i = 0, e = MD.getNumOperands(); i != e; ++i) {
+    Metadata *Op = MD.getOperand(i);
+    if (!Op)
+     continue;
+    if (auto *N = dyn_cast<MDNode>(Op)) {
+      if (!checkMDNode(*N, newFunction)) return false;
+      continue;
+    }
+    if (auto *V = dyn_cast<ValueAsMetadata>(Op)) {
+      if (!checkValueAsMetadata(*V, newFunction)) return false;
+      continue;
+    }
+  }
+  return true;
+}
+
+
 void RegionExtractor::removeWrongMetadata(Function *newFunction) {
   std::vector<CallInst *> InstToDel;
+  MDNodes.clear();
 
   // Iterate over instructions of the function
   for (Function::iterator BB = newFunction->begin(), E = newFunction->end();
@@ -637,57 +682,37 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction) {
     for (BasicBlock::iterator I = BB->begin(), M = BB->end(); I != M; ++I) {
       // If this instruction is a call
       if (CallInst *CI = dyn_cast<CallInst>(I)) {
-        if (CI->getCalledFunction()) {
+        if (CI->getCalledFunction()){
           for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
             // Get Metadata information
             auto *MDV = dyn_cast<MetadataAsValue>(I->getOperand(i));
-            if (!MDV)
-              continue;
+            if (!MDV) continue;
+
+            // LLVM verifier considers an additional scenario here,
+            // where MDV can be a ValueAsMetadata instead of a MDNode
+            // we have not found this case to appear in our tests.
+            // XXX: do we need to add this case ? it seems not to happen
+            // in a llvm.dbg.declare ?
 
             auto *MD = dyn_cast<MDNode>(MDV->getMetadata());
-            if (!MD)
-              continue;
-
-            for (unsigned j = 0, k = MD->getNumOperands(); j != k; ++j) {
-              Function *ActualF = 0;
-              const Value *const_Op =
-                  cast<ValueAsMetadata>(MD->getOperand(j))->getValue();
-              // Just getting rid of the const in order to perform other
-              // operations easily
-              Value *Op = const_cast<Value *>(const_Op);
-
-              if (!Op)
-                continue;
-              if (isa<Constant>(Op) || isa<MDString>(MD))
-                continue;
-
-              // If this was an instruction, bb, or argument, verify that it
-              // is in the function that we expect.
-              if (Instruction *J = dyn_cast<Instruction>(Op))
-                ActualF = J->getParent()->getParent();
-              else if (BasicBlock *BB = dyn_cast<BasicBlock>(Op))
-                ActualF = BB->getParent();
-              else if (Argument *A = dyn_cast<Argument>(Op))
-                ActualF = A->getParent();
-              else
-                continue;
-
-              if (ActualF != newFunction) {
-                // Keep this instruction for delation
-                InstToDel.push_back(CI);
-              }
+            if (!MD) continue;
+            bool mustDelete = checkMDNode(*MD, newFunction);
+            //keep this instruction for deletion
+            if (mustDelete) {
+              InstToDel.push_back(CI);
+              break;
             }
           }
         }
       }
-    } // Instructions iterator
-  }   // BB iterator
-
+    }
+  }
   // Delete instructions to remove
   for (std::vector<CallInst *>::size_type i = 0; i != InstToDel.size(); i++) {
     InstToDel[i]->eraseFromParent();
   }
 }
+
 
 /// emitCallAndSwitchStatement - This method sets up the caller side by adding
 /// the call instruction, splitting any PHI nodes in the header block as
@@ -1090,3 +1115,4 @@ Function *RegionExtractor::extractCodeRegion() {
                  report_fatal_error("verifyFunction failed!"));
   return newFunction;
 }
+
