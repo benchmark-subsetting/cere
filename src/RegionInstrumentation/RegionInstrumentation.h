@@ -62,5 +62,8 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
 std::vector<Value *> createFunctionParameters(Module *mod,
                                               std::string newFunctionName,
                                               int mode, int RequestedI,
+                                              BasicBlock *PredBB,
                                               LoadInst *int32 = NULL);
+
 }
+

@@ -224,8 +224,7 @@ void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
         std::string newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
-          funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                                   RequestedInvoc);
+          funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), NULL);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -286,8 +285,7 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             int32_1 = new LoadInst(gvar_int32_count, "", false, (&*I));
             int32_1->setAlignment(4);
           }
-          funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                                   RequestedInvoc, int32_1);
+          funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), int32_1);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -319,3 +317,4 @@ bool OmpRegionInstrumentation::insertOmpProbe(Module *mod, Function *currFunc) {
   }
   return true;
 }
+

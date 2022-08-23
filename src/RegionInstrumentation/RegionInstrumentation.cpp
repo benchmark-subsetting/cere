@@ -190,8 +190,11 @@ std::vector<Value *> createInitParameters(std::string fileN, BasicBlock *BB) {
 /// probes.
 std::vector<Value *> createFunctionParameters(Module *mod,
                                               std::string newFunctionName,
-                                              bool mode, int RequestedI,
-                                              BasicBlock *BB, LoadInst *int32) {
+                                              int mode, int RequestedI,
+                                              BasicBlock *BB,
+                                              LoadInst *int32)
+{
+
   // LoopName
   IRBuilder<> builder(BB);
   Value *const_ptr_0 = builder.CreateGlobalStringPtr(newFunctionName);
@@ -263,7 +266,7 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
     if (MeasureA) {
       FunctionType *FuncTy_1 = createFunctionType(mod);
       std::vector<Value *> funcParameter = createFunctionParameters(
-          mod, std::string("main"), mode, RequestedI, firstBB, NULL);
+          mod, std::string("main"), mode, RequestedI, firstBB);
       Function *startFunction = mod->getFunction("cere_markerStartRegion");
       Function *stopFunction = mod->getFunction("cere_markerStopRegion");
       // Create start function if it does not exists yet
@@ -305,3 +308,4 @@ void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
   }
 }
 } // namespace llvm
+

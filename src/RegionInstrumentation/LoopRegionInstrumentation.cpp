@@ -257,12 +257,13 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
 
     // Create function parameters
     funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                             RequestedInvoc, int32_1);
+                                             RequestedInvoc, PredBB, int32_1);
   } else {
     // Create function parameters
     funcParameter =
-        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc);
+        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, PredBB);
   }
+
 
   // Add the call of cere start probe as the last instruction of the
   // predecessor basic block
@@ -276,3 +277,4 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   }
   return true;
 }
+
