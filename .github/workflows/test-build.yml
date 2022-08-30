@@ -81,7 +81,12 @@ jobs:
 
       - name: Build & install CERE
         run: |
-          source ~/.bashrc
+          export PATH=/opt/llvm-7/bin:$PATH \n\
+          export LD_LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LD_LIBRARY_PATH
+          export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PAT
+          export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH
+          export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH
+
           # NOTE To generate doc wit ronn, we need to set locale to UTF-8 English
           apt-get -y install locales
           locale-gen --no-purge en_US.UTF-8
