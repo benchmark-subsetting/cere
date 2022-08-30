@@ -226,15 +226,19 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
 
     if ext in FORTRAN_EXTENSIONS:
         if DRAGONEGG_PATH:
-            opt = [s for s in COMPIL_OPT if s.startswith('-J')]
-            if opt:
-              INCLUDES.append(opt[0])
-            safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
-                        "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
-                        gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
-                        Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
+#            opt = [s for s in COMPIL_OPT if s.startswith('-J')]
+#            if opt:
+#              INCLUDES.append(opt[0])
+#            safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
+#                        "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
+#                        gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
+#                        Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
+
+            # We disable Fortran for now
+            fail_lec("fortran support disabled in this release.")
+
         else:
-            fail_lec("fortran support disabled. Please reconfigure using --with-dragonegg.")
+            fail_lec("fortran support disabled in this release.")
     else:
         safe_system(("{llvm_bindir}/clang {opts} -O0 -g {includes} {source} -S -emit-llvm -o " +
                     "{base}.ll").format(llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),

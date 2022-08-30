@@ -32,19 +32,8 @@ AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google 
 if test -z "$DRAGONEGG_PATH"; then
     AC_MSG_NOTICE([Fortran support disabled.])
 else
-    AC_CHECK_LIB([gfortran], [exit], , AC_MSG_ERROR([Could not find gfortran library]))
-    AC_MSG_CHECKING([if gcc can compile fortran with dragonegg])
-    cat <<EOF >conftest.f90
-    module conftest_module
-    end module conftest_module
-EOF
-    doit='$CC -S -fplugin=$DRAGONEGG_PATH -fplugin-arg-dragonegg-emit-ir conftest.f90'
-    if AC_TRY_EVAL(doit); then
-        AC_MSG_RESULT([yes])
-    else
-        AC_MSG_RESULT([no])
-        AC_MSG_ERROR([Your gcc version ($CC) cannot compile Fortran programs with your dragonegg plugin ($DRAGONEGG_PATH)])
-    fi
+    # Always disable Fortran support for now
+    AC_MSG_NOTICE([Fortran support disabled.])
 fi
 
 # The profiler and gfortran libraries added to LIBS by AC_CHECK_LIB are needed only at
@@ -123,11 +112,11 @@ AC_C_BIGENDIAN(
                [AC_MSG_ERROR([universal endianess not supported])]
                )
 
-# Check for Python >= 3.0
+# Check for Python >= 2.7
 
-AM_PATH_PYTHON([3.0])
+AM_PATH_PYTHON([2.7])
 
-# Check for Python 3 modules
+# Check for Python modules
 
 AX_PYTHON_MODULE(networkx, fatal)
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
