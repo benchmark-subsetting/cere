@@ -5,7 +5,6 @@ Please ensure that CERE's dependencies are installed on your system:
   * LLVM, clang and opt 7, http://llvm.org/releases/download.html#7.0.0
 
   * gcc
-    We recommend to use gcc-4.7 
 
   * GNU binutils (objcopy, readelf)
 
