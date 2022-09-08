@@ -31,6 +31,7 @@
 #include "llvm/Analysis/LoopPass.h"
 #include <llvm/IR/Instructions.h>
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
@@ -42,12 +43,8 @@
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/DebugInfo.h"
-#else
-#include "llvm/DebugInfo.h"
-#endif
 
 using namespace llvm;
 enum {
@@ -68,9 +65,9 @@ struct LoopRegionInstrumentation : public FunctionPass {
   static char ID;
   unsigned NumLoops;
   std::string RegionName;
+  int Mode;
   std::string Separator;
   std::string RegionFile;
-  int Mode;
   int RequestedInvoc;
   bool ReadFromFile;
   bool MeasureAppli;
@@ -115,13 +112,8 @@ struct LoopRegionInstrumentation : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
-#if LLVM_VERSION_MINOR == 5
     AU.addRequired<DominatorTreeWrapperPass>();
-#else
-    AU.addRequired<DominatorTree>();
-#endif
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 };
 }
@@ -143,12 +135,12 @@ LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
   BasicBlock *firstBB = L->getBlocks()[0];
 
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
+    DILocation * firstLoc = (DILocation*) firstN;
+    oss << firstLoc->getLine();
     std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
+    std::string Original_location = firstLoc->getFilename().str();
     std::string File = module_name;
-    std::string path = firstLoc.getDirectory();
+    std::string path = firstLoc->getDirectory();
 
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
@@ -166,7 +158,7 @@ bool LoopRegionInstrumentation::runOnFunction(Function &F) {
   Module *mod = F.getParent();
   // If we want to instrument a region, visit every loops.
   if (!MeasureAppli) {
-    LoopInfo &LI = getAnalysis<LoopInfo>();
+    LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     std::vector<Loop *> SubLoops(LI.begin(), LI.end());
     for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
       visitLoop(SubLoops[i], mod);
@@ -183,7 +175,7 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   if (L->getLoopDepth() > 1)
     return false;
   if (!L->isLoopSimplifyForm()) {
-    DEBUG(dbgs() << "Loop found, but not in simple form...\n");
+    LLVM_DEBUG(dbgs() << "Loop found, but not in simple form...\n");
     return false;
   }
 
@@ -232,7 +224,7 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   if (PredBB == NULL || exitblocks.size() == 0) {
     errs() << "Can't find Prdecessor or successor basick block for region "
            << RegionName << "\n";
-    DEBUG(dbgs() << "Can't find predecessor or successor basick block for \
+    LLVM_DEBUG(dbgs() << "Can't find predecessor or successor basick block for \
                     region " << RegionName << "\n");
     return false;
   }
@@ -265,12 +257,13 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
 
     // Create function parameters
     funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                             RequestedInvoc, int32_1);
+                                             RequestedInvoc, PredBB, int32_1);
   } else {
     // Create function parameters
     funcParameter =
-        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc);
+        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, PredBB);
   }
+
 
   // Add the call of cere start probe as the last instruction of the
   // predecessor basic block
@@ -284,3 +277,4 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   }
   return true;
 }
+

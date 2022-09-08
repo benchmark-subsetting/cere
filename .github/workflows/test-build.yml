@@ -2,6 +2,8 @@ name: test-build
 
 on:
   push:
+    branches: [ master ]
+
   pull_request:
 
 jobs:
@@ -26,13 +28,33 @@ jobs:
           libgoogle-perftools-dev numactl dc python3-pip git libgmp3-dev gcc-4.6-plugin-dev \
           libgfortran3 libgfortran-4.8-dev libgmp3-dev wget opt
 
-      - name: LLVM symlinks
+      - name: Get LLVM 7 binary release
         run: |
-          ln -s /usr/bin/llvm-config-3.4 /usr/local/bin/llvm-config
-          ln -s /usr/bin/llvm-extract-3.4 /usr/local/bin/llvm-extract
-          ln -s /usr/bin/opt-3.4 /usr/bin/opt
-          ln -s /usr/bin/llc-3.4 /usr/bin/llc
-          ln -s /usr/bin/clang /usr/lib/llvm-3.4/bin/clang
+          mkdir /opt/llvm-7
+          wget https://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+          tar -xvf clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+          cp -r clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04/* /opt/llvm-7
+          rm -rf clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04    
+          
+      - name: Get newest autotools
+        run: |
+          wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz
+          tar -xvf autoconf-2.71.tar.gz
+          cd autoconf-2.71 && ./configure && make && make install
+          wget --no-check-certificate https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.gz
+          tar -xvf automake-1.16.5.tar.gz
+          cd automake-1.16.5 && ./configure && make && make install
+          rm -rf autoconf-2.71 automake-1.16.5
+          
+      - name: Add everything to path
+        run: |
+          echo "\
+          export PATH=/opt/llvm-7/bin:$PATH \n\
+          export LD_LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LD_LIBRARY_PATH \n\
+          export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PATH \n\
+          export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH \n\
+          export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH \n\
+          " >> ~/.bashrc
 
       - name: Manually install Python packages
         run: |
@@ -48,14 +70,7 @@ jobs:
           cd pydotplus-2.0.2
           python setup.py install
           cd ..
-
-      - name: Get dragonegg
-        run: |
-          wget http://llvm.org/releases/3.4/dragonegg-3.4.src.tar.gz --no-check-certificate
-          tar xvf dragonegg-3.4.src.tar.gz
-          cd dragonegg-3.4
-          GCC=gcc-4.6 make
-          cp dragonegg.so /usr/local/lib/
+          rm -rf pydotplus-2.0.2 PuLP-2.6.0
 
       - name: Get rvm & rdiscount
         run: |
@@ -67,16 +82,21 @@ jobs:
 
       - name: Build & install CERE
         run: |
+          export PATH=/opt/llvm-7/bin:$PATH \n\
+          export LD_LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LD_LIBRARY_PATH
+          export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PAT
+          export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH
+          export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH
           # NOTE To generate doc wit ronn, we need to set locale to UTF-8 English
           apt-get -y install locales
           locale-gen --no-purge en_US.UTF-8
           export LANG="en_US.UTF-8"
           export LANGUAGE="en_US:en"
-          export LC_ALL="en_US.UTF-8"
-          ./autogen.sh
-          ./configure --with-dragonegg=/usr/local/lib/dragonegg.so CC=gcc-4.6 CXX=g++-4.6
-          make
-          make install
+          export LC_ALL="en_US.UTF-8"   
+
+          #We are building cere with clang because with the LLVM 7 binary release, llvm-config would throw flags not recognized by GCC
+          libtoolize && ./autogen.sh && ./configure CC=clang CXX=clang++ LDFLAGS="-pthread -lpthread -lcurses -lz -ltinfo" --without-dragonegg
+          make && make install && make check
 
       - name: Run CERE tests
         run: |

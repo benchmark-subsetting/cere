@@ -24,29 +24,26 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-replay"
-#include "llvm/Support/Debug.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Type.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/DataLayout.h>
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"
-#include <string>
-#include <sstream>
+#include "llvm/Support/Debug.h"
 #include <fstream>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 #include <set>
-#include "RegionReplay.h"
+#include <sstream>
+#include <string>
 
-#if LLVM_VERSION_MINOR == 5
 #include "llvm/IR/InstIterator.h"
-#else
-#include "llvm/Support/InstIterator.h"
-#endif
 
+#include "RegionReplay.h"
 using namespace llvm;
 
 cl::opt<std::string> RegionName("region", cl::init("all"),
@@ -94,25 +91,8 @@ std::vector<Value *> createLoadFunctionParameters(Module *mod,
   std::vector<Value *> params;
 
   // Get name of the loop to load
-  Constant *param_name = ConstantDataArray::getString(
-      mod->getContext(), currFunc->getName().str(), true);
-  GlobalVariable *gvar_array__str =
-      new GlobalVariable(/*Module=*/*mod,
-                         /*Type=*/param_name->getType(),
-                         /*isConstant=*/true,
-                         /*Linkage=*/GlobalValue::PrivateLinkage,
-                         /*Initializer=*/0, // has initializer, specified below
-                         /*Name=*/".str");
-  gvar_array__str->setAlignment(1);
-  ConstantInt *const_int32_10 =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
-  std::vector<Constant *> const_ptr_11_indices;
-  const_ptr_11_indices.push_back(const_int32_10);
-  const_ptr_11_indices.push_back(const_int32_10);
-  Constant *const_ptr_11 =
-      ConstantExpr::getGetElementPtr(gvar_array__str, const_ptr_11_indices);
-  // Global Variable Definitions
-  gvar_array__str->setInitializer(param_name);
+  IRBuilder<> builder(B);
+  Value *const_ptr_11 = builder.CreateGlobalStringPtr(currFunc->getName());
 
   // The invocation to load
   ConstantInt *iterToLoad =
@@ -127,9 +107,12 @@ std::vector<Value *> createLoadFunctionParameters(Module *mod,
   // Allocate a "void* args[nbArgs] array"
   ConstantInt *const_int_nbArgs =
       ConstantInt::get(mod->getContext(), APInt(32, nbArgs, 10));
+
+  const DataLayout &DL = mod->getDataLayout();
   CastInst *int64_0 = new ZExtInst(
       const_int_nbArgs, IntegerType::get(mod->getContext(), 64), "", B);
-  AllocaInst *ptr_vla = new AllocaInst(PointerTy_4, int64_0, "vla", B);
+  AllocaInst *ptr_vla =
+      new AllocaInst(PointerTy_4, DL.getAllocaAddrSpace(), int64_0, "vla", B);
 
   // Push loop name + invocation to load + number of params + adresses array to
   // load params
@@ -159,6 +142,9 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
                                           AllocaInst *ptr_vla,
                                           BasicBlock *label_entry) {
   std::vector<Value *> params;
+  IRBuilder<> builder(label_entry);
+  const DataLayout &DL = mod->getDataLayout();
+
   // get back adresses of loop parameters from the array filled by load
   int i = 0;
   for (Function::arg_iterator args = currFunc->arg_begin();
@@ -166,24 +152,24 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
     UnaryInstruction *ptr;
     ConstantInt *const_int64_35 =
         ConstantInt::get(mod->getContext(), APInt(32, i, 10));
-    GetElementPtrInst *ptr_arrayidx = GetElementPtrInst::Create(
-        ptr_vla, const_int64_35, "arrayidx", label_entry);
-    LoadInst *ptr_69 =
-        new LoadInst(ptr_arrayidx, "", false, label_entry); // get args[i]
-    DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
-                 << *args->getType() << "\n");
-    if (args->getType()->isPointerTy()) {
+
+    Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla, i, "arrayidx");
+    LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx, const_int64_35);
+    LLVM_DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
+                      << *args->getType() << "\n");
+
+     if (args->getType()->isPointerTy()) {
       ptr = new BitCastInst(ptr_69, args->getType(), "", label_entry); // cast
       // if args is a scalar, make a copy and give the copy adress to the func
       PointerType *pointerType = dyn_cast<PointerType>(args->getType());
       Type *elementType = pointerType->getElementType();
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
         AllocaInst *ptr_a_addr =
-            new AllocaInst(args->getType(), "a", label_entry);
+            new AllocaInst(args->getType(), DL.getAllocaAddrSpace(), "a", label_entry);
         AllocaInst *ptr_tmp = new AllocaInst(
-            args->getType()->getPointerElementType(), "b", label_entry);
+            args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "b", label_entry);
         AllocaInst *ptr_tmp2 = new AllocaInst(
-            args->getType()->getPointerElementType(), "c", label_entry);
+            args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "c", label_entry);
         // Store ptr adress
         new StoreInst(ptr, ptr_a_addr, false, label_entry);
         LoadInst *ptr_5 = new LoadInst(ptr_a_addr, "", false, label_entry);
@@ -209,4 +195,4 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
   }
   return params;
 }
-}
+} // namespace llvm

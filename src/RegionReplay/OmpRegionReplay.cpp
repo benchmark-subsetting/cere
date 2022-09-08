@@ -27,32 +27,27 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-replay"
-#include "llvm/Support/Debug.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Type.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/DataLayout.h>
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/Support/CommandLine.h"
-#include <string>
-#include <sstream>
+#include "llvm/Support/Debug.h"
 #include <fstream>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 #include <set>
+#include <sstream>
+#include <string>
+
 #include "RegionReplay.h"
 
-#if LLVM_VERSION_MINOR == 5
-#include "llvm/IR/InstIterator.h"
-#else
-#include "llvm/Support/InstIterator.h"
-#endif
-
 using namespace llvm;
-
-STATISTIC(LoopCounter, "Counts number of replayed regions");
 
 extern cl::opt<std::string> RegionName;
 extern cl::opt<int> Invocation;
@@ -61,8 +56,8 @@ namespace {
 struct OmpRegionReplay : public FunctionPass {
   static char ID;
   unsigned NumLoops;
-  int InvocationToReplay;
   std::string RegionToReplay;
+  int InvocationToReplay;
 
   explicit OmpRegionReplay(unsigned numLoops = ~0)
       : FunctionPass(ID), NumLoops(numLoops), RegionToReplay(RegionName),
@@ -72,11 +67,11 @@ struct OmpRegionReplay : public FunctionPass {
   bool visitLoop(Loop *L, Module *mod);
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-}
+} // namespace
 
 char OmpRegionReplay::ID = 0;
 static RegisterPass<OmpRegionReplay> X("omp-region-replay",
@@ -100,15 +95,18 @@ bool OmpRegionReplay::runOnFunction(Function &F) {
 
     Function *mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
+      IRBuilder<> builder(&(Main->front().front()));
+
       std::vector<Type *> FuncTy_8_args;
       FunctionType *FuncTy_8 = FunctionType::get(
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
+
       Function *mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
       std::vector<Value *> void_16_params;
-      CallInst::Create(mainFunction, "", Main->begin()->begin());
+      builder.CreateCall(mainFunction, void_16_params);
     }
   }
 

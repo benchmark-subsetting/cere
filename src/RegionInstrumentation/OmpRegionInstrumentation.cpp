@@ -29,35 +29,28 @@
 #define DEBUG_TYPE "region-instrumentation"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Instructions.h>
-#include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
-#include <fstream>
-#include <sstream>
+#include "llvm/Support/Debug.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 #include <errno.h>
+#include <fstream>
+#include <llvm/IR/Instructions.h>
+#include <sstream>
 #include "RegionInstrumentation.h"
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
-#include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/DebugInfo.h"
-#else
-#include "llvm/DebugInfo.h"
-#include "llvm/Support/InstIterator.h"
-#endif
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
-enum {
-  VIVO,
-  VITRO
-};
+enum { VIVO, VITRO };
 
-STATISTIC(LoopCounter, "Counts number of regions instrumented");
+// STATISTIC(LoopCounter, "Counts number of regions instrumented");
 
 extern cl::opt<std::string> IsolateRegion;
 extern cl::opt<std::string> LoopsFilename;
@@ -70,9 +63,9 @@ struct OmpRegionInstrumentation : public FunctionPass {
   static char ID;
   unsigned NumLoops;
   std::string RegionName;
+  int Mode;
   std::string Separator;
   std::string RegionFile;
-  int Mode;
   int RequestedInvoc;
   bool ReadFromFile;
   bool MeasureAppli;
@@ -121,21 +114,16 @@ struct OmpRegionInstrumentation : public FunctionPass {
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequiredID(BreakCriticalEdgesID);
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
-#if LLVM_VERSION_MINOR == 5
     AU.addRequired<DominatorTreeWrapperPass>();
-#else
-    AU.addRequired<DominatorTree>();
-#endif
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-}
+} // namespace
 
 char OmpRegionInstrumentation::ID = 0;
 static RegisterPass<OmpRegionInstrumentation>
-X("omp-region-instrumentation", "Instrument parallel regions with probes",
-  false, false);
+    X("omp-region-instrumentation", "Instrument parallel regions with probes",
+      false, false);
 
 /// Insert init probes
 bool OmpRegionInstrumentation::runOnFunction(Function &F) {
@@ -169,11 +157,11 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
   if (MDNode *firstN = callInst->getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
+    DILocation *firstLoc = (DILocation *)firstN;
+    oss << firstLoc->getLine();
     std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
-    std::string path = firstLoc.getDirectory();
+    std::string Original_location = firstLoc->getFilename().str();
+    std::string path = firstLoc->getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
 
@@ -236,8 +224,7 @@ void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
         std::string newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
-          funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                                   RequestedInvoc);
+          funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), NULL);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -298,8 +285,7 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             int32_1 = new LoadInst(gvar_int32_count, "", false, (&*I));
             int32_1->setAlignment(4);
           }
-          funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                                   RequestedInvoc, int32_1);
+          funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), int32_1);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -331,3 +317,4 @@ bool OmpRegionInstrumentation::insertOmpProbe(Module *mod, Function *currFunc) {
   }
   return true;
 }
+

@@ -37,34 +37,27 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <sstream>
+#include "llvm/IR/Attributes.h"
 #include <fstream>
+#include <sstream>
 
 #undef LLVM_BINDIR
 #include "config.h"
-#if LLVM_VERSION_MINOR == 5
 #define DEBUG_TYPE "code-extractor"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Verifier.h"
-#else
-#include "llvm/DebugInfo.h"
-#include "llvm/Analysis/Verifier.h"
-#include "llvm/Support/InstIterator.h"
-#endif
 
 using namespace llvm;
-
-
 
 cl::opt<std::string>
     IsolateRegion("isolate-region", cl::init("all"), cl::value_desc("String"),
                   cl::desc("RegionOutliner will only isolate this region"));
 cl::opt<std::string>
     RegionsFile("regions-infos", cl::init(""), cl::value_desc("String"),
-                  cl::desc("File in which regions infos are stored"));
+                cl::desc("File in which regions infos are stored"));
 cl::opt<bool> AppMeasure(
     "instrument-app", cl::init(false), cl::value_desc("Boolean"),
     cl::desc("If you want to isolate regions to profile the application"));
@@ -119,15 +112,10 @@ static SetVector<BasicBlock *> buildExtractionBlockSet(IteratorT BBBegin,
   }
 
 #ifndef NDEBUG
-#if LLVM_VERSION_MINOR == 5
   for (SetVector<BasicBlock *>::iterator I = std::next(Result.begin()),
-#else
-  for (SetVector<BasicBlock *>::iterator I = llvm::next(Result.begin()),
-#endif
                                          E = Result.end();
-                                         I != E; ++I)
-    for (pred_iterator PI = pred_begin(*I), PE = pred_end(*I);
-         PI != PE; ++PI)
+       I != E; ++I)
+    for (pred_iterator PI = pred_begin(*I), PE = pred_end(*I); PI != PE; ++PI)
       assert(Result.count(*PI) &&
              "No blocks in this region may have entries from outside the region"
              " except for the first block!");
@@ -158,7 +146,8 @@ RegionExtractor::RegionExtractor(BasicBlock *BB, std::string regionName,
                                  bool AggregateArgs)
     : DT(0), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
       LoopFileInfos(RegionsFile), Blocks(buildExtractionBlockSet(BB)),
-      NumExitBlocks(~0U), RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
+      NumExitBlocks(~0U), RegionName(regionName), Pcere(pcere),
+      ProfileApp(profileApp) {
 
   if (regionName.empty())
     RegionName = "all";
@@ -170,7 +159,7 @@ RegionExtractor::RegionExtractor(DominatorTree &DT, Loop &L,
     : DT(&DT), AggregateArgs(AggregateArgs || AggregateArgsOpt), Separator("_"),
       LoopFileInfos(RegionsFile),
       Blocks(buildExtractionBlockSet(L.getBlocks())), NumExitBlocks(~0U),
-      RegionName(regionName), ProfileApp(profileApp), Pcere(pcere) {
+      RegionName(regionName), Pcere(pcere), ProfileApp(profileApp) {
 
   if (regionName.empty())
     RegionName = "all";
@@ -201,7 +190,8 @@ static bool definedInRegion(const SetVector<BasicBlock *> &Blocks, Value *V) {
 /// function being code extracted, but not in the region being extracted.
 /// These values must be passed in as live-ins to the function.
 static bool definedInCaller(const SetVector<BasicBlock *> &Blocks, Value *V) {
-  if (isa<Argument>(V)) return true;
+  if (isa<Argument>(V))
+    return true;
   if (Instruction *I = dyn_cast<Instruction>(V))
     if (!Blocks.count(I->getParent()))
       return true;
@@ -209,7 +199,7 @@ static bool definedInCaller(const SetVector<BasicBlock *> &Blocks, Value *V) {
 }
 
 void RegionExtractor::findInputsOutputs(ValueSet &Inputs,
-                                      ValueSet &Outputs) const {
+                                        ValueSet &Outputs) const {
   for (SetVector<BasicBlock *>::const_iterator I = Blocks.begin(),
                                                E = Blocks.end();
        I != E; ++I) {
@@ -217,21 +207,15 @@ void RegionExtractor::findInputsOutputs(ValueSet &Inputs,
 
     // If a used value is defined outside the region, it's an input.  If an
     // instruction is used outside the region, it's an output.
-    for (BasicBlock::iterator II = BB->begin(), IE = BB->end();
-         II != IE; ++II) {
-      for (User::op_iterator OI = II->op_begin(), OE = II->op_end();
-           OI != OE; ++OI)
+    for (BasicBlock::iterator II = BB->begin(), IE = BB->end(); II != IE;
+         ++II) {
+      for (User::op_iterator OI = II->op_begin(), OE = II->op_end(); OI != OE;
+           ++OI)
         if (definedInCaller(Blocks, *OI))
           Inputs.insert(*OI);
-#if LLVM_VERSION_MINOR == 5
       for (User *U : II->users())
         if (!definedInRegion(Blocks, U)) {
-#else
-      for (Value::use_iterator UI = II->use_begin(), UE = II->use_end();
-           UI != UE; ++UI)
-        if (!definedInRegion(Blocks, *UI)) {
-#endif
-          Outputs.insert(II);
+          Outputs.insert(U);
           break;
         }
     }
@@ -247,7 +231,8 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
 
   if (Header != &Header->getParent()->getEntryBlock()) {
     PHINode *PN = dyn_cast<PHINode>(Header->begin());
-    if (!PN) return; // No PHI nodes.
+    if (!PN)
+      return; // No PHI nodes.
 
     // If the header node contains any PHI nodes, check to see if there is more
     // than one entry from outside the region.  If so, we need to sever the
@@ -260,16 +245,17 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
 
     // If there is one (or fewer) predecessor from outside the region, we don't
     // need to do anything special.
-    if (NumPredsOutsideRegion <= 1) return;
+    if (NumPredsOutsideRegion <= 1)
+      return;
   }
 
   // Otherwise, we need to split the header block into two pieces: one
   // containing PHI nodes merging values from outside of the region, and a
   // second that contains all of the code for the block and merges back any
   // incoming values from inside of the region.
-  BasicBlock::iterator AfterPHIs = Header->getFirstNonPHI();
-  BasicBlock *NewBB = Header->splitBasicBlock(AfterPHIs,
-                                              Header->getName()+".ce");
+  BasicBlock::iterator AfterPHIs = Header->getFirstNonPHI()->getIterator();
+  BasicBlock *NewBB =
+      Header->splitBasicBlock(AfterPHIs, Header->getName() + ".ce");
 
   // We only want to code extract the second block now, and it becomes the new
   // header of the region.
@@ -295,14 +281,15 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
         TI->replaceUsesOfWith(OldPred, NewBB);
       }
 
-    // Okay, everything within the region is now branching to the right block, we
-    // just have to update the PHI nodes now, inserting PHI nodes into NewBB.
+    // Okay, everything within the region is now branching to the right block,
+    // we just have to update the PHI nodes now, inserting PHI nodes into NewBB.
     for (AfterPHIs = OldPred->begin(); isa<PHINode>(AfterPHIs); ++AfterPHIs) {
       PHINode *PN = cast<PHINode>(AfterPHIs);
       // Create a new PHI node in the new region, which has an incoming value
       // from OldPred of PN.
-      PHINode *NewPN = PHINode::Create(PN->getType(), 1 + NumPredsFromRegion,
-                                       PN->getName()+".ce", NewBB->begin());
+      PHINode *NewPN =
+          PHINode::Create(PN->getType(), 1 + NumPredsFromRegion,
+                          PN->getName() + ".ce", &*(NewBB->begin()));
       NewPN->addIncoming(PN, OldPred);
 
       // Loop over all of the incoming value in PN, moving them to NewPN if they
@@ -322,12 +309,12 @@ void RegionExtractor::splitReturnBlocks() {
   for (SetVector<BasicBlock *>::iterator I = Blocks.begin(), E = Blocks.end();
        I != E; ++I)
     if (ReturnInst *RI = dyn_cast<ReturnInst>((*I)->getTerminator())) {
-      BasicBlock *New = (*I)->splitBasicBlock(RI, (*I)->getName()+".ret");
+      BasicBlock *New = (*I)->splitBasicBlock(RI, (*I)->getName() + ".ret");
       if (DT) {
         // Old dominates New. New node dominates all other nodes dominated
         // by Old.
         DomTreeNode *OldNode = DT->getNode(*I);
-        SmallVector<DomTreeNode*, 8> Children;
+        SmallVector<DomTreeNode *, 8> Children;
         for (DomTreeNode::iterator DI = OldNode->begin(), DE = OldNode->end();
              DI != DE; ++DI)
           Children.push_back(*DI);
@@ -338,7 +325,8 @@ void RegionExtractor::splitReturnBlocks() {
 #else
         for (SmallVector<DomTreeNode *, 8>::iterator I = Children.begin(),
 #endif
-               E = Children.end(); I != E; ++I)
+                                                      E = Children.end();
+             I != E; ++I)
           DT->changeImmediateDominator(*I, NewNode);
       }
     }
@@ -399,7 +387,8 @@ bool RegionExtractor::is_region_in_file(std::string newFunctionName,
 void RegionExtractor::add_region_to_file(
     std::string newFunctionName, std::string File, std::string oldFunction,
     std::string firstLine, std::string path, std::string Original_location) {
-  if (LoopFileInfos.empty()) return;
+  if (LoopFileInfos.empty())
+    return;
   std::string header = "Region Name,File Name,Original Location,Function "
                        "Name,Line,Coverage (self),Coverage";
   std::fstream loopstream(LoopFileInfos.c_str(),
@@ -456,11 +445,11 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
   if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    DILocation firstLoc(firstN);
-    oss << firstLoc.getLineNumber();
+    DILocation *firstLoc = (DILocation *)firstN;
+    oss << firstLoc->getLine();
     std::string firstLine = oss.str();
-    std::string Original_location = firstLoc.getFilename().str();
-    std::string path = firstLoc.getDirectory();
+    std::string Original_location = firstLoc->getFilename().str();
+    std::string path = firstLoc->getDirectory();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
     newFunctionName = updateFileFormat(newFunctionName);
@@ -490,53 +479,58 @@ Function *RegionExtractor::constructFunction(
     const ValueSet &inputs, const ValueSet &outputs, BasicBlock *header,
     BasicBlock *newRootNode, BasicBlock *newHeader, Twine newFunctionName,
     Function *oldFunction, Module *M) {
-  DEBUG(dbgs() << "inputs: " << inputs.size() << "\n");
-  DEBUG(dbgs() << "outputs: " << outputs.size() << "\n");
+  LLVM_DEBUG(dbgs() << "inputs: " << inputs.size() << "\n");
+  LLVM_DEBUG(dbgs() << "outputs: " << outputs.size() << "\n");
 
   // This function returns unsigned, outputs will go back by reference.
   switch (NumExitBlocks) {
   case 0:
-  case 1: RetTy = Type::getVoidTy(header->getContext()); break;
-  case 2: RetTy = Type::getInt1Ty(header->getContext()); break;
-  default: RetTy = Type::getInt16Ty(header->getContext()); break;
+  case 1:
+    RetTy = Type::getVoidTy(header->getContext());
+    break;
+  case 2:
+    RetTy = Type::getInt1Ty(header->getContext());
+    break;
+  default:
+    RetTy = Type::getInt16Ty(header->getContext());
+    break;
   }
 
-  std::vector<Type*> paramTy;
+  std::vector<Type *> paramTy;
 
   // Add the types of the input values to the function's argument list
-  for (ValueSet::const_iterator i = inputs.begin(), e = inputs.end();
-       i != e; ++i) {
+  for (ValueSet::const_iterator i = inputs.begin(), e = inputs.end(); i != e;
+       ++i) {
     const Value *value = *i;
-    DEBUG(dbgs() << "value used in func: " << *value << "\n");
+    LLVM_DEBUG(dbgs() << "value used in func: " << *value << "\n");
     paramTy.push_back(value->getType());
   }
 
   // Add the types of the output values to the function's argument list.
-  for (ValueSet::const_iterator I = outputs.begin(), E = outputs.end();
-       I != E; ++I) {
-    DEBUG(dbgs() << "instr used in func: " << **I << "\n");
+  for (ValueSet::const_iterator I = outputs.begin(), E = outputs.end(); I != E;
+       ++I) {
+    LLVM_DEBUG(dbgs() << "instr used in func: " << **I << "\n");
     if (AggregateArgs)
       paramTy.push_back((*I)->getType());
     else
       paramTy.push_back(PointerType::getUnqual((*I)->getType()));
   }
 
-  DEBUG(dbgs() << "Function type: " << *RetTy << " f(");
-  for (std::vector<Type*>::iterator i = paramTy.begin(),
-         e = paramTy.end(); i != e; ++i)
-    DEBUG(dbgs() << **i << ", ");
-  DEBUG(dbgs() << ")\n");
+  LLVM_DEBUG(dbgs() << "Function type: " << *RetTy << " f(");
+  for (std::vector<Type *>::iterator i = paramTy.begin(), e = paramTy.end();
+       i != e; ++i)
+    LLVM_DEBUG(dbgs() << **i << ", ");
+  LLVM_DEBUG(dbgs() << ")\n");
 
   if (AggregateArgs && (inputs.size() + outputs.size() > 0)) {
     PointerType *StructPtr =
-           PointerType::getUnqual(StructType::get(M->getContext(), paramTy));
+        PointerType::getUnqual(StructType::get(M->getContext(), paramTy));
     paramTy.clear();
     paramTy.push_back(StructPtr);
   }
-  FunctionType *funcType =
-                  FunctionType::get(RetTy, paramTy, false);
+  FunctionType *funcType = FunctionType::get(RetTy, paramTy, false);
 
-  DEBUG(dbgs() << "Create Function: " << newFunctionName << "\n");
+  LLVM_DEBUG(dbgs() << "Create Function: " << newFunctionName << "\n");
   // Create the new function
   Function *newFunction = Function::Create(
       funcType, GlobalValue::InternalLinkage, newFunctionName, M);
@@ -566,26 +560,18 @@ Function *RegionExtractor::constructFunction(
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(header->getContext()));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(header->getContext()), i);
       TerminatorInst *TI = newFunction->begin()->getTerminator();
-      GetElementPtrInst *GEP =
-        GetElementPtrInst::Create(AI, Idx, "gep_" + inputs[i]->getName(), TI);
+      GetElementPtrInst *GEP = GetElementPtrInst::Create(
+          &*(AI)->getType(), Idx[0], Idx[1], "gep_" + inputs[i]->getName(), TI);
       RewriteVal = new LoadInst(GEP, "loadgep_" + inputs[i]->getName(), TI);
     } else
       RewriteVal = AI++;
-#if LLVM_VERSION_MINOR == 5
-    std::vector<User*> Users(inputs[i]->user_begin(), inputs[i]->user_end());
-#else
-    std::vector<User*> Users(inputs[i]->use_begin(), inputs[i]->use_end());
-#endif
-    for (std::vector<User*>::iterator use = Users.begin(), useE = Users.end();
+    std::vector<User *> Users(inputs[i]->user_begin(), inputs[i]->user_end());
+    for (std::vector<User *>::iterator use = Users.begin(), useE = Users.end();
          use != useE; ++use)
-      if (Instruction* inst = dyn_cast<Instruction>(*use))
+      if (Instruction *inst = dyn_cast<Instruction>(*use))
         if (Blocks.count(inst->getParent()))
           inst->replaceUsesOfWith(inputs[i], RewriteVal);
   }
-
-  // Creates Attribute Noalias
-  AttributeSet newParamAttr = AttributeSet().addAttribute(
-      newFunction->getContext(), 0, Attribute::NoAlias);
 
   AI = newFunction->arg_begin();
   for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI) {
@@ -594,7 +580,7 @@ Function *RegionExtractor::constructFunction(
       Type *elementType = pointerType->getElementType();
       // Add no alias if it's not an array or a structure
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
-        AI->addAttr(newParamAttr);
+        AI->addAttr(Attribute::NoAlias);
       }
     }
   }
@@ -604,17 +590,13 @@ Function *RegionExtractor::constructFunction(
     for (unsigned i = 0, e = inputs.size(); i != e; ++i, ++AI)
       AI->setName(inputs[i]->getName());
     for (unsigned i = 0, e = outputs.size(); i != e; ++i, ++AI)
-      AI->setName(outputs[i]->getName()+".out");
+      AI->setName(outputs[i]->getName() + ".out");
   }
 
   // Rewrite branches to basic blocks outside of the loop to new dummy blocks
   // within the new function. This must be done before we lose track of which
   // blocks were originally in the code region.
-#if LLVM_VERSION_MINOR == 5
-  std::vector<User*> Users(header->user_begin(), header->user_end());
-#else
-  std::vector<User*> Users(header->use_begin(), header->use_end());
-#endif
+  std::vector<User *> Users(header->user_begin(), header->user_end());
   for (unsigned i = 0, e = Users.size(); i != e; ++i)
     // The BasicBlock which contains the branch is not in the region
     // modify the branch target to a new block
@@ -629,35 +611,70 @@ Function *RegionExtractor::constructFunction(
 /// FindPhiPredForUseInBlock - Given a value and a basic block, find a PHI
 /// that uses the value within the basic block, and return the predecessor
 /// block associated with that use, or return 0 if none is found.
-#if LLVM_VERSION_MINOR == 5
-static BasicBlock* FindPhiPredForUseInBlock(Value* Used, BasicBlock* BB) {
+static BasicBlock *FindPhiPredForUseInBlock(Value *Used, BasicBlock *BB) {
   for (Use &U : Used->uses()) {
-     PHINode *P = dyn_cast<PHINode>(U.getUser());
-     if (P && P->getParent() == BB)
-       return P->getIncomingBlock(U);
+    PHINode *P = dyn_cast<PHINode>(U.getUser());
+    if (P && P->getParent() == BB)
+      return P->getIncomingBlock(U);
   }
 
   return nullptr;
 }
-#else
-static BasicBlock *FindPhiPredForUseInBlock(Value *Used, BasicBlock *BB) {
-  for (Value::use_iterator UI = Used->use_begin(), UE = Used->use_end();
-       UI != UE; ++UI) {
-    PHINode *P = dyn_cast<PHINode>(*UI);
-    if (P && P->getParent() == BB)
-      return P->getIncomingBlock(UI);
-  }
-
-  return 0;
-}
-#endif
 
 /// Sometimes when outlining code, metadata refers to the original function
 /// and not to the extracted one. This function removes wrong metadata. This
 /// code is based on this example:
 /// https://weaponshot.wordpress.com/2012/05/06/extract-all-the-metadata-nodes-in-llvm/
+
+SmallPtrSet<const Metadata *, 32> MDNodes;
+
+bool checkValueAsMetadata(ValueAsMetadata &MD, Function * newFunction) {
+  auto *L = dyn_cast<LocalAsMetadata>(&MD);
+  if (!L)
+    return false;
+
+  // If this was an instruction, bb, or argument, verify that it is in the
+  // function that we expect.
+  Function *ActualF = nullptr;
+  if (Instruction *I = dyn_cast<Instruction>(L->getValue())) {
+    ActualF = I->getParent()->getParent();
+  }
+  else if (BasicBlock *BB = dyn_cast<BasicBlock>(L->getValue())) {
+    ActualF = BB->getParent();
+  }
+  else if (Argument *A = dyn_cast<Argument>(L->getValue())) {
+    ActualF = A->getParent();
+  }
+  return (ActualF == newFunction);
+}
+
+
+bool checkMDNode(MDNode  &MD, Function * newFunction) {
+  // Only visit each node once.  Metadata can be mutually recursive, so this
+  // avoids infinite recursion here, as well as being an optimization.
+  if (!MDNodes.insert(&MD).second)
+    return true;
+
+  for (unsigned i = 0, e = MD.getNumOperands(); i != e; ++i) {
+    Metadata *Op = MD.getOperand(i);
+    if (!Op)
+     continue;
+    if (auto *N = dyn_cast<MDNode>(Op)) {
+      if (!checkMDNode(*N, newFunction)) return false;
+      continue;
+    }
+    if (auto *V = dyn_cast<ValueAsMetadata>(Op)) {
+      if (!checkValueAsMetadata(*V, newFunction)) return false;
+      continue;
+    }
+  }
+  return true;
+}
+
+
 void RegionExtractor::removeWrongMetadata(Function *newFunction) {
   std::vector<CallInst *> InstToDel;
+  MDNodes.clear();
 
   // Iterate over instructions of the function
   for (Function::iterator BB = newFunction->begin(), E = newFunction->end();
@@ -665,56 +682,48 @@ void RegionExtractor::removeWrongMetadata(Function *newFunction) {
     for (BasicBlock::iterator I = BB->begin(), M = BB->end(); I != M; ++I) {
       // If this instruction is a call
       if (CallInst *CI = dyn_cast<CallInst>(I)) {
-        if (Function *F = CI->getCalledFunction()) {
+        if (CI->getCalledFunction()){
           for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
             // Get Metadata information
-            if (MDNode *MD = dyn_cast_or_null<MDNode>(I->getOperand(i))) {
-              for (unsigned j = 0, k = MD->getNumOperands(); j != k; ++j) {
-                Function *ActualF = 0;
-                Value *Op = MD->getOperand(j);
-                if (!Op)
-                  continue;
-                if (isa<Constant>(Op) || isa<MDString>(Op))
-                  continue;
+            auto *MDV = dyn_cast<MetadataAsValue>(I->getOperand(i));
+            if (!MDV) continue;
 
-                // If this was an instruction, bb, or argument, verify that it
-                // is in the function that we expect.
-                if (Instruction *J = dyn_cast<Instruction>(Op))
-                  ActualF = J->getParent()->getParent();
-                else if (BasicBlock *BB = dyn_cast<BasicBlock>(Op))
-                  ActualF = BB->getParent();
-                else if (Argument *A = dyn_cast<Argument>(Op))
-                  ActualF = A->getParent();
-                else
-                  continue;
+            // LLVM verifier considers an additional scenario here,
+            // where MDV can be a ValueAsMetadata instead of a MDNode
+            // we have not found this case to appear in our tests.
+            // XXX: do we need to add this case ? it seems not to happen
+            // in a llvm.dbg.declare ?
 
-                if (ActualF != newFunction) {
-                  // Keep this instruction for delation
-                  InstToDel.push_back(CI);
-                }
-              }
+            auto *MD = dyn_cast<MDNode>(MDV->getMetadata());
+            if (!MD) continue;
+            bool mustDelete = checkMDNode(*MD, newFunction);
+            //keep this instruction for deletion
+            if (mustDelete) {
+              InstToDel.push_back(CI);
+              break;
             }
           }
         }
       }
-    } // Instructions iterator
-  }   // BB iterator
-
+    }
+  }
   // Delete instructions to remove
   for (std::vector<CallInst *>::size_type i = 0; i != InstToDel.size(); i++) {
     InstToDel[i]->eraseFromParent();
   }
 }
 
+
 /// emitCallAndSwitchStatement - This method sets up the caller side by adding
 /// the call instruction, splitting any PHI nodes in the header block as
 /// necessary.
-void RegionExtractor::
-emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
-                           ValueSet &inputs, ValueSet &outputs) {
+void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
+                                                 BasicBlock *codeReplacer,
+                                                 ValueSet &inputs,
+                                                 ValueSet &outputs) {
   // Emit a call to the new function, passing in: *pointer to struct (if
   // aggregating parameters), or plan inputs and allocated memory for outputs
-  std::vector<Value*> params, StructValues, ReloadOutputs, Reloads;
+  std::vector<Value *> params, StructValues, ReloadOutputs, Reloads;
 
   LLVMContext &Context = newFunction->getContext();
 
@@ -730,15 +739,10 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
     if (AggregateArgs) {
       StructValues.push_back(*i);
     } else {
-#if LLVM_VERSION_MINOR == 5
+      // WARNING Is replacing nullptr by 0 correct in this case ?
       AllocaInst *alloca =
-        new AllocaInst((*i)->getType(), nullptr, (*i)->getName()+".loc",
-                       codeReplacer->getParent()->begin()->begin());
-#else
-      AllocaInst *alloca =
-        new AllocaInst((*i)->getType(), 0, (*i)->getName()+".loc",
-                       codeReplacer->getParent()->begin()->begin());
-#endif
+          new AllocaInst((*i)->getType(), 0, (*i)->getName() + ".loc",
+                         &*(codeReplacer->getParent()->begin()->begin()));
       ReloadOutputs.push_back(alloca);
       params.push_back(alloca);
     }
@@ -750,22 +754,17 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
   AllocaInst *Struct = 0;
 #endif
   if (AggregateArgs && (inputs.size() + outputs.size() > 0)) {
-    std::vector<Type*> ArgTypes;
-    for (ValueSet::iterator v = StructValues.begin(),
-           ve = StructValues.end(); v != ve; ++v)
+    std::vector<Type *> ArgTypes;
+    for (ValueSet::iterator v = StructValues.begin(), ve = StructValues.end();
+         v != ve; ++v)
       ArgTypes.push_back((*v)->getType());
 
     // Allocate a struct at the beginning of this function
     Type *StructArgTy = StructType::get(newFunction->getContext(), ArgTypes);
-#if LLVM_VERSION_MINOR == 5
     Struct =
-      new AllocaInst(StructArgTy, nullptr, "structArg",
-                     codeReplacer->getParent()->begin()->begin());
-#else
-    Struct =
-      new AllocaInst(StructArgTy, 0, "structArg",
-                     codeReplacer->getParent()->begin()->begin());
-#endif
+        // WARNING Is replacing nullptr by 0 correct in this case ?
+        new AllocaInst(StructArgTy, 0, "structArg",
+                       &*(codeReplacer->getParent()->begin()->begin()));
     params.push_back(Struct);
 
     for (unsigned i = 0, e = inputs.size(); i != e; ++i) {
@@ -773,8 +772,8 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(Context), i);
       GetElementPtrInst *GEP =
-        GetElementPtrInst::Create(Struct, Idx,
-                                  "gep_" + StructValues[i]->getName());
+          GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
+                                    "gep_" + StructValues[i]->getName());
       codeReplacer->getInstList().push_back(GEP);
       StoreInst *SI = new StoreInst(StructValues[i], GEP);
       codeReplacer->getInstList().push_back(SI);
@@ -802,22 +801,18 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
       Value *Idx[2];
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(Context), FirstOut + i);
-      GetElementPtrInst *GEP
-        = GetElementPtrInst::Create(Struct, Idx,
+      GetElementPtrInst *GEP =
+          GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
                                     "gep_reload_" + outputs[i]->getName());
       codeReplacer->getInstList().push_back(GEP);
       Output = GEP;
     } else {
       Output = ReloadOutputs[i];
     }
-    LoadInst *load = new LoadInst(Output, outputs[i]->getName()+".reload");
+    LoadInst *load = new LoadInst(Output, outputs[i]->getName() + ".reload");
     Reloads.push_back(load);
     codeReplacer->getInstList().push_back(load);
-#if LLVM_VERSION_MINOR == 5
-    std::vector<User*> Users(outputs[i]->user_begin(), outputs[i]->user_end());
-#else
-    std::vector<User*> Users(outputs[i]->use_begin(), outputs[i]->use_end());
-#endif
+    std::vector<User *> Users(outputs[i]->user_begin(), outputs[i]->user_end());
     for (unsigned u = 0, e = Users.size(); u != e; ++u) {
       Instruction *inst = cast<Instruction>(Users[u]);
       if (!Blocks.count(inst->getParent()))
@@ -835,11 +830,12 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
   // over all of the blocks in the extracted region, updating any terminator
   // instructions in the to-be-extracted region that branch to blocks that are
   // not in the region to be extracted.
-  std::map<BasicBlock*, BasicBlock*> ExitBlockMap;
+  std::map<BasicBlock *, BasicBlock *> ExitBlockMap;
 
   unsigned switchVal = 0;
-  for (SetVector<BasicBlock*>::const_iterator i = Blocks.begin(),
-         e = Blocks.end(); i != e; ++i) {
+  for (SetVector<BasicBlock *>::const_iterator i = Blocks.begin(),
+                                               e = Blocks.end();
+       i != e; ++i) {
     TerminatorInst *TI = (*i)->getTerminator();
     for (unsigned i = 0, e = TI->getNumSuccessors(); i != e; ++i)
       if (!Blocks.count(TI->getSuccessor(i))) {
@@ -849,9 +845,8 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
         if (!NewTarget) {
           // If we don't already have an exit stub for this non-extracted
           // destination, create one now!
-          NewTarget = BasicBlock::Create(Context,
-                                         OldTarget->getName() + ".exitStub",
-                                         newFunction);
+          NewTarget = BasicBlock::Create(
+              Context, OldTarget->getName() + ".exitStub", newFunction);
           unsigned SuccNum = switchVal++;
 #if LLVM_VERSION_MINOR == 5
           Value *brVal = nullptr;
@@ -860,8 +855,9 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
 #endif
           switch (NumExitBlocks) {
           case 0:
-          case 1: break;  // No value needed.
-          case 2:         // Conditional branch, return a bool
+          case 1:
+            break; // No value needed.
+          case 2:  // Conditional branch, return a bool
             brVal = ConstantInt::get(Type::getInt1Ty(Context), !SuccNum);
             break;
           default:
@@ -872,9 +868,8 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
           ReturnInst *NTRet = ReturnInst::Create(Context, brVal, NewTarget);
 
           // Update the switch instruction.
-          TheSwitch->addCase(ConstantInt::get(Type::getInt16Ty(Context),
-                                              SuccNum),
-                             OldTarget);
+          TheSwitch->addCase(
+              ConstantInt::get(Type::getInt16Ty(Context), SuccNum), OldTarget);
 
           // Restore values just before we exit
           Function::arg_iterator OAI = OutputArgBegin;
@@ -891,8 +886,10 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
               // Make sure we are looking at the original successor block, not
               // at a newly inserted exit block, which won't be in the dominator
               // info.
-              for (std::map<BasicBlock*, BasicBlock*>::iterator I =
-                     ExitBlockMap.begin(), E = ExitBlockMap.end(); I != E; ++I)
+              for (std::map<BasicBlock *, BasicBlock *>::iterator
+                       I = ExitBlockMap.begin(),
+                       E = ExitBlockMap.end();
+                   I != E; ++I)
                 if (DefBlock == I->second) {
                   DefBlock = I->first;
                   break;
@@ -912,8 +909,8 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
               // then we need to test for dominance of the phi's predecessor
               // instead.  Unfortunately, this a little complicated since we
               // have already rewritten uses of the value to uses of the reload.
-              BasicBlock* pred = FindPhiPredForUseInBlock(Reloads[out],
-                                                          OldTarget);
+              BasicBlock *pred =
+                  FindPhiPredForUseInBlock(Reloads[out], OldTarget);
               if (pred && DT && DT->dominates(DefBlock, pred))
                 DominatesDef = true;
             }
@@ -922,19 +919,19 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
               if (AggregateArgs) {
                 Value *Idx[2];
                 Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
-                Idx[1] = ConstantInt::get(Type::getInt32Ty(Context),
-                                          FirstOut+out);
-                GetElementPtrInst *GEP =
-                  GetElementPtrInst::Create(OAI, Idx,
-                                            "gep_" + outputs[out]->getName(),
-                                            NTRet);
+                Idx[1] =
+                    ConstantInt::get(Type::getInt32Ty(Context), FirstOut + out);
+                GetElementPtrInst *GEP = GetElementPtrInst::Create(
+                    &*(OAI)->getType(), Idx[0], Idx[1],
+                    "gep_" + outputs[out]->getName(), NTRet);
                 new StoreInst(outputs[out], GEP, NTRet);
               } else {
                 new StoreInst(outputs[out], OAI, NTRet);
               }
             }
             // Advance output iterator even if we don't emit a store
-            if (!AggregateArgs) ++OAI;
+            if (!AggregateArgs)
+              ++OAI;
           }
         }
 
@@ -964,8 +961,8 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
     } else {
       // Otherwise we must have code extracted an unwind or something, just
       // return whatever we want.
-      ReturnInst::Create(Context,
-                         Constant::getNullValue(OldFnRetTy), TheSwitch);
+      ReturnInst::Create(Context, Constant::getNullValue(OldFnRetTy),
+                         TheSwitch);
     }
 
     TheSwitch->eraseFromParent();
@@ -988,7 +985,7 @@ emitCallAndSwitchStatement(Function *newFunction, BasicBlock *codeReplacer,
     TheSwitch->setDefaultDest(TheSwitch->getSuccessor(NumExitBlocks));
     // Remove redundant case
 #if LLVM_VERSION_MINOR == 5
-    TheSwitch->removeCase(SwitchInst::CaseIt(TheSwitch, NumExitBlocks-1));
+    TheSwitch->removeCase(SwitchInst::CaseIt(TheSwitch, NumExitBlocks - 1));
 #else
     SwitchInst::CaseIt ToBeRemoved(TheSwitch, NumExitBlocks - 1);
     TheSwitch->removeCase(ToBeRemoved);
@@ -1002,8 +999,9 @@ void RegionExtractor::moveCodeToFunction(Function *newFunction) {
   Function::BasicBlockListType &oldBlocks = oldFunc->getBasicBlockList();
   Function::BasicBlockListType &newBlocks = newFunction->getBasicBlockList();
 
-  for (SetVector<BasicBlock*>::const_iterator i = Blocks.begin(),
-         e = Blocks.end(); i != e; ++i) {
+  for (SetVector<BasicBlock *>::const_iterator i = Blocks.begin(),
+                                               e = Blocks.end();
+       i != e; ++i) {
     // Delete the basic block from the old function, and the list of blocks
     oldBlocks.remove(*i);
 
@@ -1028,14 +1026,14 @@ Function *RegionExtractor::extractCodeRegion() {
 
   Function *oldFunction = header->getParent();
 
-  //Create the function name where the loop will be extracted.
-  //Name is __cere__[file]_[old_function_name]_[loop_start_line]
+  // Create the function name where the loop will be extracted.
+  // Name is __cere__[file]_[old_function_name]_[loop_start_line]
   std::string newFunctionName = createFunctionName(oldFunction, header);
   if (newFunctionName.empty())
     return 0;
 
-  DEBUG(dbgs() << "Requested loop = " << RegionName << " & isolating "
-               << newFunctionName << "\n");
+  LLVM_DEBUG(dbgs() << "Requested loop = " << RegionName << " & isolating "
+                    << newFunctionName << "\n");
 
   // If we want to isolate a particular loop
   if (RegionName != "all" && RegionName != newFunctionName) {
@@ -1050,14 +1048,13 @@ Function *RegionExtractor::extractCodeRegion() {
   splitReturnBlocks();
 
   // This takes place of the original loop
-  BasicBlock *codeReplacer = BasicBlock::Create(header->getContext(),
-                                                "codeRepl", oldFunction,
-                                                header);
+  BasicBlock *codeReplacer =
+      BasicBlock::Create(header->getContext(), "codeRepl", oldFunction, header);
 
   // The new function needs a root node because other nodes can branch to the
   // head of the region, but the entry node of a function cannot have preds.
-  BasicBlock *newFuncRoot = BasicBlock::Create(header->getContext(),
-                                               "newFuncRoot");
+  BasicBlock *newFuncRoot =
+      BasicBlock::Create(header->getContext(), "newFuncRoot");
   newFuncRoot->getInstList().push_back(BranchInst::Create(header));
 
   // Find inputs to, outputs from the code region.
@@ -1094,12 +1091,12 @@ Function *RegionExtractor::extractCodeRegion() {
   // Look at all successors of the codeReplacer block.  If any of these blocks
   // had PHI nodes in them, we need to update the "from" block to be the code
   // replacer, not the original block in the extracted region.
-  std::vector<BasicBlock*> Succs(succ_begin(codeReplacer),
-                                 succ_end(codeReplacer));
+  std::vector<BasicBlock *> Succs(succ_begin(codeReplacer),
+                                  succ_end(codeReplacer));
   for (unsigned i = 0, e = Succs.size(); i != e; ++i)
     for (BasicBlock::iterator I = Succs[i]->begin(); isa<PHINode>(I); ++I) {
       PHINode *PN = cast<PHINode>(I);
-      std::set<BasicBlock*> ProcessedPreds;
+      std::set<BasicBlock *> ProcessedPreds;
       for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i)
         if (Blocks.count(PN->getIncomingBlock(i))) {
           if (ProcessedPreds.insert(PN->getIncomingBlock(i)).second)
@@ -1108,12 +1105,14 @@ Function *RegionExtractor::extractCodeRegion() {
             // There were multiple entries in the PHI for this block, now there
             // is only one, so remove the duplicated entries.
             PN->removeIncomingValue(i, false);
-            --i; --e;
+            --i;
+            --e;
           }
         }
     }
 
-  DEBUG(if (verifyFunction(*newFunction))
-        report_fatal_error("verifyFunction failed!"));
+  LLVM_DEBUG(if (verifyFunction(*newFunction))
+                 report_fatal_error("verifyFunction failed!"));
   return newFunction;
 }
+

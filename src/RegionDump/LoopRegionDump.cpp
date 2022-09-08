@@ -26,28 +26,26 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-dump"
-#include "llvm/Support/Debug.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Type.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/DataLayout.h>
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/Support/CommandLine.h"
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <set>
-#include "RegionDump.h"
-
-#if LLVM_VERSION_MINOR == 5
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
-#else
-#include "llvm/Support/InstIterator.h"
-#endif
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Debug.h"
+#include <fstream>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <set>
+#include <sstream>
+#include <string>
+
+#include "RegionDump.h"
 
 using namespace llvm;
 
@@ -60,11 +58,11 @@ extern cl::opt<int> Invocation;
 namespace {
 struct LoopRegionDump : public FunctionPass {
   static char ID;
-  std::string RegionToDump;
   unsigned NumLoops;
+  std::string RegionToDump;
   int InvocationToDump;
-  bool ReadFromFile;
   bool GlobalDump;
+  bool ReadFromFile;
   std::vector<std::string> RegionsToDump;
 
   explicit LoopRegionDump(unsigned numLoops = ~0)
@@ -87,11 +85,11 @@ struct LoopRegionDump : public FunctionPass {
   bool visitLoop(Loop *L, Module *mod);
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-    AU.addRequired<LoopInfo>();
-    AU.addPreserved<LoopInfo>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-}
+} // namespace
 
 char LoopRegionDump::ID = 0;
 static RegisterPass<LoopRegionDump> X("region-dump", "Dump regions");
@@ -107,8 +105,11 @@ bool LoopRegionDump::runOnFunction(Function &F) {
     Main = mod->getFunction("main");
   }
   if (Main) { // We are in the module with the main function
+    IRBuilder<> builder(&(Main->front().front()));
+
     ConstantInt *const_int1_11;
     std::string funcName = "dump_init";
+
     if (GlobalDump)
       const_int1_11 = ConstantInt::get(mod->getContext(),
                                        APInt(1, StringRef("-1"), 10)); // true
@@ -125,15 +126,17 @@ bool LoopRegionDump::runOnFunction(Function &F) {
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
+
       Function *mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
+
       std::vector<Value *> void_16_params;
       void_16_params.push_back(const_int1_11);
-      CallInst::Create(mainFunction, void_16_params, "",
-                       Main->begin()->begin());
+      builder.CreateCall(mainFunction, void_16_params);
     }
   }
-  LoopInfo &LI = getAnalysis<LoopInfo>();
+
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   // Get all loops int the current function and visit them
   std::vector<Loop *> SubLoops(LI.begin(), LI.end());
   for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
