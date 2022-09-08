@@ -3,6 +3,7 @@ name: test-build
 on:
   push:
     branches: [ master ]
+
   pull_request:
 
 jobs:
@@ -86,7 +87,6 @@ jobs:
           export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PAT
           export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH
           export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH
-
           # NOTE To generate doc wit ronn, we need to set locale to UTF-8 English
           apt-get -y install locales
           locale-gen --no-purge en_US.UTF-8
@@ -97,7 +97,6 @@ jobs:
           #We are building cere with clang because with the LLVM 7 binary release, llvm-config would throw flags not recognized by GCC
           libtoolize && ./autogen.sh && ./configure CC=clang CXX=clang++ LDFLAGS="-pthread -lpthread -lcurses -lz -ltinfo" --without-dragonegg
           make && make install && make check
-
 
       - name: Run CERE tests
         run: |

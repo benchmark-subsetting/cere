@@ -3,14 +3,12 @@ LABEL maintainer="Aurelien Delval <aurelien.delval@uvsq.fr>"
 
 RUN apt-get update
 
-
 # Install & setup locales
 RUN apt-get -y install locales
 RUN locale-gen --no-purge en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
-
 
 # Install CERE dependencies
 RUN apt-get -y install \
@@ -61,6 +59,7 @@ ENV C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH
 ENV CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH
 
 
+
 # Manually install Python packages (PuLP & pydotplus)
 # (installing with pip causes SNI issues on Ubuntu 14.04 + Python 2.7.6)
 # RUN pip3 install pulp pydotplus
@@ -69,6 +68,7 @@ RUN tar -xvf PuLP-2.6.0.tar.gz && cd PuLP-2.6.0 && python setup.py install && cd
 
 RUN wget https://files.pythonhosted.org/packages/60/bf/62567830b700d9f6930e9ab6831d6ba256f7b0b730acb37278b0ccdffacf/pydotplus-2.0.2.tar.gz
 RUN tar -xvf pydotplus-2.0.2.tar.gz && cd pydotplus-2.0.2 && python setup.py install && cd ..
+
 
 RUN rm -rf pydotplus-2.0.2 PuLP-2.6.0
 
@@ -96,6 +96,7 @@ RUN echo $PATH
 #We are building cere with clang because with the LLVM 7 binary release, llvm-config would throw flags not recognized by GCC
 RUN libtoolize && ./autogen.sh && ./configure CC=clang CXX=clang++ LDFLAGS="-pthread -lpthread -lcurses -lz -ltinfo" --without-dragonegg
 RUN make && make install && make check
+
 
 VOLUME /workdir
 WORKDIR /workdir
