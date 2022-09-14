@@ -17,7 +17,7 @@
 # along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
 
 import os
-import vars as var
+from cere import vars as var
 import numpy as np
 import matplotlib.pyplot as plt
 

@@ -16,7 +16,7 @@
 # along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
 #!/usr/bin/env python
 
-import vars as var
+from cere import vars as var
 import os
 
 def is_invalid(r):

@@ -18,14 +18,14 @@
 
 import sys
 import os
-import cPickle as pickle
+import pickle
 import networkx as nx
-from graph_utils import *
-import max_cov_update_graph as update_graph
+from cere.graph_utils import *
+from cere import max_cov_update_graph as update_graph
 import logging
 import csv
-import utils
-import vars as var
+from cere import utils
+from cere import vars as var
 
 logger = logging.getLogger('Max-Cov selector')
 

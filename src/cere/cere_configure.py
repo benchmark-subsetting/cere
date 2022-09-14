@@ -22,7 +22,7 @@ import sys
 import json
 import argparse
 import logging
-import vars as var
+from cere import vars as var
 
 cere_config={}
 logger = logging.getLogger('Configure')

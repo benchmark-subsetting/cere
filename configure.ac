@@ -118,7 +118,6 @@ AM_PATH_PYTHON([2.7])
 
 # Check for Python modules
 
-AX_PYTHON_MODULE(networkx, fatal)
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
 AX_PYTHON_MODULE(jinja2, fatal)
 AX_PYTHON_MODULE(sklearn, fatal)

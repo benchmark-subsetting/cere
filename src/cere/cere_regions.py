@@ -20,12 +20,12 @@ import os
 import csv
 import subprocess
 import re
-import cere_configure
-import cere_capture
+from cere import cere_configure
+from cere import cere_capture
 import logging
 import shutil
 import argparse
-import vars as var
+from cere import vars as var
 
 logger = logging.getLogger('Regions')
 

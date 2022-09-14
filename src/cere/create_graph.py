@@ -19,11 +19,11 @@
 import os
 import re
 import subprocess
-import cere_configure
+from cere import cere_configure
 import logging
 import networkx as nx
-import vars as var
-from graph_utils import plot, save_graph
+from cere import vars as var
+from cere.graph_utils import plot, save_graph
 
 logger = logging.getLogger('Profile')
 

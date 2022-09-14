@@ -19,23 +19,24 @@
 import sys
 import argparse
 
-import cere_configure
-import cere_profile
-import cere_capture
-import cere_replay
-import cere_check_matching
-import cere_select_max_cov
-import cere_select_ilp
-import cere_instrument
-import cere_trace
-import cere_regions
-import cere_sanity_check
-import cere_report
-import cere_selectinv
-import cere_flag
-import cere_hybrid
+#import cere_configure
+from cere import cere_configure
+from cere import cere_profile
+from cere import cere_capture
+from cere import cere_replay
+from cere import cere_check_matching
+from cere import cere_select_max_cov
+from cere import cere_select_ilp
+from cere import cere_instrument
+from cere import cere_trace
+from cere import cere_regions
+from cere import cere_sanity_check
+from cere import cere_report
+from cere import cere_selectinv
+from cere import cere_flag
+from cere import cere_hybrid
 
-import vars as var
+from cere import vars as var
 
 import logging
 logger = logging.getLogger('CERE')

@@ -1,2 +1,2 @@
 #!/bin/bash
-exec python2 -m cere "$@"
+exec python -m cere "$@"

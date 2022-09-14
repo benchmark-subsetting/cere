@@ -18,11 +18,11 @@
 
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot
-import cPickle as pickle
+import pickle
 import logging
 import os
 import subprocess
-import vars as var
+from cere import vars as var
 
 logger = logging.getLogger('Graph utils')
 

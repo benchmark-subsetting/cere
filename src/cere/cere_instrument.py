@@ -18,9 +18,9 @@
 
 import logging
 import subprocess
-import vars as var
-import utils
-import cere_configure
+from cere import vars as var
+from cere import utils
+from cere import cere_configure
 
 logger = logging.getLogger('Instrument')
 

@@ -22,10 +22,10 @@ import csv
 import argparse
 import logging
 import subprocess
-import cere_configure
-import cere_replay
-import vars as var
-import graph_utils
+from cere import cere_configure
+from cere import cere_replay
+from cere import vars as var
+from cere import graph_utils
 
 logger = logging.getLogger('Flag')
 
@@ -33,7 +33,7 @@ def init_module(subparsers, cere_plugins):
   cere_plugins["flag"] = run
   flag_parser = subparsers.add_parser("flag", help="test flags performance")
   flag_parser.add_argument('--region', help="region to replay")
-  flag_parser.add_argument('FLAGSFILE', type=file, help="file of flags to test")
+  flag_parser.add_argument('FLAGSFILE', type=str, help="file of flags to test")
   flag_parser.add_argument('--invitro-callcount', type=int, default=10, help="Meta-repetitions for the replay (Default 10)")
   flag_parser.add_argument('--force', '-f', action='store_true', help="force to replay (Delete previous measure)")
 

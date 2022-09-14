@@ -23,11 +23,11 @@ import logging
 import shutil
 import subprocess
 import csv
-import cere_configure
-import cere_capture
-import vars as var
-import utils
-import errors as cere_error
+from cere import cere_configure
+from cere import cere_capture
+from cere import vars as var
+from cere import utils
+from cere import errors as cere_error
 
 logger = logging.getLogger('Replay')
 

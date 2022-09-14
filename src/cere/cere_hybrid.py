@@ -19,9 +19,9 @@ import os
 import argparse
 import logging
 import subprocess
-import cere_configure
+from cere import cere_configure
 import errno
-import vars as var
+from cere import vars as var
 
 logger = logging.getLogger('Hybrid')
 

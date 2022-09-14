@@ -18,13 +18,13 @@
 
 import sys
 import os
-import cPickle as pickle
+import pickle
 import networkx as nx
-from graph_utils import *
-import vars as var
+from cere.graph_utils import *
+from cere import vars as var
 import logging
 import csv
-import utils
+from cere import utils
 from pulp import LpInteger, LpMinimize, LpProblem, LpStatus, LpVariable, lpSum, GLPK
 
 logger = logging.getLogger('ILP selector')

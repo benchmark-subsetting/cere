@@ -21,14 +21,14 @@ import numpy as np
 import os
 import shutil
 import logging
-import cere_configure
-import cere_instrument
+from cere import cere_configure
+from cere import cere_instrument
 import networkx as nx
 import tempfile
-from graph_utils import load_graph
-import vars as var
-import utils
-import errors as cere_error
+from cere.graph_utils import load_graph
+from cere import vars as var
+from cere import utils
+from cere import errors as cere_error
 
 logger = logging.getLogger('Trace')
 

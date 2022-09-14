@@ -18,19 +18,18 @@
 
 import os
 import sys
-import cPickle as pickle
+import pickle
 import networkx as nx
-import cere_configure
-from graph_utils import *
+from cere import cere_configure
+from cere.graph_utils import *
 import logging
 import argparse
 import jinja2
 import csv
 import base64
-import xmlrpclib
-import vars as var
+from cere import vars as var
 from contextlib import contextmanager
-import graph_error
+from cere import graph_error
 
 logger = logging.getLogger('Report')
 
