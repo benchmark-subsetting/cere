@@ -34,3 +34,4 @@ doc/html/*.html
 doc/man1/*.1
 tests/testplan.log
 tests/testplan.trs
+src/cere/vars.py
