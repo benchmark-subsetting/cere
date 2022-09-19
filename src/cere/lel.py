@@ -44,7 +44,9 @@ def safe_system(command):
     Try-catch system call
     Verify system call and exit with appropriate error message
     '''
-    if(os.system(command)):
+    ret = os.system(command)
+    if(ret):
+        print(ret)
         fail_lel("safe_system -> " + command)
 
 def user_main(FILE, LOOP, mode_opt):
@@ -108,10 +110,10 @@ def find_section_offset(addr, elfmap):
 def parse_sym(binary, elfmap):
     sym_map = {}
     elf = sysout("readelf -sW {0}".format(binary))
-    elf_lines = elf.split('\n')
+    elf_lines = elf.split('\n'.encode())
 
     for i, l in enumerate(elf_lines):
-        if ".symtab" in l:
+        if ".symtab".encode() in l:
             start = i+2
             break
 
@@ -142,13 +144,13 @@ def parse_sym(binary, elfmap):
 def parse_elf(binary):
     elf_map = {}
     elf = sysout("readelf -SW {0}".format(binary))
-    elf_lines = elf.split('\n')
+    elf_lines = elf.split('\n'.encode())
     for l in elf_lines:
         l = l.strip()
         # Only parse section lines
-        if not l.startswith('['): continue
+        if not l.startswith('['.encode()): continue
         # Keep everything after ]
-        cols = l.split(']')[1]
+        cols = l.split(']'.encode())[1]
         fields = cols.split()
         name = fields[0]
         # Ignore non static sections
@@ -160,10 +162,11 @@ def parse_elf(binary):
     return elf_map
 
 def extract_symbols(DIR):
+    print("[extract_symbols] In")
     # get list of static names
     original = DIR + "/lel_bin"
     original_map = parse_sym(original, parse_elf(original))
-    with file(DIR + "/static.names", "w") as f:
+    with open((DIR + "/static.names").encode(), "w") as f:
         for n in original_map:
             f.write(n + "\n")
 
@@ -175,6 +178,7 @@ def extract_symbols(DIR):
                 + " --keep-symbols={dump_dir}/static.names"
                 + " {dump_dir}/static.sym {dump_dir}/static.sym").format(
                     objcopy=OBJCOPY, dump_dir=DIR))
+    print("[extract_symbols] Out")
 
 def find_cere_dir():
   if "CERE_WORKING_PATH" in os.environ:
