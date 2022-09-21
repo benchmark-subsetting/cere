@@ -46,7 +46,6 @@ def safe_system(command):
     '''
     ret = os.system(command)
     if(ret):
-        print(ret)
         fail_lel("safe_system -> " + command)
 
 def user_main(FILE, LOOP, mode_opt):
@@ -109,11 +108,11 @@ def find_section_offset(addr, elfmap):
 
 def parse_sym(binary, elfmap):
     sym_map = {}
-    elf = sysout("readelf -sW {0}".format(binary))
-    elf_lines = elf.split('\n'.encode())
+    elf = sysout("readelf -sW {0}".format(binary)).decode('utf-8')
+    elf_lines = elf.split('\n')
 
     for i, l in enumerate(elf_lines):
-        if ".symtab".encode() in l:
+        if ".symtab" in l:
             start = i+2
             break
 
@@ -138,19 +137,21 @@ def parse_sym(binary, elfmap):
         if not off:
             # ignore non static objs
             continue
+
         sym_map[name] = dict(addr=addr, offset=off, size=size)
+
     return sym_map
 
 def parse_elf(binary):
     elf_map = {}
-    elf = sysout("readelf -SW {0}".format(binary))
-    elf_lines = elf.split('\n'.encode())
+    elf = sysout("readelf -SW {0}".format(binary)).decode('utf-8')
+    elf_lines = elf.split('\n')
     for l in elf_lines:
         l = l.strip()
         # Only parse section lines
-        if not l.startswith('['.encode()): continue
+        if not l.startswith('['): continue
         # Keep everything after ]
-        cols = l.split(']'.encode())[1]
+        cols = l.split(']')[1]
         fields = cols.split()
         name = fields[0]
         # Ignore non static sections
@@ -162,7 +163,6 @@ def parse_elf(binary):
     return elf_map
 
 def extract_symbols(DIR):
-    print("[extract_symbols] In")
     # get list of static names
     original = DIR + "/lel_bin"
     original_map = parse_sym(original, parse_elf(original))
@@ -178,7 +178,6 @@ def extract_symbols(DIR):
                 + " --keep-symbols={dump_dir}/static.names"
                 + " {dump_dir}/static.sym {dump_dir}/static.sym").format(
                     objcopy=OBJCOPY, dump_dir=DIR))
-    print("[extract_symbols] Out")
 
 def find_cere_dir():
   if "CERE_WORKING_PATH" in os.environ:
@@ -234,6 +233,8 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                 "{objcopy} --weaken-symbols={dump_dir}/static.names {f}".format(
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
+
+
     safe_system(CLANG + " -c realmain.c")
     OPTS = compile_memory_dump_objects(mode_opt, DIR)
     with tempfile.NamedTemporaryFile() as f:
@@ -242,7 +243,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                  + " {libdir} -lcere_load -Wl,-z,now"
                  + " -ldl {wrapper}\n").format(
                 opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
-                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR))
+                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
 
         f.flush()
         safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))
