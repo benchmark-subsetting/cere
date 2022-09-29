@@ -475,6 +475,11 @@ static void tracer_lock_mem(pid_t pid) {
     /* Ignore libc pages  */
     if (strstr(buf, "linux-gnu") != NULL)
       continue;
+    if (strstr(buf, "/usr/lib") != NULL)
+      continue;
+
+    if (strstr(buf, "00000000 00:00 0") != NULL && strstr(buf, "heap") == NULL)
+      continue;
 
     /* Ignore libc special mem zones  */
     /* If we don't ignore those mem zones we get this error */
