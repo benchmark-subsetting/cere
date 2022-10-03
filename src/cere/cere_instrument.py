@@ -18,6 +18,7 @@
 
 import logging
 import subprocess
+import os
 import vars as var
 import utils
 import cere_configure
@@ -48,6 +49,10 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
     else:
         logger.error("No region specified, use at least one of the following: --region, --regions-file")
         return False
+
+    if (cere_configure.cere_config["omp"]) and ("OMP_NUM_THREADS" not in os.environ) and (not args_norun):
+      logger.error("OMP_NUM_THREADS not set. Export OMP_NUM_THREADS first.")
+      return False
 
     if args_invocation != 0 :
         logger.info("Compiling instrumentation mode for {0} invocation {1}".format(region_input, args_invocation))
