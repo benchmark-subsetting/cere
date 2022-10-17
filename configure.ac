@@ -20,23 +20,24 @@ AC_SUBST(CERELIBS, $libdir)
 
 # Check for specific compilers
 AC_PROG_CC([gcc])
-AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
-AC_SUBST(GCC_PATH, $CC)
 
 AX_LLVM([7.0],[7.1.0],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
+# Check if Fortran/flang has been enabled (disabled by default)
+AC_ARG_WITH(flang,
+[  --with-flang                allows CERE to call flang from LLVM_BINDIR when passed Fortran source files])
+if test x"${with_flang}" != x"yes"; then
+    AC_MSG_NOTICE([Fortran support enabled.])
+else
+    AC_MSG_NOTICE([Fortran support left disabled.])
+fi
+AC_DEFINE_UNQUOTED([FORTRAN_SUPPORT], ["$with_flang"], [enables or disables Fortran/flang support])
+AC_SUBST(FORTRAN_SUPPORT, $with_flang)
+
 AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google profiler library]))
 
-# Check that the selected GCC is compatible with the selected dragonegg
-if test -z "$DRAGONEGG_PATH"; then
-    AC_MSG_NOTICE([Fortran support disabled.])
-else
-    # Always disable Fortran support for now
-    AC_MSG_NOTICE([Fortran support disabled.])
-fi
-
-# The profiler and gfortran libraries added to LIBS by AC_CHECK_LIB are needed only at
+# The profiler libraries added to LIBS by AC_CHECK_LIB are needed only at
 # cere run time, not when building cere. Therefore we have to reset LIBS.
 LIBS=""
 
