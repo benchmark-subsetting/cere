@@ -309,7 +309,7 @@ bool OmpRegionInstrumentation::insertOmpProbe(Module *mod, Function *currFunc) {
   // the current invocation of the region
   if (RequestedInvoc != 0) {
     LoadInst *int32_1 =
-        insertMarkerInvocation(mod, currFunc, 0, func_start, int32_1);
+        insertMarkerInvocation(mod, currFunc, 0, func_start, NULL);
     insertMarkerInvocation(mod, currFunc, 1, func_stop, int32_1);
   } else {
     insertMarker(mod, currFunc, 0, func_start);
