@@ -36,7 +36,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+//#undef _DEBUG
 
 #include "debug.h"
 
@@ -48,9 +48,10 @@ extern struct tracer_buff_t * tracer_buff;
 
 /* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
 /* x86_64     rdi    rsi    rdx    r10    r8     r9      -    */
-static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
+/*static*/ register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
                                  ...) {
 
+  debug_print("[inject_syscall] In for syscallid %d and pid %d\n", syscallid, pid);
   /* If we have more than 6 arguments, we must put them on the stack */
   /* For the moment, we don't handle this case  */
   assert(NB_MAX_ARGS >= nb_args);
@@ -90,15 +91,54 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   }
   va_end(vargs);
 
+
+  char file[MAX_PATH];
+  char buf[BUFSIZ + 1];
+  FILE *maps;
+  sprintf(file, "/proc/%d/syscall", pid);
+  if(syscallid == 184) {
+    debug_print("%s", "DUMMY SYSCALL (SYS_TUXCALL)\n");
+  }
+
+  //******************
+  maps = fopen(file, "r");
+  while (fgets(buf, BUFSIZ, maps)) { debug_print("[inject_syscall][before syscall]%s", buf); }
+  fclose(maps);
+  //******************
+
+  // prepare registers for syscall
   ptrace_setregs(pid, &regs);
 
-  ptrace_cont(pid);
+  // execute syscall in tracee
+  //ptrace_cont(pid);
+  // can be replaced by ptrace_syscall to examine /prroc/[pid]/syscall
+  ptrace_syscall(pid);
   wait_event(pid);
+  //******************
+  maps = fopen(file, "r");
+  while (fgets(buf, BUFSIZ, maps)) { debug_print("[inject_syscall][inside syscall]%s", buf); }
+  fclose(maps);
+  //******************
+  // We resume normal execution by a ptrace_cont
+  ptrace_cont(pid);
+
+  // wait for sigtrap in tracee
+  wait_event(pid);
+
+  // restore old registers
   ptrace_getregs(pid, &regs);
+
   ret = regs.rax;
 
   ptrace_setregs(pid, &regs_backup);
 
+  //******************
+  maps = fopen(file, "r");
+  while (fgets(buf, BUFSIZ, maps)) { debug_print("[inject_syscall][after syscall]%s", buf); }
+  fclose(maps);
+  //******************
+
+  debug_print("[inject_syscall] Returning %d\n\n", ret);
   return ret;
 }
 
@@ -267,18 +307,18 @@ void unprotect_i(pid_t pid, char *start, size_t size) {
     char *range_start, *range_end;
     sscanf(buf, "%p-%p", &range_start, &range_end);
 
-	// Check if start is in the currently examined range
-	if(start >= range_start && start < range_end) {
+    // Check if start is in the currently examined range
+    if(start >= range_start && start < range_end) {
 
-	  // If the page is not fully protected, skip unprotection
+      debug_print("%s", buf);
+      // If the page is not fully protected, skip unprotection
       if (strstr(buf, "---p") == NULL) {
-	    debug_print("%p must be skipped because it is in already unprotected range: \n", start);
-        debug_print("%s", buf);
-		skip_unprotect = true;
-	  }
+        debug_print("%p must be skipped because it is in already unprotected range: \n", start);
+        skip_unprotect = true;
+      }
 
-	  break;
-	}
+      break;
+    }
   }
   int r = fclose(maps);
   if (r != 0)
@@ -329,7 +369,7 @@ void write_i(pid_t pid, int fd, const void *buf, size_t nbyte) {
 int openat_i(pid_t pid, char *pathname) {
   register_t ret = inject_syscall(pid, 4, SYS_openat, AT_FDCWD, pathname,
                  (long long unsigned) (O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
-  assert((int)ret > 0);
+  //assert((int)ret > 0);
   return ret;
 }
 
