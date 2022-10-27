@@ -59,7 +59,7 @@ extern struct tracer_buff_t * tracer_buff;
   /* We do the backup of registers */
   long r;
   register_t ret;
-  struct user_regs_struct regs, regs_backup;
+  struct user_regs_struct regs, regs_backup, regs_actual;
 
   ptrace_getregs(pid, &regs);
   regs_backup = regs;
@@ -91,7 +91,31 @@ extern struct tracer_buff_t * tracer_buff;
   }
   va_end(vargs);
 
+  // Original version
+  //********************************************
+  /*
+  // prepare registers for syscall
+  ptrace_setregs(pid, &regs);
 
+  // execute syscall in tracee
+  ptrace_cont(pid);
+
+  // wait for sigtrap in tracee
+  wait_event(pid);
+
+  // restore old registers
+  ptrace_getregs(pid, &regs);
+
+  ret = regs.rax;
+
+  ptrace_setregs(pid, &regs_backup);
+  */
+  //********************************************
+
+
+
+  // Debug version
+  //********************************************
   char file[MAX_PATH];
   char buf[BUFSIZ + 1];
   FILE *maps;
@@ -111,7 +135,7 @@ extern struct tracer_buff_t * tracer_buff;
 
   // execute syscall in tracee
   //ptrace_cont(pid);
-  // can be replaced by ptrace_syscall to examine /prroc/[pid]/syscall
+
   ptrace_syscall(pid);
   wait_event(pid);
   //******************
@@ -119,7 +143,14 @@ extern struct tracer_buff_t * tracer_buff;
   while (fgets(buf, BUFSIZ, maps)) { debug_print("[inject_syscall][inside syscall]%s", buf); }
   fclose(maps);
   //******************
-  // We resume normal execution by a ptrace_cont
+  // Capture register state to know what's going on
+  ptrace_getregs(pid, &regs_actual);
+  debug_print("[inject_syscall] regs_backup.rax=%d\n", regs_backup.rax);
+  debug_print("[inject_syscall] regs.rax=%d\n", regs.rax);
+  debug_print("[inject_syscall] regs_actual.rax=%d\n", regs_actual.rax);
+  //******************
+
+  // We resume normal execution with a ptrace_cont
   ptrace_cont(pid);
 
   // wait for sigtrap in tracee
@@ -137,6 +168,8 @@ extern struct tracer_buff_t * tracer_buff;
   while (fgets(buf, BUFSIZ, maps)) { debug_print("[inject_syscall][after syscall]%s", buf); }
   fclose(maps);
   //******************
+  //********************************************
+
 
   debug_print("[inject_syscall] Returning %d\n\n", ret);
   return ret;

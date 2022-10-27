@@ -331,11 +331,11 @@ static void handle_syscall(pid_t child) {
 }
 
 pid_t handle_events_until_dump_trap(pid_t wait_for) {
-  debug_print("%s", "[handle_events_until_dump_trap] In\n");
+  //debug_print("%s", "[handle_events_until_dump_trap] In\n");
   while (true) {
     event_t e = wait_event(wait_for);
     if (e.signo == SIGTRAP) {
-      debug_print("%s", "[handle_events_until_dump_trap] SIGTRAP\n");
+      //debug_print("%s", "[handle_events_until_dump_trap] SIGTRAP\n");
       if (is_dump_sigtrap(e.tid)) {
         clear_trap(e.tid);
         debug_print("%s", "[handle_events_until_dump_trap] Out by SIGTRAP\n");
@@ -351,7 +351,7 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
         continue;
       }
     } else if (e.signo == SIGSEGV) {
-      debug_print("%s", "[handle_events_until_dump_trap] SIGSEGV\n");
+      //debug_print("%s", "[handle_events_until_dump_trap] SIGSEGV\n");
       void *addr = round_to_page(e.sigaddr);
       switch (tracer_state) {
       case TRACER_UNLOCKED:
@@ -374,22 +374,22 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
       ptrace_syscall(e.tid);
     }
     else if (e.signo == SIGSTOP) {
-      debug_print("%s", "[handle_events_until_dump_trap] SIGSTOP\n");
+      //debug_print("%s", "[handle_events_until_dump_trap] SIGSTOP\n");
       /* A new thread is starting, ignore this event, next wait_event call will
          unblock the thread once its parents registers it in tids array */
     }
     else if (e.signo == SIGWINCH) {
-      debug_print("%s", "[handle_events_until_dump_trap] SIGWINCH\n");
+      //debug_print("%s", "[handle_events_until_dump_trap] SIGWINCH\n");
       /* Ignore signal SIGWINCH, tty resize */
       ptrace_syscall(e.tid);
       continue;
     }
     else {
-      debug_print("%s", "[handle_events_until_dump_trap] ELSE\n");
+      //debug_print("%s", "[handle_events_until_dump_trap] ELSE\n");
       errx(EXIT_FAILURE, "Unexpected signal in wait_sigtrap: %d\n", e.signo);
     }
   }
-  debug_print("%s", "[handle_events_until_dump_trap] Out\n");
+  //debug_print("%s", "[handle_events_until_dump_trap] Out\n");
 }
 
 static register_t receive_from_tracee(pid_t child) {
@@ -588,39 +588,29 @@ static void dump_unprotected_pages(pid_t pid) {
 
 static void tracer_dump(pid_t pid) {
 
-  debug_print("%s", "[tracer_dump] In\n");
+  printf("%s", "[tracer_dump] In\n");
 
-  printf("About to handle events\n");
+  protect_i(pid, 0x7ffff7dab000, PAGESIZE);
+  ptrace_cont(pid);
 
   /* Read arguments from tracee */
   handle_events_until_dump_trap(-1);
+
   register_t ret = get_arg_from_regs(pid);
   assert(ret == TRAP_START_ARGS);
 
   debug_print("receive string from tracee %d\n", pid);
   ptrace_getdata(pid, (long) tracer_buff->str_tmp, loop_name, SIZE_LOOP);
-  debug_print("got tracer_buff->str_tmp=%s\n", loop_name);
+  //debug_print("got loop_name=%s\n", loop_name);
   ptrace_syscall(pid);
 
   invocation = (int)receive_from_tracee(pid);
-  debug_print("got invocation=%d\n", invocation);
+  //debug_print("got invocation=%d\n", invocation);
   ptrace_syscall(pid);
 
   int arg_count = (int)receive_from_tracee(pid);
-  debug_print("got arg_count=%d\n", arg_count);
-
+  //debug_print("got arg_count=%d\n", arg_count);
   ptrace_syscall(pid);
-
-  char file[MAX_PATH];
-  char buf[BUFSIZ + 1];
-  FILE *maps;
-  sprintf(file, "/proc/%d/status", pid);
-  maps = fopen(file, "r");
-  while (fgets(buf, BUFSIZ, maps)) { debug_print("%s", buf); }
-  fclose(maps);
-  protect_i(pid, 0x7ffff7da4000, 4096);
-
-
 
   printf("DUMP( %s %d count = %d) \n", loop_name, invocation, arg_count);
 
@@ -640,6 +630,7 @@ static void tracer_dump(pid_t pid) {
   void *addresses[arg_count];
   for (i = 0; i < arg_count; i++) {
     addresses[i] = (void *)receive_from_tracee(pid);
+	debug_print("addresses[%d]=%p\n", i, addresses[i]);
     ptrace_syscall(pid);
   }
 
@@ -647,6 +638,10 @@ static void tracer_dump(pid_t pid) {
   handle_events_until_dump_trap(pid);
   ret = get_arg_from_regs(pid);
   assert(ret == TRAP_END_ARGS);
+
+  protect_i(pid, 0x7ffff7dab000, PAGESIZE);
+  ptrace_cont(pid);
+
 
   /* Dump hotpages to disk */
   flush_hot_pages_trace_to_disk(pid);
@@ -662,6 +657,8 @@ static void tracer_dump(pid_t pid) {
   for (i = 0; i < arg_count; i++) {
     void *start_of_page = round_to_page(addresses[i]);
     if (start_of_page != NULL) {
+	  debug_print("about to unprotect/dump page %p for i=%d\n", start_of_page, i);
+      //protect_i(pid, start_of_page, PAGESIZE);
       unprotect_i(pid, start_of_page, PAGESIZE);
       dump_page(pid, start_of_page);
     }
