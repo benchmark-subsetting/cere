@@ -43,7 +43,7 @@ def parse_line(regex_list, line):
     while not matchObj:
         try:
             i = i + 1
-            matchObj = re.match( regex_list[i], line )
+            matchObj = re.match( regex_list[i], line.decode("utf-8") )
         except IndexError:
             break
     return matchObj, i
@@ -55,11 +55,11 @@ def delete_useless_nodes(graph):
     step=0
     for n in nodes:
         #We have to remove this node
-        if not graph.node[n]['_valid']:
+        if not graph.nodes[n]['_valid']:
             in_degree = graph.in_degree(n, weight='weight')
             for predecessor in graph.predecessors(n):
                 part = round(float(graph.edge[predecessor][n]['weight'])/in_degree, 2)
-                graph.node[predecessor]['_self_coverage'] = round(graph.node[predecessor]['_self_coverage'] + graph.node[n]['_self_coverage'] * part, 2)
+                graph.nodes[predecessor]['_self_coverage'] = round(graph.nodes[predecessor]['_self_coverage'] + graph.nodes[n]['_self_coverage'] * part, 2)
                 for successor in graph.successors(n):
                     graph.add_edge(predecessor, successor, weight=round(graph.edge[predecessor][n]['weight']*(float(graph.edge[n][successor]['weight'])/in_degree), 2))
             graph.remove_node(n)
@@ -73,7 +73,7 @@ def fix_self_coverage(graph, samples):
         out_degree = graph.out_degree(n, weight='weight')
         #Don't touch root because we don't know the real in_degree
         if in_degree == 0: continue
-        graph.node[n]['_self_coverage'] = round(((in_degree - out_degree)/float(samples))*100, 1)
+        graph.nodes[n]['_self_coverage'] = round(((in_degree - out_degree)/float(samples))*100, 1)
     return True
 
 def add_node(digraph, matchObj):
@@ -89,21 +89,24 @@ def add_node(digraph, matchObj):
     else:
         valid = False
 
+    print(type(digraph))
+    print(digraph)
+
     digraph.add_node(_id, _name = name)
-    digraph.node[_id]['_self_coverage'] = float(matchObj.group(4))
-    digraph.node[_id]['_coverage'] = coverage
-    digraph.node[_id]['_matching'] = False
-    digraph.node[_id]['_error'] = 100.0
-    digraph.node[_id]['_error_message'] = None
-    digraph.node[_id]['_valid'] = valid
-    digraph.node[_id]['_tested'] = False
-    digraph.node[_id]['_to_test'] = False
-    digraph.node[_id]['_transfered'] = False
-    digraph.node[_id]['_small'] = False
-    digraph.node[_id]['_selected'] = False
-    digraph.node[_id]['_invivo'] = 0.0
-    digraph.node[_id]['_invitro'] = 0.0
-    digraph.node[_id]['_invocations'] = []
+    digraph.nodes[_id]['_self_coverage'] = float(matchObj.group(4))
+    digraph.nodes[_id]['_coverage'] = coverage
+    digraph.nodes[_id]['_matching'] = False
+    digraph.nodes[_id]['_error'] = 100.0
+    digraph.nodes[_id]['_error_message'] = None
+    digraph.nodes[_id]['_valid'] = valid
+    digraph.nodes[_id]['_tested'] = False
+    digraph.nodes[_id]['_to_test'] = False
+    digraph.nodes[_id]['_transfered'] = False
+    digraph.nodes[_id]['_small'] = False
+    digraph.nodes[_id]['_selected'] = False
+    digraph.nodes[_id]['_invivo'] = 0.0
+    digraph.nodes[_id]['_invitro'] = 0.0
+    digraph.nodes[_id]['_invocations'] = []
     return digraph
 
 def remove_cycle(digraph, cycle, samples):
@@ -123,10 +126,10 @@ def remove_cycle(digraph, cycle, samples):
             if successor not in cycle:
                 childs.append({'id' : successor, 'weight' : digraph.edge[node][successor]['weight']})
         #keep the node with the highest coverage
-        if digraph.node[node]['_coverage'] > digraph.node[toKeep]['_coverage']:
+        if digraph.nodes[node]['_coverage'] > digraph.nodes[toKeep]['_coverage']:
             toKeep = node
     #Backup the node to keep
-    replacer = digraph.node[toKeep]
+    replacer = digraph.nodes[toKeep]
     #remove the cycle
     digraph.remove_nodes_from(cycle)
     #replace it by the node to keep
@@ -147,7 +150,7 @@ def remove_cycle(digraph, cycle, samples):
     #Update the coverage of the new node. We don't need to do it
     #for self coverage as it will be updated by the fonction fix_self_coverage.
     in_degree = digraph.in_degree(toKeep, weight='weight')
-    digraph.node[toKeep]['_coverage'] = round(((in_degree)/float(samples))*100, 1)
+    digraph.nodes[toKeep]['_coverage'] = round(((in_degree)/float(samples))*100, 1)
     return digraph
 
 def remove_cycles(digraph, sample):
