@@ -267,18 +267,17 @@ void unprotect_i(pid_t pid, char *start, size_t size) {
     char *range_start, *range_end;
     sscanf(buf, "%p-%p", &range_start, &range_end);
 
-	// Check if start is in the currently examined range
-	if(start >= range_start && start < range_end) {
+    // Check if start is in the currently examined range
+    if(start >= range_start && start < range_end) {
 
-	  // If the page is not fully protected, skip unprotection
+      // If the page is not fully protected, skip unprotection
       if (strstr(buf, "---p") == NULL) {
-	    debug_print("%p must be skipped because it is in already unprotected range: \n", start);
-        debug_print("%s", buf);
-		skip_unprotect = true;
-	  }
+        debug_print("%p must be skipped because it is in already unprotected range: \n", start);
+        skip_unprotect = true;
+      }
 
-	  break;
-	}
+      break;
+   }
   }
   int r = fclose(maps);
   if (r != 0)
@@ -296,13 +295,10 @@ void unprotect_i(pid_t pid, char *start, size_t size) {
     errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
          start, (int) ret);
   }
-  debug_print("UNPROTECT DONE :  %p (%lu)\n", start, size);
 }
 
 void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
                        size_t size_p) {
-  debug_print("TO BE UNPROTECTED :  %p (%lu) ... ", start_u, size_u);
-  debug_print("TO BE PROTECTED :  %p (%lu)\n", start_p, size_p);
   register_t ret = inject_syscall(pid, 6, SYS_unprotect_protect,
                   start_p, size_p,
                   (long long unsigned) PROT_NONE,
