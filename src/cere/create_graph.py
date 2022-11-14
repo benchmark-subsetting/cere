@@ -51,23 +51,23 @@ def parse_line(regex_list, line):
 def delete_useless_nodes(graph):
     parents=[]
     childs=[]
-    nodes = (list(reversed(nx.topological_sort(graph))))
+    nodes = (list(nx.topological_sort(graph)))
     step=0
     for n in nodes:
         #We have to remove this node
         if not graph.nodes[n]['_valid']:
             in_degree = graph.in_degree(n, weight='weight')
             for predecessor in graph.predecessors(n):
-                part = round(float(graph.edge[predecessor][n]['weight'])/in_degree, 2)
+                part = round(float(graph.edges[predecessor, n]['weight'])/in_degree, 2)
                 graph.nodes[predecessor]['_self_coverage'] = round(graph.nodes[predecessor]['_self_coverage'] + graph.nodes[n]['_self_coverage'] * part, 2)
                 for successor in graph.successors(n):
-                    graph.add_edge(predecessor, successor, weight=round(graph.edge[predecessor][n]['weight']*(float(graph.edge[n][successor]['weight'])/in_degree), 2))
+                    graph.add_edge(predecessor, successor, weight=round(graph.edges[predecessor, n]['weight']*(float(graph.edges[n, successor]['weight'])/in_degree), 2))
             graph.remove_node(n)
     return True
 
 #Fix the self coverage for leaves
 def fix_self_coverage(graph, samples):
-    nodes = (list(reversed(nx.topological_sort(graph))))
+    nodes = (list(nx.topological_sort(graph)))
     for n in nodes:
         in_degree = graph.in_degree(n, weight='weight')
         out_degree = graph.out_degree(n, weight='weight')
@@ -76,7 +76,7 @@ def fix_self_coverage(graph, samples):
         graph.nodes[n]['_self_coverage'] = round(((in_degree - out_degree)/float(samples))*100, 1)
     return True
 
-def add_node(digraph, matchObj):
+def custom_add_node(digraph, matchObj):
     _id = matchObj.group(1)
     name = matchObj.group(2)
 
@@ -88,9 +88,6 @@ def add_node(digraph, matchObj):
     if "__cere__"  in name: valid = True
     else:
         valid = False
-
-    print(type(digraph))
-    print(digraph)
 
     digraph.add_node(_id, _name = name)
     digraph.nodes[_id]['_self_coverage'] = float(matchObj.group(4))
@@ -120,11 +117,11 @@ def remove_cycle(digraph, cycle, samples):
         #find parents
         for predecessor in digraph.predecessors(node):
             if predecessor not in cycle:
-                parents.append({'id' : predecessor, 'weight' : digraph.edge[predecessor][node]['weight']})
+                parents.append({'id' : predecessor, 'weight' : digraph.edges[predecessor, node]['weight']})
         #find childs
         for successor in digraph.successors(node):
             if successor not in cycle:
-                childs.append({'id' : successor, 'weight' : digraph.edge[node][successor]['weight']})
+                childs.append({'id' : successor, 'weight' : digraph.edges[node, successor]['weight']})
         #keep the node with the highest coverage
         if digraph.nodes[node]['_coverage'] > digraph.nodes[toKeep]['_coverage']:
             toKeep = node
@@ -133,17 +130,28 @@ def remove_cycle(digraph, cycle, samples):
     #remove the cycle
     digraph.remove_nodes_from(cycle)
     #replace it by the node to keep
-    digraph.add_node(toKeep, replacer)
+    digraph.add_node(toKeep,
+        _name=replacer["_name"],
+        _matching=replacer["_matching"],
+        _valid=replacer["_valid"],
+        _to_test=replacer["_to_test"],
+        _small=replacer["_small"],
+        _tested=replacer["_tested"],
+        _self_coverage=replacer["_self_coverage"],
+        _coverage=replacer["_coverage"],
+        label=replacer["label"],
+        style=replacer["style"]
+    )
     #restore edges
     for parent in parents:
         if digraph.has_edge(parent['id'], toKeep):
-            w = int(digraph.edge[parent['id']][toKeep]['weight'] + parent['weight'])
+            w = int(digraph.edges[parent['id'], toKeep]['weight'] + parent['weight'])
         else:
             w = int(parent['weight'])
         digraph.add_edge(parent['id'], toKeep, weight=w)
     for child in childs:
         if digraph.has_edge(toKeep, child['id']):
-            w = int(digraph.edge[toKeep][child['id']]['weight'] + child['weight'])
+            w = int(digraph.edges[toKeep, child['id']]['weight'] + child['weight'])
         else:
             w = int( child['weight'])
         digraph.add_edge(toKeep, child['id'], weight=w)
@@ -165,7 +173,7 @@ def parse_gPerfTool(digraph, cmd, regex_list):
     for line in cmd.stdout:
         matchObj, step = parse_line(regex_list, line)
         if step < 2:
-            digraph = add_node(digraph, matchObj)
+            digraph = custom_add_node(digraph, matchObj)
         elif step == 2:
             digraph.add_edge(matchObj.group(1), matchObj.group(2), weight=int(matchObj.group(3)))
         elif step == 3:

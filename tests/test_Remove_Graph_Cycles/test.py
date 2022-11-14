@@ -13,28 +13,28 @@ if __name__ == "__main__":
     samples = 100
     digraph.add_nodes_from(nodes)
     for i in nodes:
-        digraph.node[i]['_name'] = "Node_" + str(i)
-        digraph.node[i]['_matching'] = True
-        digraph.node[i]['_valid'] = True
-        digraph.node[i]['_to_test'] = False
-        digraph.node[i]['_small'] = False
-        digraph.node[i]['_tested'] = False
+        digraph.nodes[i]['_name'] = "Node_" + str(i)
+        digraph.nodes[i]['_matching'] = True
+        digraph.nodes[i]['_valid'] = True
+        digraph.nodes[i]['_to_test'] = False
+        digraph.nodes[i]['_small'] = False
+        digraph.nodes[i]['_tested'] = False
 
     #Assign coverage and self_coverage
-    digraph.node[1]['_self_coverage'] = 10.
-    digraph.node[1]['_coverage'] = 60.
-    digraph.node[2]['_self_coverage'] = 5.
-    digraph.node[2]['_coverage'] = 40.
-    digraph.node[3]['_self_coverage'] = 30.
-    digraph.node[3]['_coverage'] = 13.
-    digraph.node[4]['_self_coverage'] = 10.
-    digraph.node[4]['_coverage'] = 0.
-    digraph.node[5]['_self_coverage'] = 10.
-    digraph.node[5]['_coverage'] = 0.
-    digraph.node[6]['_self_coverage'] = 26.
-    digraph.node[6]['_coverage'] = 26.
-    digraph.node[7]['_self_coverage'] = 9.
-    digraph.node[7]['_coverage'] = 9.
+    digraph.nodes[1]['_self_coverage'] = 10.
+    digraph.nodes[1]['_coverage'] = 60.
+    digraph.nodes[2]['_self_coverage'] = 5.
+    digraph.nodes[2]['_coverage'] = 40.
+    digraph.nodes[3]['_self_coverage'] = 30.
+    digraph.nodes[3]['_coverage'] = 13.
+    digraph.nodes[4]['_self_coverage'] = 10.
+    digraph.nodes[4]['_coverage'] = 0.
+    digraph.nodes[5]['_self_coverage'] = 10.
+    digraph.nodes[5]['_coverage'] = 0.
+    digraph.nodes[6]['_self_coverage'] = 26.
+    digraph.nodes[6]['_coverage'] = 26.
+    digraph.nodes[7]['_self_coverage'] = 9.
+    digraph.nodes[7]['_coverage'] = 9.
 
     #add edges
     digraph.add_edge(1, 3, weight = 30.)
@@ -62,13 +62,13 @@ if __name__ == "__main__":
         plot(digraph, "final_fail")
         exit(1)
     #If updating coverages failed to generate good coverage
-    if digraph.node[3]["_self_coverage"] != 50 or digraph.node[3]["_coverage"] != 85:
+    if digraph.nodes[3]["_self_coverage"] != 50 or digraph.nodes[3]["_coverage"] != 85:
         print("Error in removing cycle")
         plot(digraph, "final_fail")
         exit(1)
     in_degree = digraph.in_degree(3, weight='weight')
     out_degree = digraph.out_degree(3, weight='weight')
-    if in_degree != digraph.node[3]["_coverage"] or in_degree - out_degree != digraph.node[3]["_self_coverage"]:
+    if in_degree != digraph.nodes[3]["_coverage"] or in_degree - out_degree != digraph.nodes[3]["_self_coverage"]:
         print("Error in/out edges are wrong")
         plot(digraph, "final_fail")
         exit(1)

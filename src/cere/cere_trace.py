@@ -154,7 +154,7 @@ def need_to_measure(region):
     return True
 
 def launch_trace(args, regions):
-    with tempfile.NamedTemporaryFile() as temp:
+    with tempfile.NamedTemporaryFile(mode="wt") as temp:
         for region in regions:
             temp.write(region + '\n')
         temp.flush()

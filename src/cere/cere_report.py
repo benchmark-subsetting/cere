@@ -340,7 +340,7 @@ class Report:
         if (len(self._tree) == 0):
             logger.error("No codelets selected")
         for node in self._tree:
-            if (node._parent is not "none"):
+            if (node._parent != "none"):
                 orphan = True
                 for parent in self._tree:
                     if(parent._id == node._parent):

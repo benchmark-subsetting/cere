@@ -115,7 +115,7 @@ AC_C_BIGENDIAN(
 
 # Check for Python >= 2.7
 
-AM_PATH_PYTHON([2.7])
+AM_PATH_PYTHON([3])
 
 # Check for Python modules
 

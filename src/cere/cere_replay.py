@@ -105,7 +105,7 @@ def run(args):
   if (PREDICTION_MODE and args.plugin_instr != var.RDTSC_WRAPPER):
     logger.warning("You are not using the default library. Computing predicted time\n\
                     may not work if the replay output is not the same")
-  for invocation, part in invocations.iteritems():
+  for invocation, part in invocations.items():
     if os.path.isfile("{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, args.region, invocation)) and not args.force:
       logger.warning("Replay already measured for {0} invocation {1}.".format(args.region, invocation))
       continue
