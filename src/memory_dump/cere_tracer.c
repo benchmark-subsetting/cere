@@ -461,6 +461,7 @@ static void tracer_lock_mem(pid_t pid) {
   void *addresses[65536];
   char buf[BUFSIZ + 1];
   int counter = 0;
+  bool first_page_ignored = false;
 
   while (fgets(buf, BUFSIZ, maps)) {
     void *start, *end;
@@ -475,15 +476,25 @@ static void tracer_lock_mem(pid_t pid) {
     /* Ignore libc pages  */
     if (strstr(buf, "linux-gnu") != NULL)
       continue;
+    if (strstr(buf, "/usr/lib") != NULL)
+      continue;
+
+    // Ignore anonymous memory pages that are not the heap
+    if (strstr(buf, "00000000 00:00 0") != NULL && strstr(buf, "heap") == NULL)
+      continue;
 
     /* Ignore libc special mem zones  */
+    /* We have to find a good criteria to detect that specific memory page, */
+    /* for now we will consider that this will always be the first page. */
     /* If we don't ignore those mem zones we get this error */
     /* /usr/bin/ld: la section .interp chargée à  */
     /*    [00000000004003c0 -> 00000000004003db]  */
     /*    chevauche la section s000000400000 chargée à  */
     /*    [0000000000400000 -> 0000000000400fff] */
-    if (strstr(buf, "r-xp") != NULL)
+    if (!first_page_ignored) {
+      first_page_ignored = true;
       continue;
+    }
 
     /* Ignore vsyscall special mem zones  */
     if (strstr(buf, "vsyscall") != NULL)
