@@ -18,11 +18,11 @@
 
 import argparse
 import logging
-import cere_configure
+from cere import cere_configure
 import os
-import vars as var
-from ilp_update_graph import update
-from granularity import *
+from cere import vars as var
+from cere.ilp_update_graph import update
+from cere.granularity import *
 
 logger = logging.getLogger('ILP selector')
 

@@ -225,7 +225,7 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''
 
     if ext in FORTRAN_EXTENSIONS:
-        if DRAGONEGG_PATH:
+        if FORTRAN_SUPPORT:
 #            opt = [s for s in COMPIL_OPT if s.startswith('-J')]
 #            if opt:
 #              INCLUDES.append(opt[0])

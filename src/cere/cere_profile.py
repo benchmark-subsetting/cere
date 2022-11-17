@@ -19,12 +19,12 @@
 import os
 import subprocess
 import sys
-import cere_configure
+from cere import cere_configure
 import logging
 import shutil
 import argparse
-import vars as var
-from create_graph import create_graph
+from cere import vars as var
+from cere.create_graph import create_graph
 
 logger = logging.getLogger('Profile')
 

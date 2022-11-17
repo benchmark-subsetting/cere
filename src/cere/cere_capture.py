@@ -24,10 +24,10 @@ import argparse
 import logging
 import copy
 import subprocess
-import utils
-import vars as var
-import errors as cere_error
-import cere_configure
+from cere import utils
+from cere import vars as var
+from cere import errors as cere_error
+from cere import cere_configure
 
 logger = logging.getLogger('Capture')
 

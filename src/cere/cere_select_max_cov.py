@@ -18,11 +18,11 @@
 
 import argparse
 import logging
-import cere_configure
+from cere import cere_configure
 import os
-import vars as var
-from max_cov_update_graph import update
-from regions_selector import *
+from cere import vars as var
+from cere.max_cov_update_graph import update
+from cere.regions_selector import *
 
 logger = logging.getLogger('Max-Cov selector')
 

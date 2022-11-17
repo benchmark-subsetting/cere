@@ -22,14 +22,14 @@ import os
 import subprocess
 import shutil
 import csv
-import cere_configure
-import cere_capture
-import cere_replay
-import cere_trace
-import cere_selectinv
-import vars as var
-import utils
-from graph_utils import *
+from cere import cere_configure
+from cere import cere_capture
+from cere import cere_replay
+from cere import cere_trace
+from cere import cere_selectinv
+from cere import vars as var
+from cere import utils
+from cere.graph_utils import *
 import networkx as nx
 
 logger = logging.getLogger('Check-matching')

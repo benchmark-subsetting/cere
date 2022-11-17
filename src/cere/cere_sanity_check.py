@@ -18,7 +18,7 @@
 
 import os
 import subprocess
-import cere_configure
+from cere import cere_configure
 import logging
 import csv
 import argparse

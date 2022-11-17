@@ -44,7 +44,8 @@ def safe_system(command):
     Try-catch system call
     Verify system call and exit with appropriate error message
     '''
-    if(os.system(command)):
+    ret = os.system(command)
+    if(ret):
         fail_lel("safe_system -> " + command)
 
 def user_main(FILE, LOOP, mode_opt):
@@ -107,7 +108,7 @@ def find_section_offset(addr, elfmap):
 
 def parse_sym(binary, elfmap):
     sym_map = {}
-    elf = sysout("readelf -sW {0}".format(binary))
+    elf = sysout("readelf -sW {0}".format(binary)).decode('utf-8')
     elf_lines = elf.split('\n')
 
     for i, l in enumerate(elf_lines):
@@ -136,12 +137,14 @@ def parse_sym(binary, elfmap):
         if not off:
             # ignore non static objs
             continue
+
         sym_map[name] = dict(addr=addr, offset=off, size=size)
+
     return sym_map
 
 def parse_elf(binary):
     elf_map = {}
-    elf = sysout("readelf -SW {0}".format(binary))
+    elf = sysout("readelf -SW {0}".format(binary)).decode('utf-8')
     elf_lines = elf.split('\n')
     for l in elf_lines:
         l = l.strip()
@@ -163,7 +166,7 @@ def extract_symbols(DIR):
     # get list of static names
     original = DIR + "/lel_bin"
     original_map = parse_sym(original, parse_elf(original))
-    with file(DIR + "/static.names", "w") as f:
+    with open((DIR + "/static.names").encode(), "w") as f:
         for n in original_map:
             f.write(n + "\n")
 
@@ -230,6 +233,8 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                 "{objcopy} --weaken-symbols={dump_dir}/static.names {f}".format(
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
+
+
     safe_system(CLANG + " -c realmain.c")
     OPTS = compile_memory_dump_objects(mode_opt, DIR)
     with tempfile.NamedTemporaryFile() as f:
@@ -238,7 +243,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                  + " {libdir} -lcere_load -Wl,-z,now"
                  + " -ldl {wrapper}\n").format(
                 opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
-                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR))
+                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
 
         f.flush()
         safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))

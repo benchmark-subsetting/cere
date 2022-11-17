@@ -21,14 +21,14 @@ import numpy as np
 import os
 import shutil
 import logging
-import cere_configure
-import cere_instrument
+from cere import cere_configure
+from cere import cere_instrument
 import networkx as nx
 import tempfile
-from graph_utils import load_graph
-import vars as var
-import utils
-import errors as cere_error
+from cere.graph_utils import load_graph
+from cere import vars as var
+from cere import utils
+from cere import errors as cere_error
 
 logger = logging.getLogger('Trace')
 
@@ -154,7 +154,7 @@ def need_to_measure(region):
     return True
 
 def launch_trace(args, regions):
-    with tempfile.NamedTemporaryFile() as temp:
+    with tempfile.NamedTemporaryFile(mode="wt") as temp:
         for region in regions:
             temp.write(region + '\n')
         temp.flush()

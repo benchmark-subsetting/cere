@@ -41,8 +41,6 @@
 #include <fstream>
 #include <sstream>
 
-#undef LLVM_BINDIR
-#include "config.h"
 #define DEBUG_TYPE "code-extractor"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/StringExtras.h"
@@ -277,7 +275,11 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
     // changing them to branch to NewBB instead.
     for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i)
       if (Blocks.count(PN->getIncomingBlock(i))) {
+#if LLVM_VERSION_MAJOR >= 9
+        Instruction *TI = &(PN->getIncomingBlock(i)->back());
+#else
         TerminatorInst *TI = PN->getIncomingBlock(i)->getTerminator();
+#endif
         TI->replaceUsesOfWith(OldPred, NewBB);
       }
 
@@ -307,8 +309,12 @@ void RegionExtractor::severSplitPHINodes(BasicBlock *&Header) {
 
 void RegionExtractor::splitReturnBlocks() {
   for (SetVector<BasicBlock *>::iterator I = Blocks.begin(), E = Blocks.end();
-       I != E; ++I)
+       I != E; ++I) {
+#if LLVM_VERSION_MAJOR >= 9
+    if (ReturnInst *RI = dyn_cast<ReturnInst>(&((*I)->back()))) {
+#else
     if (ReturnInst *RI = dyn_cast<ReturnInst>((*I)->getTerminator())) {
+#endif
       BasicBlock *New = (*I)->splitBasicBlock(RI, (*I)->getName() + ".ret");
       if (DT) {
         // Old dominates New. New node dominates all other nodes dominated
@@ -330,6 +336,7 @@ void RegionExtractor::splitReturnBlocks() {
           DT->changeImmediateDominator(*I, NewNode);
       }
     }
+  }
 }
 
 /// \brief Removes extension from \p filename.
@@ -434,7 +441,7 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
     oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
-    std::string path = firstLoc->getDirectory();
+    std::string path = firstLoc->getDirectory().str();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
     newFunctionName = updateFileFormat(newFunctionName);
@@ -544,10 +551,18 @@ Function *RegionExtractor::constructFunction(
       Value *Idx[2];
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(header->getContext()));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(header->getContext()), i);
+#if LLVM_VERSION_MAJOR >= 9
+      Instruction *TI = &(newFunction->begin()->back());
+#else
       TerminatorInst *TI = newFunction->begin()->getTerminator();
+#endif
       GetElementPtrInst *GEP = GetElementPtrInst::Create(
           &*(AI)->getType(), Idx[0], Idx[1], "gep_" + inputs[i]->getName(), TI);
+#if LLVM_VERSION_MAJOR >= 9
+      RewriteVal = new LoadInst(, GEP, "loadgep_" + inputs[i]->getName(), TI);
+#else
       RewriteVal = new LoadInst(GEP, "loadgep_" + inputs[i]->getName(), TI);
+#endif
     } else
       RewriteVal = AI++;
     std::vector<User *> Users(inputs[i]->user_begin(), inputs[i]->user_end());
@@ -562,7 +577,7 @@ Function *RegionExtractor::constructFunction(
   for (unsigned i = 0, e = inputs.size() + outputs.size(); i != e; ++i, ++AI) {
     if (AI->getType()->isPointerTy()) {
       PointerType *pointerType = dyn_cast<PointerType>(AI->getType());
-      Type *elementType = pointerType->getElementType();
+      Type *elementType = pointerType->getPointerElementType();
       // Add no alias if it's not an array or a structure
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
         AI->addAttr(Attribute::NoAlias);
@@ -585,7 +600,11 @@ Function *RegionExtractor::constructFunction(
   for (unsigned i = 0, e = Users.size(); i != e; ++i)
     // The BasicBlock which contains the branch is not in the region
     // modify the branch target to a new block
+#if LLVM_VERSION_MAJOR>=9
+    if (Instruction *TI = dyn_cast<Instruction>(Users[i]))
+#else
     if (TerminatorInst *TI = dyn_cast<TerminatorInst>(Users[i]))
+#endif
       if (!Blocks.count(TI->getParent()) &&
           TI->getParent()->getParent() == oldFunction)
         TI->replaceUsesOfWith(header, newHeader);
@@ -777,11 +796,7 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
 
   // Reload the outputs passed in by reference
   for (unsigned i = 0, e = outputs.size(); i != e; ++i) {
-#if LLVM_VERSION_MINOR == 5
-    Value *Output = nullptr;
-#else
     Value *Output = 0;
-#endif
     if (AggregateArgs) {
       Value *Idx[2];
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
@@ -821,7 +836,11 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
   for (SetVector<BasicBlock *>::const_iterator i = Blocks.begin(),
                                                e = Blocks.end();
        i != e; ++i) {
+#if LLVM_VERSION_MAJOR >= 9
+    Instruction *TI = &((*i)->back());
+#else
     TerminatorInst *TI = (*i)->getTerminator();
+#endif
     for (unsigned i = 0, e = TI->getNumSuccessors(); i != e; ++i)
       if (!Blocks.count(TI->getSuccessor(i))) {
         BasicBlock *OldTarget = TI->getSuccessor(i);
@@ -833,11 +852,7 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
           NewTarget = BasicBlock::Create(
               Context, OldTarget->getName() + ".exitStub", newFunction);
           unsigned SuccNum = switchVal++;
-#if LLVM_VERSION_MINOR == 5
-          Value *brVal = nullptr;
-#else
           Value *brVal = 0;
-#endif
           switch (NumExitBlocks) {
           case 0:
           case 1:

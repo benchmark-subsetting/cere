@@ -18,15 +18,15 @@
 
 import sys
 import os
-import cPickle as pickle
+import pickle
 import networkx as nx
 import subprocess
-from graph_utils import *
-import cere_configure
-import cere_check_matching
+from cere.graph_utils import *
+from cere import cere_configure
+from cere import cere_check_matching
 import logging
-import vars as var
-import utils
+from cere import vars as var
+from cere import utils
 
 logger = logging.getLogger('ILP selector')
 

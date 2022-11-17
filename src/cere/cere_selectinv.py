@@ -21,9 +21,9 @@ import os
 import logging
 import shutil
 import subprocess
-import vars as var
-import utils
-import cere_configure
+from cere import vars as var
+from cere import utils
+from cere import cere_configure
 import csv
 import numpy as np
 import matplotlib
@@ -49,7 +49,7 @@ def parse_codelet_csv(csvfile, codelet):
     with open(csvfile) as f:
         reader = csv.DictReader(f)
         try:
-            entry = reader.next()
+            entry = next(reader)
             assert(entry['Codelet Name'] == codelet)
             return entry
         except StopIteration:
@@ -68,7 +68,7 @@ def parse_trace_file(tracefile):
                  size = size)
 
 def subsample(trace, n):
-    samples = np.random.choice(trace['size'], n)
+    samples = np.random.choice(int(trace['size']), n)
     trace['invocations'] = trace['invocations'][samples,]
     trace['cycles'] = trace['cycles'][samples,]
     trace['size'] = n
@@ -85,7 +85,7 @@ def clusterize(trace):
     cycles = preprocessing.scale(cycles)
 
     min_samples = max(1,trace['size']/100)
-    clusterer = cluster.DBSCAN(min_samples=min_samples, eps=.3)
+    clusterer = cluster.DBSCAN(min_samples=int(min_samples), eps=.3)
     clusterer.fit(cycles)
     return clusterer.labels_
 
@@ -133,7 +133,7 @@ def clusterize_invocations(codelet, csvfile, tracefile):
         weights.append(wei)
 
 
-    with file(codelet + '.invocations', 'w') as output:
+    with open(codelet + '.invocations', 'wt') as output:
         for i in range(len(clusters)):
             line = "{invocation} {weight} {cycles}\n".format(
                 invocation = representatives[i],
