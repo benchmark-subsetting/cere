@@ -104,6 +104,7 @@ std::string updateFileFormat(std::string str) {
 
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
+/// Can be merged with the loop version
 std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   std::string Separator = "_";
 
@@ -115,6 +116,7 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
   if (DILocation *firstLoc = callInst->getDebugLoc()) {
+    oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
     std::string path = firstLoc->getDirectory();
@@ -147,6 +149,21 @@ bool ChooseExtract(std::string functionCall, std::string RegionName,
 
     else
       return false;
+  }
+}
+
+/// Find omp outlined name for the parralel region
+std::string findOutlinedName(CallInst *callInst) {
+  std::string str;
+  llvm::raw_string_ostream rso(str);
+  callInst->print(rso);
+
+  size_t place = str.find(".omp_outlined.");
+  if (place == std::string::npos) {
+    exit(0);
+  } else {
+    size_t place2 = str.substr(place).find(" ");
+    return str.substr(place, place2);
   }
 }
 
@@ -184,6 +201,22 @@ int SplitOMPCall(Module *mod, Function *F, DominatorTree &DT,
   return t;
 }
 
+/// \brief Add a new region in the regions file if not already present.
+/// Can be merged with the loop version
+void add_region_to_file(std::string cere_region, std::string omp_region, RegionExtractor Extractor) {
+  std::string OmpFileInfos = "omp_outlined_to_cere";
+  std::fstream regionstream(OmpFileInfos.c_str(),
+                          std::ios::in | std::ios::out | std::ios::app);
+  if (regionstream.is_open()) {
+    if (!Extractor.is_region_in_file(cere_region, regionstream)) {
+      regionstream << cere_region + " " + omp_region +"\n";
+    }
+    regionstream.close();
+  } else {
+    errs() << "Cannot open file >" << OmpFileInfos << "<\n";
+  }
+}
+
 /// Extract in a new function the omp fork call basic block
 bool ExtractOMPCall(Module *mod, Function *F, Pass *P, bool ProfileApp,
                     std::string RegionName) {
@@ -195,6 +228,10 @@ bool ExtractOMPCall(Module *mod, Function *F, Pass *P, bool ProfileApp,
         if (ChooseExtract(functionCall, RegionName, callInst, F)) {
           RegionExtractor Extractor = RegionExtractor(
               callInst->getParent(), RegionName, ProfileApp, true);
+          if(ProfileApp) {
+            //We must record wich omp.outlined function is called by this kmpc_fork_call
+            add_region_to_file(createFunctionName(F, callInst), findOutlinedName(callInst), Extractor);
+          }
           Extractor.extractCodeRegion();
           break;
         }
@@ -206,11 +243,11 @@ bool ExtractOMPCall(Module *mod, Function *F, Pass *P, bool ProfileApp,
 
 bool OmpRegionOutliner::runOnFunction(Function &F) {
   Module *mod = F.getParent();
-
   if (F.getName().find("__cere__") != std::string::npos)
     return false;
-  if (F.getName().find(".omp_microtask") != std::string::npos)
+  if (F.getName().find(".omp_outlined") != std::string::npos)
     return false;
+
   int work = 1;
   DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   while (work) {
