@@ -21,7 +21,7 @@ AC_SUBST(CERELIBS, $libdir)
 # Check for specific compilers
 AC_PROG_CC([gcc])
 
-AX_LLVM([7.0],[7.1.0],[all])
+AX_LLVM([7.0],[16.0],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
 # Check if Fortran/flang has been enabled (disabled by default)
@@ -113,7 +113,7 @@ AC_C_BIGENDIAN(
                [AC_MSG_ERROR([universal endianess not supported])]
                )
 
-# Check for Python >= 2.7
+# Check for Python >= 3
 
 AM_PATH_PYTHON([3])
 
