@@ -25,7 +25,7 @@ RUN apt-get -y install \
       llvm-7 llvm-7-dev llvm-7-tools libomp-7-dev clang-7 flang-7 \
       python3-matplotlib python3-jinja2 python3-sklearn python3-numpy \
       python3-pulp python3-pydot libgraphviz-dev python3-pygraphviz \
-      python3-pydotplus
+      python3-pydotplus python3-networkx
 
 # Install ronn via gemm (as the version on Ubuntu repos
 # is older and does not include a critical bugfix)

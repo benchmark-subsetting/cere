@@ -7,7 +7,7 @@ fi
 
 fortran_support=`grep 'FORTRAN_SUPPORT' ../config.h | cut -d " " -f 3`
 #Test if fortran/flang is available and select tests accordingly
-if [ "$fortran_support" == "\"no\"" ]; then
+if [ "$fortran_support" != "\"yes\"" ]; then
   tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' '!' -exec test -e "{}/fortran_test" ';' -print | sort)"
 else
   tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' | sort)"
