@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-  
+
+#define stderr_print(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
 
 static int value = 10;
 
@@ -8,7 +9,7 @@ void check(void)
 {
   int i;
   for (i = 0; i < 10; i++) {
-      printf("value = %d\n", value); 
+      stderr_print("value = %d\n", value);
   }
 }
 
