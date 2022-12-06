@@ -55,11 +55,14 @@ jobs:
           export PATH=$PATH:/var/lib/gems/2.7.0/gems/ronn-ng-0.9.1/bin
           export PYTHONPATH=/usr/local/lib/python3.8/site-packages
           libtoolize && ./autogen.sh && ./configure
-          make && sudo make install && make clean
+          make && sudo make install
 
       - name: Run CERE tests
         run: |
           export PYTHONPATH=/usr/local/lib/python3.8/site-packages
+          ls /usr/local/lib/python3.8/site-packages
+          ls -la /usr/bin/python*
+          python --version
           make check
 
       - name : Archive test results
