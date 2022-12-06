@@ -270,6 +270,7 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
         safe_system(("{link} -o {binary} {opts}").format(link=CLANG,
                 binary=BINARY, opts=COMPIL_OPT))
 
+
 def link(args):
     function={}
     function["replay_fun"] = replay_fun

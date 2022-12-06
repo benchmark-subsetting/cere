@@ -1,4 +1,4 @@
-AC_PREREQ([2.71])
+AC_PREREQ([2.69])
 AC_INIT([cere],[0.3.1],[cere-dev@googlegroups.com])
 AM_SILENT_RULES([yes])
 AC_CONFIG_AUX_DIR(autoconf)
@@ -20,6 +20,8 @@ AC_SUBST(CERELIBS, $libdir)
 
 # Check for specific compilers
 AC_PROG_CC([gcc])
+AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
+AC_SUBST(GCC_PATH, $CC)
 
 AX_LLVM([7.0],[16.0],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
@@ -35,9 +37,7 @@ fi
 AC_DEFINE_UNQUOTED([FORTRAN_SUPPORT], ["$with_flang"], [enables or disables Fortran/flang support])
 AC_SUBST(FORTRAN_SUPPORT, $with_flang)
 
-AC_CHECK_LIB([profiler], [ProfilerStart], , AC_MSG_ERROR([Could not find google profiler library]))
-
-# The profiler libraries added to LIBS by AC_CHECK_LIB are needed only at
+# The profiler and gfortran libraries added to LIBS by AC_CHECK_LIB are needed only at
 # cere run time, not when building cere. Therefore we have to reset LIBS.
 LIBS=""
 

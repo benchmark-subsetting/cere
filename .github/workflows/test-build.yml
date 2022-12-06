@@ -8,10 +8,9 @@ on:
 
 jobs:
   run_tests:
-    runs-on: ubuntu-latest
-    name: x86 Ubuntu 14.04
-    container:
-      image: docker.io/library/ubuntu:14.04
+    runs-on: ubuntu-20.04
+    name: x86 Ubuntu 20.04
+
 
     steps:
       - uses: actions/checkout@v2
@@ -20,98 +19,47 @@ jobs:
 
       - name: Install CERE dependencies
         run: |
-          apt-get -y update
-          apt-get -y install clang-3.4 llvm-3.4-dev \
-          gcc-4.6 g++-4.6 gfortran-4.6 autoconf automake build-essential libtool ruby-ronn \
-          python python-matplotlib python-jinja2 python-pydot python-pygraphviz \
-          python-sklearn python-numpy python-networkx python-pip google-perftools \
-          libgoogle-perftools-dev numactl dc python3-pip git libgmp3-dev gcc-4.6-plugin-dev \
-          libgfortran3 libgfortran-4.8-dev libgmp3-dev wget opt
-
-      - name: Get LLVM 7 binary release
-        run: |
-          mkdir /opt/llvm-7
-          wget https://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-          tar -xvf clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-          cp -r clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04/* /opt/llvm-7
-          rm -rf clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-14.04    
-          
-      - name: Get newest autotools
-        run: |
-          wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz
-          tar -xvf autoconf-2.71.tar.gz
-          cd autoconf-2.71 && ./configure && make && make install
-          wget --no-check-certificate https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.gz
-          tar -xvf automake-1.16.5.tar.gz
-          cd automake-1.16.5 && ./configure && make && make install
-          rm -rf autoconf-2.71 automake-1.16.5
-          
-      - name: Add everything to path
-        run: |
-          echo "\
-          export PATH=/opt/llvm-7/bin:$PATH \n\
-          export LD_LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LD_LIBRARY_PATH \n\
-          export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PATH \n\
-          export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH \n\
-          export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH \n\
-          " >> ~/.bashrc
-
-      - name: Manually install Python packages
-        run: |
-          # NOTE Installing with pip causes SNI issues on Ubuntu 14.04 + Python 2.7.6
-          # See: https://serverfault.com/questions/1059132/use-sni-with-pip-pypi-on-ubuntu-14-trusty
-          wget https://files.pythonhosted.org/packages/3a/74/0d6744ac87cbe9773be70917381d1834ac44015af7b6fa5cbc07b61abf03/PuLP-2.6.0.tar.gz
-          tar -xvf PuLP-2.6.0.tar.gz
-          cd PuLP-2.6.0
-          python setup.py install
-          cd ..
-          wget https://files.pythonhosted.org/packages/60/bf/62567830b700d9f6930e9ab6831d6ba256f7b0b730acb37278b0ccdffacf/pydotplus-2.0.2.tar.gz
-          tar -xvf pydotplus-2.0.2.tar.gz
-          cd pydotplus-2.0.2
-          python setup.py install
-          cd ..
-          rm -rf pydotplus-2.0.2 PuLP-2.6.0
-
-      - name: Get rvm & rdiscount
-        run: |
-          apt-get install -y software-properties-common
-          add-apt-repository -y ppa:rael-gc/rvm
-          apt-get -y update
-          apt-get -y install rvm
-          gem install --user-install executable-hooks
-
-      - name: Build & install CERE
-        run: |
-          export PATH=/opt/llvm-7/bin:$PATH \n\
-          export LD_LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LD_LIBRARY_PATH
-          export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PAT
-          export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH
-          export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH
-          # NOTE To generate doc wit ronn, we need to set locale to UTF-8 English
-          apt-get -y install locales
-          locale-gen --no-purge en_US.UTF-8
+          sudo apt-get -y update
+          sudo apt-get -y install locales
+          sudo locale-gen --no-purge en_US.UTF-8
           export LANG="en_US.UTF-8"
           export LANGUAGE="en_US:en"
-          export LC_ALL="en_US.UTF-8"   
-
-          #We are building cere with clang because with the LLVM 7 binary release, llvm-config would throw flags not recognized by GCC
-          libtoolize && ./autogen.sh && ./configure CC=clang CXX=clang++ LDFLAGS="-pthread -lpthread -lcurses -lz -ltinfo" --without-dragonegg
-          make && make install && make check
-
-      - name: Run CERE tests
+          export LC_ALL="en_US.UTF-8" 
+          export DEBIAN_FRONTEND="noninteractive"
+          export TZ="Europe/Paris"
+          sudo apt-get -y install \
+          autoconf automake build-essential libtool  \
+          python python3-pip ruby ruby-dev \
+          libgoogle-perftools-dev google-perftools numactl dc python git  \
+          wget opt pkg-config libtool build-essential  libgmp3-dev \
+          llvm-7 llvm-7-dev llvm-7-tools libomp-7-dev clang-7 flang-7 \
+          python3-matplotlib python3-jinja2 python3-sklearn python3-numpy \
+          python3-pulp python3-pydot libgraphviz-dev python3-pygraphviz \
+          python3-pydotplus python3-networkx
+          
+      - name: Get rvm & rdiscount
         run: |
-          export PATH=/opt/llvm-7/bin:$PATH \n\
-          export LD_LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LD_LIBRARY_PATH
-          export LIBRARY_PATH=/opt/llvm-7/libexec:/opt/llvm-7/lib:$LIBRARY_PAT
-          export C_INCLUDE_PATH=/opt/llvm-7/include:$C_INCLUDE_PATH
-          export CPLUS_INCLUDE_PATH=/opt/llvm-7/include:$CPLUS_INCLUDE_PATH
-          # NOTE To generate doc wit ronn, we need to set locale to UTF-8 English
-          apt-get -y install locales
-          locale-gen --no-purge en_US.UTF-8
+          sudo gem install ronn-ng
+  
+      - name: Create symlinks for LLVM & Python
+        run: |
+          sudo ln -s /usr/bin/llvm-config-7 /usr/bin/llvm-config
+          sudo rm /usr/bin/python
+          sudo ln -s /usr/bin/python3.8 /usr/bin/python
+          
+      - name: Build & install CERE
+        run: |
           export LANG="en_US.UTF-8"
           export LANGUAGE="en_US:en"
           export LC_ALL="en_US.UTF-8"
+          export PATH=$PATH:/var/lib/gems/2.7.0/gems/ronn-ng-0.9.1/bin
+          export PYTHONPATH=/usr/local/lib/python3.8/site-packages
+          libtoolize && ./autogen.sh && ./configure
+          make && sudo make install
 
+      - name: Run CERE tests
+        run: |
+          export PYTHONPATH=/usr/local/lib/python3.8/site-packages
           make check
 
       - name : Archive test results
