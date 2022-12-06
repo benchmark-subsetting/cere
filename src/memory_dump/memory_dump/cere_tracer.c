@@ -30,8 +30,6 @@
 #include <sys/types.h>
 #include <syscall.h>
 #include <unistd.h>
-#include <elf.h>
-#include <sys/mman.h>
 
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable.h>
@@ -39,12 +37,6 @@
 #include "ptrace.h"
 #include "tracer_interface.h"
 #include "types.h"
-
-#if defined(__LP64__)
-#define ElfW(type) Elf64_ ## type
-#else
-#define ElfW(type) Elf32_ ## type
-#endif
 
 #define _DEBUG 1
 #undef _DEBUG
@@ -455,42 +447,6 @@ static void create_dump_dir(void) {
   create_root_dir(replay_root);
 }
 
-void* get_protect_offset(char* executable) {
-  ElfW(Ehdr) *ehdr;
-  ElfW(Shdr) *shdr;
-  void *data;
-  char *strtab;
-  int filesize, file;
-
-  file = open(executable, O_RDONLY);
-
-  if(file != -1) {
-    filesize = lseek(file, 0, SEEK_END);
-    data = mmap(NULL, filesize, PROT_READ, MAP_SHARED, file, 0);
-    if (data != NULL) {
-      ehdr = (ElfW(Ehdr) *)(data);
-      shdr = (ElfW(Shdr) *)(data + ehdr->e_shoff);
-      strtab = (char *)(data + shdr[ehdr->e_shstrndx].sh_offset);
-
-      for(int i=1; i < ehdr->e_shnum; i++) {
-        char * name = &strtab[shdr[i].sh_name];
-        void * address = shdr[i].sh_addr;
-
-        if(strcmp(name, ".init") == NULL) {
-          // We will round protect from here
-          close(file);
-          return address;
-        }
-      }
-
-    } else {
-      return 0X401000;
-    }
-  } else {
-    return 0X401000;
-  }
-}
-
 static void tracer_lock_mem(pid_t pid) {
 
   char maps_path[MAX_PATH];
@@ -505,10 +461,6 @@ static void tracer_lock_mem(pid_t pid) {
   void *addresses[65536];
   char buf[BUFSIZ + 1];
   int counter = 0;
-  bool first_pages = true;
-  char *tmpstr = NULL;
-  char *executable = NULL;
-  void *protect_offset = NULL;
 
   while (fgets(buf, BUFSIZ, maps)) {
     void *start, *end;
@@ -525,29 +477,13 @@ static void tracer_lock_mem(pid_t pid) {
       continue;
 
     /* Ignore libc special mem zones  */
-    /* We have to find a good criteria to detect that specific memory page, */
-    /* for now we will consider that this will always be the first page. */
     /* If we don't ignore those mem zones we get this error */
     /* /usr/bin/ld: la section .interp chargée à  */
     /*    [00000000004003c0 -> 00000000004003db]  */
     /*    chevauche la section s000000400000 chargée à  */
     /*    [0000000000400000 -> 0000000000400fff] */
-    if (first_pages) {
-      first_pages = false;
-
-      // We should be able to get the executable name from buf ...
-      tmpstr = strchr(buf, '/');
-      executable = malloc(strlen(tmpstr-1)*sizeof(char));
-      memcpy(executable, tmpstr, strlen(tmpstr-1)*sizeof(char));
-      executable[strlen(executable)-1] = 0;
-      // ... and inspect the ELF to determine where to start protecting pages
-      protect_offset = get_protect_offset(executable)+0x1000;
-      debug_print("protect_offset=%p\n", protect_offset);
-      free(executable);
-    }
-
-    if(start < protect_offset)
-        continue;
+    if (strstr(buf, "r-xp") != NULL)
+      continue;
 
     /* Ignore vsyscall special mem zones  */
     if (strstr(buf, "vsyscall") != NULL)
@@ -567,7 +503,6 @@ static void tracer_lock_mem(pid_t pid) {
 
     assert(counter < 65536);
     addresses[counter++] = round_to_page(start);
-      debug_print("round_to_page=%p\n", round_to_page(start));
     addresses[counter++] = end;
   }
 

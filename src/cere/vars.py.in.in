@@ -18,8 +18,8 @@
 import os
 
 VERSION = "@PACKAGE_VERSION@"
-CLANG = os.path.join("@LLVM_BINDIR@","clang")
 FORTRAN_SUPPORT="@FORTRAN_SUPPORT@"
+CLANG = os.path.join("@LLVM_BINDIR@","clang")
 PPROF = "@PPROF@"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 GCC="@GCC_PATH@"

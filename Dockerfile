@@ -13,8 +13,8 @@ ENV LC_ALL en_US.UTF-8
 # Install CERE dependencies
 RUN apt-get -y install \
       autoconf automake build-essential libtool ruby-ronn \
-      python python-matplotlib python-jinja2 python-pydot python-pygraphviz \
-      python-sklearn python-numpy python-networkx python-pip google-perftools \
+      python3 python3-matplotlib python3-jinja2 python3-pydot python3-pygraphviz \
+      python3-sklearn python3-numpy python3-networkx python3-networkx python3-pip google-perftools \
       libgoogle-perftools-dev numactl dc python3-pip git libgmp3-dev gcc-4.6-plugin-dev \
       libgfortran3 libgfortran-4.8-dev libgmp3-dev wget opt pkg-config libtool build-essential
 

@@ -116,7 +116,6 @@ def replay_fun(mode_opt, BASE, regions):
                     Root=PROJECT_ROOT, LoopMan=LOOP_REPLAY, opts=temp, loop=mode_opt.region,
                     base=BASE,Omp=OMP_FLAGS), EXIT=False)
     if (mode_opt.instrument):
-        print("Instrumentation mode")
         temp_instr = "--instrument-region=" + mode_opt.region + " "
         safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
                     llvm_bindir=LLVM_BINDIR,
@@ -226,23 +225,25 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
 
     if ext in FORTRAN_EXTENSIONS:
         if FORTRAN_SUPPORT:
-#            opt = [s for s in COMPIL_OPT if s.startswith('-J')]
-#            if opt:
-#              INCLUDES.append(opt[0])
-#            safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
-#                        "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
-#                        gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
-#                        Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
+            # Legacy dragonegg call
+            # opt = [s for s in COMPIL_OPT if s.startswith('-J')]
+            # if opt:
+            #   INCLUDES.append(opt[0])
+            # safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
+            #             "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
+            #             gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
+            #             Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
 
-            # We disable Fortran for now
-            fail_lec("fortran support disabled in this release.")
+            compiler = "flang"
 
         else:
-            fail_lec("fortran support disabled in this release.")
+            fail_lec("Fortran support disabled in this build (recompile using --with-flang).")
     else:
-        safe_system(("{llvm_bindir}/clang {opts} -O0 -g {includes} {source} -S -emit-llvm -o " +
-                    "{base}.ll").format(llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
-                    source=SOURCE, base=BASE))
+        compiler = "clang"
+
+    safe_system(("{llvm_bindir}/{compiler} {opts} -O0 -g {includes} {source} -S -emit-llvm -o " +
+                "{base}.ll").format(compiler=compiler, llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
+                source=SOURCE, base=BASE))
 
 def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
     '''
@@ -265,6 +266,7 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
         os.system("llc -O3 {base}.ll -o {base}.s".format(opts=" ".join(COMPIL_OPT), base=BASE))
         if "-g" in COMPIL_OPT:
             COMPIL_OPT = [x for x in COMPIL_OPT if x != "-g"]
+
         safe_system("clang -c {opts} {base}.s -o {object}".format(opts=" ".join(COMPIL_OPT),
                                                                   base=BASE, object=OBJECT))
     else:
@@ -343,3 +345,4 @@ def compile(args, args2):
     if objs:
       with open(args[0].cere_objects, "a") as text_file:
         text_file.write(objs)
+

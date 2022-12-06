@@ -5,9 +5,9 @@ if [ "$1" == "--long" ]; then
     tests="$tests $(find . -maxdepth 1 -type d -name 'long_*' | sort)"
 fi
 
-dragonegg_path=`grep 'DRAGONEGG_PATH' ../config.h | cut -d " " -f 3`
-#Test if dragonegg is available and select tests accordingly
-if [ "$dragonegg_path" == "\"\"" ]; then
+fortran_support=`grep 'FORTRAN_SUPPORT' ../config.h | cut -d " " -f 3`
+#Test if fortran/flang is available and select tests accordingly
+if [ "$fortran_support" == "\"no\"" ]; then
   tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' '!' -exec test -e "{}/fortran_test" ';' -print | sort)"
 else
   tests="$tests $(find . -maxdepth 1 -type d -name 'test_*' | sort)"
