@@ -35,13 +35,12 @@ ENV PATH $PATH:/var/lib/gems/2.7.0/gems/ronn-ng-0.9.1/bin
 
 # Ensure all correct dependencies' versions are used
 
-# Create symlinks for LLVM
+# Create symlinks for LLVM & LLVM
 RUN ln -s /usr/bin/llvm-config-7 /usr/bin/llvm-config
 RUN ln -s /usr/bin/clang-7 /usr/bin/clang
 RUN ln -s /usr/bin/clang++-7 /usr/bin/clang++
-
-# Use python 3 with update-alternatives
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
+RUN rm /usr/bin/python
+RUN ln -s /usr/bin/python3.8 /usr/bin/python
 ENV PYTHONPATH /usr/local/lib/python3.8/site-packages
 
 WORKDIR /build/

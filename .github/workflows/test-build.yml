@@ -41,13 +41,14 @@ jobs:
         run: |
           sudo gem install ronn-ng
   
-      - name: Create symlinks for LLVM
+      - name: Create symlinks for LLVM & Python
         run: |
           sudo ln -s /usr/bin/llvm-config-7 /usr/bin/llvm-config
+          sudo rm /usr/bin/python
+          sudo ln -s /usr/bin/python3.8 /usr/bin/python
           
       - name: Build & install CERE
         run: |
-          sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
           export LANG="en_US.UTF-8"
           export LANGUAGE="en_US:en"
           export LC_ALL="en_US.UTF-8"
@@ -58,7 +59,6 @@ jobs:
 
       - name: Run CERE tests
         run: |
-          sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
           export PYTHONPATH=/usr/local/lib/python3.8/site-packages
           make check
 
