@@ -60,9 +60,6 @@ jobs:
       - name: Run CERE tests
         run: |
           export PYTHONPATH=/usr/local/lib/python3.8/site-packages
-          ls /usr/local/lib/python3.8/site-packages
-          ls -la /usr/bin/python*
-          python --version
           make check
 
       - name : Archive test results
