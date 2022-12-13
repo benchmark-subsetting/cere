@@ -153,8 +153,17 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
     ConstantInt *const_int64_35 =
         ConstantInt::get(mod->getContext(), APInt(32, i, 10));
 
+#if LLVM_VERSION_MAJOR >= 9
+    Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla->getType(), ptr_vla, i, "arrayidx");
+#else
     Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla, i, "arrayidx");
+#endif
+
+#if LLVM_VERSION_MAJOR >= 9
+    LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx->getType(), ptr_arrayidx, const_int64_35);
+#else
     LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx, const_int64_35);
+#endif
     LLVM_DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
                       << *args->getType() << "\n");
 
@@ -172,10 +181,27 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
             args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "c", label_entry);
         // Store ptr adress
         new StoreInst(ptr, ptr_a_addr, false, label_entry);
+
+#if LLVM_VERSION_MAJOR >= 9
+        LoadInst *ptr_5 = new LoadInst(args->getType(), ptr_a_addr, "", false, label_entry);
+#else
         LoadInst *ptr_5 = new LoadInst(ptr_a_addr, "", false, label_entry);
+#endif
+
+#if LLVM_VERSION_MAJOR >= 9
+        LoadInst *int32_6 = new LoadInst(args->getType(), ptr_5, "", false, label_entry);
+#else
         LoadInst *int32_6 = new LoadInst(ptr_5, "", false, label_entry);
+#endif
+
         new StoreInst(int32_6, ptr_tmp, false, label_entry);
+
+#if LLVM_VERSION_MAJOR >= 9
+        LoadInst *int32_9 = new LoadInst(args->getType()->getPointerElementType(), ptr_tmp, "", false, label_entry);
+#else
         LoadInst *int32_9 = new LoadInst(ptr_tmp, "", false, label_entry);
+#endif
+
         new StoreInst(int32_9, ptr_tmp2, false, label_entry);
         ptr_tmp2->setName(args->getName());
         params.push_back(ptr_tmp2);
@@ -187,7 +213,12 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
       PointerType *PointerTy_3 = PointerType::get(args->getType(), 0);
       CastInst *ptr_70 =
           new BitCastInst(ptr_69, PointerTy_3, "", label_entry); // cast
+#if LLVM_VERSION_MAJOR >= 9
+      ptr = new LoadInst(PointerTy_3, ptr_70, "", false, label_entry);
+#else
       ptr = new LoadInst(ptr_70, "", false, label_entry);
+#endif
+
       ptr->setName(args->getName());
       params.push_back(ptr);
     }
