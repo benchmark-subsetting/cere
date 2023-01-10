@@ -119,7 +119,7 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
     oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
-    std::string path = firstLoc->getDirectory();
+    std::string path = firstLoc->getDirectory().data();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
     newFunctionName = updateFileFormat(newFunctionName);
@@ -185,7 +185,7 @@ int SplitOMPCall(Module *mod, Function *F, DominatorTree &DT,
     }
     if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
-        functionCall = callInst->getCalledFunction()->getName();
+        functionCall = callInst->getCalledFunction()->getName().data();
         if (ChooseExtract(functionCall, RegionName, callInst, F)) {
           t = 1;
           iFirst = callInst;
@@ -224,7 +224,7 @@ bool ExtractOMPCall(Module *mod, Function *F, Pass *P, bool ProfileApp,
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
-        functionCall = callInst->getCalledFunction()->getName();
+        functionCall = callInst->getCalledFunction()->getName().data();
         if (ChooseExtract(functionCall, RegionName, callInst, F)) {
           RegionExtractor Extractor = RegionExtractor(
               callInst->getParent(), RegionName, ProfileApp, true);

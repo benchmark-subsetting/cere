@@ -1,4 +1,4 @@
-# -*- mode: m4 -*-
+## -*- mode: m4 -*-
 #
 # Copyright (c) 2014 University of Versailles
 # Copyright (c) 2012, 2013 The University of Utah
@@ -59,10 +59,10 @@ AC_DEFUN([AX_LLVM],
   LLVM_VERSION=`$LLVM_CONFIG --version`
   AC_DEFINE_UNQUOTED([LLVM_VERSION], ["$LLVM_VERSION"], [The llvm version])
 
-  LLVM_VERSION_MAJOR=`echo $LLVM_VERSION | cut -d'.' -f1 | cut -c 1`
+  LLVM_VERSION_MAJOR=`echo $LLVM_VERSION | cut -d'.' -f1`
   AC_DEFINE_UNQUOTED([LLVM_VERSION_MAJOR], [$LLVM_VERSION_MAJOR], [The llvm major version])
 
-  LLVM_VERSION_MINOR=`echo $LLVM_VERSION | cut -d'.' -f2 | cut -c 1`
+  LLVM_VERSION_MINOR=`echo $LLVM_VERSION | cut -d'.' -f2`
   AC_DEFINE_UNQUOTED([LLVM_VERSION_MINOR], [$LLVM_VERSION_MINOR], [The llvm minor version])
 
   AC_MSG_CHECKING([for LLVM version])

@@ -145,7 +145,7 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   // Handle in vitro codelets
   std::size_t found = oldFunction->getName().find("__cere__");
   if (found != std::string::npos)
-    return oldFunction->getName();
+    return oldFunction->getName().data();
 
   std::string Separator = "_";
 
@@ -161,7 +161,7 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
     oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
-    std::string path = firstLoc->getDirectory();
+    std::string path = firstLoc->getDirectory().data();
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
 
@@ -220,7 +220,7 @@ void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
 
     if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
-        functionCall = callInst->getCalledFunction()->getName();
+        functionCall = callInst->getCalledFunction()->getName().data();
         std::string newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
@@ -258,7 +258,7 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
 
     if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
-        functionCall = callInst->getCalledFunction()->getName();
+        functionCall = callInst->getCalledFunction()->getName().data();
         newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
@@ -268,11 +268,23 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             GlobalVariable *gvar_int32_count = create_invocation_counter(mod);
 
             // Load the invocation counter
+#if LLVM_VERSION_MAJOR >= 9
+            // Its type is int32 as per the definition of create_invocation_counter
+            LoadInst *int32_0 =
+                new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, (&*I));
+#else
             LoadInst *int32_0 =
                 new LoadInst(gvar_int32_count, "", false, (&*I));
-            int32_0->setAlignment(4);
-            // Increments it
+#endif
 
+#if LLVM_VERSION_MAJOR >= 10
+            int32_0->setAlignment(llvm::Align(4));
+#else
+            int32_0->setAlignment(4);
+#endif
+
+
+            // Increments it
             ConstantInt *const_int32_1 = ConstantInt::get(
                 mod->getContext(), APInt(32, StringRef("1"), 10));
             BinaryOperator *int32_inc = BinaryOperator::Create(
@@ -280,10 +292,27 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             // Save the value
             StoreInst *void_0 =
                 new StoreInst(int32_inc, gvar_int32_count, false, (&*I));
+#if LLVM_VERSION_MAJOR >= 10
+            void_0->setAlignment(llvm::Align(4));
+#else
             void_0->setAlignment(4);
+#endif
+
             // Load the updated invocation counter
-            int32_1 = new LoadInst(gvar_int32_count, "", false, (&*I));
+#if LLVM_VERSION_MAJOR >= 9
+            // Its type is int32 as per the definition of create_invocation_counter
+            LoadInst *int32_1 =
+                new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, (&*I));
+#else
+            LoadInst *int32_1 =
+                new LoadInst(gvar_int32_count, "", false, (&*I));
+#endif
+
+#if LLVM_VERSION_MAJOR >= 10
+            int32_1->setAlignment(llvm::Align(4));
+#else
             int32_1->setAlignment(4);
+#endif
           }
           funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), int32_1);
 

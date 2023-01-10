@@ -26,7 +26,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "region-instrumentation"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
 #include <llvm/IR/Instructions.h>
@@ -52,6 +51,7 @@ enum {
   VITRO
 };
 
+#define DEBUG_TYPE "region-instrumentation"
 STATISTIC(LoopCounter, "Counts number of regions instrumented");
 
 extern cl::opt<std::string> IsolateRegion;
@@ -140,7 +140,7 @@ LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
     std::string File = module_name;
-    std::string path = firstLoc->getDirectory();
+    std::string path = firstLoc->getDirectory().data();
 
     newFunctionName = "__cere__" + removeExtension(File) + Separator +
                       oldFunction->getName().str() + Separator + firstLine;
@@ -186,7 +186,7 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   if (found == std::string::npos)
     newFunctionName = createFunctionName(L, currFunc);
   else
-    newFunctionName = currFunc->getName();
+    newFunctionName = currFunc->getName().data();
   if (newFunctionName.empty())
     return false;
 
@@ -237,10 +237,22 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
     // Create invocation counter
     GlobalVariable *gvar_int32_count = create_invocation_counter(mod);
 
-    // Load the invocation counter
+
+     // Load the invocation counter
+#if LLVM_VERSION_MAJOR >= 9
+     // Its type is int32 as per the definition of create_invocation_counter
+    LoadInst *int32_0 =
+        new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, &PredBB->back());
+#else
     LoadInst *int32_0 =
         new LoadInst(gvar_int32_count, "", false, &PredBB->back());
+#endif
+
+#if LLVM_VERSION_MAJOR >= 10
+    int32_0->setAlignment(llvm::Align(4));
+#else
     int32_0->setAlignment(4);
+#endif
     // Increments it
     ConstantInt *const_int32_1 =
         ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
@@ -249,11 +261,29 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
     // Save the value
     StoreInst *void_0 =
         new StoreInst(int32_inc, gvar_int32_count, false, &PredBB->back());
-    void_0->setAlignment(4);
+#if LLVM_VERSION_MAJOR >= 10
+    int32_0->setAlignment(llvm::Align(4));
+#else
+    int32_0->setAlignment(4);
+#endif
+
     // Load the updated invocation counter
+#if LLVM_VERSION_MAJOR >= 9
+     // Its type is int32 as per the definition of create_invocation_counter
+    LoadInst *int32_1 =
+        new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, &PredBB->back());
+#else
     LoadInst *int32_1 =
         new LoadInst(gvar_int32_count, "", false, &PredBB->back());
-    int32_1->setAlignment(4);
+#endif
+
+#if LLVM_VERSION_MAJOR >= 10
+    int32_0->setAlignment(llvm::Align(4));
+#else
+    int32_0->setAlignment(4);
+#endif
+
+
 
     // Create function parameters
     funcParameter = createFunctionParameters(mod, newFunctionName, Mode,

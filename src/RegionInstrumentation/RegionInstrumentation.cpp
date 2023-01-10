@@ -41,7 +41,6 @@
 #undef LLVM_BINDIR
 #include "config.h"
 #include "llvm/IR/DebugInfo.h"
-
 using namespace llvm;
 enum { VIVO, VITRO };
 
@@ -165,7 +164,11 @@ GlobalVariable *create_invocation_counter(Module *mod) {
                          /*Linkage=*/GlobalValue::InternalLinkage,
                          /*Initializer=*/0,
                          /*Name=*/"cere_invocation_counter");
+#if LLVM_VERSION_MAJOR >= 10
+  gvar_int32_count->setAlignment(llvm::MaybeAlign(4));
+#else
   gvar_int32_count->setAlignment(4);
+#endif
   ConstantInt *const_int32 =
       ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
   gvar_int32_count->setInitializer(const_int32);
