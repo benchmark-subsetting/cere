@@ -26,7 +26,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "region-dump"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -47,6 +46,8 @@
 #include <string>
 
 #include "RegionDump.h"
+
+#define DEBUG_TYPE "region-dump"
 
 using namespace llvm;
 
@@ -198,7 +199,7 @@ bool OmpRegionDump::runOnFunction(Function &F) {
 
     if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
-        std::string functionCall = callInst->getCalledFunction()->getName();
+        std::string functionCall = callInst->getCalledFunction()->getName().data();
         if (choosePutMarkerOnFunction(functionCall)) {
           insertMarker = true;
         }

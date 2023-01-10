@@ -25,7 +25,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "region-dump"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -46,6 +45,9 @@
 #include <string>
 
 #include "RegionDump.h"
+
+#define DEBUG_TYPE "region-dump"
+
 
 using namespace llvm;
 

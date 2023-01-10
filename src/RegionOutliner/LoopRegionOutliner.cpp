@@ -24,7 +24,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "region-outliner"
 #include "RegionExtractor.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
@@ -34,8 +33,12 @@
 
 #include "llvm/IR/Dominators.h"
 
+
+#include "llvm/Support/Debug.h"
+
 using namespace llvm;
 
+#define DEBUG_TYPE "region-outliner"
 STATISTIC(NumExtracted, "Number of regions extracted");
 
 extern cl::opt<std::string> IsolateRegion;
@@ -90,7 +93,7 @@ bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // it means we are looking at an already outlined loop
   bool ShouldExtractLoop = true;
   Function *function = L->getHeader()->getParent();
-  std::string name = function->getName();
+  std::string name = function->getName().data();
   std::size_t found = name.find("__cere__");
   if (found != std::string::npos) {
     ShouldExtractLoop = false;

@@ -559,7 +559,7 @@ Function *RegionExtractor::constructFunction(
       GetElementPtrInst *GEP = GetElementPtrInst::Create(
           &*(AI)->getType(), Idx[0], Idx[1], "gep_" + inputs[i]->getName(), TI);
 #if LLVM_VERSION_MAJOR >= 9
-      RewriteVal = new LoadInst(, GEP, "loadgep_" + inputs[i]->getName(), TI);
+      RewriteVal = new LoadInst(&*(AI)->getType(), GEP, "loadgep_" + inputs[i]->getName(), TI);
 #else
       RewriteVal = new LoadInst(GEP, "loadgep_" + inputs[i]->getName(), TI);
 #endif
@@ -779,8 +779,13 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
           GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
                                     "gep_" + StructValues[i]->getName());
       codeReplacer->getInstList().push_back(GEP);
+
+#if LLVM_VERSION_MAJOR >= 9
+      StoreInst *SI = new StoreInst(StructValues[i], GEP, codeReplacer);
+#else
       StoreInst *SI = new StoreInst(StructValues[i], GEP);
       codeReplacer->getInstList().push_back(SI);
+#endif
     }
   }
 
@@ -809,9 +814,14 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
     } else {
       Output = ReloadOutputs[i];
     }
+
+#if LLVM_VERSION_MAJOR >= 9
+    LoadInst *load = new LoadInst(&(*(Struct)->getType()), Output, outputs[i]->getName() + ".reload", codeReplacer);
+#else
     LoadInst *load = new LoadInst(Output, outputs[i]->getName() + ".reload");
-    Reloads.push_back(load);
     codeReplacer->getInstList().push_back(load);
+#endif
+    Reloads.push_back(load);
     std::vector<User *> Users(outputs[i]->user_begin(), outputs[i]->user_end());
     for (unsigned u = 0, e = Users.size(); u != e; ++u) {
       Instruction *inst = cast<Instruction>(Users[u]);
