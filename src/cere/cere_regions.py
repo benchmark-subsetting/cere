@@ -50,22 +50,23 @@ def parse_line(regex_list, line):
   while not matchObj:
     try:
       i = i + 1
-      matchObj = re.match( regex_list[i], line )
+      matchObj = re.match( bytes(regex_list[i], "utf-8"), line )
     except IndexError:
       break
   return matchObj, i
 
 def add_header(regions_file, new_regions_file):
-  with open(regions_file, 'rb') as regions:
+  with open(regions_file, 'rt') as regions:
     r = csv.reader(regions)
-    header = r.next()
-  with open(new_regions_file, 'wb') as tmp_regions:
+    header = next(r)
+  with open(new_regions_file, 'wt') as tmp_regions:
     w = csv.writer(tmp_regions)
     w.writerow(header)
 
 def add_coverage(regions_file, new_regions_file, matchObj):
   name = matchObj.group(2)
-  if "__cere__"  not in name: return
+  if bytes("__cere__", "utf-8") not in name:
+    return
 
   try:
     self_coverage = float(matchObj.group(4))
@@ -77,17 +78,17 @@ def add_coverage(regions_file, new_regions_file, matchObj):
   except IndexError:
       coverage = self_coverage
 
-  with open(regions_file, 'rb') as regions:
+  with open(regions_file, 'rt') as regions:
     r = csv.reader(regions)
     found=False
     for row in r:
-      if row[0] == name:
+      if bytes(row[0], "utf-8") == name:
         found=True
         break
   if(found):
     row[5] = self_coverage
     row[6] = coverage
-    with open(new_regions_file, 'ab') as tmp_regions:
+    with open(new_regions_file, 'at') as tmp_regions:
       w = csv.writer(tmp_regions)
       w.writerow(row)
 
@@ -143,10 +144,12 @@ def run(args):
         add_coverage(regions_file, new_regions_file, matchObj)
       else:
         continue
+
     try:
       shutil.move(new_regions_file, regions_file)
     except IOError as err:
       logger.critical(str(err))
       logger.error(err.output)
       return False
+
   return True
