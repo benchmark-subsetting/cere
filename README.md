@@ -21,10 +21,6 @@ application. In addition, CERE supports recompiling and retargeting the extracte
 codelets. Therefore, CERE can be used for cross-architecture performance
 prediction or piecewise code optimization.
 
-**NOTE**: The project is currently being update to more recent LLVM versions.
-For this reason, Fortran support has been temporarily disabled to replace 
-DragonEgg by flang.
-
 ### Installation
 
 Please follow the instructions in
@@ -36,9 +32,9 @@ For OpenMP support please switch to OpenMP branch and follow the instructions in
 ### Supported platforms
 
 For now CERE only supports the Linux operating system. We have tested different
-versions of kernels in the 2.6 series. CERE has been tested mainly on x86_64
+versions of kernels from the 2.6 series and later. CERE has been tested mainly on x86_64
 and Aarch64 (ARMv8 64 bits) Debian and Ubuntu distributions. The current version is 
-an update to LLVM 7. 
+an update to LLVM 15. 
 
 CERE capture and replay is performed in user mode, but requires that
 `/proc/sys/kernel/randomize_va_space` is set to 1 or 2. This is the default on most
