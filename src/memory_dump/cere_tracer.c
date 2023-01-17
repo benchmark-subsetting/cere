@@ -456,6 +456,9 @@ static void create_dump_dir(void) {
 }
 
 void* get_protect_offset(char* executable) {
+  /* Returns the offset at which to start memory protection as to
+   * avoid sections overlap errors in replay mode. */
+
   ElfW(Ehdr) *ehdr;
   ElfW(Shdr) *shdr;
   void *data;
@@ -474,21 +477,27 @@ void* get_protect_offset(char* executable) {
 
       for(int i=1; i < ehdr->e_shnum; i++) {
         char * name = &strtab[shdr[i].sh_name];
-        void * address = shdr[i].sh_addr;
+        void * address = (void*) shdr[i].sh_addr;
 
-        if(strcmp(name, ".init") == NULL) {
-          // We will round protect from here
+        if(strcmp(name, ".init") == 0) {
+          // We will start to protect from this offset
           close(file);
           return address;
         }
       }
 
     } else {
-      return 0X401000;
+      errx(EXIT_FAILURE, "File found  but could not read its content correctly");
+      return NULL;
     }
   } else {
-    return 0X401000;
+    errx(EXIT_FAILURE, "Could not find file");
+    return NULL;
   }
+
+
+  errx(EXIT_FAILURE, "Could not find .init section in binary");
+  return NULL;
 }
 
 static void tracer_lock_mem(pid_t pid) {
@@ -541,7 +550,11 @@ static void tracer_lock_mem(pid_t pid) {
       memcpy(executable, tmpstr, strlen(tmpstr-1)*sizeof(char));
       executable[strlen(executable)-1] = 0;
       // ... and inspect the ELF to determine where to start protecting pages
-      protect_offset = get_protect_offset(executable)+0x1000;
+      protect_offset = get_protect_offset(executable);
+      if(protect_offset == NULL)
+        exit(1);
+      //protect_offset = protect_offset + (void*) 0x1000;
+      protect_offset = (void*) ((uint64_t) protect_offset + (uint64_t) getpagesize());
       debug_print("protect_offset=%p\n", protect_offset);
       free(executable);
     }
