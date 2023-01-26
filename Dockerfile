@@ -47,9 +47,8 @@ WORKDIR /build/
 
 
 # Install CERE
-# RUN git clone https://github.com/benchmark-subsetting/cere.git
-# Cloning from the fork repo for now
-RUN git clone https://github.com/PurplePachyderm/cere.git
+RUN git clone https://github.com/benchmark-subsetting/cere.git
+
 
 WORKDIR /build/cere/
 
