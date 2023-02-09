@@ -255,20 +255,23 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Only call the linker
     '''
 
+    compiler = CLANG
+    if ".cpp" in COMPIL_OPT or ".cc" in COMPIL_OPT or ".cxx" in COMPIL_OPT:
+        compiler = CLANGPP
+
     if mode_opt.static:
         COMPIL_OPT += "-static"
 
     if(mode_opt.instrument_app):
         safe_system(("{link} -o {binary} {opts} {libs} {libdir}").format(
-              link=CLANG, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
+              link=compiler, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
               libdir=LIBDIR_FLAGS))
     elif(mode_opt.instrument):
         safe_system(("{link} -o {binary} {opts} {wrapper} {libdir}").format(
-              link=CLANG, binary=BINARY, opts=COMPIL_OPT,
+              link=compiler, binary=BINARY, opts=COMPIL_OPT,
               wrapper=mode_opt.wrapper, libdir=LIBDIR_FLAGS))
     else:
-        safe_system(("{link} -o {binary} {opts}").format(link=CLANG,
-                binary=BINARY, opts=COMPIL_OPT))
+        safe_system(("{link} {opts}").format(link=compiler, opts=COMPIL_OPT))
 
 
 def link(args):

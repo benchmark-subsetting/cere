@@ -20,6 +20,7 @@ import os
 VERSION = "@PACKAGE_VERSION@"
 FORTRAN_SUPPORT="@FORTRAN_SUPPORT@"
 CLANG = os.path.join("@LLVM_BINDIR@","clang")
+CLANGPP = os.path.join("@LLVM_BINDIR@","clang++")
 PPROF = "@PPROF@"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 GCC="@GCC_PATH@"
@@ -41,7 +42,7 @@ LIKWID = "-llikwid"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77", ".F90"]
 DUMPS_DIR = ".cere/dumps/"
 
-SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc"] + FORTRAN_EXTENSIONS
+SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc", ".cxx"] + FORTRAN_EXTENSIONS
 
 INVALID_REGION_FILE = "invalid_regions"
 
