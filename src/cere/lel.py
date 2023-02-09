@@ -271,7 +271,9 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
               link=compiler, binary=BINARY, opts=COMPIL_OPT,
               wrapper=mode_opt.wrapper, libdir=LIBDIR_FLAGS))
     else:
-        safe_system(("{link} {opts}").format(link=compiler, opts=COMPIL_OPT))
+        safe_system(("{link} -o {binary} {opts}").format(link=compiler,
+                binary=BINARY, opts=COMPIL_OPT))
+
 
 
 def link(args):
