@@ -345,4 +345,3 @@ def compile(args, args2):
     if objs:
       with open(args[0].cere_objects, "a") as text_file:
         text_file.write(objs)
-
