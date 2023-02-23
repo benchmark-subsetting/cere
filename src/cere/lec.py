@@ -290,6 +290,9 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
 def compile(args, args2):
     function={}
     function["replay_fun"] = replay_fun
+    # The baremetal lec function should be exactly the same
+    # as standard replay
+    function["baremetal_replay_fun"] = replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
 

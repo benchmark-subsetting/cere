@@ -60,11 +60,30 @@ def user_main(FILE, LOOP, mode_opt):
                                in_vitro_call_count=CERE_REPLAY_REPETITIONS,
                                loop=LOOP))
 
+def baremetal_user_main(FILE, LOOP, mode_opt):
+    # Define by default TIMEOUT_SECONDS to 60
+    TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
+    # Define by default CALL_COUNT to 10
+    CERE_REPLAY_REPETITIONS=int(os.getenv('CERE_REPLAY_REPETITIONS', 10))
+    TEMPLATE = open("{root}/template_baremetal_realmain.c".format(root=ROOT), "r")
+    template = TEMPLATE.read()
+    TEMPLATE.close()
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS,
+                               in_vitro_call_count=CERE_REPLAY_REPETITIONS,
+                               loop=LOOP))
+
 def create_user_main(mode_opt,LOOP):
     safe_system("rm -f realmain.c")
     MAIN=open('realmain.c','w')
     user_main(MAIN, LOOP, mode_opt)
     MAIN.close()
+
+def create_baremetal_user_main(mode_opt,LOOP):
+    safe_system("rm -f baremetal_realmain.c")
+    MAIN=open('baremetal_realmain.c','w')
+    baremetal_user_main(MAIN, LOOP, mode_opt)
+    MAIN.close()
+
 
 def compile_memory_dump_objects(mode_opt, DIR):
     if not mode_opt.static:
@@ -162,6 +181,24 @@ def parse_elf(binary):
         elf_map[name] = dict(addr=addr, offset=offset, size=size)
     return elf_map
 
+def extract_memdumps(DIR):
+    # When compiling in baremetal replay mode,
+    # we want to save memdumps into object files
+    # as to embed them into the executable
+
+    print("[extract_memdumps]")
+
+    owd = os.getcwd()
+    os.chdir(dir)
+
+    dumps = []
+
+    for f in os.listdir("."):
+        print(f)
+
+
+    os.chdir(owd)
+
 def extract_symbols(DIR):
     # get list of static names
     original = DIR + "/lel_bin"
@@ -206,6 +243,65 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
 
     if mode_opt.static:
         COMPIL_OPT += " -static"
+
+    if mode_opt.instrument and not mode_opt.wrapper:
+        fail_lel("When using --instrument you must provide the --wrapper argument")
+    #Find the .cere directory
+    cere_dir = find_cere_dir()
+    if not cere_dir:
+      fail_lel("Failed to find .cere directory. try export CERE_WORKING_PATH=\"path/to/.cere/\"")
+    DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
+
+    # Check that dumps exists
+    if (not os.path.isdir(DIR)):
+        fail_lel("No dump for {loop} invocation {invocation} in {dump_path}".format(loop=LOOP,
+                 invocation=INVOCATION, dump_path=DIR))
+    # Compress & extract the traces
+    compress(DIR)
+    extract_memdumps(DIR)
+
+    create_user_main(mode_opt,LOOP)
+
+    # Extract symbol file
+
+    extract_symbols(DIR)
+
+    for f in COMPIL_OPT.split():
+        if f.endswith('.o'):
+            safe_system (
+                "{objcopy} --weaken-symbols={dump_dir}/static.names {f}".format(
+                objcopy=OBJCOPY, dump_dir=DIR, f=f))
+
+
+
+    safe_system(CLANG + " -c realmain.c")
+    OPTS = compile_memory_dump_objects(mode_opt, DIR)
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
+                 + " objs.o realmain.o {args} "
+                 + " {libdir} -lcere_load -Wl,-z,now"
+                 + " -ldl {wrapper}\n").format(
+                opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
+                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
+
+        f.flush()
+        safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))
+
+#in replay mode for baremetal
+def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Replay mode for baremetal
+    Create Realmain and call the linker. We will use a specific Realmain template,
+    and force static linking with a baremetal version fo the replay lib. At link time,
+    we will also embed memory dump into the binary.
+    '''
+    LOOP=mode_opt.region
+    INVOCATION=mode_opt.invocation
+    if(not INVOCATION):
+        INVOCATION=1
+
+    # In baremetal mode, we will always link statically
+    COMPIL_OPT += " -static"
 
     if mode_opt.instrument and not mode_opt.wrapper:
         fail_lel("When using --instrument you must provide the --wrapper argument")
@@ -277,6 +373,7 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
 def link(args):
     function={}
     function["replay_fun"] = replay_fun
+    function["baremetal_replay_fun"] = baremetal_replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
     if (len(args[1]) == 0):
