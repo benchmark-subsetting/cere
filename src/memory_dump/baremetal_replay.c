@@ -41,9 +41,9 @@ extern char _binary_core_map_end[];
 extern char _binary_core_map_size[];
 
 // hotpages
-extern char _binary_hotpages_start[];
-extern char _binary_hotpages_end[];
-extern char _binary_hotpages_size[];
+extern char _binary_hotpages_map_start[];
+extern char _binary_hotpages_map_end[];
+extern char _binary_hotpages_map_size[];
 
 
 #define _LARGEFILE64_SOURCE
@@ -108,6 +108,92 @@ static off64_t get_address_from_filename(char *filename) {
   return address;
 }
 
+
+/*
+ * BAREMETAL SPECIFIC FUNCTIONS
+ */
+
+void load_core_map(int count, void *addresses[count]) {
+
+  char buf[BUFSIZ + 1];
+
+  /* Load core_map symbols */
+  char *core_start = _binary_core_map_start;
+  char *core_end = _binary_core_map_end;
+
+  char* core = core_start;
+
+  /* Read & process all core entries */
+  while(core < core_end) {
+
+    /* Read a single core entry */
+    int i = 0;
+    while(i < BUFSIZ / sizeof(char)) {
+      buf[i] = *core;
+      core += sizeof(char);
+      i++;
+      if(buf[i-1] == '\n')
+        break;
+    }
+
+    // If we read the maximum size without encountering \n or reach the
+    // end of core, add the \n ourselves
+    if(i == BUFSIZ || core == core_end)
+      buf[i] = '\n';
+
+    /* Load the core entry just stored in buf */
+    int pos;
+    off64_t address;
+    // TODO Reimplement the sscanf call
+    sscanf(buf, "%d %lx", &pos, &address);
+    addresses[pos] = (char *)(address);
+  }
+
+}
+
+
+void load_hotpages_map() {
+
+  char buf[BUFSIZ + 1];
+
+  /* Load hotpages_map symbols */
+  char *hotpages_start = _binary_hotpages_map_start;
+  char *hotpages_end = _binary_hotpages_map_end;
+
+  char* hotpages = hotpages_start;
+
+  /* Read & process all core entries */
+  while(hotpages < hotpages_end) {
+
+    /* Read a single hotpages entry */
+    int i = 0;
+    while(i < BUFSIZ / sizeof(char)) {
+      buf[i] = *hotpages;
+      hotpages += sizeof(char);
+      i++;
+      if(buf[i-1] == '\n')
+        break;
+      }
+
+      // If we read the maximum size without encountering \n or reach the
+      // end of core, add the \n ourselves
+      if(i == BUFSIZ || hotpages == hotpages_end)
+        buf[i] = '\n';
+
+      /* Load the hotpages entry just stored in buf */
+      off64_t address;
+      // TODO Reimplement the sscanf call
+      sscanf(buf, "%lx", &address);
+      if (address == 0)
+        continue;
+      warmup[hotpages_counter++] = (char *)address;
+      if (hotpages_counter >= MAX_WARMUP)
+        break;
+    }
+
+}
+
+// MAIN LOAD FUNCTION
 /* load: restores memory before replay
  * loop_name: name of dumped loop
  * invocation: invocation number to load
@@ -140,12 +226,6 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     type_of_warmup = WARMUP_WORKLOAD;
   }
 
-  /* Load adresses */
-  // TODO Do this from core_map symbols
-  char *core_start     = _binary_core_map_start;
-  char *core_end       = _binary_core_map_end;
-  size_t core_size  = (size_t)_binary_core_map_size;
-
   snprintf(path, sizeof(path), "%s/dumps/%s/%d/core.map", dump_prefix, loop_name,
            invocation);
   FILE *core_map = fopen(path, "r");
@@ -156,29 +236,15 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     int pos;
     off64_t address;
     sscanf(buf, "%d %lx", &pos, &address);
-    addresses[pos] = (char *)(address);
+    // addresses[pos] = (char *)(address);
   }
   fclose(core_map);
 
+  load_core_map(count, addresses);
+
   if (!loaded) {
-    /* load hotpages adresses */
-    snprintf(path, sizeof(path), "%s/dumps/%s/%d/hotpages.map", dump_prefix, loop_name,
-             invocation);
-    FILE *hot_map = fopen(path, "r");
-    if (!hot_map)
-      warn("REPLAY: Could not open %s", path);
 
-    while (fgets(buf, BUFSIZ, core_map)) {
-      off64_t address;
-      sscanf(buf, "%lx", &address);
-      if (address == 0)
-        continue;
-      warmup[hotpages_counter++] = (char *)address;
-      if (hotpages_counter >= MAX_WARMUP)
-        break;
-    }
-    fclose(hot_map);
-
+    load_hotpages_map();
     loaded = true;
   }
 
