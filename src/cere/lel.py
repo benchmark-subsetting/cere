@@ -92,7 +92,7 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
     safe_system(("{link} {opts} -o {binary} {libdir} " +
                  "-Wl,-z,now -lcere_dump -ldl"
-    ).format(link=CLANG, binary=BINARY,
+    ).format(link=CLANGPP, binary=BINARY,
              opts=COMPIL_OPT, Root=PROJECT_ROOT,libdir=LIBDIR_FLAGS))
 
 def sysout(cmd):
@@ -246,7 +246,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
                      libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
 
         f.flush()
-        safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))
+        safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANGPP)))
 
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -255,23 +255,21 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
     Only call the linker
     '''
 
-    compiler = CLANG
-    if ".cpp" in COMPIL_OPT or ".cc" in COMPIL_OPT or ".cxx" in COMPIL_OPT:
-        compiler = CLANGPP
-
     if mode_opt.static:
         COMPIL_OPT += "-static"
 
     if(mode_opt.instrument_app):
         safe_system(("{link} -o {binary} {opts} {libs} {libdir}").format(
-              link=compiler, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
+              link=CLANGPP, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
               libdir=LIBDIR_FLAGS))
     elif(mode_opt.instrument):
         safe_system(("{link} -o {binary} {opts} {wrapper} {libdir}").format(
-              link=compiler, binary=BINARY, opts=COMPIL_OPT,
+              link=CLANGPP, binary=BINARY, opts=COMPIL_OPT,
               wrapper=mode_opt.wrapper, libdir=LIBDIR_FLAGS))
     else:
-        safe_system(("{link} -o {binary} {opts}").format(link=compiler,
+        # NOTE In all linker modes, we now use CLANGPP by default in case we link
+        # some objects containing C++ symbols.
+        safe_system(("{link} -o {binary} {opts}").format(link=CLANGPP,
                 binary=BINARY, opts=COMPIL_OPT))
 
 
@@ -288,6 +286,12 @@ def link(args):
       with open(args[0].cere_objects, "r") as text_file:
         objs = text_file.read()
     COMPIL_OPT = objs + ' ' + " ".join(args[1])
-    BINARY = args[0].o
+
+    if isinstance(args[0].o, type(None)):
+        BINARY = "a.out"
+
+    else:
+        BINARY = args[0].o
+
     # call mode_function
     function[args[0].func](args[0], BINARY, COMPIL_OPT)

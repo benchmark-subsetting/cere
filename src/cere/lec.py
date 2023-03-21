@@ -225,19 +225,12 @@ def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
 
     if ext in FORTRAN_EXTENSIONS:
         if FORTRAN_SUPPORT:
-            # Legacy dragonegg call
-            # opt = [s for s in COMPIL_OPT if s.startswith('-J')]
-            # if opt:
-            #   INCLUDES.append(opt[0])
-            # safe_system(("{gcc} -O0 -g {includes} -cpp {source} -S " +
-            #             "-fplugin={dragonegg} -fplugin-arg-dragonegg-emit-ir -o {base}.ll").format(
-            #             gcc=GCC, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES), source=SOURCE,
-            #             Root=PROJECT_ROOT, dragonegg=DRAGONEGG_PATH, base=BASE))
-
             compiler = "flang"
 
         else:
             fail_lec("Fortran support disabled in this build (recompile using --with-flang).")
+    elif ext in CXX_EXTENSIONS:
+        compiler = "clang++"
     else:
         compiler = "clang"
 
