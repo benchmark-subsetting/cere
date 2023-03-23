@@ -25,15 +25,20 @@
  * Extern references to embedded symbols
  */
 
-// chunks_sizes
-extern char _binary_chunks_sizes_start[];
-extern char _binary_chunks_sizes_end[];
-extern char _binary_chunks_sizes_size[];
+// memchunks_sizes
+extern char _binary_memchunks_sizes_start[];
+extern char _binary_memchunks_sizes_end[];
+extern char _binary_memchunks_sizes_size[];
+
+// memchunks_addressses
+extern char _binary_memchunks_addresses_start[];
+extern char _binary_memchunks_addresses_end[];
+extern char _binary_memchunks_addresses_size[];
 
 // concatenated_chunks
-extern char _binary_concatenated_chunks_start[];
-extern char _binary_concatenated_chunks_end[];
-extern char _binary_concatenated_chunks_size[];
+extern char _binary_concatenated_memchunks_start[];
+extern char _binary_concatenated_memchunks_end[];
+extern char _binary_concatenated_memchunks_size[];
 
 // core
 extern char _binary_core_map_start[];
@@ -70,7 +75,7 @@ long PAGESIZE;
 void cacheflush(void) {
   const size_t size = CACHE_SIZE_MB * 1024 * 1024;
   int i, j;
-  char *c = malloc(size);
+  char c[CACHE_SIZE_MB * 1024 * 1024];
   for (i = 0; i < 5; i++)
     for (j = 0; j < size; j++)
       c[j] = i * j;
@@ -193,6 +198,83 @@ void load_hotpages_map() {
 
 }
 
+// Puts count bytes from the memchunk into the dest buf
+ssize_t read_memchunk(unsigned char * memchunk_start, size_t memchunk_size, unsigned char ** current_memchunk, unsigned char *buf, size_t count) {
+
+  // Error checking to mimic read's behaviour
+  if(count == 0) {
+    return 0;
+  }
+  if(*current_memchunk + count > memchunk_start + memchunk_size) {
+    return 0;
+  }
+
+  for(size_t i=0; i<count; i++) {
+    buf[i] = (*current_memchunk)[i];
+  }
+
+  // Change offset
+  *current_memchunk += count;
+
+  return count;
+}
+
+void load_memdumps() {
+
+  int len;
+
+  // memchunks_sizes
+  int32_t* memchunks_sizes_start = (int32_t*) _binary_memchunks_sizes_start;
+  int32_t* memchunks_sizes_end = (int32_t*) _binary_memchunks_sizes_end;
+
+  // memchunks_addresses (we do not make any assumption on addresses sizes)
+  unsigned char* memchunks_addresses_start = (unsigned char*) _binary_memchunks_addresses_start;
+  unsigned char* memchunks_addresses_end = (unsigned char*) _binary_memchunks_addresses_end;
+
+  // Address size is the size of the memchunks_address symbol on the number of memchunks
+  size_t address_size = (memchunks_addresses_end - memchunks_addresses_start) / (memchunks_sizes_end - memchunks_sizes_start);
+
+  // concatenated_chunks
+  unsigned char* concatenated_memchunks_start = (unsigned char*) _binary_concatenated_memchunks_start;
+  unsigned char* concatenated_memchunks_end = (unsigned char*) _binary_concatenated_memchunks_end;
+
+  while(memchunks_sizes_start < memchunks_sizes_end) {
+
+    // Get chunk size (assuming sizeof(int) == 4)
+    int32_t memchunk_size = *memchunks_sizes_start;
+
+    // Read chunk address byte by byte
+    off64_t memchunk_address = 0;
+    for(size_t i=0; i<address_size; i++) {
+      unsigned char current_byte = (unsigned char) *memchunks_addresses_start;
+      memchunk_address = (memchunk_address << 8) + (off64_t) current_byte;
+      memchunks_addresses_start++;
+    }
+
+    // Get chunk content
+    int read_bytes = 0;
+    unsigned char * current_memchunk = concatenated_memchunks_start;
+    while ((len = read_memchunk(concatenated_memchunks_start, memchunk_size, &current_memchunk, (unsigned char *)(memchunk_address + read_bytes), PAGESIZE)) > 0) {
+      read_bytes += len;
+    }
+
+    // XXX This code should be only done once in the !loaded section
+    // because the valid status does not depend on the repetition
+    for (int i = 0; i < hotpages_counter; i++) {
+      if ((warmup[i] >= (char *)memchunk_address) &&
+          (warmup[i] < ((char *)memchunk_address + read_bytes))) {
+        valid[i] = true;
+      }
+    }
+
+
+    // Update chunks' size and content pointers
+    memchunks_sizes_start++;
+    concatenated_memchunks_start += memchunk_size;
+  }
+}
+
+
 // MAIN LOAD FUNCTION
 /* load: restores memory before replay
  * loop_name: name of dumped loop
@@ -209,6 +291,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
      the capture */
   PAGESIZE = sysconf(_SC_PAGESIZE);
 
+  // TODO Replace getenv
   char* dump_prefix = getenv("CERE_WORKING_PATH");
   if(!dump_prefix) {
     /* If CERE_WORKING_PATH is not defined fallback to default .cere */
@@ -216,6 +299,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   }
 
   /* Read warmup type from environment variable */
+  // TODO Replace getenv
   char *ge = getenv("CERE_WARMUP");
   if (ge && strcmp("COLD", ge) == 0) {
     type_of_warmup = WARMUP_COLD;
@@ -226,24 +310,9 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     type_of_warmup = WARMUP_WORKLOAD;
   }
 
-  snprintf(path, sizeof(path), "%s/dumps/%s/%d/core.map", dump_prefix, loop_name,
-           invocation);
-  FILE *core_map = fopen(path, "r");
-  if (!core_map)
-    errx(EXIT_FAILURE, "Could not open %s", path);
-
-  while (fgets(buf, BUFSIZ, core_map)) {
-    int pos;
-    off64_t address;
-    sscanf(buf, "%d %lx", &pos, &address);
-    // addresses[pos] = (char *)(address);
-  }
-  fclose(core_map);
-
   load_core_map(count, addresses);
 
   if (!loaded) {
-
     load_hotpages_map();
     loaded = true;
   }
@@ -255,60 +324,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     return;
   }
 
-  DIR *dir;
-  struct dirent *ent;
-  struct stat st;
-  int fp;
-  int len;
-  char filename[1024];
-  int total_readed_bytes = 0;
-
-  snprintf(path, sizeof(path), "%s/dumps/%s/%d/", dump_prefix, loop_name, invocation);
-  if ((dir = opendir(path)) == NULL) {
-    /* could not open directory */
-    fprintf(stderr, "REPLAY: Could not open %s", path);
-    exit(EXIT_FAILURE);
-  }
-
-  while ((ent = readdir(dir)) != NULL) {
-    /* Read *.memdump files */
-    if (strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
-      continue;
-
-    snprintf(filename, sizeof(filename), "%s/%s", path, ent->d_name);
-    if (stat(filename, &st) != 0) {
-      fprintf(stderr, "Could not get size for file %s: %s\n", filename,
-              strerror(errno));
-      exit(EXIT_FAILURE);
-    }
-
-    fp = open(filename, O_RDONLY);
-    if (fp < 0) {
-      fprintf(stderr, "Could not open %s\n", filename);
-      exit(EXIT_FAILURE);
-    }
-
-    off64_t address = get_address_from_filename(ent->d_name);
-
-    int read_bytes = 0;
-    while ((len = read(fp, (char *)(address + read_bytes), PAGESIZE)) > 0) {
-      read_bytes += len;
-    }
-
-    // XXX This code should be only done once in the !loaded section
-    // because the valid status does not depend on the repetition
-    for (int i = 0; i < hotpages_counter; i++) {
-      if ((warmup[i] >= (char *)address) &&
-          (warmup[i] < ((char *)address + read_bytes))) {
-        valid[i] = true;
-        // printf("warmup = %p\n", warmup[i]);
-      }
-    }
-
-    close(fp);
-  }
-
-  closedir(dir);
+  load_memdumps();
 
   /* No flush or warmup for WORKLOAD warmup */
   if (type_of_warmup == WARMUP_WORKLOAD)

@@ -190,41 +190,54 @@ def memdumps_to_objects(dir):
     os.chdir(dir)
 
     memchunks_sizes = b'' # Will contain usigned integer entries of 4 bytes (uint32_t)
+    memchunks_addresses = b'' # Will contain addresses of each memchunk (read from filename)
     concatenated_memchunks = b'' # Will contain all memdumps one after another
 
     # Iterate over dump files.
-    # We will concatenate the memdumps and save each of their sizes
+    # We will concatenate the memdumps and save each of their sizes and addresses
     # This is needed because in the template, we must know the name of symbols
     # we access, so we can't just create a bunch of symbols for each dump file
     for f_name in os.listdir("."):
         if f_name.endswith(".memdump"):
             print(f_name)
+            address = bytearray.fromhex(f_name[:-8])
             memchunk = open(f_name, "rb").read()
+            memchunks_sizes += len(memchunk).to_bytes(length=4, byteorder='little') # assumes a little endian replay env
+            memchunks_addresses += address
             concatenated_memchunks += memchunk
-            memchunks_sizes += len(memchunk).to_bytes(length=4, byteorder='little')
 
+    print(memchunks_addresses)
     # Put raw byte sequences in tmp files
-    with open('memchunks_sizes.tmp', 'wb') as w:
+    with open('memchunks_sizes', 'wb') as w:
         w.write(memchunks_sizes)
-    with open('concatenated_memchunks.tmp', 'wb') as w:
+    with open('memchunks_addresses', 'wb') as w:
+        w.write(memchunks_addresses)
+    with open('concatenated_memchunks', 'wb') as w:
         w.write(concatenated_memchunks)
 
     # Generate chunk sizes object from tmp file
     safe_system(("{objcopy} --input binary"
     + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
-    + " {filename}.tmp {filename}.o"
+    + " {filename} {filename}.o"
     + " --rename-section .data=.{filename},CONTENTS,ALLOC,LOAD,READONLY,DATA").format(
     objcopy=OBJCOPY, filename="memchunks_sizes"))
+
+    # Generate chunk addresses object from tmp file
+    safe_system(("{objcopy} --input binary"
+    + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
+    + " {filename} {filename}.o"
+    + " --rename-section .data=.{filename},CONTENTS,ALLOC,LOAD,READONLY,DATA").format(
+    objcopy=OBJCOPY, filename="memchunks_addresses"))
 
     # Generate concatenated chunks object from tmp file
     safe_system(("{objcopy} --input binary"
     + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
-    + " {filename}.tmp {filename}.o"
+    + " {filename} {filename}.o"
     + " --rename-section .data=.{filename},CONTENTS,ALLOC,LOAD,READONLY,DATA").format(
     objcopy=OBJCOPY, filename="concatenated_memchunks"))
 
     # Remove tmp files
-    safe_system("rm memchunks_sizes.tmp concatenated_memchunks.tmp")
+    safe_system("rm memchunks_sizes memchunks_addresses concatenated_memchunks")
 
     os.chdir(owd)
 
@@ -396,7 +409,7 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
     OPTS = compile_memory_dump_objects(mode_opt, DIR)
     with tempfile.NamedTemporaryFile() as f:
         f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
-                 + " {dump_dir}/memchunks_sizes.o {dump_dir}/concatenated_memchunks.o"
+                 + " {dump_dir}/memchunks_sizes.o {dump_dir}/memchunks_addresses.o {dump_dir}/concatenated_memchunks.o"
                  + " {dump_dir}/core.o {dump_dir}/hotpages.o"
                  + " objs.o baremetal_realmain.o {args} "
                  + " {libdir} -lcere_baremetal_load -Wl,-z,now"
