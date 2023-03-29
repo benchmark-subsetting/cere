@@ -82,6 +82,11 @@ cere_hybrid.init_module(subparsers, cere_plugins)
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    if args.mode is None:
+        logger.error("No command specified. Use cere -h for help.")
+        exit(1)
+
     status = 0
 
     start_log()
