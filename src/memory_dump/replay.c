@@ -78,6 +78,12 @@ static off64_t get_address_from_filename(char *filename) {
   return address;
 }
 
+void print_sp() {
+  // This trick should print an approximation of the stack pointer
+  void *p = NULL;
+  printf("sp=%p\n", (void*)&p);
+}
+
 /* load: restores memory before replay
  * loop_name: name of dumped loop
  * invocation: invocation number to load
@@ -85,6 +91,8 @@ static off64_t get_address_from_filename(char *filename) {
  * addresses: an array of <count> addresses
  */
 void load(char *loop_name, int invocation, int count, void *addresses[count]) {
+  printf("[load] In\n");
+  print_sp();
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
@@ -117,16 +125,19 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   if (!core_map)
     errx(EXIT_FAILURE, "Could not open %s", path);
 
+  printf("\n[load] Loading addresses:\n");
   while (fgets(buf, BUFSIZ, core_map)) {
     int pos;
     off64_t address;
     sscanf(buf, "%d %lx", &pos, &address);
+    printf("  address %p loading at position %d \n", (char*) address, pos);
     addresses[pos] = (char *)(address);
   }
   fclose(core_map);
 
   if (!loaded) {
     /* load hotpages adresses */
+    printf("\n[load] Loading hotpages:\n");
     snprintf(path, sizeof(path), "%s/dumps/%s/%d/hotpages.map", dump_prefix, loop_name,
              invocation);
     FILE *hot_map = fopen(path, "r");
@@ -138,7 +149,8 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       sscanf(buf, "%lx", &address);
       if (address == 0)
         continue;
-      warmup[hotpages_counter++] = (char *)address;
+      printf("  hotpage %p loading at position %d \n", (char*) address, hotpages_counter);
+      warmup[hotpages_counter] = (char *)address;
       if (hotpages_counter >= MAX_WARMUP)
         break;
     }
@@ -151,6 +163,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   // COLD warmup must always be used with CERE_REPLAY_REPETITIONS=1
   if (type_of_warmup == WARMUP_COLD) {
     cacheflush();
+    printf("[load] No warmup, out\n");
     return;
   }
 
@@ -169,6 +182,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     exit(EXIT_FAILURE);
   }
 
+  printf("\n[load] Reading .memdump files:\n");
   while ((ent = readdir(dir)) != NULL) {
     /* Read *.memdump files */
     if (strcmp(get_filename_ext(ent->d_name), "memdump") != 0)
@@ -181,6 +195,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       exit(EXIT_FAILURE);
     }
 
+    printf(" About to open %s... ", ent->d_name);
     fp = open(filename, O_RDONLY);
     if (fp < 0) {
       fprintf(stderr, "Could not open %s\n", filename);
@@ -193,6 +208,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     while ((len = read(fp, (char *)(address + read_bytes), PAGESIZE)) > 0) {
       read_bytes += len;
     }
+    printf("of size %ld\n", read_bytes);
 
     // XXX This code should be only done once in the !loaded section
     // because the valid status does not depend on the repetition
@@ -200,7 +216,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
       if ((warmup[i] >= (char *)address) &&
           (warmup[i] < ((char *)address + read_bytes))) {
         valid[i] = true;
-        // printf("warmup = %p\n", warmup[i]);
+        printf("    warmup[%d] = %p\n", i, warmup[i]);
       }
     }
 
@@ -211,6 +227,7 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
 
   /* No flush or warmup for WORKLOAD warmup */
   if (type_of_warmup == WARMUP_WORKLOAD)
+    printf("[load] No warmup, out\n");
     return;
 
   /* Flush and prepare TRACE warmup */
@@ -224,8 +241,10 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   }
 
   /* Flush cache */
+  printf("\n[load] Flushing cache\n");
   cacheflush();
 
+  printf("[load] Warming cache up\n");
   /* Warmup cache */
   for (int i = start; i < hotpages_counter; i++) {
     for (char *j = warmup[i]; j < warmup[i] + PAGESIZE; j++)
@@ -244,4 +263,6 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
     for (char *j = warmup[i]; j < warmup[i] + PAGESIZE; j++)
       __builtin_prefetch(j);
   }
+
+  printf("[load] Out\n");
 }

@@ -55,6 +55,7 @@ void real_main() {{
   }}
   for(i=0; i<call_count+1; i++) {{
     alarm(max_seconds);
+    printf("\n*** Run i=%d *** \n", i);
     run{loop}();
   }}
 
