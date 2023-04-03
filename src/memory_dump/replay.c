@@ -84,6 +84,14 @@ void print_sp() {
   printf("sp=%p\n", (void*)&p);
 }
 
+void print_mmap() {
+  printf("  Dumping process memory map\n");
+  char cmd[255];
+  pid_t pid = getpid();
+  snprintf(cmd, sizeof(cmd), "cat /proc/%d/maps >&2", pid);
+  system(cmd);
+}
+
 /* load: restores memory before replay
  * loop_name: name of dumped loop
  * invocation: invocation number to load
@@ -93,6 +101,7 @@ void print_sp() {
 void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   printf("[load] In\n");
   print_sp();
+  print_mmap();
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
