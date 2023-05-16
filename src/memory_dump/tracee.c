@@ -165,16 +165,33 @@ void dump(char *loop_name, int invocation, int count, ...) {
   }
   va_end(ap);
 
-  kill_after_dump = true;
+  // kill_after_dump = true;
   send_to_tracer(TRAP_END_ARGS);
 }
 
 void after_dump(void) {
+  printf("[tracee] In after_dump\n");
   /* Avoid doing something before initializing */
   /* the dump. */
   if (!dump_initialized)
     return;
 
-  if (kill_after_dump)
+  if (kill_after_dump) {
+    printf("Kill after dump!");
     abort();
+  }
+  else {
+    pid_t parent = getppid();
+    printf("[tracee] Own pid = %d\n", getpid());
+    printf("[tracee] Sending signal to parent %d\n", parent);
+
+    // Detach ourselves from our parent (=tracer)
+    setsid();
+    printf("[tracee] Old parent : %d, New parent (none?) = %d\n", parent, getppid());
+
+    // Send a fake SIGABRT to "trick" the tracer into terminating itself
+    kill(parent, 6);
+
+    printf("[tracee] Resume execution normally\n");
+  }
 }

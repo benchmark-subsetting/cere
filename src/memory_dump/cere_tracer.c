@@ -73,6 +73,10 @@ enum tracer_state_t tracer_state = 0;
 
 struct tracer_buff_t * tracer_buff;
 
+
+void *already_protected_addresses[65536];
+int already_protected_counter = 0;
+
 /* The loop name and invocation, these are received from the tracee
    in the tracer_dump function
 */
@@ -148,6 +152,7 @@ static bool is_syscall_io(pid_t pid) {
   case SYS_openat:
   case SYS_close:
     debug_print("Syscall IO detected : %d\n", syscallid);
+    printf("Syscall IO detected : %d\n", syscallid);
    return true;
   default:
     return false;
@@ -522,8 +527,20 @@ static void tracer_lock_mem(pid_t pid) {
   while (fgets(buf, BUFSIZ, maps)) {
     void *start, *end;
 
-    debug_print("%s", buf);
+    // debug_print("%s", buf);
+    printf("%s", buf);
     sscanf(buf, "%p-%p", &start, &end);
+
+    /* Ignore alreay protected pages (this needs the highest priority)  */
+    if (strstr(buf, "---p") != NULL) {
+      // Already protected pages are a special case, as we don't want to unprotect
+      // them after the codelet
+      printf("ALREADY PROTECTED (start=%p, end=%p)\n", start, end);
+      assert(counter < 65536);
+      already_protected_addresses[already_protected_counter++] = start;
+      already_protected_addresses[already_protected_counter++] = end;
+      continue;
+    }
 
     /* Ignore libdump mem zones  */
     if (strstr(buf, "libcere_dump.so") != NULL)
@@ -574,10 +591,6 @@ static void tracer_lock_mem(pid_t pid) {
     if (strstr(buf, "vvar") != NULL)
       continue;
 
-    /* Ignore alreay protected pages  */
-    if (strstr(buf, "---p") != NULL)
-      continue;
-
     assert(counter < 65536);
     addresses[counter++] = round_to_page(start);
       debug_print("round_to_page=%p\n", round_to_page(start));
@@ -588,6 +601,7 @@ static void tracer_lock_mem(pid_t pid) {
   while (counter > 0) {
     void *end = addresses[--counter];
     void *start = addresses[--counter];
+    printf("PROTECTING(%p, %p)\n", start, end);
     protect_i(pid, start, (end - start));
   }
 
@@ -598,6 +612,125 @@ static void tracer_lock_mem(pid_t pid) {
 
   debug_print("%s\n", "END LOCK MEM");
 }
+
+inline bool should_unprotect(size_t start, size_t end) {
+  int i = 0;
+  while(i<already_protected_counter) {
+    if(start == already_protected_addresses[i++] && end == already_protected_addresses[i++]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static void tracer_unlock_mem(pid_t pid) {
+
+  char maps_path[MAX_PATH];
+  sprintf(maps_path, "/proc/%d/maps", pid);
+  FILE *maps = fopen(maps_path, "r");
+
+  if (!maps)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
+
+  debug_print("%s\n", "START UNLOCK MEM");
+  printf("START UNLOCK MEM of %d\n", pid);
+  printf("already_protected_counter=%d\n", already_protected_counter);
+
+  void *addresses[65536];
+  char buf[BUFSIZ + 1];
+  int counter = 0;
+  bool first_pages = true;
+  char *tmpstr = NULL;
+  char *executable = NULL;
+  void *protect_offset = NULL;
+
+  while (fgets(buf, BUFSIZ, maps)) {
+    void *start, *end;
+
+    debug_print("%s", buf);
+    printf("%s", buf);
+    sscanf(buf, "%p-%p", &start, &end);
+
+    /* Ignore alreay protected pages (this needs the highest priority)  */
+    if (strstr(buf, "---p") != NULL) {
+      // Already protected pages are a special case, as we don't want to unprotect
+      // them after the codelet
+      continue;
+    }
+
+    /* Ignore libdump mem zones  */
+    if (strstr(buf, "libcere_dump.so") != NULL)
+      continue;
+
+    /* Ignore libc pages  */
+    if (strstr(buf, "linux-gnu") != NULL)
+      continue;
+
+    /* Ignore libc special mem zones  */
+    /* We have to find a good criteria to detect that specific memory page, */
+    /* for now we will consider that this will always be the first page. */
+    /* If we don't ignore those mem zones we get this error */
+    /* /usr/bin/ld: la section .interp chargée à  */
+    /*    [00000000004003c0 -> 00000000004003db]  */
+    /*    chevauche la section s000000400000 chargée à  */
+    /*    [0000000000400000 -> 0000000000400fff] */
+    if (first_pages) {
+      first_pages = false;
+
+      // We should be able to get the executable name from buf ...
+      tmpstr = strchr(buf, '/');
+      executable = malloc(strlen(tmpstr-1)*sizeof(char));
+      memcpy(executable, tmpstr, strlen(tmpstr-1)*sizeof(char));
+      executable[strlen(executable)-1] = 0;
+      // ... and inspect the ELF to determine where to start protecting pages
+      protect_offset = get_protect_offset(executable);
+      if(protect_offset == NULL)
+        exit(1);
+      //protect_offset = protect_offset + (void*) 0x1000;
+      protect_offset = (void*) ((uint64_t) protect_offset + (uint64_t) getpagesize());
+      debug_print("protect_offset=%p\n", protect_offset);
+      free(executable);
+    }
+
+    if(start < protect_offset)
+        continue;
+
+    /* Ignore vsyscall special mem zones  */
+    if (strstr(buf, "vsyscall") != NULL)
+      continue;
+
+    /* Ignore libdump vdso zones  */
+    if (strstr(buf, "vdso") != NULL)
+      continue;
+
+    /* Ignore vvar zone (cf. https://lkml.org/lkml/2015/3/12/602) */
+    if (strstr(buf, "vvar") != NULL)
+      continue;
+
+    assert(counter < 65536);
+    addresses[counter++] = round_to_page(start);
+      debug_print("round_to_page=%p\n", round_to_page(start));
+    addresses[counter++] = end;
+
+  }
+
+  /* Unprotect all pages in adresses */
+  while (counter > 0) {
+    void *end = addresses[--counter];
+    void *start = addresses[--counter];
+    printf("UNPROTECTING(%p, %p)\n", start, end);
+    unprotect_i(pid, start, (end - start));
+  }
+
+  int r = fclose(maps);
+  if (r != 0)
+    errx(EXIT_FAILURE, "Error reading the memory using /proc/ %s\n",
+         strerror(errno));
+
+  debug_print("%s\n", "END UNLOCK MEM");
+  printf("%s\n", "END UNLOCK MEM");
+}
+
 
 static void flush_hot_pages_trace_to_disk(pid_t pid) {
 
@@ -715,12 +848,44 @@ static void tracer_dump(pid_t pid) {
   dump_unprotected_pages(pid);
 }
 
+void sigabrt_handler(int signo, siginfo_t *si, void *data) {
+  if((int)si->si_signo == SIGABRT) {
+    printf("Received SIG : %d\n", (int)si->si_signo);
+
+    /* Unprotect the tracee memory and kill ourselves
+    * The tracee is either aborting for real or continuing
+    * its execution until the next codelet, but we're not
+    * concerned from the tracer's point of view */
+    pid_t pid = si->si_pid;
+    tracer_unlock_mem(pid);
+
+    // Detach from the tracee and resume it
+    printf("FREEING TRACEE\n");
+    unfollow_threads(pid);
+
+    // Abort ourselves
+    printf("Debug sleep\n");
+    sleep(1);
+    printf("KILLING OURSELVES\n");
+    exit(0);
+  }
+}
+
 static void tracer_init(pid_t pid) {
   PAGESIZE = sysconf(_SC_PAGESIZE);
   event_t e = wait_event(pid);
   assert(e.signo == SIGSTOP);
   follow_threads(pid);
   create_dump_dir();
+
+  // Listen to SIGABRT from tracee to terminate tracer
+  // signal(SIGABRT, sigabrt_handler);
+
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_flags = SA_SIGINFO;
+  sa.sa_sigaction = sigabrt_handler;
+  sigaction(SIGABRT, &sa, 0);
 
   debug_print("%s\n", "Tracer initialized");
 

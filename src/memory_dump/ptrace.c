@@ -297,11 +297,11 @@ event_t wait_event(pid_t wait_for) {
          SIGSTOP is received before the parent SIGTRAP) */
       if (find_thread_pos(new_thread) == -1) {
         register_thread(new_thread);
-	/* New thread starts with a SIGSTOP, either it was already caught before
+    /* New thread starts with a SIGSTOP, either it was already caught before
            parent SIGTRAP in that case thread is already registered, either we
            should catch it now.  */
-	event_t e = wait_event(new_thread);
-	assert(e.signo == SIGSTOP);
+    event_t e = wait_event(new_thread);
+    assert(e.signo == SIGSTOP);
       }
 
       /* Let both parent and child thread continue */
@@ -397,5 +397,28 @@ void follow_threads(pid_t pid) {
     ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
            PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
     debug_print("Attached to %d\n", tids[t]);
+  }
+}
+
+void unfollow_threads(pid_t pid) {
+
+  parse_proc_task(pid);
+
+  /* Detach from all tids
+   * This should be called when killing the tracer
+   */
+  for (int t = 0; t < ntids; t++) {
+    int r;
+    do {
+      r = ptrace(PTRACE_CONT, tids[t], (void *)0, 0);
+      r = ptrace(PTRACE_DETACH, tids[t], (void *)0, 0);
+    } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
+                            errno == ESRCH));
+    if (r == -1L) {
+      errx(EXIT_FAILURE, "Cannot detach thread %d: %s\n",
+        tids[t], strerror(errno));
+    }
+
+    debug_print("Detached from %d\n", tids[t]);
   }
 }
