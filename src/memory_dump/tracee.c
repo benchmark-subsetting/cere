@@ -82,6 +82,7 @@ void dump_init(void) {
   /* If we are the parent */
   if (child != 0) {
 
+    debug_print("[tracee->tracer %d] New tracer process\n", getpid());
     char args[2][32];
     snprintf(args[0], sizeof(args[0]), "%d", child);
     snprintf(args[1], sizeof(args[1]), "%p", &tracer_buff);
@@ -91,6 +92,7 @@ void dump_init(void) {
     errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
   } else {
 
+    debug_print("[tracee->tracee %d] New tracee process\n", getpid());
     /* Give DUMPABLE capability, required by ptrace */
     if (prctl(PR_SET_DUMPABLE, (long)1) != 0) {
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
@@ -108,16 +110,18 @@ void dump_init(void) {
       errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
     }
 
-    debug_print("requesting ptrace from %d\n", getpid());
     raise(SIGSTOP);
 
     dump_initialized = true;
   }
 
-  debug_print("%s", "DUMP_INIT DONE\n");
 }
 
-void dump_close() { unlink("lel_bin"); }
+void dump_close() {
+  unlink("lel_bin");
+  debug_print("[tracee %d] Aborting\n", getpid());
+  abort();
+}
 
 /* dumps memory
  *  loop_name: name of dumped loop
@@ -136,11 +140,10 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
 
   /* Happens only once */
-  if ((invocation <= PAST_INV && times_called == 1) ||
-      (times_called == invocation - PAST_INV)) {
-    mtrace_active = true;
-    send_to_tracer(TRAP_LOCK_MEM);
-  }
+  debug_print("[tracee %d] Sending trap lock mem (invocation=%d, past_inv=%d, times_called=%d) ?\n", getpid(), PAST_INV, times_called);
+  mtrace_active = true;
+  debug_print("[tracee %d] YES YES YES!\n", getpid());
+  send_to_tracer(TRAP_LOCK_MEM);
 
   if (times_called != invocation) {
     return;
@@ -170,28 +173,25 @@ void dump(char *loop_name, int invocation, int count, ...) {
 }
 
 void after_dump(void) {
-  printf("[tracee] In after_dump\n");
+  debug_print("[tracee %d] In after_dump\n", getpid());
   /* Avoid doing something before initializing */
   /* the dump. */
   if (!dump_initialized)
     return;
 
   if (kill_after_dump) {
-    printf("Kill after dump!");
+    debug_print("[tracee %d] Kill (abort) after dump", getpid());
     abort();
   }
   else {
     pid_t parent = getppid();
-    printf("[tracee] Own pid = %d\n", getpid());
-    printf("[tracee] Sending signal to parent %d\n", parent);
+    debug_print("[tracee %d] Sending abort signal to parent %d\n", getpid(), parent);
 
-    // Detach ourselves from our parent (=tracer)
-    setsid();
-    printf("[tracee] Old parent : %d, New parent (none?) = %d\n", parent, getppid());
 
     // Send a fake SIGABRT to "trick" the tracer into terminating itself
     kill(parent, 6);
-
-    printf("[tracee] Resume execution normally\n");
+    // Detach ourselves from our parent (=tracer)
+    setsid();
+    debug_print("[tracee %d] Resume execution normally\n", getpid());
   }
 }

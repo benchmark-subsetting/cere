@@ -397,6 +397,7 @@ void follow_threads(pid_t pid) {
     ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
            PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
     debug_print("Attached to %d\n", tids[t]);
+    debug_print("[tracer %d] Attached to %d\n", getpid(), tids[t]);
   }
 }
 
@@ -420,5 +421,6 @@ void unfollow_threads(pid_t pid) {
     }
 
     debug_print("Detached from %d\n", tids[t]);
+    debug_print("[tracer %d] Detached from %d\n", getpid(), tids[t]);
   }
 }
