@@ -338,9 +338,6 @@ event_t wait_event(pid_t wait_for) {
       return event;
     }
     }
-  case SIGABRT:
-    debug_print("%s\n", "Finished capture\n");
-    exit(0);
   default:
     /* Return all other events */
     return event;

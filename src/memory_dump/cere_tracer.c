@@ -47,7 +47,7 @@
 #endif
 
 #define _DEBUG 1
-#undef _DEBUG
+// #undef _DEBUG
 
 
 #include "debug.h"
@@ -872,6 +872,7 @@ static void tracer_dump(pid_t pid) {
   dump_unprotected_pages(pid);
 }
 
+/* Custom SIGABRT handler : to exit tracer for multi codelet capture */
 void sigabrt_handler(int signo, siginfo_t *si, void *data) {
   if((int)si->si_signo == SIGABRT) {
     debug_print("[tracer %d] Received SIGABRT\n", getpid());
@@ -892,6 +893,16 @@ void sigabrt_handler(int signo, siginfo_t *si, void *data) {
   }
 }
 
+/* Custom SIGKILL handler : to exit tracer directly (for single codelet capture) */
+void sigkill_handler(int signo, siginfo_t *si, void *data) {
+  if((int)si->si_signo == SIGKILL) {
+    debug_print("[tracer %d] Received SIGKILL\n", getpid());
+    // exit directly without unfreeing tracee (which should also terminate itself)
+    exit(0);
+  }
+}
+
+
 static void tracer_init(pid_t pid) {
   PAGESIZE = sysconf(_SC_PAGESIZE);
   event_t e = wait_event(pid);
@@ -899,14 +910,20 @@ static void tracer_init(pid_t pid) {
   follow_threads(pid);
   create_dump_dir();
 
-  // Listen to SIGABRT from tracee to terminate tracer
-  // signal(SIGABRT, sigabrt_handler);
-
+  // Listen to SIGABRT from tracee to terminate tracer with freeing
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
   sa.sa_flags = SA_SIGINFO;
   sa.sa_sigaction = sigabrt_handler;
   sigaction(SIGABRT, &sa, 0);
+
+  // Listen to SIGKILL from tracee to terminate tracer without freeing
+  struct sigaction sa2;
+  memset(&sa2, 0, sizeof(sa2));
+  sa2.sa_flags = SA_SIGINFO;
+  sa2.sa_sigaction = sigkill_handler;
+  sigaction(SIGKILL, &sa2, 0);
+
 
   debug_print("%s\n", "Tracer initialized");
 

@@ -38,7 +38,7 @@
 #include "tracee_interface.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+// #undef _DEBUG
 
 #include "debug.h"
 
@@ -53,9 +53,14 @@ void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
 long PAGESIZE;
 
-void dump_init(void) {
+// Parametrized dump_init that can be used to set kill_after_dump
+// (this will enable or disable multi-codelet capture)
+void _dump_init(bool new_kad) {
 
   PAGESIZE = sysconf(_SC_PAGESIZE);
+
+  /* Set global kill_after_dump */
+  kill_after_dump = new_kad;
 
   /* state.mtrace_active = false; */
   mtrace_active = false;
@@ -117,9 +122,20 @@ void dump_init(void) {
 
 }
 
+// Default dump_init, where kill_after_dump=true
+void dump_init(void) {
+  _dump_init(true);
+}
+
+// Multi dump_init, by setting kill_after_dump=false
+void multi_dump_init(void) {
+  _dump_init(false);
+}
+
+// We should only reach this during multi codelet capture
 void dump_close() {
-  unlink("lel_bin");
   debug_print("[tracee %d] Aborting\n", getpid());
+  unlink("lel_bin");
   abort();
 }
 
@@ -140,9 +156,8 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
 
   /* Happens only once */
-  debug_print("[tracee %d] Sending trap lock mem (invocation=%d, past_inv=%d, times_called=%d) ?\n", getpid(), PAST_INV, times_called);
+  debug_print("[tracee %d] Sending trap lock mem \n", getpid(), PAST_INV, times_called);
   mtrace_active = true;
-  debug_print("[tracee %d] YES YES YES!\n", getpid());
   send_to_tracer(TRAP_LOCK_MEM);
 
   if (times_called != invocation) {
@@ -168,7 +183,6 @@ void dump(char *loop_name, int invocation, int count, ...) {
   }
   va_end(ap);
 
-  // kill_after_dump = true;
   send_to_tracer(TRAP_END_ARGS);
 }
 
@@ -179,16 +193,21 @@ void after_dump(void) {
   if (!dump_initialized)
     return;
 
+  pid_t parent = getppid();
+
   if (kill_after_dump) {
-    debug_print("[tracee %d] Kill (abort) after dump", getpid());
+    debug_print("[tracee %d] Kill after dump, sending kill to parent\n", getpid());
+
+    // Send a fake SIGKILL to "trick" the tracer into terminating itself
+    kill(parent, 9);
+
+    unlink("lel_bin");
     abort();
   }
   else {
-    pid_t parent = getppid();
     debug_print("[tracee %d] Sending abort signal to parent %d\n", getpid(), parent);
 
-
-    // Send a fake SIGABRT to "trick" the tracer into terminating itself
+    // Send a fake SIGABRT to "trick" the tracer into freeing us & terminating itself
     kill(parent, 6);
     // Detach ourselves from our parent (=tracer)
     setsid();
