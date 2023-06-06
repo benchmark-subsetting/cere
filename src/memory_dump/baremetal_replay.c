@@ -54,7 +54,6 @@ extern char _binary_hotpages_map_size[];
 #define _LARGEFILE64_SOURCE
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#include <assert.h>
 #include <err.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -81,6 +80,24 @@ void cacheflush(void) {
       c[j] = i * j;
 }
 
+/*
+ * BAREMETAL HELPERS
+ */
+
+inline int get_decimal_digit(char d) {
+  // Assumes d is in the '0' - '9' range
+  return d - 48; // 48 -> '0'
+}
+
+inline int get_hex_digit(char d) {
+  // Assumes d is in the '0' - '9' or 'a' - 'f' ranges
+  if(d >= 48 && d <= 57) {
+    return get_decimal_digit(d);
+  }
+  return d - 87; // 97 -> 'a', is worth 10
+}
+
+
 /**********************************************************************
  * REPLAY MODE                                                        *
  **********************************************************************/
@@ -100,23 +117,44 @@ static int hotpages_counter = 0;
 
 static int type_of_warmup = 0;
 
-static char *get_filename_ext(const char *filename) {
-  char *dot = strrchr(filename, '.');
-  if (!dot || dot == filename)
-    return "";
-  return dot + 1;
-}
-
-static off64_t get_address_from_filename(char *filename) {
-  off64_t address;
-  sscanf(filename, "%lx.", &address);
-  return address;
-}
-
 
 /*
  * BAREMETAL SPECIFIC FUNCTIONS
  */
+
+void coremap_sscanf(char * buf, int * pos, off64_t * address) {
+  /*
+  *
+  * Reads :
+  * - pos integer in base 10
+  * - address in base 16
+  * Both are space separated
+  */
+
+  /* pos */
+  int pos_ndigits = 0;
+  while(buf[pos_ndigits] != ' ') {
+    pos_ndigits++;
+  }
+
+  *pos = 0;
+  // Read digit
+  for(int i=0; i<=pos_ndigits-1; i++) {
+    *pos = *pos * 10 + get_decimal_digit(buf[i]);
+  }
+
+  /* address */
+  int base = pos_ndigits+1;
+  int address_ndigits = 0;
+  while(buf[base + address_ndigits] != '\n') {
+    address_ndigits++;
+  }
+
+  *address = 0;
+  for(int i=0; i<=address_ndigits-1; i++) {
+    *address = *address * 16 + get_hex_digit(buf[base + i]);
+  }
+}
 
 void load_core_map(int count, void *addresses[count]) {
 
@@ -150,12 +188,28 @@ void load_core_map(int count, void *addresses[count]) {
     int pos;
     off64_t address;
     // TODO Reimplement the sscanf call
-    sscanf(buf, "%d %lx", &pos, &address);
+    coremap_sscanf(buf, &pos, &address);
+    //sscanf(buf, "%d %lx", &pos, &address);
     addresses[pos] = (char *)(address);
   }
 
 }
 
+
+void hotpages_sscanf(char * buf, off64_t * address) {
+  /* address */
+  int base = 2; // Because buf starts with "0x"
+  int address_ndigits = 0;
+  while(buf[base + address_ndigits] != '\n') {
+    address_ndigits++;
+  }
+
+  *address = 0;
+  for(int i=0; i<=address_ndigits-1; i++) {
+    *address = *address * 16 + get_hex_digit(buf[base + i]);
+  }
+
+}
 
 void load_hotpages_map() {
 
@@ -188,7 +242,8 @@ void load_hotpages_map() {
       /* Load the hotpages entry just stored in buf */
       off64_t address;
       // TODO Reimplement the sscanf call
-      sscanf(buf, "%lx", &address);
+      hotpages_sscanf(buf, &address);
+      //sscanf(buf, "%lx", &address);
       if (address == 0)
         continue;
       warmup[hotpages_counter++] = (char *)address;
@@ -286,29 +341,10 @@ void load(char *loop_name, int invocation, int count, void *addresses[count]) {
   char path[BUFSIZ];
   char buf[BUFSIZ + 1];
 
-  /* XXX: If we replay a capture from a system with a different PAGESIZE, this
-     may have unexpected side effects. We should save the PAGESIZE used during
-     the capture */
-  PAGESIZE = sysconf(_SC_PAGESIZE);
-
-  // TODO Replace getenv
-  char* dump_prefix = getenv("CERE_WORKING_PATH");
-  if(!dump_prefix) {
-    /* If CERE_WORKING_PATH is not defined fallback to default .cere */
-    dump_prefix = ".cere";
-  }
-
-  /* Read warmup type from environment variable */
-  // TODO Replace getenv
-  char *ge = getenv("CERE_WARMUP");
-  if (ge && strcmp("COLD", ge) == 0) {
-    type_of_warmup = WARMUP_COLD;
-  } else if (ge && strcmp("PAGETRACE", ge) == 0) {
-    type_of_warmup = WARMUP_PAGETRACE;
-  } else {
-    /* WARMUP_WORKLOAD is the default warmup */
-    type_of_warmup = WARMUP_WORKLOAD;
-  }
+  // NOTE Assuming PAGESIZE of 4096
+  PAGESIZE = 4096;
+  // NOTE Assuming WARMUP_WORKLOAD in baremetal
+  type_of_warmup = WARMUP_WORKLOAD;
 
   load_core_map(count, addresses);
 
