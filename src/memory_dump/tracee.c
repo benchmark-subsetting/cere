@@ -38,11 +38,14 @@
 #include "tracee_interface.h"
 
 #define _DEBUG 1
-// #undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
+#define BUG 0
+#if BUG
 static int times_called = 0;
+#endif
 static bool dump_initialized;
 volatile static bool kill_after_dump = false;
 
@@ -53,15 +56,58 @@ void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
 long PAGESIZE;
 
-// Parametrized dump_init that can be used to set kill_after_dump
-// (this will enable or disable multi-codelet capture)
-void _dump_init(bool new_kad) {
+typedef struct {
+  char* loop_name;
+  unsigned long long count_value;
+} LoopCounter;
 
+typedef struct {
+  LoopCounter* counters;
+  int num_counters;
+} LoopCounterCollection;
+
+static LoopCounterCollection loop_counters;
+//static bool in_progress = false;
+static char* in_progress_loop_name = NULL;
+static int in_progress_invocation = -1;
+
+static LoopCounter* get_counter_internal(const char* loop_name) {
+  for (int i = 0; i < loop_counters.num_counters; i++) { 
+    LoopCounter* counter = &(loop_counters.counters[i]);
+    if (strcmp(counter->loop_name, loop_name) == 0) { 
+      return counter;
+    }
+  }
+  // New counter 
+  LoopCounter newCounter;
+  newCounter.loop_name = strdup(loop_name);
+  newCounter.count_value = 0;  
+
+  loop_counters.counters = realloc(
+    loop_counters.counters, (loop_counters.num_counters + 1) * sizeof(LoopCounter));
+  loop_counters.counters[loop_counters.num_counters] = newCounter;
+  loop_counters.num_counters++;
+  return &(loop_counters.counters[loop_counters.num_counters-1]);
+}
+
+void increment_counter(const char* loop_name) { 
+  get_counter_internal(loop_name)->count_value ++;
+}
+
+unsigned long long get_counter_value(const char* loop_name) {
+  return get_counter_internal(loop_name)->count_value ;
+}
+
+void _dump_preinit(bool new_kad) {
   PAGESIZE = sysconf(_SC_PAGESIZE);
 
   /* Set global kill_after_dump */
   kill_after_dump = new_kad;
+}
 
+// Parametrized dump_init that can be used to set kill_after_dump
+// (this will enable or disable multi-codelet capture)
+void _dump_init() {
   /* state.mtrace_active = false; */
   mtrace_active = false;
 
@@ -70,7 +116,7 @@ void _dump_init(bool new_kad) {
   snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
   int ret = system(buf);
   if (ret != 0) {
-    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
+    errx(EXIT_FAILURE, "lel_bin copy failed(%d, %d): %s.\n", getpid(), getppid(), strerror(errno));
   }
 
   /* configure atexit */
@@ -124,12 +170,26 @@ void _dump_init(bool new_kad) {
 
 // Default dump_init, where kill_after_dump=true
 void dump_init(void) {
-  _dump_init(true);
+  printf("DUMP_INIT %d, %d\n", getpid(), getppid());
+  _dump_init();
 }
 
 // Multi dump_init, by setting kill_after_dump=false
 void multi_dump_init(void) {
-  _dump_init(false);
+  debug_print("MULTI DUMP_INIT %d, %d\n", getpid(), getppid());
+  _dump_init();
+  //_dump_init(true);
+}
+
+// Default dump_init, where kill_after_dump=true
+void dump_preinit(void) {
+  _dump_preinit(true);
+}
+
+// Multi dump_init, by setting kill_after_dump=false
+void multi_dump_preinit(void) {
+  _dump_preinit(false);
+  //_dump_init(true);
 }
 
 // We should only reach this during multi codelet capture
@@ -145,26 +205,31 @@ void dump_close() {
  *  count: number of arguments
  *  ...args...: the arguments to dump
  */
-void dump(char *loop_name, int invocation, int count, ...) {
+void vdump_orig(char *loop_name, int invocation, int count, va_list ap) {
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
   if (!dump_initialized)
     return;
 
+	#if BUG
   times_called++;
+  printf("times_called:%d, inv:%d, lm:%s\n", times_called, invocation, loop_name);
+  #endif
 
 
   /* Happens only once */
-  debug_print("[tracee %d] Sending trap lock mem \n", getpid(), PAST_INV, times_called);
+  debug_print("[tracee %d] Sending trap lock mem %d, %d\n", getpid(), PAST_INV, times_called);
   mtrace_active = true;
   send_to_tracer(TRAP_LOCK_MEM);
 
+	#if BUG
   if (times_called != invocation) {
     return;
   }
 
   assert(times_called == invocation);
+  #endif
   mtrace_active = false;
 
   strcpy(tracer_buff.str_tmp, loop_name);
@@ -176,17 +241,24 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
   /* Dump addresses */
   int i;
-  va_list ap;
-  va_start(ap, count);
+  //va_list ap;
+  //va_start(ap, count);
   for (i = 0; i < count; i++) {
     send_to_tracer((register_t)va_arg(ap, void *));
   }
-  va_end(ap);
+  //va_end(ap);
 
   send_to_tracer(TRAP_END_ARGS);
 }
 
-void after_dump(void) {
+void dump_orig(char *loop_name, int invocation, int count, ...) {
+  va_list ap;
+  va_start(ap, count);
+  vdump_orig(loop_name, invocation, count, ap);
+  va_end(ap);
+}
+
+void after_dump_orig(void) {
   debug_print("[tracee %d] In after_dump\n", getpid());
   /* Avoid doing something before initializing */
   /* the dump. */
@@ -210,7 +282,52 @@ void after_dump(void) {
     // Send a fake SIGABRT to "trick" the tracer into freeing us & terminating itself
     kill(parent, 6);
     // Detach ourselves from our parent (=tracer)
-    setsid();
+    //setsid();
     debug_print("[tracee %d] Resume execution normally\n", getpid());
   }
+}
+
+// only invcation will be dumped and internally a counter is associated with loop
+void dump(char *loop_name, int invocation, int count, ...) {
+  #if 1
+  //assert(!in_progress);  // should not try to call dump again while dump in progress.
+  increment_counter(loop_name);
+  if (in_progress_loop_name != NULL) {
+    // no need to check invocation even
+    return;
+  }
+	va_list args;
+  va_start(args, count);
+
+	unsigned long long counter_value = get_counter_value(loop_name);
+  if (counter_value == invocation + 1) {
+    debug_print("DUMPING for %s, %d, cnt=%lld\n", loop_name, invocation, counter_value);
+    multi_dump_init();
+    vdump_orig(loop_name, invocation, count, args);
+    in_progress_loop_name = strdup(loop_name);
+    in_progress_invocation = invocation;
+  } else {
+    debug_print("NOT DUMPING for %s, %d, cnt=%lld\n", loop_name, invocation, counter_value);
+  }
+  #else
+  multi_dump_init();
+  vdump_orig(loop_name, invocation, count, args);
+  #endif
+  va_end(args);
+}
+
+void after_dump(char* loop_name, int invocation) {
+  //after_dump_orig();
+  //return;
+  if (in_progress_loop_name != NULL 
+    && strcmp(in_progress_loop_name, loop_name) == 0 && in_progress_invocation == invocation) {
+    after_dump_orig();
+    free(in_progress_loop_name);
+    in_progress_loop_name = NULL;
+    in_progress_invocation = -1;
+    debug_print("AFTER_DUMP\n");
+  } else {
+    debug_print("NOT AFTER_DUMP\n");
+  }
+  // not in progress can happen when invocation not matching counters
 }
