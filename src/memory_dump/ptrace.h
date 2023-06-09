@@ -46,6 +46,7 @@ void ptrace_putdata(pid_t pid, long writeAddr, char * writeBuf, int size);
 void ptrace_syscall(pid_t pid);
 
 void follow_threads(pid_t pid);
+void unfollow_threads(pid_t pid);
 event_t wait_event(pid_t wait_for);
 void stop_all_except(pid_t pid);
 void continue_all(void);

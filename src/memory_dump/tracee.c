@@ -38,7 +38,7 @@
 #include "tracee_interface.h"
 
 #define _DEBUG 1
-// #undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
@@ -53,31 +53,14 @@ void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
 long PAGESIZE;
 
-// Parametrized dump_init that can be used to set kill_after_dump
-// (this will enable or disable multi-codelet capture)
-void _dump_init(bool new_kad) {
 
-  PAGESIZE = sysconf(_SC_PAGESIZE);
-
-  /* Set global kill_after_dump */
-  kill_after_dump = new_kad;
-
-  /* state.mtrace_active = false; */
-  mtrace_active = false;
-
-  /* Copy the original binary */
-  char buf[BUFSIZ];
-  snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
-  int ret = system(buf);
-  if (ret != 0) {
-    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
-  }
-
-  /* configure atexit */
-  atexit(dump_close);
-
+// Fork the current process :
+// - parent becomes tracer
+// - child becomes tracee
+// This should be called in dump_init, and in after_dump in
+// the case of multi capture
+void fork_tracee() {
   pid_t child = 0;
-
   child = fork();
 
   if (child == (pid_t)-1) {
@@ -119,7 +102,33 @@ void _dump_init(bool new_kad) {
 
     dump_initialized = true;
   }
+}
 
+// Parametrized dump_init that can be used to set kill_after_dump
+// (this will enable or disable multi-codelet capture)
+void _dump_init(bool new_kad) {
+
+  PAGESIZE = sysconf(_SC_PAGESIZE);
+
+  /* Set global kill_after_dump */
+  kill_after_dump = new_kad;
+
+  /* state.mtrace_active = false; */
+  mtrace_active = false;
+
+  /* Copy the original binary */
+  char buf[BUFSIZ];
+  snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
+  int ret = system(buf);
+  if (ret != 0) {
+    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
+  }
+
+  /* configure atexit */
+  atexit(dump_close);
+
+  // We always need a tracer to record the hotpages map
+  fork_tracee();
 }
 
 // Default dump_init, where kill_after_dump=true
@@ -156,7 +165,7 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
 
   /* Happens only once */
-  debug_print("[tracee %d] Sending trap lock mem \n", getpid(), PAST_INV, times_called);
+  debug_print("[tracee %d] Sending trap lock mem \n", getpid());
   mtrace_active = true;
   send_to_tracer(TRAP_LOCK_MEM);
 
@@ -202,15 +211,16 @@ void after_dump(void) {
     kill(parent, 9);
 
     unlink("lel_bin");
-    abort();
+    exit(0);
   }
   else {
     debug_print("[tracee %d] Sending abort signal to parent %d\n", getpid(), parent);
 
     // Send a fake SIGABRT to "trick" the tracer into freeing us & terminating itself
     kill(parent, 6);
-    // Detach ourselves from our parent (=tracer)
-    setsid();
+
+    // Directly turn into a new tracer to record hotpages map
+    fork_tracee();
     debug_print("[tracee %d] Resume execution normally\n", getpid());
   }
 }
