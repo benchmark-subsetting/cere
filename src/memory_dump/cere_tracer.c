@@ -392,6 +392,10 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
       ptrace_syscall(e.tid);
       continue;
     }
+    else if (e.signo == SIGABRT) {
+      /* Accept SIGTRAP, probably due to exiting the last multi-capture tracer */
+      exit(0);
+    }
     else {
       errx(EXIT_FAILURE, "Unexpected signal in wait_sigtrap: %d\n", e.signo);
     }
