@@ -38,7 +38,7 @@
 #include "tracee_interface.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+// #undef _DEBUG
 
 #include "debug.h"
 
@@ -71,11 +71,17 @@ void fork_tracee() {
   if (child != 0) {
 
     debug_print("[tracee->tracer %d] New tracer process\n", getpid());
-    char args[2][32];
+    char args[3][32];
+
+
     snprintf(args[0], sizeof(args[0]), "%d", child);
     snprintf(args[1], sizeof(args[1]), "%p", &tracer_buff);
+    if(kill_after_dump)
+      snprintf(args[2], sizeof(args[2]), "%s","single");
+    else
+      snprintf(args[2], sizeof(args[2]), "%s", "multi");
 
-    char *const arg[] = {"cere-tracer", args[0], args[1], NULL};
+    char *const arg[] = {"cere-tracer", args[0], args[1], args[2], NULL};
     execvp("cere-tracer", arg);
     errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
   } else {
@@ -205,22 +211,15 @@ void after_dump(void) {
   pid_t parent = getppid();
 
   if (kill_after_dump) {
-    debug_print("[tracee %d] Kill after dump, sending kill to parent\n", getpid());
-
-    // Send a fake SIGKILL to "trick" the tracer into terminating itself
-    kill(parent, 9);
-
-    unlink("lel_bin");
-    exit(0);
+    debug_print("[tracee %d] Single capture : terminating tracer and tracee\n", getpid());
+    abort();
   }
   else {
-    debug_print("[tracee %d] Sending abort signal to parent %d\n", getpid(), parent);
-
-    // Send a fake SIGABRT to "trick" the tracer into freeing us & terminating itself
+    debug_print("[tracee %d] Multi capture : spawn new tracer and resume exec\n", getpid());
+    // Send a fake SIGABRT so the tracer frees us & terminates itself
     kill(parent, 6);
 
-    // Directly turn into a new tracer to record hotpages map
+    // Directly spawn a new tracer to record hotpages map
     fork_tracee();
-    debug_print("[tracee %d] Resume execution normally\n", getpid());
   }
 }

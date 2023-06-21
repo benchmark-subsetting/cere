@@ -22,6 +22,7 @@
 #include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/user.h>
 
@@ -40,6 +41,9 @@ void ptrace_getregs(pid_t pid, struct user_regs_struct *regs);
 void ptrace_setregs(pid_t pid, struct user_pt_regs *regs);
 void ptrace_getregs(pid_t pid, struct user_pt_regs *regs);
 #endif
+
+
+void set_capture_mode(bool capture_mode);
 
 void ptrace_getdata(pid_t pid, long readAddr, char * readBuf, int size);
 void ptrace_putdata(pid_t pid, long writeAddr, char * writeBuf, int size);

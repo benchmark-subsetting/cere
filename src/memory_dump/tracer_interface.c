@@ -32,6 +32,7 @@
 #include <syscall.h>
 
 #include "ptrace.h"
+#include "tracer_mem.h"
 #include "tracer_interface.h"
 #include "types.h"
 
