@@ -44,6 +44,7 @@
 
 static int times_called = 0;
 static bool dump_initialized;
+static bool in_codelet = false;
 volatile static bool kill_after_dump = false;
 
 void *(*real_malloc)(size_t);
@@ -170,14 +171,28 @@ void dump(char *loop_name, int invocation, int count, ...) {
   times_called++;
 
 
-  /* Happens only once */
-  debug_print("[tracee %d] Sending trap lock mem \n", getpid());
-  mtrace_active = true;
-  send_to_tracer(TRAP_LOCK_MEM);
+  // If KAD (single capture), we want to start mem locking once for the first codelet
+  if(kill_after_dump) {
+    /* Happens only once */
+    if ((invocation <= PAST_INV && times_called == 1) ||
+        (times_called == invocation - PAST_INV)) {
+      mtrace_active = true;
+      send_to_tracer(TRAP_LOCK_MEM);
+    }
+  }
+
+  // If not (multi_capture), we spawn a new tracer each time, so we want to send a sigtrap
+  // everytime to re-trigger memory lock
+  else {
+      mtrace_active = true;
+      send_to_tracer(TRAP_LOCK_MEM);
+  }
 
   if (times_called != invocation) {
     return;
   }
+
+  in_codelet = true;
 
   assert(times_called == invocation);
   mtrace_active = false;
@@ -205,9 +220,10 @@ void after_dump(void) {
   debug_print("[tracee %d] In after_dump\n", getpid());
   /* Avoid doing something before initializing */
   /* the dump. */
-  if (!dump_initialized)
+  if (!dump_initialized || !in_codelet)
     return;
 
+  in_codelet = false;
   pid_t parent = getppid();
 
   if (kill_after_dump) {
