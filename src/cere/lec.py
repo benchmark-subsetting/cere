@@ -129,6 +129,55 @@ def replay_fun(mode_opt, BASE, regions):
 
     globalize_variables(BASE, mode_opt)
 
+#in baremetal replay mode
+def baremetal_replay_fun(mode_opt, BASE, regions):
+    '''
+    Replay mode
+    Call LoopExtractor and LoopManager in replay mode on wanted loop
+    by passing options like --invocation
+    '''
+    temp = ""
+    if (not (mode_opt.region)):
+        fail_lec("Need --region with replay mode")
+    print("Compiling baremetal replay mode")
+    print(mode_opt)
+    if (mode_opt.invocation):
+        temp = temp + "--invocation=" + mode_opt.invocation + " "
+
+    safe_system(("{llvm_bindir}/opt -S -load {LoopExt} {Omp}-region-outliner " +
+                "-isolate-region={loop} {base}.ll -o {base}.ll").format(
+                llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT, LoopExt=LOOP_EXT,
+                loop=mode_opt.region, base=BASE,Omp=OMP_FLAGS), EXIT=False)
+
+    safe_system(("{llvm_bindir}/opt -S -load {LoopMan} {opts} {Omp}-region-replay -region={loop} " +
+                "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR,
+                    Root=PROJECT_ROOT, LoopMan=LOOP_REPLAY, opts=temp, loop=mode_opt.region,
+                    base=BASE,Omp=OMP_FLAGS), EXIT=False)
+
+
+    if (mode_opt.instrument):
+        temp_instr = "--instrument-region=" + mode_opt.region + " "
+        safe_system(("{llvm_bindir}/opt -S -loop-simplify {base}.ll -o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR,
+                    base=BASE), EXIT=False)
+        safe_system(("{llvm_bindir}/opt -S -load {LoopInstr} " +
+                    "{Omp}-region-instrumentation --replay {opts} {base}.ll " +
+                    "-o {base}.ll").format(
+                    llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
+                    LoopInstr=LOOP_INSTR, opts=temp_instr, base=BASE,Omp=OMP_FLAGS),
+                    EXIT=False)
+
+    globalize_variables(BASE, mode_opt)
+
+    # Finally, in baremetal, strip everything from IR except the codelet itself
+    safe_system(("llvm-extract {base}.ll -f -func run{loop} -func {loop} | llvm-dis -o {base}.ll").format(
+        base=BASE, loop=mode_opt.region
+    ))
+    print(("llvm-extract {base}.ll  -f -func run{loop} -func {loop} | llvm-dis -o {base}.ll").format(
+        base=BASE, loop=mode_opt.region
+    ))
+    print("Out of baremetal replay mode")
+
 def globalize_variables(BASE, mode_opt):
     # When inside the compilation unit that contains the replayable
     # code internal symbols should be globalized
@@ -290,9 +339,7 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
 def compile(args, args2):
     function={}
     function["replay_fun"] = replay_fun
-    # The baremetal lec function should be exactly the same
-    # as standard replay
-    function["baremetal_replay_fun"] = replay_fun
+    function["baremetal_replay_fun"] = baremetal_replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
 

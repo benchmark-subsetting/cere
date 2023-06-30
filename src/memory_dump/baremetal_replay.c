@@ -71,6 +71,17 @@ extern char _binary_hotpages_map_size[];
 
 long PAGESIZE;
 
+
+// Dummy replacer because this will be compiled in -nostdlib
+void __stack_chk_fail(void) {}
+void __unnamed_1(void) {}
+
+int real_main(void);
+void _start(char *args, ...) {
+  real_main();
+}
+
+
 void cacheflush(void) {
   const size_t size = CACHE_SIZE_MB * 1024 * 1024;
   int i, j;

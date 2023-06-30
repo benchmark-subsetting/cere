@@ -199,14 +199,12 @@ def memdumps_to_objects(dir):
     # we access, so we can't just create a bunch of symbols for each dump file
     for f_name in os.listdir("."):
         if f_name.endswith(".memdump"):
-            print(f_name)
             address = bytearray.fromhex(f_name[:-8])
             memchunk = open(f_name, "rb").read()
             memchunks_sizes += len(memchunk).to_bytes(length=4, byteorder='little') # assumes a little endian replay env
             memchunks_addresses += address
             concatenated_memchunks += memchunk
 
-    print(memchunks_addresses)
     # Put raw byte sequences in tmp files
     with open('memchunks_sizes', 'wb') as w:
         w.write(memchunks_sizes)
@@ -368,12 +366,14 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
     and force static linking with a baremetal version fo the replay lib. At link time,
     we will also embed memory dump into the binary.
     '''
+
+    print("Linking baremetal replay wrapper")
     LOOP=mode_opt.region
     INVOCATION=mode_opt.invocation
     if(not INVOCATION):
         INVOCATION=1
 
-    # In baremetal mode, we will always link statically
+    # In baremetal mode, we will always link statically and disable
     COMPIL_OPT += " -static"
 
     if mode_opt.instrument and not mode_opt.wrapper:
@@ -405,7 +405,7 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
                 objcopy=OBJCOPY, dump_dir=DIR, f=f))
 
 
-    safe_system(CLANG + " -c baremetal_realmain.c")
+    safe_system(CLANG + " -nostdlib -c baremetal_realmain.c")
     OPTS = compile_memory_dump_objects(mode_opt, DIR)
     with tempfile.NamedTemporaryFile() as f:
         f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
@@ -418,7 +418,7 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
                      libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
 
         f.flush()
-        safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANG)))
+        safe_system(("{clang} -nostdlib @{tempfile}".format(tempfile=f.name, clang=CLANG)))
 
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):

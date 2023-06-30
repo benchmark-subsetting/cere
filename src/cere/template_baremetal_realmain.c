@@ -26,5 +26,5 @@ void real_main() {{
   }}
 
   want_exit = 1;
-  exit(0);
+  return;
 }}
