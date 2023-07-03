@@ -153,43 +153,40 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
     ConstantInt *const_int64_35 =
         ConstantInt::get(mod->getContext(), APInt(32, i, 10));
 
-#if LLVM_VERSION_MAJOR >= 9
-    Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla->getType(), ptr_vla, i, "arrayidx");
-#else
     Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla, i, "arrayidx");
-#endif
 
-#if LLVM_VERSION_MAJOR >= 9
-    LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx->getType(), ptr_arrayidx, const_int64_35);
-#else
     LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx, const_int64_35);
-#endif
     LLVM_DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
                       << *args->getType() << "\n");
 
      if (args->getType()->isPointerTy()) {
+
       ptr = new BitCastInst(ptr_69, args->getType(), "", label_entry); // cast
+
       // if args is a scalar, make a copy and give the copy adress to the func
       PointerType *pointerType = dyn_cast<PointerType>(args->getType());
       Type *elementType = pointerType->getElementType();
+
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
+
         AllocaInst *ptr_a_addr =
             new AllocaInst(args->getType(), DL.getAllocaAddrSpace(), "a", label_entry);
         AllocaInst *ptr_tmp = new AllocaInst(
             args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "b", label_entry);
         AllocaInst *ptr_tmp2 = new AllocaInst(
             args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "c", label_entry);
+
         // Store ptr adress
         new StoreInst(ptr, ptr_a_addr, false, label_entry);
 
 #if LLVM_VERSION_MAJOR >= 9
-        LoadInst *ptr_5 = new LoadInst(args->getType(), ptr_a_addr, "", false, label_entry);
+        LoadInst *ptr_5 = new LoadInst(pointerType, ptr_a_addr, "", false, label_entry);
 #else
         LoadInst *ptr_5 = new LoadInst(ptr_a_addr, "", false, label_entry);
 #endif
 
 #if LLVM_VERSION_MAJOR >= 9
-        LoadInst *int32_6 = new LoadInst(args->getType(), ptr_5, "", false, label_entry);
+        LoadInst *int32_6 = new LoadInst(elementType, ptr_5, "", false, label_entry);
 #else
         LoadInst *int32_6 = new LoadInst(ptr_5, "", false, label_entry);
 #endif
@@ -197,7 +194,7 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
         new StoreInst(int32_6, ptr_tmp, false, label_entry);
 
 #if LLVM_VERSION_MAJOR >= 9
-        LoadInst *int32_9 = new LoadInst(args->getType()->getPointerElementType(), ptr_tmp, "", false, label_entry);
+        LoadInst *int32_9 = new LoadInst(elementType, ptr_tmp, "", false, label_entry);
 #else
         LoadInst *int32_9 = new LoadInst(ptr_tmp, "", false, label_entry);
 #endif
@@ -205,10 +202,12 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
         new StoreInst(int32_9, ptr_tmp2, false, label_entry);
         ptr_tmp2->setName(args->getName());
         params.push_back(ptr_tmp2);
+
       } else {
         ptr->setName(args->getName());
         params.push_back(ptr);
       }
+
     } else {
       PointerType *PointerTy_3 = PointerType::get(args->getType(), 0);
       CastInst *ptr_70 =

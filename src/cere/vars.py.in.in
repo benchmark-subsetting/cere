@@ -40,9 +40,10 @@ LIBDIR_FLAGS = "-L {libdir} -Wl,--rpath={libdir}".format(libdir=LIBDIR)
 RDTSC_WRAPPER = "-lcere_rdtsc"
 LIKWID = "-llikwid"
 FORTRAN_EXTENSIONS=[".f", ".f90", ".f77", ".F90"]
+CXX_EXTENSIONS=[".cpp", ".cc", ".cxx"]
 DUMPS_DIR = ".cere/dumps/"
 
-SOURCE_EXTENSIONS=[".C", ".c", ".cpp", ".cc", ".cxx"] + FORTRAN_EXTENSIONS
+SOURCE_EXTENSIONS=[".C", ".c"] + CXX_EXTENSIONS + FORTRAN_EXTENSIONS
 
 INVALID_REGION_FILE = "invalid_regions"
 
