@@ -99,6 +99,9 @@ def run(args):
         if utils.dump_exist(args.region[i], invocations[i][j]):
           shutil.rmtree(os.path.join(var.CERE_DUMPS_PATH, args.region, str(invocation[i][j])), ignore_errors=True)
 
+  # Make sure that if invocations are specified, they are specified for each region
+  # TODO
+
   # Now that everything is OK, launch compilation
   logger.info("Compiling capture mode for region {0} invocation {1}".format(args.region, args.invocation))
   try:
@@ -119,9 +122,9 @@ def run(args):
       logger.error(str(err))
       logger.error(err.output)
 
-    # Checking if capture was
+    # Checking if capture was successfull
     has_failed_capture = False
-    if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, invocation)):
+    if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, args.invocation)):
       logger.error("Capture failed for region(s) {0} invocation(s) {1}".format(args.region, args.invocation))
       utils.mark_invalid(args.region, cere_error.EDUMP)
 
