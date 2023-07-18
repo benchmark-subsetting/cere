@@ -55,6 +55,39 @@ cl::opt<std::string> RegionsFilename("regions-file", cl::init(""),
 cl::opt<int> Invocation("invocation", cl::init(1), cl::value_desc("Integer"),
                         cl::desc("Dump the specified invocation"));
 
+
+/* Basic utility funcs */
+
+/* Used to split the different regions/invocations from args */
+std::vector<std::string> split (std::string &str, char delim) {
+  std::vector<std::string> vec;
+    std::stringstream str_stream(str);
+    std::string item;
+
+    while (getline(str_stream, item, delim)) {
+        vec.push_back(item);
+    }
+
+    return vec;
+}
+
+/*
+* Iterates over RegionsToDump looking for Region. If it's found, return at which index.
+* Otherwise, return -1
+*/
+int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region) {
+  for(int i=0; i<RegionsToDump.size(); i++) {
+    if(Region.compare(RegionsToDump[i]) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+
+
+/* LLVM related funcs */
 namespace llvm {
 
 /// Create signature for the dump function

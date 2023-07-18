@@ -23,6 +23,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+
+/* Utility funcs */
+std::vector<std::string> split (std::string &str, char delim);
+int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region);
+
+/* LLVM related funcs */
 namespace llvm {
 
 /// Creates parameters for the dump function
