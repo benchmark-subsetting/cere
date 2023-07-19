@@ -75,7 +75,7 @@ def subsample(trace, n):
 
 def clusterize(trace):
     assert(len(trace['cycles']) == trace['size'])
-    cycles = np.reshape(trace['cycles'], (trace['size'],1))
+    cycles = np.reshape(trace['cycles'], (int(trace['size']),1))
 
     # If the variation is negligeable, a clustering is useless
     if (np.max(cycles)-np.min(cycles))/np.max(cycles) < 0.10:
