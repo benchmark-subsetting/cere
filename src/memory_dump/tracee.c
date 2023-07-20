@@ -158,12 +158,12 @@ void dump_close() {
 /* dump: requests capture of a outlined region of interest. Must be called
  * before any other code in the function to be captured.
  *   - loop_name is the name of the region of interest
- *   - nInvocations is the the size of the invocations array
+ *   - n_invocations is the the size of the invocations array
  *   - invocations are the target invocations that must be captured
  *   - arg_count is the number of arguments passed to the outlined function
  *   - ... are the arguments passed to the outlined function
  */
-void dump(char *loop_name, int nInvocations, int *invocations, int arg_count, ...) {
+void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, ...) {
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
@@ -175,7 +175,7 @@ void dump(char *loop_name, int nInvocations, int *invocations, int arg_count, ..
 
   // If KAD (single capture), we want to start mem locking once for the first codelet
   if(kill_after_dump) {
-    for(int i=0; i<nInvocations; i++) {
+    for(int i=0; i<n_invocations; i++) {
       /* Happens only once */
       if ((invocations[i] <= PAST_INV && times_called == 1) ||
           (times_called == invocations[i] - PAST_INV)) {
@@ -195,7 +195,7 @@ void dump(char *loop_name, int nInvocations, int *invocations, int arg_count, ..
 
   bool invocToCapture = false;
   int i;
-  for(i=0; i<nInvocations; i++) {
+  for(i=0; i<n_invocations; i++) {
     if (times_called == invocations[i]) {
       invocToCapture = true;
       break;
