@@ -37,11 +37,12 @@ void dump_close(void);
 /* dump: requests capture of a outlined region of interest. Must be called
  * before any other code in the function to be captured.
  *   - loop_name is the name of the region of interest
- *   - invocation is the target invocation that must be captured
+ *   - nInvocations is the the size of the invocations array
+ *   - invocations are the target invocations that must be captured
  *   - arg_count is the number of arguments passed to the outlined function
  *   - ... are the arguments passed to the outlined function
  */
-void dump(char *loop_name, int invocation, int arg_count, ...);
+void dump(char *loop_name, int nInvocations, int *invocations, int arg_count, ...);
 
 /* after_dump: terminates capture of a region of interest. must be called
    at the end of the function to be captured */

@@ -155,13 +155,15 @@ void dump_close() {
   abort();
 }
 
-/* dumps memory
- *  loop_name: name of dumped loop
- *  invocation: the number of the invocation to dump
- *  count: number of arguments
- *  ...args...: the arguments to dump
+/* dump: requests capture of a outlined region of interest. Must be called
+ * before any other code in the function to be captured.
+ *   - loop_name is the name of the region of interest
+ *   - nInvocations is the the size of the invocations array
+ *   - invocations are the target invocations that must be captured
+ *   - arg_count is the number of arguments passed to the outlined function
+ *   - ... are the arguments passed to the outlined function
  */
-void dump(char *loop_name, int invocation, int count, ...) {
+void dump(char *loop_name, int nInvocations, int *invocations, int arg_count, ...) {
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
@@ -173,11 +175,14 @@ void dump(char *loop_name, int invocation, int count, ...) {
 
   // If KAD (single capture), we want to start mem locking once for the first codelet
   if(kill_after_dump) {
-    /* Happens only once */
-    if ((invocation <= PAST_INV && times_called == 1) ||
-        (times_called == invocation - PAST_INV)) {
-      mtrace_active = true;
-      send_to_tracer(TRAP_LOCK_MEM);
+    for(int i=0; i<nInvocations; i++) {
+      /* Happens only once */
+      if ((invocations[i] <= PAST_INV && times_called == 1) ||
+          (times_called == invocations[i] - PAST_INV)) {
+        mtrace_active = true;
+        send_to_tracer(TRAP_LOCK_MEM);
+        break;
+      }
     }
   }
 
@@ -188,27 +193,34 @@ void dump(char *loop_name, int invocation, int count, ...) {
       send_to_tracer(TRAP_LOCK_MEM);
   }
 
-  if (times_called != invocation) {
+  bool invocToCapture = false;
+  int i;
+  for(i=0; i<nInvocations; i++) {
+    if (times_called == invocations[i]) {
+      invocToCapture = true;
+      break;
+    }
+  }
+  if(!invocToCapture) {
     return;
   }
 
   in_codelet = true;
 
-  assert(times_called == invocation);
+  assert(times_called == invocations[i]);
   mtrace_active = false;
 
   strcpy(tracer_buff.str_tmp, loop_name);
 
   /* Send args */
   send_to_tracer(TRAP_START_ARGS);
-  send_to_tracer(invocation);
-  send_to_tracer(count);
+  send_to_tracer(invocations[i]);
+  send_to_tracer(arg_count);
 
   /* Dump addresses */
-  int i;
   va_list ap;
-  va_start(ap, count);
-  for (i = 0; i < count; i++) {
+  va_start(ap, arg_count);
+  for (i = 0; i < arg_count; i++) {
     send_to_tracer((register_t)va_arg(ap, void *));
   }
   va_end(ap);
