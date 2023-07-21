@@ -233,7 +233,7 @@ bool OmpRegionDump::runOnFunction(Function &F) {
   for(unsigned long i=0; i<tmp_Invocations.size(); i++) {
     // Create arguments for the dump function
     std::vector<Value *> funcParameter =
-    createDumpFunctionParameters(mod, currFunc, PredBB, tmp_Invocations[i]);
+    createDumpFunctionParameters(mod, currFunc, PredBB, tmp_Invocations);
 
     // Insert dump call just before the region
     CallInst::Create(func_dump, funcParameter, "", &PredBB->back());

@@ -91,15 +91,17 @@ int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region) {
 namespace llvm {
 
 /// Create signature for the dump function
-/// void dump(char*, int, int, ...)
+/// void dump(char*, int, int*, int, ...)
 FunctionType *createDumpFunctionType(Module *mod) {
   PointerType *PointerTy_0 =
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
   std::vector<Type *> FuncTy_args;
   // Char* for the region name
   FuncTy_args.push_back(PointerTy_0);
-  // Integer for the invocation to dump
+  // Integer for the number of invocations to dump
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
+  // Integer * for the list of invocations to dump
+  FuncTy_args.push_back(PointerType::get(IntegerType::get(mod->getContext(), 32), 0)); // Generic address space
   // Integer for the number of va args
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
   FunctionType *tmp = FunctionType::get(
@@ -116,16 +118,20 @@ Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
 }
 
 /// Creates parameters for the dump function
-/// char* RegionName
-/// int InvocationToDump
-/// int number of variable arguments
+/// char* loop_name
+/// int nInvocations
+/// int* invocations
+/// int arg_count
 /// ... variables used by the original region
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
-                                                  BasicBlock *PredBB, int N) {
+                                                  BasicBlock *PredBB,
+                                                 std::vector<int> invocations) {
+
 
   IRBuilder<> builder(PredBB);
 
+  /* Push VLA from outlining function */
   // The requested region has been outlined into a function.
   // Give adresses of its arguments to the dump function.
   std::vector<Value *> params;
@@ -159,15 +165,44 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
     }
   }
 
+  /* Push first arguments */
+  // 4. arg_count
   ConstantInt *nbParam =
       ConstantInt::get(mod->getContext(), APInt(32, params.size(), 10));
-  ConstantInt *iterToDump =
-      ConstantInt::get(mod->getContext(), APInt(32, N, 10));
-
   params.insert(params.begin(), nbParam);
+
+  // 3. invocations
+  // Declare & fill std::vector of LLVM constants
+  std::vector<llvm::Constant *> constants_vec(invocations.size());
+  for(int i=0; i<invocations.size(); i++) {
+    constants_vec[i] = ConstantInt::get(
+      IntegerType::get(mod->getContext(), 32),
+      invocations[i]
+    );
+  }
+  // Initializer
+  auto initializer = ConstantArray::get(
+    ArrayType::get(IntegerType::get(mod->getContext(), 32),
+    invocations.size()),
+    constants_vec
+  );
+  // Global variable
+  GlobalVariable * global_invocations =
+  new GlobalVariable(
+    *mod,
+    initializer->getType(),
+    true, GlobalVariable::ExternalLinkage,
+    initializer
+  );
+  params.insert(params.begin(), global_invocations);
+
+  // 2.n_invocations
+  ConstantInt *iterToDump =
+      ConstantInt::get(mod->getContext(), APInt(32, invocations.size(), 10));
   params.insert(params.begin(), iterToDump);
-  /*Convert the regionName as a C type string*/
-  std::string tmp = currFunc->getName().str();
+
+  // 1.loop_name
+  std::string tmp = currFunc->getName().str(); // Convert the regionName as a C type string
   params.insert(params.begin(), createStringValue(mod, &builder, tmp));
 
   return params;

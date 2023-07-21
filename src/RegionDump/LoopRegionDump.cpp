@@ -244,15 +244,12 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   std::vector<int> tmp_Invocations = InvocationsToDump[regionIndex];
 
   /* Insert dump calls (one for each invocation) */
-  // TODO Change this by modifying dump to accept an array of invocs
-  for(unsigned long i=0; i<tmp_Invocations.size(); i++) {
-    // Create arguments for the dump function
-    std::vector<Value *> funcParameter =
-    createDumpFunctionParameters(mod, currFunc, PredBB, tmp_Invocations[i]);
+  // Create arguments for the dump function
+  std::vector<Value *> funcParameter =
+  createDumpFunctionParameters(mod, currFunc, PredBB, tmp_Invocations);
 
-    // Insert dump call just before the region
-    CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
-  }
+  // Insert dump call just before the region
+  CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
 
   /* Insert after_dump calls (once) in each exit blocks */
   for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
