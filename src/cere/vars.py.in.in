@@ -70,3 +70,20 @@ CERE_DUMPS_PATH = create_path(CERE_MAIN_DIR, CERE_DUMPS)
 CERE_PLOTS_PATH = create_path(CERE_MAIN_DIR, CERE_PLOTS)
 CERE_REPORT_PATH = create_path(CERE_MAIN_DIR, CERE_REPORT)
 CERE_FLAGS_PATH = create_path(CERE_MAIN_DIR, CERE_FLAGS)
+
+print("[get_working_path] In")
+# Get working path env variable, default is current directory
+cere_working_path = os.environ.get('CERE_WORKING_PATH', '.')
+
+# Append working path to all CERE_DIRECTORIES
+for i in range(0, len(CERE_DIRECTORIES)):
+  CERE_DIRECTORIES[i] = os.path.join(cere_working_path, CERE_DIRECTORIES[i])
+
+# Copy to individual PATH vars
+CERE_REPLAY_PATH = CERE_DIRECTORIES[0]
+CERE_PROFILE_PATH = CERE_DIRECTORIES[1]
+CERE_TRACES_PATH = CERE_DIRECTORIES[2]
+CERE_DUMPS_PATH = CERE_DIRECTORIES[3]
+CERE_PLOTS_PATH = CERE_DIRECTORIES[4]
+CERE_REPORT_PATH = CERE_DIRECTORIES[5]
+CERE_FLAGS_PATH = CERE_DIRECTORIES[6]
