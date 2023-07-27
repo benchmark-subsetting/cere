@@ -65,7 +65,6 @@ def init():
         os.environ["CERE_OMP"]="1"
         if "OMP_NUM_THREADS" not in os.environ:
             logger.warning("OpenMP mode enabled but OMP_NUM_THREADS not set.")
-    os.environ["CERE_WORKING_PATH"] = os.path.realpath(var.CERE_MAIN_DIR)
     return True
 
 def setup_dir():
