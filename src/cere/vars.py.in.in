@@ -71,7 +71,6 @@ CERE_PLOTS_PATH = create_path(CERE_MAIN_DIR, CERE_PLOTS)
 CERE_REPORT_PATH = create_path(CERE_MAIN_DIR, CERE_REPORT)
 CERE_FLAGS_PATH = create_path(CERE_MAIN_DIR, CERE_FLAGS)
 
-print("[get_working_path] In")
 # Get working path env variable, default is current directory
 cere_working_path = os.environ.get('CERE_WORKING_PATH', '.')
 
