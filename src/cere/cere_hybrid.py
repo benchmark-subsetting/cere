@@ -58,9 +58,11 @@ def run(args):
 
   #Compile hybrid binary
   try:
-    logger.debug(subprocess.check_output("{0} && {1} CERE_MODE=\"original --hybrid {2} --hybrid-regions={3} \
-    --regions-infos={4} --cere-objects={5} --extraction-lvl={6}\"".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"], instru_cmd, args.regions_file,\
-    cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects"), args.extraction_lvl), stderr=subprocess.STDOUT, shell=True))
+    env = dict(os.environ, CERE_MODE="original --hybrid {0} --hybrid-regions={1} \
+    --regions-infos={2} --cere-objects={3} --extraction-lvl={4}".format(instru_cmd, args.regions_file, cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects"), args.extraction_lvl))
+
+    logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True))
+
   except subprocess.CalledProcessError as err:
     logger.critical(str(err))
     logger.critical(err.output)

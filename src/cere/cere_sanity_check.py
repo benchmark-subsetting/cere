@@ -36,9 +36,9 @@ def init_module(subparsers, cere_plugins):
 def compute_error(a, b):
     return (abs(a-b)/float(max(a, b)))*100
 
-def run_shell_command(command):
+def run_shell_command(command, env):
     try:
-        logger.debug(subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, env=env))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
@@ -48,7 +48,7 @@ def run_shell_command(command):
 
 def get_nlines(filename, functionname):
     #Objdump the function
-    if not run_shell_command("gdb -batch -ex 'file {0}' -ex 'disassemble {1}' > cere_tmp".format(filename, functionname)):
+    if not run_shell_command("gdb -batch -ex 'file {0}' -ex 'disassemble {1}' > cere_tmp".format(filename, functionname), os.environ):
         return False
     #count the number of lines
     try:
@@ -84,13 +84,14 @@ def run(args):
     logger.debug("The file is {0} and the function is {1}".format(filename, functionname))
 
     #Now let's compile it in the orginal application
-    if not run_shell_command("{0} && {1} CERE_MODE=original".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"])):
+    env = dict(os.environ, CERE_MODE="original")
+    if not run_shell_command("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), env):
         return False
     original_lines = get_nlines(filename, functionname)
     if not original_lines:
         return False
     #backup the original assembly file
-    if not run_shell_command("cp cere_tmp cere_original"):
+    if not run_shell_command("cp cere_tmp cere_original", env):
         return False
 
     #Compile replay mode
@@ -105,7 +106,7 @@ def run(args):
     if not replay_lines:
         return False
     #backup the replay assembly file
-    if not run_shell_command("mv cere_tmp cere_replay"):
+    if not run_shell_command("mv cere_tmp cere_replay", env):
         return False
 
     err = compute_error(original_lines, replay_lines)

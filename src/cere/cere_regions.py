@@ -108,7 +108,8 @@ def run(args):
 
   #Build again the application to be sure we give the right binary to pprof
   try:
-      logger.info(subprocess.check_output("{0} && {1} CERE_MODE=\"original --instrument --instrument-app --regions-infos={2}\"".format(clean_cmd, build_cmd, regions_file), stderr=subprocess.STDOUT, shell=True))
+      env = dict(os.environ, CERE_MODE="original --instrument --instrument-app --regions-infos={0}".format(regions_file))
+      logger.info(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
   except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)

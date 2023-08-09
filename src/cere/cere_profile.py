@@ -57,7 +57,8 @@ def measure_application(run_cmd, build_cmd, clean_cmd, force):
             logger.info('Keeping previous application cycles')
             return True
     try:
-        logger.debug(subprocess.check_output("{0} && {1} CERE_MODE=\"original --instrument --wrapper={2}\"".format(clean_cmd, build_cmd, var.RDTSC_WRAPPER), stderr=subprocess.STDOUT, shell=True))
+        env = dict(os.environ, CERE_MODE="original --instrument --wrapper={2}".format(var.RDTSC_WRAPPER))
+        logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
         logger.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
         logger.critical(str(err))
@@ -81,8 +82,10 @@ def instrument_application(run_cmd, build_cmd, clean_cmd, force):
         create_graph(force)
         return True
     try:
-        logger.debug(subprocess.check_output("{0} && {1} CERE_MODE=\"original --instrument --instrument-app\"".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True))
-        logger.info(subprocess.check_output("CPUPROFILE={0}/app.prof {1}".format(var.CERE_PROFILE_PATH, run_cmd), stderr=subprocess.STDOUT, shell=True))
+        env = dict(os.environ, CERE_MODE="original --instrument --instrument-app")
+        env["CPUPROFILE"] = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
+        logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
+        logger.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True, env=env))
     except subprocess.CalledProcessError as err:
         logger.critical(str(err))
         logger.critical(err.output)
