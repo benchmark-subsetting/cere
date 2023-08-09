@@ -57,7 +57,7 @@ def measure_application(run_cmd, build_cmd, clean_cmd, force):
             logger.info('Keeping previous application cycles')
             return True
     try:
-        env = dict(os.environ, CERE_MODE="original --instrument --wrapper={2}".format(var.RDTSC_WRAPPER))
+        env = dict(os.environ, CERE_MODE="original --instrument --wrapper={0}".format(var.RDTSC_WRAPPER))
         logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
         logger.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True))
     except subprocess.CalledProcessError as err:
