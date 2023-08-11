@@ -61,7 +61,8 @@ def run(args):
     env = dict(os.environ, CERE_MODE="original --hybrid {0} --hybrid-regions={1} \
     --regions-infos={2} --cere-objects={3} --extraction-lvl={4}".format(instru_cmd, args.regions_file, cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects"), args.extraction_lvl))
 
-    logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True))
+    logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]),
+                                         stderr=subprocess.STDOUT, shell=True, cwd=var.CERE_BUILD_PATH))
 
   except subprocess.CalledProcessError as err:
     logger.critical(str(err))

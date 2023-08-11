@@ -58,8 +58,9 @@ def measure_application(run_cmd, build_cmd, clean_cmd, force):
             return True
     try:
         env = dict(os.environ, CERE_MODE="original --instrument --wrapper={0}".format(var.RDTSC_WRAPPER))
-        logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
-        logger.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd),
+                                             stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
+        logger.info(subprocess.check_output(run_cmd, stderr=subprocess.STDOUT, shell=True, cwd=var.CERE_RUN_PATH))
     except subprocess.CalledProcessError as err:
         logger.critical(str(err))
         logger.critical(err.output)

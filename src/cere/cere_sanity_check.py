@@ -19,6 +19,7 @@
 import os
 import subprocess
 from cere import cere_configure
+from cere import vars as var
 import logging
 import csv
 import argparse
@@ -36,9 +37,9 @@ def init_module(subparsers, cere_plugins):
 def compute_error(a, b):
     return (abs(a-b)/float(max(a, b)))*100
 
-def run_shell_command(command, env):
+def run_shell_command(command, env, cwd):
     try:
-        logger.debug(subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, env=env))
+        logger.debug(subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, env=env, cwd=cwd))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
@@ -48,7 +49,7 @@ def run_shell_command(command, env):
 
 def get_nlines(filename, functionname):
     #Objdump the function
-    if not run_shell_command("gdb -batch -ex 'file {0}' -ex 'disassemble {1}' > cere_tmp".format(filename, functionname), os.environ):
+    if not run_shell_command("gdb -batch -ex 'file {0}' -ex 'disassemble {1}' > cere_tmp".format(filename, functionname), os.environ, var.CERE_WORKING_PATH):
         return False
     #count the number of lines
     try:
@@ -85,13 +86,13 @@ def run(args):
 
     #Now let's compile it in the orginal application
     env = dict(os.environ, CERE_MODE="original")
-    if not run_shell_command("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), env):
+    if not run_shell_command("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), env, var.CERE_BUILD_PATH):
         return False
     original_lines = get_nlines(filename, functionname)
     if not original_lines:
         return False
     #backup the original assembly file
-    if not run_shell_command("cp cere_tmp cere_original", env):
+    if not run_shell_command("cp cere_tmp cere_original", env, var.CERE_WORKING_PATH):
         return False
 
     #Compile replay mode
@@ -106,7 +107,7 @@ def run(args):
     if not replay_lines:
         return False
     #backup the replay assembly file
-    if not run_shell_command("mv cere_tmp cere_replay", env):
+    if not run_shell_command("mv cere_tmp cere_replay", env, var.CERE_WORKING_PATH):
         return False
 
     err = compute_error(original_lines, replay_lines)
