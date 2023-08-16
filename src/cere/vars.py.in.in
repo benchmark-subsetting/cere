@@ -75,7 +75,7 @@ CERE_FLAGS_PATH = create_path(CERE_MAIN_DIR, CERE_FLAGS)
 
 # Get working path env variable, default is current directory
 # (= directory containing .cere)
-CERE_WORKING_PATH = os.environ.get('CERE_WORKING_PATH', '.')
+CERE_WORKING_PATH = os.environ.get('CERE_WORKING_PATH', os.getcwd())
 
 # Append working path to all CERE_DIRECTORIES
 for i in range(len(CERE_DIRECTORIES)):
