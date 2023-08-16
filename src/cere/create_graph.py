@@ -32,9 +32,15 @@ def which(program):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
     fpath = program.split()
+
     for v in fpath:
+        # Look in current dir
         if is_exe(v):
             return v
+        # Look in run path
+        if is_exe(os.path.join(var.CERE_RUN_PATH, v)):
+            return v
+
     return None
 
 def parse_line(regex_list, line):
@@ -191,7 +197,7 @@ def create_graph(force):
     #Build again the application to be sure we give the right binary to pprof
     try:
         env = dict(os.environ, CERE_MODE="original --instrument --instrument-app")
-        logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
+        logger.debug(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
