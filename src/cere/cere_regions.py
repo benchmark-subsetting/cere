@@ -43,10 +43,13 @@ def which(program):
     for v in fpath:
         # Look in current dir
         if is_exe(v):
-            return v
+            return os.path.join(os.getcwd(), v)
         # Look in run path
         if is_exe(os.path.join(var.CERE_RUN_PATH, v)):
-            return v
+            return os.path.join(var.CERE_RUN_PATH, v)
+        # Look in build path
+        if is_exe(os.path.join(var.CERE_BUILD_PATH, v)):
+            return os.path.join(var.CERE_BUILD_PATH, v)
 
     return None
 
