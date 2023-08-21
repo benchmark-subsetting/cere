@@ -63,6 +63,19 @@ cere configure --build-cmd="make CC=ccc LD=ccc"
     the configuration file. This file is read by most of **CERE**
     passes. You can manually edit this file.
 
+## CONFIGURING ENVIRONMENT VARIABLES
+
+First of all, CERE uses the `CERE_MODE` variable to determine the compliation mode (default, capture, replay, ...). The build command will be run in an environment where this variable is defined. In case of a more "complex" build sytem (such as autotools or CMake), the user can simply refer to this variable with `$CERE_MODE` to ensure that the variable is passed correctly along the whole compilation process.
+
+Moreover, CERE will look for the `.cere` directory, and run all the commands in the working directory by default. In order to change this beheviour, you can define the `CERE_WORKING_PATH` environment variable. If not defined, this variale will default to the current directory.
+
+In order to further refine this behaviour : 
+
+- build and clean commands are launched from the path pointed by the `CERE_BUILD_PATH` variable. If not defined, this variable defaults to `CERE_WORKING_PATH`
+
+- run commands are launched from the path pointed by the `CERE_RUN_PATH` variable. If not defined, this variable defaults to `CERE_WORKING_PATH`
+
+
 ## COPYRIGHT
 
 cere is Copyright (C) 2014-2015 Université de Versailles St-Quentin-en-Yvelines
