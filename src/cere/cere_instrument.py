@@ -63,7 +63,8 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
 
     try:
         env = dict(os.environ, CERE_MODE="original {0} --instrument {1} --wrapper={2}".format(region_input, mode, args_plugin_instr))
-        logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True, env=env))
+        logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]),
+                                             stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
@@ -73,7 +74,8 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
     if not args_norun:
         logger.info("Running instrumentation for {0}".format(region_input))
         try:
-            logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+            logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"],
+                                                stderr=subprocess.STDOUT, shell=True, cwd=var.CERE_RUN_PATH))
         except subprocess.CalledProcessError as err:
             logger.error(str(err))
             logger.error(err.output)

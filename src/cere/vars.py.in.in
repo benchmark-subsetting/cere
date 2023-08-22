@@ -63,6 +63,7 @@ def create_path(top_dir, sub_dir):
   CERE_DIRECTORIES.append(new_path)
   return new_path
 
+# .cere subdirectories
 CERE_REPLAY_PATH = create_path(CERE_MAIN_DIR, CERE_REPLAYS)
 CERE_PROFILE_PATH = create_path(CERE_MAIN_DIR, CERE_PROFILE)
 CERE_TRACES_PATH = create_path(CERE_MAIN_DIR, CERE_TRACES)
@@ -71,13 +72,14 @@ CERE_PLOTS_PATH = create_path(CERE_MAIN_DIR, CERE_PLOTS)
 CERE_REPORT_PATH = create_path(CERE_MAIN_DIR, CERE_REPORT)
 CERE_FLAGS_PATH = create_path(CERE_MAIN_DIR, CERE_FLAGS)
 
-# Get working path env variable, default is current directory
-cere_working_path = os.environ.get('CERE_WORKING_PATH', '.')
 
+# Get working path env variable, default is current directory
+# (= directory containing .cere)
+CERE_WORKING_PATH = os.environ.get('CERE_WORKING_PATH', os.getcwd())
 
 # Append working path to all CERE_DIRECTORIES
 for i in range(len(CERE_DIRECTORIES)):
-  CERE_DIRECTORIES[i] = os.path.join(cere_working_path, CERE_DIRECTORIES[i])
+  CERE_DIRECTORIES[i] = os.path.join(CERE_WORKING_PATH, CERE_DIRECTORIES[i])
 
 # Copy to individual PATH vars
 CERE_REPLAY_PATH = CERE_DIRECTORIES[0]
@@ -87,3 +89,12 @@ CERE_DUMPS_PATH = CERE_DIRECTORIES[3]
 CERE_PLOTS_PATH = CERE_DIRECTORIES[4]
 CERE_REPORT_PATH = CERE_DIRECTORIES[5]
 CERE_FLAGS_PATH = CERE_DIRECTORIES[6]
+
+
+# Get optional build path variable, default is CERE_WORKING_PATH
+# (= path where we will cd before building the app)
+CERE_BUILD_PATH = os.environ.get('CERE_BUILD_PATH', CERE_WORKING_PATH)
+
+# Get optional run path variable, default is CERE_WORKING_PATH
+# (= path where we will cd before running the app)
+CERE_RUN_PATH = os.environ.get('CERE_RUN_PATH', CERE_WORKING_PATH)

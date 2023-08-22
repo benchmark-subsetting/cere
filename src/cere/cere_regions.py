@@ -35,14 +35,23 @@ def init_module(subparsers, cere_plugins):
   profile_parser.add_argument("--static", action='store_true', help="List regions.")
 
 def which(program):
-  def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-  fpath = program.split()
-  for v in fpath:
-    if is_exe(v):
-        return v
-  return None
+    fpath = program.split()
+
+    for v in fpath:
+        # Look in current dir
+        if is_exe(v):
+            return os.path.join(os.getcwd(), v)
+        # Look in run path
+        if is_exe(os.path.join(var.CERE_RUN_PATH, v)):
+            return os.path.join(var.CERE_RUN_PATH, v)
+        # Look in build path
+        if is_exe(os.path.join(var.CERE_BUILD_PATH, v)):
+            return os.path.join(var.CERE_BUILD_PATH, v)
+
+    return None
 
 def parse_line(regex_list, line):
   i=-1
@@ -96,7 +105,7 @@ def run(args):
   if not cere_configure.init():
       return False
   profile_file = "{0}/app.prof".format(var.CERE_PROFILE_PATH)
-  regions_file = cere_configure.cere_config["regions_infos"]
+  regions_file = os.path.join(var.CERE_WORKING_PATH, cere_configure.cere_config["regions_infos"])
   new_regions_file = "tmp.csv"
   build_cmd = cere_configure.cere_config["build_cmd"]
   run_cmd = cere_configure.cere_config["run_cmd"]
@@ -109,7 +118,8 @@ def run(args):
   #Build again the application to be sure we give the right binary to pprof
   try:
       env = dict(os.environ, CERE_MODE="original --instrument --instrument-app --regions-infos={0}".format(regions_file))
-      logger.info(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd), stderr=subprocess.STDOUT, shell=True, env=env))
+      logger.info(subprocess.check_output("{0} && {1}".format(clean_cmd, build_cmd),
+                                          stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
   except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)

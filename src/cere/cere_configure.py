@@ -53,10 +53,10 @@ def run(args):
 
 def init():
     global cere_config
-    if not os.path.isfile("cere.json"):
+    if not os.path.isfile(os.path.join(var.CERE_WORKING_PATH, "cere.json")):
         logger.critical("No configuration file found. Run: cere configure or run this command from where cere.json is.")
         return False
-    with open("cere.json", 'r') as config_file:
+    with open(os.path.join(var.CERE_WORKING_PATH, "cere.json"), 'r') as config_file:
         cere_config = json.load(config_file)
     if not setup_dir():
         logger.critical("Cannot create required directories for CERE. Check permissions?")

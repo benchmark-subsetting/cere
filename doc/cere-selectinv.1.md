@@ -30,6 +30,9 @@ generates an image of the trace clustering.
     By default, **cere selectinv** does not re-select representative invocations
     if a previous selection exists. The **--force** flag forces the selection.
 
+  * `--dump-clusters`:
+    Generate additional files containing all members of each invocation classes.
+
 ## OUTPUT FILES
 
   * `.cere/traces/REGION.invocations`:
