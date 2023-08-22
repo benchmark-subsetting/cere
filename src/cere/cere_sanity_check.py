@@ -116,5 +116,5 @@ def run(args):
     else:
         logger.info("Assembly not matching: Original lines = {0} && replay lines = {1} (error = {2})".format(original_lines, replay_lines, err))
     if args.diff_asm:
-        subprocess.call("vimdiff cere_original cere_replay", shell=True)
+        subprocess.call("vimdiff cere_original cere_replay", shell=True, cwd=var.CERE_WORKING_PATH)
     return True

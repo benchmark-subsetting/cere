@@ -51,7 +51,7 @@ def run(args):
 
   #Remove objects file
   try:
-    os.remove(os.path.realpath("__cere__objects"))
+    os.remove(os.path.realpath(os.path.join(CERE_WORKING_PATH, "__cere__objects")))
   except OSError as e:
     if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
       raise #re-raise exception if a different error occured
@@ -59,7 +59,7 @@ def run(args):
   #Compile hybrid binary
   try:
     env = dict(os.environ, CERE_MODE="original --hybrid {0} --hybrid-regions={1} \
-    --regions-infos={2} --cere-objects={3} --extraction-lvl={4}".format(instru_cmd, args.regions_file, cere_configure.cere_config["regions_infos"], os.path.realpath("__cere__objects"), args.extraction_lvl))
+    --regions-infos={2} --cere-objects={3} --extraction-lvl={4}".format(instru_cmd, args.regions_file, cere_configure.cere_config["regions_infos"], os.path.realpath(os.path.join(CERE_WORKING_PATH, "__cere__objects")), args.extraction_lvl))
 
     logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]),
                                          stderr=subprocess.STDOUT, shell=True, cwd=var.CERE_BUILD_PATH))
