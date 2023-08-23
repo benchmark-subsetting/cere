@@ -43,6 +43,7 @@ def init_module(subparsers, cere_plugins):
     cere_plugins["selectinv"] = run
     selectinv = subparsers.add_parser("selectinv", help="select representatives invocations from region trace")
     selectinv.add_argument('--region', required=True, help="region to select representatives")
+    selectinv.add_argument('--dump-clusters', action='store_true', help="create an additional file for each cluster, containing the list of invocations belonging to this cluster")
     selectinv.add_argument('--force', '-f', action='store_true', help="Will force the CERE invocations selection")
 
 def parse_codelet_csv(csvfile, codelet):
@@ -75,11 +76,11 @@ def subsample(trace, n):
 
 def clusterize(trace):
     assert(len(trace['cycles']) == trace['size'])
-    cycles = np.reshape(trace['cycles'], (trace['size'],1))
+    cycles = np.reshape(trace['cycles'], (int(trace['size']),1))
 
     # If the variation is negligeable, a clustering is useless
     if (np.max(cycles)-np.min(cycles))/np.max(cycles) < 0.10:
-        return np.ones(trace['size'])
+        return np.ones(int(trace['size']))
 
     # Normalize the distribution
     cycles = preprocessing.scale(cycles)
@@ -89,7 +90,7 @@ def clusterize(trace):
     clusterer.fit(cycles)
     return clusterer.labels_
 
-def clusterize_invocations(codelet, csvfile, tracefile):
+def clusterize_invocations(codelet, csvfile, tracefile, dump_clusters):
     codelet_info = parse_codelet_csv(csvfile, codelet)
     in_vivo_cycles = float(codelet_info['CPU_CLK_UNHALTED_CORE'])
 
@@ -132,7 +133,16 @@ def clusterize_invocations(codelet, csvfile, tracefile):
                in_vivo_cycles  / total_weight)
         weights.append(wei)
 
+        # If needed, dump the cluster file
+        if dump_clusters:
+            filename = codelet + '_cluster' + str(int(invocation[repind])) + '.invocations'
+            with open(filename , 'wt') as output:
+                for i in range(len(invocation)):
+                    line = "{invocation} {cycles}\n".format(invocation=int(invocation[i]), cycles=int(points[i]))
+                    output.write(line)
+            shutil.move(filename, "{0}/{1}".format(var.CERE_TRACES_PATH, filename))
 
+    # Write the .invocations file (once all clusters have been determined)
     with open(codelet + '.invocations', 'wt') as output:
         for i in range(len(clusters)):
             line = "{invocation} {weight} {cycles}\n".format(
@@ -179,7 +189,7 @@ def run(args):
     bin_file = os.path.join(var.CERE_TRACES_PATH, args.region+".bin")
     csv_file = os.path.join(var.CERE_TRACES_PATH, args.region+".csv")
 
-    clusterize_invocations(args.region, csv_file, bin_file)
+    clusterize_invocations(args.region, csv_file, bin_file, args.dump_clusters)
     try:
         shutil.move("{0}.invocations".format(args.region), "{0}/{1}.invocations".format(var.CERE_TRACES_PATH, args.region))
     except IOError as err:

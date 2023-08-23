@@ -40,6 +40,7 @@ def init_module(subparsers, cere_plugins):
     matching_parser = subparsers.add_parser("check-matching", help="Test the matching for a list of region")
     matching_parser.add_argument('--region', help="Region to check matching")
     matching_parser.add_argument("--regions-file", help="The list of regions to check")
+    matching_parser.add_argument('--dump-clusters', action='store_true', help="create an additional file for each cluster, containing the list of invocations belonging to this cluster")
     matching_parser.add_argument("--max-error", default=15.0, help="Maximum tolerated error between invivo and invitro regions")
     matching_parser.add_argument('--force', '-f', action='store_true', help="Will force replay of regions.\
                                                                              Force is ignored for dumps and traces.")
@@ -233,6 +234,7 @@ def run(args):
         #Compute the coverage of this region
         allRegions[-1].compute_coverage()
         #We can clusterize invocations in performance classes
+        allRegions[-1].dump_clusters = args.dump_clusters
         res = cere_selectinv.run(allRegions[-1])
         if not res: err=True
 

@@ -179,19 +179,6 @@ def extract_symbols(DIR):
                 + " {dump_dir}/static.sym {dump_dir}/static.sym").format(
                     objcopy=OBJCOPY, dump_dir=DIR))
 
-def find_cere_dir():
-  if "CERE_WORKING_PATH" in os.environ:
-    return os.path.dirname(os.environ["CERE_WORKING_PATH"])
-  cur_dir = os.getcwd()
-  while True:
-    file_list = os.listdir(cur_dir)
-    parent_dir = os.path.dirname(cur_dir)
-    if CERE_MAIN_DIR in file_list: break
-    else:
-      if "cere.json" in file_list or cur_dir == parent_dir:
-        return False
-      else: cur_dir = parent_dir
-  return cur_dir
 
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -210,10 +197,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     if mode_opt.instrument and not mode_opt.wrapper:
         fail_lel("When using --instrument you must provide the --wrapper argument")
     #Find the .cere directory
-    cere_dir = find_cere_dir()
-    if not cere_dir:
-      fail_lel("Failed to find .cere directory. try export CERE_WORKING_PATH=\"path/to/.cere/\"")
-    DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
+    DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
 
     # Check that dumps exists
     if (not os.path.isdir(DIR)):

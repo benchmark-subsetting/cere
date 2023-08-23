@@ -127,10 +127,11 @@ def run(args):
       static_cmd = ""
 
     try:
+      env = dict(os.environ, CERE_MODE="replay --region={0} --invocation={1} {2} --wrapper={3} {4}".format(args.region, invocation, instru_cmd, args.plugin_instr, static_cmd))
+      env["CERE_REPLAY_REPETITIONS"] = "{0}".format(args.invitro_callcount)
       logger.debug(
-        subprocess.check_output("{0} && {1} CERE_REPLAY_REPETITIONS={6} CERE_MODE=\"replay --region={2} --invocation={3} {4} --wrapper={5} {7}\"".format(
-        cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"],
-          args.region, invocation, instru_cmd, args.plugin_instr, args.invitro_callcount, static_cmd), stderr=subprocess.STDOUT, shell=True))
+        subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]),
+                                stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
     except subprocess.CalledProcessError as err:
       logger.error(str(err))
       logger.error(err.output)
@@ -140,7 +141,8 @@ def run(args):
     if not args.norun:
       logger.info("Replaying invocation {1} for region {0}".format(args.region, invocation))
       try:
-        logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"], stderr=subprocess.STDOUT, shell=True))
+        logger.debug(subprocess.check_output(cere_configure.cere_config["run_cmd"],
+                                             stderr=subprocess.STDOUT, shell=True, cwd=var.CERE_RUN_PATH))
       except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
