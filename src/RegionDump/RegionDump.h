@@ -23,6 +23,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+
+/* Utility funcs */
+std::vector<std::string> split (std::string &str, char delim);
+int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region);
+
+/* LLVM related funcs */
 namespace llvm {
 
 /// Creates parameters for the dump function
@@ -32,7 +38,8 @@ namespace llvm {
 /// ... variables used by the original region
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
-                                                  BasicBlock *PredBB, int N);
+                                                  BasicBlock *PredBB,
+                                                  std::vector<int> invocations);
 
 /// \brief Create a pointer to string \p s
 Constant *createStringValue(Module *mod, std::string &s);

@@ -38,12 +38,13 @@
 #include "tracee_interface.h"
 
 #define _DEBUG 1
-#undef _DEBUG
+// #undef _DEBUG
 
 #include "debug.h"
 
 static int times_called = 0;
 static bool dump_initialized;
+static bool in_codelet = false;
 volatile static bool kill_after_dump = false;
 
 void *(*real_malloc)(size_t);
@@ -53,26 +54,14 @@ void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
 long PAGESIZE;
 
-void dump_init(void) {
 
-  PAGESIZE = sysconf(_SC_PAGESIZE);
-
-  /* state.mtrace_active = false; */
-  mtrace_active = false;
-
-  /* Copy the original binary */
-  char buf[BUFSIZ];
-  snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
-  int ret = system(buf);
-  if (ret != 0) {
-    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
-  }
-
-  /* configure atexit */
-  atexit(dump_close);
-
+// Fork the current process :
+// - parent becomes tracer
+// - child becomes tracee
+// This should be called in dump_init, and in after_dump in
+// the case of multi capture
+void fork_tracee() {
   pid_t child = 0;
-
   child = fork();
 
   if (child == (pid_t)-1) {
@@ -82,15 +71,23 @@ void dump_init(void) {
   /* If we are the parent */
   if (child != 0) {
 
-    char args[2][32];
+    debug_print("[tracee->tracer %d] New tracer process\n", getpid());
+    char args[3][32];
+
+
     snprintf(args[0], sizeof(args[0]), "%d", child);
     snprintf(args[1], sizeof(args[1]), "%p", &tracer_buff);
+    if(kill_after_dump)
+      snprintf(args[2], sizeof(args[2]), "%s","single");
+    else
+      snprintf(args[2], sizeof(args[2]), "%s", "multi");
 
-    char *const arg[] = {"cere-tracer", args[0], args[1], NULL};
+    char *const arg[] = {"cere-tracer", args[0], args[1], args[2], NULL};
     execvp("cere-tracer", arg);
     errx(EXIT_FAILURE, "ERROR TRACER RUNNING : %s\n", strerror(errno));
   } else {
 
+    debug_print("[tracee->tracee %d] New tracee process\n", getpid());
     /* Give DUMPABLE capability, required by ptrace */
     if (prctl(PR_SET_DUMPABLE, (long)1) != 0) {
       errx(EXIT_FAILURE, "Prctl : %s\n", strerror(errno));
@@ -108,24 +105,65 @@ void dump_init(void) {
       errx(EXIT_FAILURE, "ptrace(PTRACE_ME) : %s\n", strerror(errno));
     }
 
-    debug_print("requesting ptrace from %d\n", getpid());
     raise(SIGSTOP);
 
     dump_initialized = true;
   }
-
-  debug_print("%s", "DUMP_INIT DONE\n");
 }
 
-void dump_close() { unlink("lel_bin"); }
+// Parametrized dump_init that can be used to set kill_after_dump
+// (this will enable or disable multi-codelet capture)
+void _dump_init(bool new_kad) {
 
-/* dumps memory
- *  loop_name: name of dumped loop
- *  invocation: the number of the invocation to dump
- *  count: number of arguments
- *  ...args...: the arguments to dump
+  PAGESIZE = sysconf(_SC_PAGESIZE);
+
+  /* Set global kill_after_dump */
+  kill_after_dump = new_kad;
+
+  /* state.mtrace_active = false; */
+  mtrace_active = false;
+
+  /* Copy the original binary */
+  char buf[BUFSIZ];
+  snprintf(buf, sizeof buf, "cp /proc/%d/exe lel_bin", getpid());
+  int ret = system(buf);
+  if (ret != 0) {
+    errx(EXIT_FAILURE, "lel_bin copy failed: %s.\n", strerror(errno));
+  }
+
+  /* configure atexit */
+  atexit(dump_close);
+
+  // We always need a tracer to record the hotpages map
+  fork_tracee();
+}
+
+// Default dump_init, where kill_after_dump=true
+void dump_init(void) {
+  _dump_init(true);
+}
+
+// Multi dump_init, by setting kill_after_dump=false
+void multi_dump_init(void) {
+  _dump_init(false);
+}
+
+// We should only reach this during multi codelet capture
+void dump_close() {
+  debug_print("[tracee %d] Aborting\n", getpid());
+  unlink("lel_bin");
+  abort();
+}
+
+/* dump: requests capture of a outlined region of interest. Must be called
+ * before any other code in the function to be captured.
+ *   - loop_name is the name of the region of interest
+ *   - n_invocations is the the size of the invocations array
+ *   - invocations are the target invocations that must be captured
+ *   - arg_count is the number of arguments passed to the outlined function
+ *   - ... are the arguments passed to the outlined function
  */
-void dump(char *loop_name, int invocation, int count, ...) {
+void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, ...) {
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
@@ -135,46 +173,81 @@ void dump(char *loop_name, int invocation, int count, ...) {
   times_called++;
 
 
-  /* Happens only once */
-  if ((invocation <= PAST_INV && times_called == 1) ||
-      (times_called == invocation - PAST_INV)) {
-    mtrace_active = true;
-    send_to_tracer(TRAP_LOCK_MEM);
+  // If KAD (single capture), we want to start mem locking once for the first codelet
+  if(kill_after_dump) {
+    for(int i=0; i<n_invocations; i++) {
+      /* Happens only once */
+      if ((invocations[i] <= PAST_INV && times_called == 1) ||
+          (times_called == invocations[i] - PAST_INV)) {
+        mtrace_active = true;
+        send_to_tracer(TRAP_LOCK_MEM);
+        break;
+      }
+    }
   }
 
-  if (times_called != invocation) {
+  // If not (multi_capture), we spawn a new tracer each time, so we want to send a sigtrap
+  // everytime to re-trigger memory lock
+  else {
+      mtrace_active = true;
+      send_to_tracer(TRAP_LOCK_MEM);
+  }
+
+  bool invocToCapture = false;
+  int i;
+  for(i=0; i<n_invocations; i++) {
+    if (times_called == invocations[i]) {
+      invocToCapture = true;
+      break;
+    }
+  }
+  if(!invocToCapture) {
     return;
   }
 
-  assert(times_called == invocation);
+  in_codelet = true;
+
+  assert(times_called == invocations[i]);
   mtrace_active = false;
 
   strcpy(tracer_buff.str_tmp, loop_name);
 
   /* Send args */
   send_to_tracer(TRAP_START_ARGS);
-  send_to_tracer(invocation);
-  send_to_tracer(count);
+  send_to_tracer(invocations[i]);
+  send_to_tracer(arg_count);
 
   /* Dump addresses */
-  int i;
   va_list ap;
-  va_start(ap, count);
-  for (i = 0; i < count; i++) {
+  va_start(ap, arg_count);
+  for (i = 0; i < arg_count; i++) {
     send_to_tracer((register_t)va_arg(ap, void *));
   }
   va_end(ap);
 
-  kill_after_dump = true;
   send_to_tracer(TRAP_END_ARGS);
 }
 
 void after_dump(void) {
+  debug_print("[tracee %d] In after_dump\n", getpid());
   /* Avoid doing something before initializing */
   /* the dump. */
-  if (!dump_initialized)
+  if (!dump_initialized || !in_codelet)
     return;
 
-  if (kill_after_dump)
+  in_codelet = false;
+  pid_t parent = getppid();
+
+  if (kill_after_dump) {
+    debug_print("[tracee %d] Single capture : terminating tracer and tracee\n", getpid());
     abort();
+  }
+  else {
+    debug_print("[tracee %d] Multi capture : spawn new tracer and resume exec\n", getpid());
+    // Send a fake SIGABRT so the tracer frees us & terminates itself
+    kill(parent, 6);
+
+    // Directly spawn a new tracer to record hotpages map
+    fork_tracee();
+  }
 }
