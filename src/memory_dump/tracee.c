@@ -38,7 +38,7 @@
 #include "tracee_interface.h"
 
 #define _DEBUG 1
-// #undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
@@ -155,6 +155,52 @@ void dump_close() {
   abort();
 }
 
+
+/* Dump utility funcs */
+
+/* Used to split the different regions/invocations from args */
+int split (char* str, int ** tokens) {
+  size_t strsize = strlen(str);
+
+  // Parse string
+  char * strbak = malloc((strsize+1)*sizeof(char));
+  char * token;
+  strcpy(strbak, str);
+  int ntokens = 0;
+
+  // Count string tokens
+  token = strtok(strbak, ",");
+  while( token != NULL ) {
+    ntokens++;
+    token = strtok(NULL, strbak);
+  }
+  strcpy(strbak, str);
+
+  // Convert string tokens to int
+  if(*tokens != NULL) {
+    free(*tokens);
+  }
+  *tokens = malloc(ntokens*sizeof(int));
+
+  strcpy(strbak, str);
+
+  int i=0;
+  token = strtok(strbak, ",");
+  (*tokens)[i] = strtol(token, NULL, 10);
+  while( token != NULL ) {
+    (*tokens)[i] = strtol(token, NULL, 10);
+    i++;
+    token = strtok(NULL, strbak);
+  }
+
+  free(strbak);
+
+  return ntokens;
+}
+
+/*
+
+
 /* dump: requests capture of a outlined region of interest. Must be called
  * before any other code in the function to be captured.
  *   - loop_name is the name of the region of interest
@@ -163,7 +209,7 @@ void dump_close() {
  *   - arg_count is the number of arguments passed to the outlined function
  *   - ... are the arguments passed to the outlined function
  */
-void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, ...) {
+void dump(char *loop_name, char *invocations_str, int arg_count, ...) {
   /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
@@ -172,6 +218,8 @@ void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, .
 
   times_called++;
 
+  int * invocations = NULL;
+  int n_invocations = split(invocations_str, &invocations);
 
   // If KAD (single capture), we want to start mem locking once for the first codelet
   if(kill_after_dump) {
@@ -185,7 +233,6 @@ void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, .
       }
     }
   }
-
   // If not (multi_capture), we spawn a new tracer each time, so we want to send a sigtrap
   // everytime to re-trigger memory lock
   else {
@@ -202,6 +249,7 @@ void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, .
     }
   }
   if(!invocToCapture) {
+    free(invocations);
     return;
   }
 
@@ -211,10 +259,12 @@ void dump(char *loop_name, int n_invocations, int *invocations, int arg_count, .
   mtrace_active = false;
 
   strcpy(tracer_buff.str_tmp, loop_name);
+  int captured_invoc = invocations[i];
+  free(invocations);
 
   /* Send args */
   send_to_tracer(TRAP_START_ARGS);
-  send_to_tracer(invocations[i]);
+  send_to_tracer(captured_invoc);
   send_to_tracer(arg_count);
 
   /* Dump addresses */

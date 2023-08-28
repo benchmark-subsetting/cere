@@ -48,13 +48,13 @@ using namespace llvm;
 
 cl::opt<std::string> RegionName("region", cl::init("all"),
                                 cl::value_desc("String"),
-                                cl::desc("The region to dump"));
+                                cl::desc("The region(s) to dump"));
 cl::opt<std::string> RegionsFilename("regions-file", cl::init(""),
                                      cl::value_desc("File"),
                                      cl::desc("File with regions to dump"));
-cl::opt<int> Invocation("invocation", cl::init(1), cl::value_desc("Integer"),
-                        cl::desc("Dump the specified invocation"));
 
+cl::opt<std::string> Invocations("invocation", cl::init("1"), cl::value_desc("String"),
+                        cl::desc("The invocation(s) to dump"));
 
 /* Basic utility funcs */
 
@@ -85,8 +85,6 @@ int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region) {
   return -1;
 }
 
-
-
 /* LLVM related funcs */
 namespace llvm {
 
@@ -95,15 +93,16 @@ namespace llvm {
 FunctionType *createDumpFunctionType(Module *mod) {
   PointerType *PointerTy_0 =
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
+
   std::vector<Type *> FuncTy_args;
+
   // Char* for the region name
   FuncTy_args.push_back(PointerTy_0);
-  // Integer for the number of invocations to dump
-  FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
-  // Integer * for the list of invocations to dump
-  FuncTy_args.push_back(PointerType::get(IntegerType::get(mod->getContext(), 32), 0)); // Generic address space
+  // Char* for the list of invocations to dump
+  FuncTy_args.push_back(PointerTy_0);
   // Integer for the number of va args
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
+
   FunctionType *tmp = FunctionType::get(
       /*Result=*/Type::getVoidTy(mod->getContext()),
       /*Params=*/FuncTy_args,
@@ -119,15 +118,13 @@ Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
 
 /// Creates parameters for the dump function
 /// char* loop_name
-/// int nInvocations
-/// int* invocations
+/// char* invocations
 /// int arg_count
 /// ... variables used by the original region
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
                                                   BasicBlock *PredBB,
-                                                 std::vector<int> invocations) {
-
+                                                  std::string invocations) {
 
   IRBuilder<> builder(PredBB);
 
@@ -166,40 +163,13 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
   }
 
   /* Push first arguments */
-  // 4. arg_count
+  // 3. arg_count
   ConstantInt *nbParam =
       ConstantInt::get(mod->getContext(), APInt(32, params.size(), 10));
   params.insert(params.begin(), nbParam);
 
-  // 3. invocations
-  // Declare & fill std::vector of LLVM constants
-  std::vector<llvm::Constant *> constants_vec(invocations.size());
-  for(int i=0; i<invocations.size(); i++) {
-    constants_vec[i] = ConstantInt::get(
-      IntegerType::get(mod->getContext(), 32),
-      invocations[i]
-    );
-  }
-  // Initializer
-  auto initializer = ConstantArray::get(
-    ArrayType::get(IntegerType::get(mod->getContext(), 32),
-    invocations.size()),
-    constants_vec
-  );
-  // Global variable
-  GlobalVariable * global_invocations =
-  new GlobalVariable(
-    *mod,
-    initializer->getType(),
-    true, GlobalVariable::ExternalLinkage,
-    initializer
-  );
-  params.insert(params.begin(), global_invocations);
-
-  // 2.n_invocations
-  ConstantInt *iterToDump =
-      ConstantInt::get(mod->getContext(), APInt(32, invocations.size(), 10));
-  params.insert(params.begin(), iterToDump);
+  // 2. invocations
+  params.insert(params.begin(), createStringValue(mod, &builder, invocations));
 
   // 1.loop_name
   std::string tmp = currFunc->getName().str(); // Convert the regionName as a C type string

@@ -55,7 +55,7 @@ STATISTIC(RegionCounter, "Counts number of regions dumped");
 
 extern cl::opt<std::string> RegionName;
 extern cl::opt<std::string> RegionsFilename;
-extern cl::opt<std::string> Invocation;
+extern cl::opt<std::string> Invocations;
 
 namespace {
 struct OmpRegionDump : public FunctionPass {
@@ -70,11 +70,11 @@ struct OmpRegionDump : public FunctionPass {
   bool ReadFromFile;
 
   std::vector<std::string> RegionsToDump;
-  std::vector<std::vector<int>> InvocationsToDump;
+  std::vector<std::string> InvocationsToDump;
 
   explicit OmpRegionDump(unsigned numLoops = ~0)
       : FunctionPass(ID), NumLoops(numLoops), RegionString(RegionName),
-        InvocationString(Invocation), GlobalDump(false), ReadFromFile(false) {
+        InvocationString(Invocations), GlobalDump(false), ReadFromFile(false) {
     if (RegionToDump == "all")
       GlobalDump = true;
 
@@ -90,22 +90,15 @@ struct OmpRegionDump : public FunctionPass {
         // Parse all region substrings
         std::vector<std::string> tmp_Strings = split(InvocationString, ';');
         for(std::string i : tmp_Strings) {
-          // Parse each invocation
-          std::vector<std::string> tmp_Invocations_str = split(i, ',');
-          std::vector<int> tmp_Invocations_int = {};
-          for(std::string j : tmp_Invocations_str) {
-            tmp_Invocations_int.push_back(std::stoi(j));
-          }
-          InvocationsToDump.push_back(tmp_Invocations_int);
+          InvocationsToDump.push_back(i);
         }
       }
       // Else, capture every first invocation by default
       else {
         for(int i=0; i<RegionsToDump.size(); i++) {
-          InvocationsToDump.push_back({1});
+          InvocationsToDump.push_back("1");
         }
       }
-
     }
     // Else, fallback on the region file that has been specified
     else {
@@ -120,7 +113,6 @@ struct OmpRegionDump : public FunctionPass {
       }
 
     }
-    printf("[OmpRegionDump] Out\n");
   }
 
   virtual bool runOnFunction(Function &F);
@@ -225,19 +217,13 @@ bool OmpRegionDump::runOnFunction(Function &F) {
 
   ++RegionCounter;
 
-  /* Get list of invocations for the current region */
-  std::vector<int> tmp_Invocations = InvocationsToDump[regionIndex];
-
   /* Insert dump calls (one for each invocation) */
-  // TODO Change this by modifying dump to accept an array of invocs
-  for(unsigned long i=0; i<tmp_Invocations.size(); i++) {
-    // Create arguments for the dump function
-    std::vector<Value *> funcParameter =
-    createDumpFunctionParameters(mod, currFunc, PredBB, tmp_Invocations);
+  // Create arguments for the dump function
+  std::vector<Value *> funcParameter =
+  createDumpFunctionParameters(mod, currFunc, PredBB, InvocationsToDump[regionIndex]);
 
-    // Insert dump call just before the region
-    CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
-  }
+  // Insert dump call just before the region
+  CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
 
   /* Insert after_dump calls */
   bool insertMarker = false;

@@ -43,7 +43,7 @@
 #include "types.h"
 
 #define _DEBUG 1
-//#undef _DEBUG
+#undef _DEBUG
 
 #include "debug.h"
 
@@ -145,7 +145,6 @@ static bool is_syscall_io(pid_t pid) {
   case SYS_openat:
   case SYS_close:
     debug_print("Syscall IO detected : %d\n", syscallid);
-    printf("Syscall IO detected : %d\n", syscallid);
    return true;
   default:
     return false;
