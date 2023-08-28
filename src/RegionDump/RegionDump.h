@@ -32,14 +32,14 @@ int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region);
 namespace llvm {
 
 /// Creates parameters for the dump function
-/// char* RegionName
-/// int InvocationToDump
-/// int number of variable arguments
+/// char* loop_name
+/// char* invocations
+/// int arg_count
 /// ... variables used by the original region
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
                                                   BasicBlock *PredBB,
-                                                  std::vector<int> invocations);
+                                                  std::string invocations);
 
 /// \brief Create a pointer to string \p s
 Constant *createStringValue(Module *mod, std::string &s);
