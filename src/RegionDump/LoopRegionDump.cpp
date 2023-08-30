@@ -145,7 +145,13 @@ bool LoopRegionDump::runOnFunction(Function &F) {
     IRBuilder<> builder(&(Main->front().front()));
 
     ConstantInt *const_int1_11;
-    std::string funcName = "dump_init";
+    std::string funcName;
+    if(split(Invocations, ',').size() > 1 || split(RegionName, ';').size() > 1) {
+      funcName = "multi_dump_init";
+    }
+    else {
+      funcName = "dump_init";
+    }
 
     if (GlobalDump)
       const_int1_11 = ConstantInt::get(mod->getContext(),

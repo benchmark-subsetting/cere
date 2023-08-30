@@ -35,14 +35,11 @@ def init_module(subparsers, cere_plugins):
     cere_plugins["capture"] = run
     capture_parser = subparsers.add_parser("capture", help="captures a region")
     capture_parser.add_argument('--region', required=True, help="list of regions to capture, \";\" separated)")
-    capture_parser.add_argument('--invocation', type=int, help="list of invocation to capture, \",\" separated for invocations of a same region and \";\" separated for invocations of different regions")
+    capture_parser.add_argument('--invocation', default="1", help="list of invocation to capture, \",\" separated for invocations of a same region and \";\" separated for invocations of different regions")
     capture_parser.add_argument('--norun', action='store_true', help="builds the capture-instrumented binary without running it")
     capture_parser.add_argument('--force', '-f', action='store_true', help="overwrites previous existing dump (default False)")
 
 def find_invocations(chosen_invoc, regions):
-  print("[find_invocations] In")
-  print("[find_invocations] chosen_invoc=", chosen_invoc)
-  print("[find_invocations] regions=", regions)
 
   all_invocations = []
 
@@ -65,7 +62,6 @@ def find_invocations(chosen_invoc, regions):
     all_invocations.append(tmp_invocations)
 
 
-  print("[find_invocations] Returning all_invocations=", all_invocations)
   return all_invocations
 
 def run(args):
@@ -73,25 +69,41 @@ def run(args):
     return False
 
   regions = args.region.split(";")
-  invocations = find_invocations(args.invocation, regions)
-  if not invocations:
+  invocations = args.invocation.split(";")
+  if not regions:
+    logger.error("No region to capture. See cere capture -h.")
     return False
 
-  # Check regions arg
-  for i in range(len(regions)):
-    if not args.force:
+  if len(regions) != len(invocations):
+    logger.error("Sizes of regions and invocations list mismatch. See cere capture -h.")
+    return False
 
-      # Checking if any of the region/invocation couple exists
-      for j in (range(len(invocations[i]))):
+  # Iterate over regions
+  for i in range(len(regions)):
+    invoc_list = invocations[i].split(",")
+
+
+    # Iterate over invocations : check that invocs can be converted to int
+    for j in range(len(invoc_list)):
+      try:
+        a = int(invoc_list[j])
+      except:
+        logger.error("Invocations list could not be converted to integers. See cere capture -h.")
+        return False
+
+
+    if not args.force:
+      # Iterate over invocations
+      for j in range(len(invoc_list)):
+      # Checking if any of the region/invocation couple has been captured yet
         if utils.dump_exist(regions[i], invocations[i][j]):
-          logger.info("Dump already exists for region {0} invocation {1}".format(regions[i], invocations[i][j]))
+          logger.info("Dump already exists for region {0} invocation {1}. Skipping whole capture.".format(regions[i], invocations[i][j]))
           return False
 
       # Checking if the region is invalid
       if utils.is_invalid(regions[i]):
-        logger.warning("{0} is invalid. Skipping capture".format(regions[i]))
+        logger.warning("{0} is invalid. Skipping whole capture".format(regions[i]))
         return False
-
 
     else:
       # Else, if overwrite is enabled, remove all previous dumps of requested regions/invocations
@@ -99,8 +111,6 @@ def run(args):
         if utils.dump_exist(args.region[i], invocations[i][j]):
           shutil.rmtree(os.path.join(var.CERE_DUMPS_PATH, args.region, str(invocation[i][j])), ignore_errors=True)
 
-  # Make sure that if invocations are specified, they are specified for each region
-  # TODO
 
   # Now that everything is OK, launch compilation
   logger.info("Compiling capture mode for region {0} invocation {1}".format(args.region, args.invocation))
@@ -124,9 +134,13 @@ def run(args):
 
     # Checking if capture was successfull
     has_failed_capture = False
-    if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, args.region, args.invocation)):
-      logger.error("Capture failed for region(s) {0} invocation(s) {1}".format(args.region, args.invocation))
-      utils.mark_invalid(args.region, cere_error.EDUMP)
+    for i in range(len(regions)):
+      invoc_list = invocations[i].split(",")
+      # Iterate over invocations : check that invocs can be converted to int
+      for j in range(len(invoc_list)):
+        if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, regions[i], invoc_list[j])):
+          logger.error("Capture failed for region(s) {0} invocation(s) {1}".format(args.region, args.invocation))
+          utils.mark_invalid(args.region, cere_error.EDUMP)
 
     else:
       logger.info("Invocation(s) {1} succesfully captured for region(s) {0} ".format(args.region, args.invocation))

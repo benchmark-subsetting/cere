@@ -114,7 +114,6 @@ void fork_tracee() {
 // Parametrized dump_init that can be used to set kill_after_dump
 // (this will enable or disable multi-codelet capture)
 void _dump_init(bool new_kad) {
-
   PAGESIZE = sysconf(_SC_PAGESIZE);
 
   /* Set global kill_after_dump */
@@ -221,25 +220,6 @@ void dump(char *loop_name, char *invocations_str, int arg_count, ...) {
   int * invocations = NULL;
   int n_invocations = split(invocations_str, &invocations);
 
-  // If KAD (single capture), we want to start mem locking once for the first codelet
-  if(kill_after_dump) {
-    for(int i=0; i<n_invocations; i++) {
-      /* Happens only once */
-      if ((invocations[i] <= PAST_INV && times_called == 1) ||
-          (times_called == invocations[i] - PAST_INV)) {
-        mtrace_active = true;
-        send_to_tracer(TRAP_LOCK_MEM);
-        break;
-      }
-    }
-  }
-  // If not (multi_capture), we spawn a new tracer each time, so we want to send a sigtrap
-  // everytime to re-trigger memory lock
-  else {
-      mtrace_active = true;
-      send_to_tracer(TRAP_LOCK_MEM);
-  }
-
   bool invocToCapture = false;
   int i;
   for(i=0; i<n_invocations; i++) {
@@ -252,6 +232,9 @@ void dump(char *loop_name, char *invocations_str, int arg_count, ...) {
     free(invocations);
     return;
   }
+
+  mtrace_active = true;
+  send_to_tracer(TRAP_LOCK_MEM);
 
   in_codelet = true;
 
