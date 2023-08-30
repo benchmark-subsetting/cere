@@ -593,9 +593,7 @@ void sigabrt_handler(int signo, siginfo_t *si, void *data) {
     unfollow_threads(pid);
 
     int status;
-
     pid_t child_pid = waitpid(pid, &status, 0);
-
     debug_print("[tracer %d]: after waiting for tracee %d(%d)\n", getpid(), child_pid, pid);
     debug_print("[tracer %d] Killing ourselves\n", getpid());
 

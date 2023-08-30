@@ -42,7 +42,10 @@
 
 #include "debug.h"
 
+#define BUG 0
+#if BUG
 static int times_called = 0;
+#endif
 static bool dump_initialized;
 static bool in_codelet = false;
 volatile static bool kill_after_dump = false;
@@ -53,6 +56,53 @@ void *(*real_realloc)(void *ptr, size_t size);
 void *(*real_memalign)(size_t alignment, size_t size);
 bool mtrace_active;
 long PAGESIZE;
+
+
+/**** PER-CODELET INVOCS COUNTER STRUCT ****/
+
+typedef struct {
+  char* loop_name;
+  unsigned long long count_value;
+} LoopCounter;
+
+typedef struct {
+  LoopCounter* counters;
+  int num_counters;
+} LoopCounterCollection;
+
+static LoopCounterCollection loop_counters;
+//static bool in_progress = false;
+static char* in_progress_loop_name = NULL;
+static int in_progress_invocation = -1;
+
+static LoopCounter* get_counter_internal(const char* loop_name) {
+  for (int i = 0; i < loop_counters.num_counters; i++) { 
+    LoopCounter* counter = &(loop_counters.counters[i]);
+    if (strcmp(counter->loop_name, loop_name) == 0) { 
+      return counter;
+    }
+  }
+  // New counter 
+  LoopCounter newCounter;
+  newCounter.loop_name = strdup(loop_name);
+  newCounter.count_value = 0;  
+
+  loop_counters.counters = realloc(
+    loop_counters.counters, (loop_counters.num_counters + 1) * sizeof(LoopCounter));
+  loop_counters.counters[loop_counters.num_counters] = newCounter;
+  loop_counters.num_counters++;
+  return &(loop_counters.counters[loop_counters.num_counters-1]);
+}
+
+void increment_counter(const char* loop_name) { 
+  get_counter_internal(loop_name)->count_value ++;
+}
+
+unsigned long long get_counter_value(const char* loop_name) {
+  return get_counter_internal(loop_name)->count_value ;
+}
+
+/*************************/
 
 
 // Fork the current process :
