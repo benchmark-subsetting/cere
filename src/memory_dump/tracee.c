@@ -42,10 +42,7 @@
 
 #include "debug.h"
 
-#define BUG 0
-#if BUG
 static int times_called = 0;
-#endif
 static bool dump_initialized;
 static bool in_codelet = false;
 volatile static bool kill_after_dump = false;
