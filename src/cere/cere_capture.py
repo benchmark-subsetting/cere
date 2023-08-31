@@ -139,10 +139,10 @@ def run(args):
       # Iterate over invocations : check that invocs can be converted to int
       for j in range(len(invoc_list)):
         if not os.path.isdir("{0}/{1}/{2}".format(var.CERE_DUMPS_PATH, regions[i], invoc_list[j])):
-          logger.error("Capture failed for region(s) {0} invocation(s) {1}".format(args.region, args.invocation))
+          logger.error("Capture failed for region {0} invocation {1}".format(regions[i], invoc_list[j]))
           utils.mark_invalid(args.region, cere_error.EDUMP)
-
-    else:
-      logger.info("Invocation(s) {1} succesfully captured for region(s) {0} ".format(args.region, args.invocation))
+          has_failed_capture = True
+        else:
+          logger.info("Invocation {1} succesfully captured for region {0} ".format(regions[i], invoc_list[j]))
 
   return not has_failed_capture
