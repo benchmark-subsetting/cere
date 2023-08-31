@@ -32,6 +32,7 @@
 #include <syscall.h>
 
 #include "ptrace.h"
+#include "tracer_mem.h"
 #include "tracer_interface.h"
 #include "types.h"
 
@@ -262,6 +263,17 @@ void unprotect_i(pid_t pid, char *start, size_t size) {
          start, (int) ret);
   }
 }
+
+void unprotect_i_with_permissions(pid_t pid, char *start, size_t size, char * permissions) {
+  debug_print("TO BE UNPROTECTED :  %p (%lu) with permissions %s\n", start, size, permissions);
+
+  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size, permissions);
+   if (ret != 0) {
+    errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
+         start, (int) ret);
+  }
+}
+
 
 void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
                        size_t size_p) {

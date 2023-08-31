@@ -33,11 +33,12 @@
 #include <string.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
-#include <sys/types.h>
 #include <sys/user.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
 #include "ptrace.h"
+#include "tracer_mem.h"
 #include "types.h"
 
 #define WORDSIZE (sizeof(register_t))
@@ -47,12 +48,21 @@
 
 #include "debug.h"
 
+
 size_t ntids = 0;
 pid_t tids[MAX_TIDS] = {0};
 int npending = 0;
 bool pending[MAX_TIDS] = {false};
 int cleared[MAX_TIDS] = {0};
 event_t queued[MAX_TIDS];
+
+bool multi_capture = false;
+
+// Sets the multi_capture value, which will be used when exiting codelet
+// Normally called from the cere_tracer's main duting init
+void set_capture_mode(bool capture_mode) {
+  multi_capture = capture_mode;
+}
 
 void ptrace_cont(pid_t pid) {
   if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
@@ -103,8 +113,8 @@ void ptrace_getregs(pid_t pid, struct user_pt_regs *regs) {
 void ptrace_setregs(pid_t pid, struct user_pt_regs *regs) {
   int r = 0;
   struct iovec iovec;
-	iovec.iov_base = regs;
-	iovec.iov_len = sizeof *regs;
+    iovec.iov_base = regs;
+    iovec.iov_len = sizeof *regs;
   do {
     r = ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iovec);
   } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
@@ -297,11 +307,11 @@ event_t wait_event(pid_t wait_for) {
          SIGSTOP is received before the parent SIGTRAP) */
       if (find_thread_pos(new_thread) == -1) {
         register_thread(new_thread);
-	/* New thread starts with a SIGSTOP, either it was already caught before
+    /* New thread starts with a SIGSTOP, either it was already caught before
            parent SIGTRAP in that case thread is already registered, either we
            should catch it now.  */
-	event_t e = wait_event(new_thread);
-	assert(e.signo == SIGSTOP);
+    event_t e = wait_event(new_thread);
+    assert(e.signo == SIGSTOP);
       }
 
       /* Let both parent and child thread continue */
@@ -338,9 +348,12 @@ event_t wait_event(pid_t wait_for) {
       return event;
     }
     }
-  case SIGABRT:
     debug_print("%s\n", "Finished capture\n");
     exit(0);
+  case SIGABRT:
+    debug_print("%s\n", "Finished single-codelet capture\n");
+    exit(0);
+
   default:
     /* Return all other events */
     return event;
@@ -397,5 +410,30 @@ void follow_threads(pid_t pid) {
     ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
            PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
     debug_print("Attached to %d\n", tids[t]);
+    debug_print("[tracer %d] Attached to %d\n", getpid(), tids[t]);
+  }
+}
+
+void unfollow_threads(pid_t pid) {
+
+  parse_proc_task(pid);
+
+  /* Detach from all tids
+   * This should be called when killing the tracer
+   */
+  for (int t = 0; t < ntids; t++) {
+    int r;
+    do {
+      r = ptrace(PTRACE_CONT, tids[t], (void *)0, 0);
+      r = ptrace(PTRACE_DETACH, tids[t], (void *)0, 0);
+    } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
+                            errno == ESRCH));
+    if (r == -1L) {
+      errx(EXIT_FAILURE, "Cannot detach thread %d: %s\n",
+        tids[t], strerror(errno));
+    }
+
+    debug_print("Detached from %d\n", tids[t]);
+    debug_print("[tracer %d] Detached from %d\n", getpid(), tids[t]);
   }
 }

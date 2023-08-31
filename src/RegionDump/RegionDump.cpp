@@ -48,27 +48,61 @@ using namespace llvm;
 
 cl::opt<std::string> RegionName("region", cl::init("all"),
                                 cl::value_desc("String"),
-                                cl::desc("The region to dump"));
+                                cl::desc("The region(s) to dump"));
 cl::opt<std::string> RegionsFilename("regions-file", cl::init(""),
                                      cl::value_desc("File"),
                                      cl::desc("File with regions to dump"));
-cl::opt<int> Invocation("invocation", cl::init(1), cl::value_desc("Integer"),
-                        cl::desc("Dump the specified invocation"));
 
+cl::opt<std::string> Invocations("invocation", cl::init("1"), cl::value_desc("String"),
+                        cl::desc("The invocation(s) to dump"));
+
+/* Basic utility funcs */
+
+/* Used to split the different regions/invocations from args */
+std::vector<std::string> split (std::string &str, char delim) {
+  std::vector<std::string> vec;
+    std::stringstream str_stream(str);
+    std::string item;
+
+    while (getline(str_stream, item, delim)) {
+        vec.push_back(item);
+    }
+
+    return vec;
+}
+
+/*
+* Iterates over RegionsToDump looking for Region. If it's found, return at which index.
+* Otherwise, return -1
+*/
+int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region) {
+  for(int i=0; i<RegionsToDump.size(); i++) {
+    if(Region.compare(RegionsToDump[i]) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+/* LLVM related funcs */
 namespace llvm {
 
 /// Create signature for the dump function
-/// void dump(char*, int, int, ...)
+/// void dump(char*, int, int*, int, ...)
 FunctionType *createDumpFunctionType(Module *mod) {
   PointerType *PointerTy_0 =
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
+
   std::vector<Type *> FuncTy_args;
+
   // Char* for the region name
   FuncTy_args.push_back(PointerTy_0);
-  // Integer for the invocation to dump
-  FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
+  // Char* for the list of invocations to dump
+  FuncTy_args.push_back(PointerTy_0);
   // Integer for the number of va args
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
+
   FunctionType *tmp = FunctionType::get(
       /*Result=*/Type::getVoidTy(mod->getContext()),
       /*Params=*/FuncTy_args,
@@ -83,16 +117,18 @@ Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
 }
 
 /// Creates parameters for the dump function
-/// char* RegionName
-/// int InvocationToDump
-/// int number of variable arguments
+/// char* loop_name
+/// char* invocations
+/// int arg_count
 /// ... variables used by the original region
 std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
-                                                  BasicBlock *PredBB, int N) {
+                                                  BasicBlock *PredBB,
+                                                  std::string invocations) {
 
   IRBuilder<> builder(PredBB);
 
+  /* Push VLA from outlining function */
   // The requested region has been outlined into a function.
   // Give adresses of its arguments to the dump function.
   std::vector<Value *> params;
@@ -126,15 +162,17 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
     }
   }
 
+  /* Push first arguments */
+  // 3. arg_count
   ConstantInt *nbParam =
       ConstantInt::get(mod->getContext(), APInt(32, params.size(), 10));
-  ConstantInt *iterToDump =
-      ConstantInt::get(mod->getContext(), APInt(32, N, 10));
-
   params.insert(params.begin(), nbParam);
-  params.insert(params.begin(), iterToDump);
-  /*Convert the regionName as a C type string*/
-  std::string tmp = currFunc->getName().str();
+
+  // 2. invocations
+  params.insert(params.begin(), createStringValue(mod, &builder, invocations));
+
+  // 1.loop_name
+  std::string tmp = currFunc->getName().str(); // Convert the regionName as a C type string
   params.insert(params.begin(), createStringValue(mod, &builder, tmp));
 
   return params;

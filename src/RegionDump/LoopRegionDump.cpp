@@ -55,31 +55,65 @@ STATISTIC(RegionCounter, "Counts number of regions dumped");
 
 extern cl::opt<std::string> RegionName;
 extern cl::opt<std::string> RegionsFilename;
-extern cl::opt<int> Invocation;
+extern cl::opt<std::string> Invocations;
+
 
 namespace {
 struct LoopRegionDump : public FunctionPass {
   static char ID;
   unsigned NumLoops;
+
   std::string RegionToDump;
-  int InvocationToDump;
+  std::string RegionString;
+  std::string InvocationString;
+
   bool GlobalDump;
   bool ReadFromFile;
+
   std::vector<std::string> RegionsToDump;
+  std::vector<std::string> InvocationsToDump;
 
   explicit LoopRegionDump(unsigned numLoops = ~0)
-      : FunctionPass(ID), NumLoops(numLoops), RegionToDump(RegionName),
-        InvocationToDump(Invocation), GlobalDump(false), ReadFromFile(false) {
+      : FunctionPass(ID), NumLoops(numLoops), RegionString(RegionName),
+        InvocationString(Invocations), GlobalDump(false), ReadFromFile(false) {
     if (RegionToDump == "all")
       GlobalDump = true;
-    if (!RegionsFilename.empty()) {
-      std::string line;
-      std::ifstream loopstream(RegionsFilename.c_str(), std::ios::in);
-      if (loopstream.is_open()) {
-        while (getline(loopstream, line))
-          RegionsToDump.push_back(line);
-        ReadFromFile = true;
+
+    // If regions are specified in CLI, take precedence over regions file
+    if(!RegionName.empty()) {
+      /* Parse regions list */
+      RegionsToDump = split(RegionName, ';');
+
+      /* Parse invocations list */
+      // If not empty, read invocation string
+      if(!InvocationString.empty()) {
+        // Parse all region substrings
+        std::vector<std::string> tmp_Strings = split(InvocationString, ';');
+        for(std::string i : tmp_Strings) {
+          InvocationsToDump.push_back(i);
+        }
       }
+      // Else, capture every first invocation by default
+      else {
+        std::vector<std::string> InvocationsToDump;
+        for(int i=0; i<RegionsToDump.size(); i++) {
+          InvocationsToDump.push_back("1");
+        }
+      }
+
+    }
+    // Else, fallback on the region file that has been specified
+    else {
+      if (!RegionsFilename.empty()) {
+        std::string line;
+        std::ifstream loopstream(RegionsFilename.c_str(), std::ios::in);
+        if (loopstream.is_open()) {
+          while (getline(loopstream, line))
+            RegionsToDump.push_back(line);
+          ReadFromFile = true;
+        }
+      }
+
     }
   }
 
@@ -110,7 +144,13 @@ bool LoopRegionDump::runOnFunction(Function &F) {
     IRBuilder<> builder(&(Main->front().front()));
 
     ConstantInt *const_int1_11;
-    std::string funcName = "dump_init";
+    std::string funcName;
+    if(split(Invocations, ',').size() > 1 || split(RegionName, ';').size() > 1) {
+      funcName = "multi_dump_init";
+    }
+    else {
+      funcName = "dump_init";
+    }
 
     if (GlobalDump)
       const_int1_11 = ConstantInt::get(mod->getContext(),
@@ -160,14 +200,16 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
     return false;
 
   // If we want to dump a particular region, look if it's this one
-  if (!GlobalDump && RegionToDump != currFunc->getName()) {
+  int regionIndex = dumpRequested(RegionsToDump, currFunc->getName());
+  if (!GlobalDump && regionIndex == -1) {
     return false;
   } else if (ReadFromFile) {
     if (!(std::find(RegionsToDump.begin(), RegionsToDump.end(),
                     currFunc->getName()) != RegionsToDump.end()))
       return false;
   }
-  // Create dump function
+
+  /* Create dump function */
   Function *func_dump = mod->getFunction("dump");
   if (!func_dump) { // If function "dump" not found, creates it
     FunctionType *DumpFuncTy = createDumpFunctionType(mod);
@@ -175,7 +217,7 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
         Function::Create(DumpFuncTy, GlobalValue::ExternalLinkage, "dump", mod);
   }
 
-  // Create after_dump function
+  /* Create after_dump function */
   Function *func_after_dump = mod->getFunction("after_dump");
   if (!func_after_dump) { // If function "after_dump" not found, creates it
     // Create a void type
@@ -196,14 +238,17 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   if (PredBB == NULL || exitblocks.size() == 0)
     return false;
 
-  ++RegionCounter;
+   ++RegionCounter;
+
+  /* Insert dump calls (one for each invocation) */
   // Create arguments for the dump function
   std::vector<Value *> funcParameter =
-      createDumpFunctionParameters(mod, currFunc, PredBB, InvocationToDump);
+  createDumpFunctionParameters(mod, currFunc, PredBB, InvocationsToDump[regionIndex]);
 
-  // Call dump function just before the region
+  // Insert dump call just before the region
   CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
-  // Call after dump in each exit blocks
+
+  /* Insert after_dump calls (once) in each exit blocks */
   for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
                                                E = exitblocks.end();
        I != E; ++I) {

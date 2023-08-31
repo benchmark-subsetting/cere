@@ -91,7 +91,6 @@ def dump_fun(mode_opt, BASE, regions):
     safe_system(("{llvm_bindir}/opt -S -load {LoopMan} {Omp}-region-dump {opts} " +
                 "{base}.ll -o {base}.ll").format(llvm_bindir=LLVM_BINDIR, Root=PROJECT_ROOT,
                 LoopMan=LOOP_DUMP, opts=temp, base=BASE,Omp=OMP_FLAGS), EXIT=False)
-
     globalize_variables(BASE, mode_opt)
 
 #in replay mode
