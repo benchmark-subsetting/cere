@@ -42,7 +42,6 @@
 
 #include "debug.h"
 
-static int times_called = 0;
 static bool dump_initialized;
 static bool in_codelet = false;
 volatile static bool kill_after_dump = false;
@@ -55,48 +54,50 @@ bool mtrace_active;
 long PAGESIZE;
 
 
-/**** PER-CODELET INVOCS COUNTER STRUCT ****/
+/**** PER-CODELET INVOCS COUNTER STRUCT ***/
+// Original implementation by David C. Wong
 
 typedef struct {
-  char* loop_name;
+  char* codelet_name;
   unsigned long long count_value;
-} LoopCounter;
+} InvocsCounter;
 
 typedef struct {
-  LoopCounter* counters;
+  InvocsCounter* counters;
   int num_counters;
-} LoopCounterCollection;
+} InvocsCounterCollection;
 
-static LoopCounterCollection loop_counters;
+static InvocsCounterCollection invocs_counters;
 //static bool in_progress = false;
-static char* in_progress_loop_name = NULL;
+static char* in_progress_codelet_name = NULL;
 static int in_progress_invocation = -1;
 
-static LoopCounter* get_counter_internal(const char* loop_name) {
-  for (int i = 0; i < loop_counters.num_counters; i++) { 
-    LoopCounter* counter = &(loop_counters.counters[i]);
-    if (strcmp(counter->loop_name, loop_name) == 0) { 
+static InvocsCounter* get_counter_internal(const char* codelet_name) {
+  for (int i = 0; i < invocs_counters.num_counters; i++) {
+    InvocsCounter* counter = &(invocs_counters.counters[i]);
+    if (strcmp(counter->codelet_name, codelet_name) == 0) {
       return counter;
     }
   }
-  // New counter 
-  LoopCounter newCounter;
-  newCounter.loop_name = strdup(loop_name);
-  newCounter.count_value = 0;  
+  // New counter
+  InvocsCounter newCounter;
+  newCounter.codelet_name = strdup(codelet_name);
+  newCounter.count_value = 0;
 
-  loop_counters.counters = realloc(
-    loop_counters.counters, (loop_counters.num_counters + 1) * sizeof(LoopCounter));
-  loop_counters.counters[loop_counters.num_counters] = newCounter;
-  loop_counters.num_counters++;
-  return &(loop_counters.counters[loop_counters.num_counters-1]);
+  invocs_counters.counters = realloc(
+    invocs_counters.counters, (invocs_counters.num_counters + 1) * sizeof(InvocsCounter)
+  );
+  invocs_counters.counters[invocs_counters.num_counters] = newCounter;
+  invocs_counters.num_counters++;
+  return &(invocs_counters.counters[invocs_counters.num_counters-1]);
 }
 
-void increment_counter(const char* loop_name) { 
-  get_counter_internal(loop_name)->count_value ++;
+void increment_counter(const char* codelet_name) {
+  get_counter_internal(codelet_name)->count_value ++;
 }
 
-unsigned long long get_counter_value(const char* loop_name) {
-  return get_counter_internal(loop_name)->count_value ;
+unsigned long long get_counter_value(const char* codelet_name) {
+  return get_counter_internal(codelet_name)->count_value;
 }
 
 /*************************/
@@ -262,7 +263,8 @@ void dump(char *loop_name, char *invocations_str, int arg_count, ...) {
   if (!dump_initialized)
     return;
 
-  times_called++;
+  increment_counter(loop_name);
+  int times_called = get_counter_value(loop_name);
 
   int * invocations = NULL;
   int n_invocations = split(invocations_str, &invocations);

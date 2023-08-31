@@ -115,7 +115,7 @@ def run(args):
   # Now that everything is OK, launch compilation
   logger.info("Compiling capture mode for region {0} invocation {1}".format(args.region, args.invocation))
   try:
-    env = dict(os.environ, CERE_MODE="dump --region={0} --invocation={1}".format(args.region, args.invocation))
+    env = dict(os.environ, CERE_MODE="dump --region=\"{0}\" --invocation=\"{1}\"".format(args.region, args.invocation))
     logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]), stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
   except subprocess.CalledProcessError as err:
     logger.error(str(err))

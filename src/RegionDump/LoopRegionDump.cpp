@@ -82,8 +82,7 @@ struct LoopRegionDump : public FunctionPass {
     // If regions are specified in CLI, take precedence over regions file
     if(!RegionName.empty()) {
       /* Parse regions list */
-      std::vector<std::string> tmp_Regions = split(RegionName, ';');
-      RegionsToDump.insert(RegionsToDump.end(), tmp_Regions.begin(), tmp_Regions.end());
+      RegionsToDump = split(RegionName, ';');
 
       /* Parse invocations list */
       // If not empty, read invocation string
