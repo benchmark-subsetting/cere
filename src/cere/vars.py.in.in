@@ -21,10 +21,16 @@ VERSION = "@PACKAGE_VERSION@"
 FORTRAN_SUPPORT="@FORTRAN_SUPPORT@"
 CLANG = os.path.join("@LLVM_BINDIR@","clang")
 CLANGPP = os.path.join("@LLVM_BINDIR@","clang++")
+FLANG = os.path.join("@LLVM_BINDIR@","flang")
 PPROF = "@PPROF@"
 LLVM_BINDIR = "@LLVM_BINDIR@"
 GCC="@GCC_PATH@"
 LIBDIR = "%LIBDIR%"
+
+C_EXTENSIONS=[".c", ".C"]
+CXX_EXTENSIONS=[".cpp", ".cc", ".cxx", ".CPP", ".CC", ".CXX"]
+FORTRAN_EXTENSIONS=[".f", ".f90", ".f77", ".F", ".F90", ".F77"]
+SOURCE_EXTENSIONS= C_EXTENSIONS + CXX_EXTENSIONS + FORTRAN_EXTENSIONS
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__+"/.."))
@@ -39,11 +45,7 @@ GLOB_RENAME = LIBDIR + "/libcere_globalrename.so"
 LIBDIR_FLAGS = "-L {libdir} -Wl,--rpath={libdir}".format(libdir=LIBDIR)
 RDTSC_WRAPPER = "-lcere_rdtsc"
 LIKWID = "-llikwid"
-FORTRAN_EXTENSIONS=[".f", ".f90", ".f77", ".F90"]
-CXX_EXTENSIONS=[".cpp", ".cc", ".cxx"]
 DUMPS_DIR = ".cere/dumps/"
-
-SOURCE_EXTENSIONS=[".C", ".c"] + CXX_EXTENSIONS + FORTRAN_EXTENSIONS
 
 INVALID_REGION_FILE = "invalid_regions"
 

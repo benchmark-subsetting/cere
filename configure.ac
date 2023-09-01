@@ -23,7 +23,7 @@ AC_PROG_CC([gcc])
 AC_DEFINE_UNQUOTED([GCC_PATH], ["$CC"], [GCC path for dragonegg])
 AC_SUBST(GCC_PATH, $CC)
 
-AX_LLVM([7.0],[16.0],[all])
+AX_LLVM([7.0],[16.0.6],[all])
 AC_SUBST(LLVM_CPPFLAGS, $LLVM_CPPFLAGS)
 
 # Check if Fortran/flang has been enabled (disabled by default)
@@ -36,6 +36,9 @@ else
 fi
 AC_DEFINE_UNQUOTED([FORTRAN_SUPPORT], ["$with_flang"], [enables or disables Fortran/flang support])
 AC_SUBST(FORTRAN_SUPPORT, $with_flang)
+
+# Define Automake var to optionally distribute ceref
+AM_CONDITIONAL([WITH_FLANG],  [test "x$with_flang"  = "xyes"])
 
 # The profiler and gfortran libraries added to LIBS by AC_CHECK_LIB are needed only at
 # cere run time, not when building cere. Therefore we have to reset LIBS.
@@ -112,6 +115,7 @@ AC_C_BIGENDIAN(
                [AC_MSG_ERROR([endianess of this machine is unknown])],
                [AC_MSG_ERROR([universal endianess not supported])]
                )
+
 
 # Check for Python >= 3
 

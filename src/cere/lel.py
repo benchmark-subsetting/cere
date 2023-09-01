@@ -23,6 +23,9 @@ import tempfile
 from cere.vars import *
 from cere.compress import compress
 
+# By default, compile for C
+COMPILER = CLANG
+
 def grep(path, regex):
     regex=".*"+regex+".*"
     regObj = re.compile(regex)
@@ -92,7 +95,7 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
     safe_system(("{link} {opts} -o {binary} {libdir} " +
                  "-Wl,-z,now -lcere_dump -ldl"
-    ).format(link=CLANGPP, binary=BINARY,
+    ).format(link=COMPILER, binary=BINARY,
              opts=COMPIL_OPT, Root=PROJECT_ROOT,libdir=LIBDIR_FLAGS))
 
 def sysout(cmd):
@@ -244,25 +247,26 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
 
     if(mode_opt.instrument_app):
         safe_system(("{link} -o {binary} {opts} {libs} {libdir}").format(
-              link=CLANGPP, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
+              link=COMPILER, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
               libdir=LIBDIR_FLAGS))
     elif(mode_opt.instrument):
         safe_system(("{link} -o {binary} {opts} {wrapper} {libdir}").format(
-              link=CLANGPP, binary=BINARY, opts=COMPIL_OPT,
+              link=COMPILER, binary=BINARY, opts=COMPIL_OPT,
               wrapper=mode_opt.wrapper, libdir=LIBDIR_FLAGS))
     else:
-        # NOTE In all linker modes, we now use CLANGPP by default in case we link
-        # some objects containing C++ symbols.
-        safe_system(("{link} -o {binary} {opts}").format(link=CLANGPP,
+        safe_system(("{link} -o {binary} {opts}").format(link=COMPILER,
                 binary=BINARY, opts=COMPIL_OPT))
 
 
 
-def link(args):
+def link(args, new_compiler):
     function={}
     function["replay_fun"] = replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
+
+    COMPILER = new_compiler
+
     if (len(args[1]) == 0):
         exit("Error:Need source file")
     objs = ""
