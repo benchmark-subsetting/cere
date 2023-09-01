@@ -107,6 +107,20 @@ def init_parser_core(parser):
     init_subpars(parser_instrument, False)
     parser_instrument.set_defaults(func="original_fun")
 
+
+def safe_system(command, EXIT=True):
+    '''
+    Try-catch system call
+    Verify system call and exit with appropriate error message
+    '''
+    if(os.system(command)):
+        if (EXIT):
+            print("safe_system -> " + command)
+        else:
+            print("Warning Error {prog} : safe_system -> {cmd}".format(
+                  prog='lec', cmd=command), file=sys.stderr)
+
+
 def run(lang, argv):
     '''
     Main function
@@ -124,12 +138,18 @@ def run(lang, argv):
             fail_lec("Fortran support disabled in this build (reconfigure & reinstall using --with-flang).")
 
     # Get CERE_MODE from environment variable
-    # If CERE_MODE is not defined we build the original binary
+    # If CERE_MODE is not defined, we "short-circuit" the normal build process by
+    # performing a simple compiler call by passing the flags directly to the LLVM frontend.
+    # This avoids unnecessary compiltion steps that dump the .ll files and can cause issues,
+    # for instance where build systems such as CMake and autotools build a bunch of test
+    # programs to validate the compiler.
     try:
       cere_args = os.environ["CERE_MODE"].split()
     except KeyError:
-      print("cerec: CERE_MODE not defined. Building original binary.")
-      cere_args = ["original"]
+      argv = " ".join(argv[1:])
+      safe_system("{0} {1}".format(COMPILER, argv))
+      exit(1)
+
 
     # Create parsers
     parser = MyParser()
