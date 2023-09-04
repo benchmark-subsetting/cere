@@ -63,11 +63,30 @@ def user_main(FILE, LOOP, mode_opt):
                                in_vitro_call_count=CERE_REPLAY_REPETITIONS,
                                loop=LOOP))
 
+def baremetal_user_main(FILE, LOOP, mode_opt):
+    # Define by default TIMEOUT_SECONDS to 60
+    TIMEOUT_SECONDS=os.getenv('TIMEOUT_SECONDS', 60) #1min is probably enough
+    # Define by default CALL_COUNT to 10
+    CERE_REPLAY_REPETITIONS=int(os.getenv('CERE_REPLAY_REPETITIONS', 10))
+    TEMPLATE = open("{root}/template_baremetal_realmain.c".format(root=ROOT), "r")
+    template = TEMPLATE.read()
+    TEMPLATE.close()
+    FILE.write(template.format(time_out=TIMEOUT_SECONDS,
+                               in_vitro_call_count=CERE_REPLAY_REPETITIONS,
+                               loop=LOOP))
+
 def create_user_main(mode_opt,LOOP):
     safe_system("rm -f realmain.c")
     MAIN=open('realmain.c','w')
     user_main(MAIN, LOOP, mode_opt)
     MAIN.close()
+
+def create_baremetal_user_main(mode_opt,LOOP):
+    safe_system("rm -f baremetal_realmain.c")
+    MAIN=open('baremetal_realmain.c','w')
+    baremetal_user_main(MAIN, LOOP, mode_opt)
+    MAIN.close()
+
 
 def compile_memory_dump_objects(mode_opt, DIR):
     if not mode_opt.static:
@@ -165,6 +184,97 @@ def parse_elf(binary):
         elf_map[name] = dict(addr=addr, offset=offset, size=size)
     return elf_map
 
+def memdumps_to_objects(dir):
+    # When compiling in baremetal replay mode,
+    # we want to save memdumps into object files
+    # in order to embed them into the executable
+
+    owd = os.getcwd()
+    os.chdir(dir)
+
+    memchunks_sizes = b'' # Will contain usigned integer entries of 4 bytes (uint32_t)
+    memchunks_addresses = b'' # Will contain addresses of each memchunk (read from filename)
+    concatenated_memchunks = b'' # Will contain all memdumps one after another
+
+    # Iterate over dump files.
+    # We will concatenate the memdumps and save each of their sizes and addresses
+    # This is needed because in the template, we must know the name of symbols
+    # we access, so we can't just create a bunch of symbols for each dump file
+    for f_name in os.listdir("."):
+        if f_name.endswith(".memdump"):
+            address = bytearray.fromhex(f_name[:-8])
+            memchunk = open(f_name, "rb").read()
+            memchunks_sizes += len(memchunk).to_bytes(length=4, byteorder='little') # assumes a little endian replay env
+            memchunks_addresses += address
+            concatenated_memchunks += memchunk
+
+    # Put raw byte sequences in tmp files
+    with open('memchunks_sizes', 'wb') as w:
+        w.write(memchunks_sizes)
+    with open('memchunks_addresses', 'wb') as w:
+        w.write(memchunks_addresses)
+    with open('concatenated_memchunks', 'wb') as w:
+        w.write(concatenated_memchunks)
+
+    # Generate chunk sizes object from tmp file
+    safe_system(("{objcopy} --input binary"
+    + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
+    + " {filename} {filename}.o"
+    + " --rename-section .data=.{filename},CONTENTS,ALLOC,LOAD,READONLY,DATA").format(
+    objcopy=OBJCOPY, filename="memchunks_sizes"))
+
+    # Generate chunk addresses object from tmp file
+    safe_system(("{objcopy} --input binary"
+    + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
+    + " {filename} {filename}.o"
+    + " --rename-section .data=.{filename},CONTENTS,ALLOC,LOAD,READONLY,DATA").format(
+    objcopy=OBJCOPY, filename="memchunks_addresses"))
+
+    # Generate concatenated chunks object from tmp file
+    safe_system(("{objcopy} --input binary"
+    + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
+    + " {filename} {filename}.o"
+    + " --rename-section .data=.{filename},CONTENTS,ALLOC,LOAD,READONLY,DATA").format(
+    objcopy=OBJCOPY, filename="concatenated_memchunks"))
+
+    # Remove tmp files
+    safe_system("rm memchunks_sizes memchunks_addresses concatenated_memchunks")
+
+    os.chdir(owd)
+
+
+def maps_to_objects(dir):
+    # As for the memdump files, the map files
+    # will need to be embedded in ELF sections.
+    # This will be simpler, as we only have 2
+    # known files
+
+    owd = os.getcwd()
+    os.chdir(dir)
+
+    if not os.path.isfile("core.map"):
+        exit("Error: core.map not found")
+
+    if not os.path.isfile("hotpages.map"):
+        exit("Error: hotpages.map not found")
+
+    # Generate core.o from core.map
+    safe_system(("{objcopy} --input binary"
+    + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
+    + " {filename}.map {filename}.o"
+    + " --rename-section .data=.{filename},contents,alloc,load,readonly,data").format(
+    objcopy=OBJCOPY, filename="core"))
+
+    # Generate hotpages.o from hotpages.map
+    safe_system(("{objcopy} --input binary"
+    + " --output-target elf64-x86-64 --binary-architecture i386:x86-64"
+    + " {filename}.map {filename}.o"
+    + " --rename-section .data=.{filename},contents,alloc,load,readonly,data").format(
+    objcopy=OBJCOPY, filename="hotpages"))
+
+    os.chdir(owd)
+
+
 def extract_symbols(DIR):
     # get list of static names
     original = DIR + "/lel_bin"
@@ -206,7 +316,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     if (not os.path.isdir(DIR)):
         fail_lel("No dump for {loop} invocation {invocation} in {dump_path}".format(loop=LOOP,
                  invocation=INVOCATION, dump_path=DIR))
-    # Compress the traces
+    # Compress & extract the traces
     compress(DIR)
     create_user_main(mode_opt,LOOP)
 
@@ -235,6 +345,68 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
         f.flush()
         safe_system(("{clang} @{tempfile}".format(tempfile=f.name, clang=CLANGPP)))
 
+#in replay mode for baremetal
+def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
+    '''
+    Replay mode for baremetal
+    Create Realmain and call the linker. We will use a specific Realmain template,
+    and force static linking with a baremetal version fo the replay lib. At link time,
+    we will also embed memory dump into the binary.
+    '''
+
+    print("Linking baremetal replay wrapper")
+    LOOP=mode_opt.region
+    INVOCATION=mode_opt.invocation
+    if(not INVOCATION):
+        INVOCATION=1
+
+    # In baremetal mode, we will always link statically and disable
+    COMPIL_OPT += " -static"
+
+    if mode_opt.instrument and not mode_opt.wrapper:
+        fail_lel("When using --instrument you must provide the --wrapper argument")
+    #Find the .cere directory
+    cere_dir = find_cere_dir()
+    if not cere_dir:
+      fail_lel("Failed to find .cere directory. try export CERE_WORKING_PATH=\"path/to/.cere/\"")
+    DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
+
+    # Check that dumps exists
+    if (not os.path.isdir(DIR)):
+        fail_lel("No dump for {loop} invocation {invocation} in {dump_path}".format(loop=LOOP,
+                 invocation=INVOCATION, dump_path=DIR))
+
+    # Compress & extract the traces
+    compress(DIR)
+    memdumps_to_objects(DIR)
+    maps_to_objects(DIR)
+    create_baremetal_user_main(mode_opt,LOOP)
+
+    # Extract symbol file
+    extract_symbols(DIR)
+
+    for f in COMPIL_OPT.split():
+        if f.endswith('.o'):
+            safe_system (
+                "{objcopy} --weaken-symbols={dump_dir}/static.names {f}".format(
+                objcopy=OBJCOPY, dump_dir=DIR, f=f))
+
+
+    safe_system(CLANG + " -nostdlib -c baremetal_realmain.c")
+    OPTS = compile_memory_dump_objects(mode_opt, DIR)
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(("{opts} -o {binary}  -Wl,--just-symbols={dump_dir}/static.sym"
+                 + " {dump_dir}/memchunks_sizes.o {dump_dir}/memchunks_addresses.o {dump_dir}/concatenated_memchunks.o"
+                 + " {dump_dir}/core.o {dump_dir}/hotpages.o"
+                 + " objs.o baremetal_realmain.o {args} "
+                 + " {libdir} -lcere_baremetal_load -Wl,-z,now"
+                 + " -ldl {wrapper}\n").format(
+                opts=OPTS, binary=BINARY, args=COMPIL_OPT, Root=PROJECT_ROOT,
+                     libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
+
+        f.flush()
+        safe_system(("{clang} -nostdlib @{tempfile}".format(tempfile=f.name, clang=CLANG)))
+
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
@@ -262,6 +434,7 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
 def link(args, new_compiler):
     function={}
     function["replay_fun"] = replay_fun
+    function["baremetal_replay_fun"] = baremetal_replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
 

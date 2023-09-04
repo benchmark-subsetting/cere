@@ -59,6 +59,5 @@ def compress(dir):
                     first.write(other.read(PAGESIZE))
                 os.remove(other_name)
 
-    print(ranges)
 
     os.chdir(owd)

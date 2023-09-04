@@ -1,4 +1,4 @@
-lib_LTLIBRARIES = libcere_dump.la libcere_load.la
+lib_LTLIBRARIES = libcere_dump.la libcere_load.la libcere_baremetal_load.la
 
 libcere_dump_la_LDFLAGS = -fPIC -ldl
 libcere_dump_la_CFLAGS = -g --std=gnu99
@@ -6,6 +6,9 @@ libcere_dump_la_SOURCES = tracee.c tracee_hooks.c tracee_interface.c tracee.h tr
 
 libcere_load_la_CFLAGS = -g --std=gnu99 -Wl,-z,now
 libcere_load_la_SOURCES = replay.c pages.h
+
+libcere_baremetal_load_la_CFLAGS = -g --std=gnu99 -Wl,-z,now
+libcere_baremetal_load_la_SOURCES = baremetal_replay.c pages.h
 
 bin_PROGRAMS = cere-tracer
 cere_tracer_CFLAGS = -I ../ccan/ -g --std=gnu99 -Wl,-z,now
