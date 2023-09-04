@@ -36,7 +36,12 @@ option_forbidden = set([("dump", "--instrument"),
                        ("replay", "--nested-regions"),
                        ("replay", "--no-nested-regions"),
                        ("replay", "--instrument-app"),
-                       ("replay", "--hybrid")])
+                       ("replay", "--hybrid"),
+                       ("baremetal-replay", "--regions-file"),
+                       ("baremetal-replay", "--nested-regions"),
+                       ("baremetal-replay", "--no-nested-regions"),
+                       ("baremetal-replay", "--instrument-app"),
+                       ("baremetal-replay", "--hybrid")])
 
 #to ignore prefix matching
 class MyParser(argparse.ArgumentParser):
@@ -99,11 +104,16 @@ def init_parser_core(parser):
     parser_dump = subparsers.add_parser('dump', description='dump')
     init_subpars(parser_dump, True)
     parser_dump.set_defaults(func="dump_fun")
+
     parser_replay = subparsers.add_parser('replay', description='replay')
     init_subpars(parser_replay, True)
     parser_replay.set_defaults(func="replay_fun")
     parser_instrument = subparsers.add_parser('original',
                                               description='original')
+    parser_baremetal_replay = subparsers.add_parser('baremetal-replay', description='baremetal replay')
+    init_subpars(parser_baremetal_replay, True)
+    parser_baremetal_replay.set_defaults(func="baremetal_replay_fun")
+
     init_subpars(parser_instrument, False)
     parser_instrument.set_defaults(func="original_fun")
 
