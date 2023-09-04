@@ -118,7 +118,7 @@ def safe_system(command, EXIT=True):
             print("safe_system -> " + command)
         else:
             print("Warning Error {prog} : safe_system -> {cmd}".format(
-                  prog='lec', cmd=command), file=sys.stderr)
+                  prog='compiler_frontend', cmd=command), file=sys.stderr)
 
 
 def run(lang, argv):
@@ -146,9 +146,10 @@ def run(lang, argv):
     try:
       cere_args = os.environ["CERE_MODE"].split()
     except KeyError:
+      print("Compiling in normal mode (CERE_MODE undefined)")
       argv = " ".join(argv[1:])
       safe_system("{0} {1}".format(COMPILER, argv))
-      exit(1)
+      exit(0)
 
 
     # Create parsers
@@ -159,7 +160,6 @@ def run(lang, argv):
     init_parser_incl(incl_parser, ["-I", "-D"])
 
     #Parse args
-    # TODO Update arg syntax
     args = parser.parse_known_args(cere_args + sys.argv[1:])
     args2 = incl_parser.parse_known_args(args[1])
     if args[0].c:
