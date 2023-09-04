@@ -108,17 +108,17 @@ def init_parser_core(parser):
     parser_instrument.set_defaults(func="original_fun")
 
 
-def safe_system(command, EXIT=True):
+def fail_frontend(error_message):
+    exit("Error {prog} : {cmd}".format(prog='compiler_frontend', cmd=error_message))
+
+def safe_system(command):
     '''
     Try-catch system call
     Verify system call and exit with appropriate error message
     '''
-    if(os.system(command)):
-        if (EXIT):
-            print("safe_system -> " + command)
-        else:
-            print("Warning Error {prog} : safe_system -> {cmd}".format(
-                  prog='compiler_frontend', cmd=command), file=sys.stderr)
+    ret = os.system(command)
+    if(ret):
+        fail_frontend("safe_system -> " + command)
 
 
 def run(lang, argv):
