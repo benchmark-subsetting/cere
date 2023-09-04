@@ -20,6 +20,7 @@ import os
 import sys
 import pickle
 import networkx as nx
+from networkx.drawing.nx_agraph import write_dot
 from cere import cere_configure
 from cere.graph_utils import *
 import logging
@@ -115,7 +116,7 @@ class Region:
                 else: d['color']="green"
             if d['_to_test']: d['color']="orange"
             if d['_name'] == self._name: d['style']="filled"
-        nx.write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PLOTS_PATH, self._name))
+        write_dot(g,"{0}/graph_{1}.dot".format(var.CERE_PLOTS_PATH, self._name))
         try:
             subprocess.check_output("dot -Tpng {0}/graph_{1}.dot -o {0}/graph_{1}.png".format(var.CERE_PLOTS_PATH, self._name), stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as err:
@@ -195,7 +196,7 @@ class Report:
         Read the template in Report/template.html
         '''
         try:
-            TEMPLATE=open(ROOT + "/template.html", 'r')
+            TEMPLATE=open(ROOT + "/template.html", 'rt')
         except (IOError) as err:
             logger.critical("Cannot open template.html: {0}", str(err))
             sys.exit(1)
@@ -212,7 +213,7 @@ class Report:
         else:
             Dict = read_csv("{0}/app_cycles.csv".format(var.CERE_PROFILE_PATH))
             try:
-                row = Dict.next()
+                row = next(Dict)
                 self._nb_cycles = row["CPU_CLK_UNHALTED_CORE"]
                 self._nb_cycles = "{:e}".format(int(self._nb_cycles))
             except (StopIteration):
@@ -231,7 +232,7 @@ class Report:
         for n,d in graph.nodes(data=True):
             self._regions[d['_name']] = Region(d, graph)
         self.init_callcount()
-        for k,r in self._regions.iteritems():
+        for k,r in self._regions.items():
             if r._table["Error (%)"] == 100:
                 self._regions[k]._execError = "true"
         self.init_invocation_table(graph)
@@ -242,7 +243,7 @@ class Report:
         Initialize the callcount
         We read all files level_*.csv and for each region in each file we initialize his callcount with the value in the file
         '''
-        for k,r in self._regions.iteritems():
+        for k,r in self._regions.items():
             try:
                 infos = csv.reader(open("{0}/{1}.csv".format(var.CERE_TRACES_PATH, k)))
                 line = infos.next()
@@ -272,7 +273,7 @@ class Report:
         For each region we extract code in file to print them in Report
         '''
         try:
-            FILE = open(NAME_FILE, 'rb')
+            FILE = open(NAME_FILE, 'rt')
         except (IOError):
             logger.error("Can't read " + NAME_FILE + "-> Verify coverage and matching")
         table = csv.reader(FILE, delimiter=CSV_DELIMITER)
@@ -378,7 +379,7 @@ class Report:
         Read javascript file : Report/Report.js
         '''
         try:
-            with file(ROOT + '/Report.js') as jsf:
+            with open(ROOT + '/Report.js') as jsf:
                 self.javascript=jsf.read()
         except (IOError):
             raise MyError("Can't find Report.js")
@@ -419,7 +420,7 @@ def context(DIR):
 
 def read_csv(File):
     try:
-        FILE = open(File, 'rb')
+        FILE = open(File, 'rt')
     except (IOError):
         logger.error("Can't read " + File + "-> Verify coverage and matching")
         return False

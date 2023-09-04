@@ -173,7 +173,7 @@ def run(args):
   force_flags = args.force
   #Array to store best flags for every regions
   best_flags = []
-  
+
   graph = graph_utils.load_graph()
   if graph == None:
     logger.error("CERE graph is missing. Please run cere profile")

@@ -12,5 +12,5 @@ libcere_baremetal_load_la_SOURCES = baremetal_replay.c pages.h
 
 bin_PROGRAMS = cere-tracer
 cere_tracer_CFLAGS = -I ../ccan/ -g --std=gnu99 -Wl,-z,now
-cere_tracer_SOURCES = ptrace.c cere_tracer.c tracer_interface.c pages.h tracer_interface.h ptrace.h types.h err.h
+cere_tracer_SOURCES =  ptrace.c cere_tracer.c tracer_interface.c tracer_mem.c pages.h tracer_interface.h ptrace.h types.h err.h
 cere_tracer_LDADD = ../ccan/libccan.la

@@ -23,6 +23,9 @@ import tempfile
 from cere.vars import *
 from cere.compress import compress
 
+# By default, compile for C
+COMPILER = CLANG
+
 def grep(path, regex):
     regex=".*"+regex+".*"
     regObj = re.compile(regex)
@@ -111,7 +114,7 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     '''
     safe_system(("{link} {opts} -o {binary} {libdir} " +
                  "-Wl,-z,now -lcere_dump -ldl"
-    ).format(link=CLANGPP, binary=BINARY,
+    ).format(link=COMPILER, binary=BINARY,
              opts=COMPIL_OPT, Root=PROJECT_ROOT,libdir=LIBDIR_FLAGS))
 
 def sysout(cmd):
@@ -289,19 +292,6 @@ def extract_symbols(DIR):
                 + " {dump_dir}/static.sym {dump_dir}/static.sym").format(
                     objcopy=OBJCOPY, dump_dir=DIR))
 
-def find_cere_dir():
-  if "CERE_WORKING_PATH" in os.environ:
-    return os.path.dirname(os.environ["CERE_WORKING_PATH"])
-  cur_dir = os.getcwd()
-  while True:
-    file_list = os.listdir(cur_dir)
-    parent_dir = os.path.dirname(cur_dir)
-    if CERE_MAIN_DIR in file_list: break
-    else:
-      if "cere.json" in file_list or cur_dir == parent_dir:
-        return False
-      else: cur_dir = parent_dir
-  return cur_dir
 
 #in replay mode
 def replay_fun(mode_opt, BINARY, COMPIL_OPT):
@@ -320,10 +310,7 @@ def replay_fun(mode_opt, BINARY, COMPIL_OPT):
     if mode_opt.instrument and not mode_opt.wrapper:
         fail_lel("When using --instrument you must provide the --wrapper argument")
     #Find the .cere directory
-    cere_dir = find_cere_dir()
-    if not cere_dir:
-      fail_lel("Failed to find .cere directory. try export CERE_WORKING_PATH=\"path/to/.cere/\"")
-    DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
+    DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
 
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
@@ -432,26 +419,27 @@ def original_fun(mode_opt, BINARY, COMPIL_OPT):
 
     if(mode_opt.instrument_app):
         safe_system(("{link} -o {binary} {opts} {libs} {libdir}").format(
-              link=CLANGPP, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
+              link=COMPILER, binary=BINARY, opts=COMPIL_OPT, libs=PROFILE_LIB,
               libdir=LIBDIR_FLAGS))
     elif(mode_opt.instrument):
         safe_system(("{link} -o {binary} {opts} {wrapper} {libdir}").format(
-              link=CLANGPP, binary=BINARY, opts=COMPIL_OPT,
+              link=COMPILER, binary=BINARY, opts=COMPIL_OPT,
               wrapper=mode_opt.wrapper, libdir=LIBDIR_FLAGS))
     else:
-        # NOTE In all linker modes, we now use CLANGPP by default in case we link
-        # some objects containing C++ symbols.
-        safe_system(("{link} -o {binary} {opts}").format(link=CLANGPP,
+        safe_system(("{link} -o {binary} {opts}").format(link=COMPILER,
                 binary=BINARY, opts=COMPIL_OPT))
 
 
 
-def link(args):
+def link(args, new_compiler):
     function={}
     function["replay_fun"] = replay_fun
     function["baremetal_replay_fun"] = baremetal_replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
+
+    COMPILER = new_compiler
+
     if (len(args[1]) == 0):
         exit("Error:Need source file")
     objs = ""
