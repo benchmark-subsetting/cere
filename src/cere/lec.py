@@ -20,6 +20,9 @@ import csv
 
 from cere.vars import *
 
+# By default, compile for C
+COMPILER = CLANG
+
 OMP_FLAGS=""
 if "CERE_OMP" in os.environ:
     OMP_FLAGS="-omp"
@@ -217,24 +220,11 @@ def original_fun(mode_opt, BASE, regions):
 
 def first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT):
     '''
-    First Compilation
-    Detect source language (fortran or C/C++ for the moment)
-    and compile SOURCE code
+    On first compilation, generate .ll files for later custom passes
     '''
 
-    if ext in FORTRAN_EXTENSIONS:
-        if FORTRAN_SUPPORT:
-            compiler = "flang"
-
-        else:
-            fail_lec("Fortran support disabled in this build (recompile using --with-flang).")
-    elif ext in CXX_EXTENSIONS:
-        compiler = "clang++"
-    else:
-        compiler = "clang"
-
-    safe_system(("{llvm_bindir}/{compiler} {opts} -O0 -g {includes} {source} -S -emit-llvm -o " +
-                "{base}.ll").format(compiler=compiler, llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
+    safe_system(("{compiler} {opts} -O0 -g {includes} {source} -S -emit-llvm -o " +
+                "{base}.ll").format(compiler=COMPILER, llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
                 source=SOURCE, base=BASE))
 
 def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
@@ -279,11 +269,13 @@ def last_compil(INCLUDES, SOURCE, BASE, OBJECT, COMPIL_OPT):
                 llvm_bindir=LLVM_BINDIR, opts=" ".join(COMPIL_OPT), includes=" ".join(INCLUDES),
                 backend_flags=BACKEND_FLAGS, source=SOURCE, base=BASE, object=OBJECT))
 
-def compile(args, args2):
+def compile(args, args2, new_compiler):
     function={}
     function["replay_fun"] = replay_fun
     function["dump_fun"] = dump_fun
     function["original_fun"] = original_fun
+
+    COMPILER = new_compiler
 
     SOURCES = []
     if (len(args2[1]) == 0):

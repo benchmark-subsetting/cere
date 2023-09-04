@@ -4,4 +4,4 @@ from cere import compiler_frontend
 import sys
 
 if __name__ == "__main__":
-  compiler_frontend.run("c", sys.argv)
+  compiler_frontend.run("fortran", sys.argv)
