@@ -82,6 +82,7 @@ void _start(char *args, ...) {
 }
 
 
+
 void cacheflush(void) {
   const size_t size = CACHE_SIZE_MB * 1024 * 1024;
   int i, j;
@@ -198,9 +199,7 @@ void load_core_map(int count, void *addresses[count]) {
     /* Load the core entry just stored in buf */
     int pos;
     off64_t address;
-    // TODO Reimplement the sscanf call
     coremap_sscanf(buf, &pos, &address);
-    //sscanf(buf, "%d %lx", &pos, &address);
     addresses[pos] = (char *)(address);
   }
 
@@ -252,9 +251,7 @@ void load_hotpages_map() {
 
       /* Load the hotpages entry just stored in buf */
       off64_t address;
-      // TODO Reimplement the sscanf call
       hotpages_sscanf(buf, &address);
-      //sscanf(buf, "%lx", &address);
       if (address == 0)
         continue;
       warmup[hotpages_counter++] = (char *)address;

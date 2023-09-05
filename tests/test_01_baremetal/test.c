@@ -5,14 +5,7 @@ int checksum(int *a, int size)
 {
     int check=0, i;
     for (i = 0; i < size; i++) {
-        if (i == 0) {
-            fprintf(stderr, "check: %d, &a: %p, a[0]: %d\n", check, a, a[0]);
-        }
-        if (i % 1024 == 0)
-          fprintf(stderr, "it:%p\n", &a[i]);
         check += a[i];
-        if (i == size-1)
-            fprintf(stderr, "Checksum invitro: %d\n", check);
     }
     return check;
 }
@@ -26,10 +19,9 @@ void init(int *a, int size)
 
 int main(int argc, char **argv)
 {
-    int size=4096*4;
-    int * a = malloc(sizeof(int)*size);
+    int size = 4096;
+    int  a[4096];
     init(a, size);
-    int check = checksum(a, size);
-    fprintf(stderr, "Checksum : %d\n", check);
+    int check = checksum(&(a[0]), size);
     return 0;
 }

@@ -354,7 +354,6 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
     we will also embed memory dump into the binary.
     '''
 
-    print("Linking baremetal replay wrapper")
     LOOP=mode_opt.region
     INVOCATION=mode_opt.invocation
     if(not INVOCATION):
@@ -365,11 +364,7 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
 
     if mode_opt.instrument and not mode_opt.wrapper:
         fail_lel("When using --instrument you must provide the --wrapper argument")
-    #Find the .cere directory
-    cere_dir = find_cere_dir()
-    if not cere_dir:
-      fail_lel("Failed to find .cere directory. try export CERE_WORKING_PATH=\"path/to/.cere/\"")
-    DIR="{source_dir}/{dump_dir}/{loop}/{invocation}".format(source_dir=cere_dir, dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
+    DIR="{dump_dir}/{loop}/{invocation}".format(dump_dir=CERE_DUMPS_PATH, loop=LOOP, invocation=INVOCATION)
 
     # Check that dumps exists
     if (not os.path.isdir(DIR)):
@@ -378,8 +373,11 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
 
     # Compress & extract the traces
     compress(DIR)
+
+    # Generate dump objects
     memdumps_to_objects(DIR)
     maps_to_objects(DIR)
+
     create_baremetal_user_main(mode_opt,LOOP)
 
     # Extract symbol file
@@ -405,7 +403,7 @@ def baremetal_replay_fun(mode_opt, BINARY, COMPIL_OPT):
                      libdir=LIBDIR_FLAGS, wrapper=mode_opt.wrapper, dump_dir=DIR).encode())
 
         f.flush()
-        safe_system(("{clang} -nostdlib @{tempfile}".format(tempfile=f.name, clang=CLANG)))
+        safe_system(("{compiler} -nostdlib @{tempfile}".format(tempfile=f.name, compiler=COMPILER)))
 
 #in original mode
 def original_fun(mode_opt, BINARY, COMPIL_OPT):

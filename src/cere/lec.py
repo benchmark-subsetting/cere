@@ -171,14 +171,15 @@ def baremetal_replay_fun(mode_opt, BASE, regions):
 
     globalize_variables(BASE, mode_opt)
 
-    # Finally, in baremetal, strip everything from IR except the codelet itself
+    # Finally, in baremetal mode, strip everything from IR except the codelet itself
+    # This is needed because we will compile in nostdlib mode, so doing this only puts this
+    # restriction on the codelet, and not the entire file
     safe_system(("llvm-extract {base}.ll -f -func run{loop} -func {loop} | llvm-dis -o {base}.ll").format(
         base=BASE, loop=mode_opt.region
     ))
     print(("llvm-extract {base}.ll  -f -func run{loop} -func {loop} | llvm-dis -o {base}.ll").format(
         base=BASE, loop=mode_opt.region
     ))
-    print("Out of baremetal replay mode")
 
 def globalize_variables(BASE, mode_opt):
     # When inside the compilation unit that contains the replayable
