@@ -125,12 +125,18 @@ AM_PATH_PYTHON([3])
 
 AX_PYTHON_MODULE(matplotlib.pyplot, fatal)
 AX_PYTHON_MODULE(jinja2, fatal)
-AX_PYTHON_MODULE(scikit-learn, fatal)
 AX_PYTHON_MODULE(numpy, fatal)
 AX_PYTHON_MODULE(pulp, fatal)
 AX_PYTHON_MODULE(pydot, fatal)
 AX_PYTHON_MODULE(pygraphviz, fatal)
 AX_PYTHON_MODULE(pydotplus, fatal)
+
+AX_PYTHON_MODULE(scikit-learn, [])
+AX_PYTHON_MODULE(sklearn, [])
+
+AS_IF([test "x${HAVE_PYMOD_SCIKIT_LEARN}" = "xno"],
+    AS_IF([test "x${HAVE_PYMOD_SKLEARN}" = "xno"],
+        [AC_MSG_ERROR([Neither of scikit-learn or deprecated sklearn were found])]))
 
 # Generate config files
 
