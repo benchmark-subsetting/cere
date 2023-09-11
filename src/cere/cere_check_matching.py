@@ -51,7 +51,7 @@ def compute_error(n1, n2):
 
 def read_csv(File):
     try:
-        FILE = open(File, 'rb')
+        FILE = open(File, 'r')
     except (IOError):
         return []
     Dict = csv.DictReader(FILE, delimiter=',')
