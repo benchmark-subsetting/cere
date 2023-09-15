@@ -35,7 +35,7 @@ logger = logging.getLogger('Trace')
 def init_module(subparsers, cere_plugins):
     cere_plugins["trace"] = run
     trace_parser = subparsers.add_parser("trace", help="produce or read a region trace")
-    trace_parser.add_argument('--region', required=True, help="Region to trace")
+    trace_parser.add_argument('--region', required=True, help="Region(s) to trace. To specify multiple regions, separate them with \";\"")
     trace_parser.add_argument('--regions-file', help="File containing a list of regions to trace")
     trace_parser.add_argument('--norun', type=bool, const=True, default=False, nargs='?', help="instrumented binary is not automatically run")
     trace_parser.add_argument('--read', '-r', type=int, help="Read the measured cycles for given invocation (run measures if the trace is missing)")
@@ -134,7 +134,9 @@ def find_regions_to_trace(args):
 
     # If user passed a single region
     elif args.region:
-        regions_to_trace.add(args.region)
+        regions_list = args.region.split(';')
+        for reg in regions_list:
+            regions_to_trace.add(reg)
 
         # If multiple trace is on when using single region, add sibbling
         # regions to the list of regions_to_trace
@@ -146,9 +148,11 @@ def find_regions_to_trace(args):
 
 def need_to_measure(region):
     if utils.is_invalid(region):
+        logger.info("Warning : region {0} is invalid (skipping)".format(region))
         return False
 
     if utils.trace_exists(region):
+        logger.info("Warning : region {0} already has a trace (skipping)".format(region))
         return False
 
     return True
