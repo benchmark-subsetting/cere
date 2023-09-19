@@ -33,6 +33,7 @@ def init_module(subparsers, cere_plugins):
   cere_plugins["regions"] = run
   profile_parser = subparsers.add_parser("regions", help="List extractible regions")
   profile_parser.add_argument("--static", action='store_true', help="List regions.")
+  profile_parser.add_argument("--estimate-cycles", action='store_true', help="Add a column to the output CSV containing an estimation of each region's cycles number (computed from the coverage)")
 
 def which(program):
     def is_exe(fpath):
@@ -64,15 +65,17 @@ def parse_line(regex_list, line):
       break
   return matchObj, i
 
-def add_header(regions_file, new_regions_file):
+def add_header(args, regions_file, new_regions_file):
   with open(regions_file, 'rt') as regions:
     r = csv.reader(regions)
     header = next(r)
+    if args.estimate_cycles:
+      header.append("Cycles Estimation")
   with open(new_regions_file, 'wt') as tmp_regions:
     w = csv.writer(tmp_regions)
     w.writerow(header)
 
-def add_coverage(regions_file, new_regions_file, matchObj):
+def add_coverage(args, regions_file, new_regions_file, matchObj):
   name = matchObj.group(2)
   if bytes("__cere__", "utf-8") not in name:
     return
@@ -97,6 +100,11 @@ def add_coverage(regions_file, new_regions_file, matchObj):
   if(found):
     row[5] = self_coverage
     row[6] = coverage
+
+    if args.estimate_cycles:
+      cycles = int(args.app_cycles * coverage / 100)
+      row.append(cycles)
+
     with open(new_regions_file, 'at') as tmp_regions:
       w = csv.writer(tmp_regions)
       w.writerow(row)
@@ -140,7 +148,19 @@ def run(args):
       logger.critical("Cannot find the binary. Please provide binary name through cere configure --binary")
       return False
 
-    add_header(regions_file, new_regions_file)
+    # If needed, retrieve app_cycles for cycles estimation
+    if args.estimate_cycles :
+      try:
+        with open("{0}/app_cycles.csv".format(var.CERE_PROFILE_PATH)) as app:
+          reader = csv.DictReader(app)
+          for row in reader:
+            args.app_cycles = float(row["CPU_CLK_UNHALTED_CORE"])
+      except :
+        logger.error("Could not read total app cycles to estimate cycles. Disabling the option.")
+        args.estimate_cycles = False
+
+
+    add_header(args, regions_file, new_regions_file)
 
     #regular expression to parse the gperf tool output
     regex_list = [r'(N.*)\s\[label\=\"(.*?)\\n([0-9]*)\s\((.*)\%\)\\rof\s(.*)\s\((.*)\%\)\\r',
@@ -152,7 +172,7 @@ def run(args):
     for line in cmd.stdout:
       matchObj, step = parse_line(regex_list, line)
       if step < 2 :
-        add_coverage(regions_file, new_regions_file, matchObj)
+        add_coverage(args, regions_file, new_regions_file, matchObj)
       else:
         continue
 
