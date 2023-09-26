@@ -220,12 +220,7 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   /* Create after_dump function */
   Function *func_after_dump = mod->getFunction("after_dump");
   if (!func_after_dump) { // If function "after_dump" not found, creates it
-    // Create a void type
-    std::vector<Type *> FuncTy_12_args;
-    FunctionType *AfterDumpFuncTy = FunctionType::get(
-        /*Result=*/Type::getVoidTy(mod->getContext()),
-        /*Params=*/FuncTy_12_args,
-        /*isVarArg=*/false);
+    FunctionType *AfterDumpFuncTy = createAfterDumpFunctionType(mod);
     func_after_dump = Function::Create(
         AfterDumpFuncTy, GlobalValue::ExternalLinkage, "after_dump", mod);
   }
@@ -252,7 +247,9 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
                                                E = exitblocks.end();
        I != E; ++I) {
-    CallInst::Create(func_after_dump, "", &(*I)->front());
+    std::vector<Value *> afterFuncParameter =
+    createAfterDumpFunctionParameters(mod, currFunc, *I);
+    CallInst::Create(func_after_dump, afterFuncParameter, "", &(*I)->front());
   }
 
   return true;
