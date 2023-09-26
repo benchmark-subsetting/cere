@@ -353,12 +353,13 @@ void after_dump(char *loop_name) {
   if (!dump_initialized || !in_codelet)
     return;
 
+
   // Increment number of after_dump calls for the codelet
   // (useful to match call & after_dump call for recursive codelets)
   increment_after_dump_counter(loop_name);
 
   // Check if we're stopping the correct codelet
-  if (in_progress_codelet_name != NULL && strcmp(in_progress_codelet_name, loop_name) == 0)
+  if (in_progress_codelet_name != NULL && strcmp(in_progress_codelet_name, loop_name) != 0)
     return;
 
   // Check if invoc counters of dump and after_dump match for this codelet.
