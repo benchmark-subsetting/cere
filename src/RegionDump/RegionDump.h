@@ -40,20 +40,11 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   Function *currFunc,
                                                   BasicBlock *PredBB,
                                                   std::string invocations);
-std::vector<Value *> createAfterDumpFunctionParameters(Module *mod,
-                                                  Function *currFunc,
-                                                  BasicBlock *SuccBB);
-
 
 /// \brief Create a pointer to string \p s
 Constant *createStringValue(Module *mod, std::string &s);
 
 /// Create signature for the dump function
-/// void dump(char*, char*, int, ...)
+/// void dump(char*, int, int, ...)
 FunctionType *createDumpFunctionType(Module *mod);
-
-/// Create signature for the dump after dump function
-/// void after_dump(char*)
-FunctionType *createAfterDumpFunctionType(Module *mod);
-
 }

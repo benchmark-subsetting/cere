@@ -110,22 +110,6 @@ FunctionType *createDumpFunctionType(Module *mod) {
   return tmp;
 }
 
-FunctionType *createAfterDumpFunctionType(Module *mod) {
-  PointerType *PointerTy_0 =
-      PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
-
-  std::vector<Type *> FuncTy_args;
-
-  // Char* for the region name
-  FuncTy_args.push_back(PointerTy_0);
-
-  FunctionType *tmp = FunctionType::get(
-      /*Result=*/Type::getVoidTy(mod->getContext()),
-      /*Params=*/FuncTy_args,
-      /*isVarArg=*/false);
-  return tmp;
-}
-
 /// \brief Create a pointer to string \p s
 Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
   errs() << mod->getModuleIdentifier() << "\n";
@@ -193,23 +177,4 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
 
   return params;
 }
-
-std::vector<Value *> createAfterDumpFunctionParameters(Module *mod,
-                                                  BasicBlock *SuccBB,
-                                                  Function *currFunc) {
-
-  IRBuilder<> builder(SuccBB);
-
-  /* Push VLA from outlining function */
-  // The requested region has been outlined into a function.
-  // Give adresses of its arguments to the dump function.
-  std::vector<Value *> params;
-
-  // Push loop_name arg
-  std::string tmp = currFunc->getName().str(); // Convert the regionName as a C type string
-  params.insert(params.begin(), createStringValue(mod, &builder, tmp));
-
-  return params;
-}
-
 } // namespace llvm

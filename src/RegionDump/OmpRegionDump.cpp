@@ -211,7 +211,13 @@ bool OmpRegionDump::runOnFunction(Function &F) {
   // Create after_dump function
   Function *func_after_dump = mod->getFunction("after_dump");
   if (!func_after_dump) { // If function "after_dump" not found, creates it
-    FunctionType *AfterDumpFuncTy = createAfterDumpFunctionType(mod);
+    // Create a void type
+    std::vector<Type *> FuncTy_12_args;
+    FuncTy_12_args.push_back(PointerType::get(IntegerType::get(mod->getContext(), 8), 0));
+    FunctionType *AfterDumpFuncTy = FunctionType::get(
+        /*Result=*/Type::getVoidTy(mod->getContext()),
+        /*Params=*/FuncTy_12_args,
+        /*isVarArg=*/false);
     func_after_dump = Function::Create(
         AfterDumpFuncTy, GlobalValue::ExternalLinkage, "after_dump", mod);
   }
@@ -230,12 +236,15 @@ bool OmpRegionDump::runOnFunction(Function &F) {
   /* Insert after_dump calls */
   bool insertMarker = false;
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-    Instruction *pinst = dyn_cast<Instruction>(&*I);
-    std::vector<Value *> afterFuncParameter =
-    createAfterDumpFunctionParameters(mod, currFunc, pinst->getParent());
-
     if (insertMarker) {
-      CallInst::Create(func_after_dump, afterFuncParameter, "", pinst);
+      Instruction *pinst = dyn_cast<Instruction>(&*I);
+
+      // Build after_dump params
+      IRBuilder<> builder(pinst->getParent());
+      std::vector<Value *> ad_funcParameter;
+      ad_funcParameter.push_back(builder.CreateGlobalStringPtr(currFunc->getName()));
+
+      CallInst::Create(func_after_dump, ad_funcParameter, "", pinst);
       insertMarker = false;
     }
 
