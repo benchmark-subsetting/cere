@@ -160,21 +160,20 @@ void rdtsc_markerStartRegion(char *reg, bool vivo) {
     if(!INITIALIZED) return;
 
     push(reg, call_stack);
-    char* regionName=call_stack;
     region *r=NULL;
-    if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
+    if ((r = htable_get(&regionHtab, hash_string(reg), streq, reg)) == NULL)
     {
         if ((r = malloc(sizeof(region))) == NULL)
         {
-            fprintf(stderr, "RDTSC: Unable to allocate new region %s\n", regionName);
+            fprintf(stderr, "RDTSC: Unable to allocate new region %s\n", reg);
             exit(EXIT_FAILURE);
         }
-        if ((r->name = malloc((strlen(regionName)+1)*sizeof(char))) == NULL)
+        if ((r->name = malloc((strlen(reg)+1)*sizeof(char))) == NULL)
         {
-            fprintf(stderr, "RDTSC: Unable to allocate new region name %s\n", regionName);
+            fprintf(stderr, "RDTSC: Unable to allocate new region name %s\n", reg);
             exit(EXIT_FAILURE);
         }
-        strcpy(r->name, regionName);
+        strcpy(r->name, reg);
         r->invivo = vivo;
         char * ge = getenv("CERE_TRACE");
         if(ge) r->traced = 1;
@@ -235,8 +234,8 @@ void rdtsc_markerStopRegion(char *reg, bool vivo) {
     char* regionName = call_stack;
     /* We must check that reg is base name of regionName */
     region *r=NULL;
-    if ((r = htable_get(&regionHtab, hash_string(regionName), streq, regionName)) == NULL)
-        fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", regionName);
+    if ((r = htable_get(&regionHtab, hash_string(reg), streq, reg)) == NULL)
+        fprintf(stderr, "RDTSC: Unable to find the markerStart for region >%s<\n", reg);
     else {
         loop_cycles = stop - r->start;
 
