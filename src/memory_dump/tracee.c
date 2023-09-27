@@ -68,7 +68,8 @@ typedef struct {
 } InvocsCounterCollection;
 
 static InvocsCounterCollection invocs_counters;
-//static bool in_progress = false;
+static InvocsCounterCollection after_dump_invocs_counters;
+
 static char* in_progress_codelet_name = NULL;
 static int in_progress_invocation = -1;
 
@@ -92,6 +93,27 @@ static InvocsCounter* get_counter_internal(const char* codelet_name) {
   return &(invocs_counters.counters[invocs_counters.num_counters-1]);
 }
 
+static InvocsCounter* get_after_dump_counter_internal(const char* codelet_name) {
+  for (int i = 0; i < after_dump_invocs_counters.num_counters; i++) {
+    InvocsCounter* counter = &(after_dump_invocs_counters.counters[i]);
+    if (strcmp(counter->codelet_name, codelet_name) == 0) {
+      return counter;
+    }
+  }
+  // New counter
+  InvocsCounter newCounter;
+  newCounter.codelet_name = strdup(codelet_name);
+  newCounter.count_value = 0;
+
+  after_dump_invocs_counters.counters = realloc(
+    after_dump_invocs_counters.counters, (after_dump_invocs_counters.num_counters + 1) * sizeof(InvocsCounter)
+  );
+  after_dump_invocs_counters.counters[after_dump_invocs_counters.num_counters] = newCounter;
+  after_dump_invocs_counters.num_counters++;
+  return &(after_dump_invocs_counters.counters[after_dump_invocs_counters.num_counters-1]);
+}
+
+
 void increment_counter(const char* codelet_name) {
   get_counter_internal(codelet_name)->count_value ++;
 }
@@ -99,6 +121,15 @@ void increment_counter(const char* codelet_name) {
 unsigned long long get_counter_value(const char* codelet_name) {
   return get_counter_internal(codelet_name)->count_value;
 }
+
+void increment_after_dump_counter(const char* codelet_name) {
+  get_after_dump_counter_internal(codelet_name)->count_value ++;
+}
+
+unsigned long long get_after_dump_counter_value(const char* codelet_name) {
+  return get_after_dump_counter_internal(codelet_name)->count_value;
+}
+
 
 /*************************/
 
@@ -245,7 +276,21 @@ int split (char* str, int ** tokens) {
   return ntokens;
 }
 
-/*
+
+bool find_invocation(char *invocations_str, int times_called) {
+  int * invocations = NULL;
+  int n_invocations = split(invocations_str, &invocations);
+
+  int i;
+  for(i=0; i<n_invocations; i++) {
+    if (times_called == invocations[i]) {
+      free(invocations);
+      return true;
+    }
+  }
+  free(invocations);
+  return false;
+}
 
 
 /* dump: requests capture of a outlined region of interest. Must be called
@@ -257,52 +302,43 @@ int split (char* str, int ** tokens) {
  *   - ... are the arguments passed to the outlined function
  */
 void dump(char *loop_name, char *invocations_str, int arg_count, ...) {
-  /* Must be conserved ? */
   /* Avoid doing something before initializing */
   /* the dump. */
   if (!dump_initialized)
     return;
 
   increment_counter(loop_name);
-  int times_called = get_counter_value(loop_name);
 
-  int * invocations = NULL;
-  int n_invocations = split(invocations_str, &invocations);
-
-  bool invocToCapture = false;
-  int i;
-  for(i=0; i<n_invocations; i++) {
-    if (times_called == invocations[i]) {
-      invocToCapture = true;
-      break;
-    }
-  }
-  if(!invocToCapture) {
-    free(invocations);
+  if (in_progress_codelet_name != NULL)
     return;
-  }
+
+
+  int times_called = get_counter_value(loop_name);
+  bool to_capture = find_invocation(invocations_str, times_called);
+  if(!to_capture)
+    return;
+
+  // This information is useful to match dump and after_dump calls
+  // (in case of recursive codelets)
+  in_progress_codelet_name = strdup(loop_name);
+  in_progress_invocation = times_called;
 
   mtrace_active = true;
   send_to_tracer(TRAP_LOCK_MEM);
 
   in_codelet = true;
-
-  assert(times_called == invocations[i]);
   mtrace_active = false;
-
   strcpy(tracer_buff.str_tmp, loop_name);
-  int captured_invoc = invocations[i];
-  free(invocations);
 
   /* Send args */
   send_to_tracer(TRAP_START_ARGS);
-  send_to_tracer(captured_invoc);
+  send_to_tracer(in_progress_invocation);
   send_to_tracer(arg_count);
 
   /* Dump addresses */
   va_list ap;
   va_start(ap, arg_count);
-  for (i = 0; i < arg_count; i++) {
+  for (int i = 0; i < arg_count; i++) {
     send_to_tracer((register_t)va_arg(ap, void *));
   }
   va_end(ap);
@@ -310,26 +346,46 @@ void dump(char *loop_name, char *invocations_str, int arg_count, ...) {
   send_to_tracer(TRAP_END_ARGS);
 }
 
-void after_dump(void) {
+void after_dump(char *loop_name) {
   debug_print("[tracee %d] In after_dump\n", getpid());
   /* Avoid doing something before initializing */
   /* the dump. */
   if (!dump_initialized || !in_codelet)
     return;
 
+
+  // Increment number of after_dump calls for the codelet
+  // (useful to match call & after_dump call for recursive codelets)
+  increment_after_dump_counter(loop_name);
+
+  // Check if we're stopping the correct codelet
+  if (in_progress_codelet_name != NULL && strcmp(in_progress_codelet_name, loop_name) != 0)
+    return;
+
+  // Check if invoc counters of dump and after_dump match for this codelet.
+  // If so, stop dump
+  int n_ad_calls = get_after_dump_counter_value(loop_name);
+  int n_calls = get_counter_value(loop_name);
+  if(n_ad_calls != n_calls)
+    return;
+
   in_codelet = false;
-  pid_t parent = getppid();
+  free(in_progress_codelet_name);
+  in_progress_codelet_name = NULL;
+  in_progress_invocation = -1;
+
 
   if (kill_after_dump) {
     debug_print("[tracee %d] Single capture : terminating tracer and tracee\n", getpid());
     abort();
   }
   else {
+    pid_t parent = getppid();
     debug_print("[tracee %d] Multi capture : spawn new tracer and resume exec\n", getpid());
     // Send a fake SIGABRT so the tracer frees us & terminates itself
     kill(parent, 6);
-
     // Directly spawn a new tracer to record hotpages map
     fork_tracee();
   }
+
 }
