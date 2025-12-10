@@ -28,6 +28,8 @@ m4/lt~obsolete.m4
 !.github
 tests/*/*.log
 tests/*/*.b
+examples/*/*.json
+examples/*/build
 testllvm.c
 src/memory_dump/cere-tracer
 doc/html/*.html

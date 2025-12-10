@@ -24,6 +24,7 @@ RUN apt-get -y install \
       libgoogle-perftools-dev google-perftools numactl dc git \
       wget opt pkg-config libgmp3-dev \
       llvm-16 llvm-16-dev llvm-16-tools libomp-16-dev clang-16 \
+      libc++-16-dev libc++abi-16-dev \
       python3-matplotlib python3-jinja2 python3-sklearn python3-numpy \
       python3-pulp python3-pydot libgraphviz-dev python3-pygraphviz \
       python3-pydotplus python3-networkx \
@@ -32,13 +33,13 @@ RUN apt-get -y install \
 
 ARG RUBY_VERSION=3.1.5
 RUN wget https://cache.ruby-lang.org/pub/ruby/3.1/ruby-${RUBY_VERSION}.tar.gz \
- && tar -xzf ruby-${RUBY_VERSION}.tar.gz \
- && cd ruby-${RUBY_VERSION} \
- && ./configure --disable-install-doc --prefix=/usr/local \
- && make -j$(nproc) \
- && make install \
- && cd / \
- && rm -rf ruby-${RUBY_VERSION} ruby-${RUBY_VERSION}.tar.gz
+      && tar -xzf ruby-${RUBY_VERSION}.tar.gz \
+      && cd ruby-${RUBY_VERSION} \
+      && ./configure --disable-install-doc --prefix=/usr/local \
+      && make -j$(nproc) \
+      && make install \
+      && cd / \
+      && rm -rf ruby-${RUBY_VERSION} ruby-${RUBY_VERSION}.tar.gz
 
 # Install ronn via gem (new Ruby)
 RUN gem install ronn-ng
@@ -54,6 +55,7 @@ RUN rm -f /usr/bin/python
 RUN ln -s /usr/bin/python3.12 /usr/bin/python
 ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages
 ENV LD_LIBRARY_PATH=/usr/local/lib
+ENV CERE_LIBDIR=/usr/local/lib
 
 WORKDIR /build/
 
