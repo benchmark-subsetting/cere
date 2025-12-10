@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 LABEL maintainer="Aurelien Delval <aurelien.delval@uvsq.fr>"
 
 RUN apt-get update
@@ -19,11 +19,11 @@ ENV DEBIAN_FRONTEND="noninteractive"
 ENV TZ="Europe/Paris"
 
 RUN apt-get -y install \
-      autoconf automake build-essential libtool  \
-      python python3-pip \
-      libgoogle-perftools-dev google-perftools numactl dc git  \
+      autoconf automake build-essential libtool \
+      python3 python3-pip \
+      libgoogle-perftools-dev google-perftools numactl dc git \
       wget opt pkg-config libgmp3-dev \
-      llvm-7 llvm-7-dev llvm-7-tools libomp-7-dev clang-7 flang-7 \
+      llvm-16 llvm-16-dev llvm-16-tools libomp-16-dev clang-16 \
       python3-matplotlib python3-jinja2 python3-sklearn python3-numpy \
       python3-pulp python3-pydot libgraphviz-dev python3-pygraphviz \
       python3-pydotplus python3-networkx \
@@ -47,24 +47,33 @@ RUN gem install ronn-ng
 # Ensure all correct dependencies' versions are used
 
 # Create symlinks for LLVM & LLVM
-RUN ln -s /usr/bin/llvm-config-7 /usr/bin/llvm-config
-RUN ln -s /usr/bin/clang-7 /usr/bin/clang
-RUN ln -s /usr/bin/clang++-7 /usr/bin/clang++
-RUN rm /usr/bin/python
-RUN ln -s /usr/bin/python3.8 /usr/bin/python
-ENV PYTHONPATH=/usr/local/lib/python3.8/site-packages
+RUN ln -s /usr/bin/llvm-config-16 /usr/bin/llvm-config
+RUN ln -s /usr/bin/clang-16 /usr/bin/clang
+RUN ln -s /usr/bin/clang++-16 /usr/bin/clang++
+RUN rm -f /usr/bin/python
+RUN ln -s /usr/bin/python3.12 /usr/bin/python
+ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages
+ENV LD_LIBRARY_PATH=/usr/local/lib
 
 WORKDIR /build/
 
-
-# Install CERE
-RUN git clone https://github.com/benchmark-subsetting/cere.git
+COPY . /build/cere
 
 
 WORKDIR /build/cere/
 
-RUN libtoolize && ./autogen.sh && ./configure --with-flang
+# Old C sources expect -fcommon; enforce it explicitly.
+ENV CFLAGS="-fcommon"
+ENV CPPFLAGS="-fcommon"
+
+RUN libtoolize && ./autogen.sh && ./configure --with-flang CFLAGS="${CFLAGS}" CPPFLAGS="${CPPFLAGS}"
 RUN make && make install && make clean
+RUN ldconfig /usr/local/lib
+RUN ln -sf /usr/local/lib/libcere_regionoutliner.so /usr/local/lib/libcere_regionoutliner.so
+RUN ln -sf /usr/local/lib/libcere_regiondump.so /usr/local/lib/libcere_regiondump.so
+RUN ln -sf /usr/local/lib/libcere_regioninstrumentation.so /usr/local/lib/libcere_regioninstrumentation.so
+RUN ln -sf /usr/local/lib/libcere_regionreplay.so /usr/local/lib/libcere_regionreplay.so
+RUN ldconfig /usr/local/lib
 
 
 # Set up workdir

@@ -262,7 +262,7 @@ void tracer_lock_mem(pid_t pid) {
 * UNLOCK
 ********/
 
-inline bool should_unprotect(void ** start, void ** end, long long unsigned int * permissions) {
+bool should_unprotect(void ** start, void ** end, long long unsigned int * permissions) {
   /* For a memory range, check if part (or all) of it has been protected,
    * and retrieves its previous permissions. If it has been protected, return true. */
 
