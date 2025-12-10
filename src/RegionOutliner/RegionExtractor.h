@@ -141,7 +141,7 @@ private:
   std::string updateFileFormat(std::string str);
 
   Function *constructFunction(const ValueSet &inputs, const ValueSet &outputs,
-                              BasicBlock *header, BasicBlock *newRootNode,
+                              BasicBlock *header, BasicBlock *&newRootNode,
                               BasicBlock *newHeader, Twine newFunctionName,
                               Function *oldFunction, Module *M);
 

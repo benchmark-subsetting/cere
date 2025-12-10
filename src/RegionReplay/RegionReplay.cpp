@@ -150,12 +150,12 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
   for (Function::arg_iterator args = currFunc->arg_begin();
        args != currFunc->arg_end(); args++) {
     UnaryInstruction *ptr;
-    ConstantInt *const_int64_35 =
-        ConstantInt::get(mod->getContext(), APInt(32, i, 10));
+    Type *vlaElementType = ptr_vla->getType()->getPointerElementType();
 
-    Value *ptr_arrayidx = builder.CreateConstGEP1_32(ptr_vla, i, "arrayidx");
+    Value *ptr_arrayidx =
+        builder.CreateConstGEP1_32(vlaElementType, ptr_vla, i, "arrayidx");
 
-    LoadInst *ptr_69 = builder.CreateLoad(ptr_arrayidx, const_int64_35);
+    LoadInst *ptr_69 = builder.CreateLoad(vlaElementType, ptr_arrayidx, "");
     LLVM_DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
                       << *args->getType() << "\n");
 
@@ -165,7 +165,7 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
 
       // if args is a scalar, make a copy and give the copy adress to the func
       PointerType *pointerType = dyn_cast<PointerType>(args->getType());
-      Type *elementType = pointerType->getElementType();
+      Type *elementType = pointerType->getPointerElementType();
 
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
 

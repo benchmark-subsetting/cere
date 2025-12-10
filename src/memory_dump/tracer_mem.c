@@ -25,8 +25,6 @@
 #include "pages.h"
 #include "tracer_interface.h"
 #include "types.h"
-
-long PAGESIZE;
 void *addresses[65536];
 long long unsigned int addrs_permissions[32768];
 int addrs_counter = 0;

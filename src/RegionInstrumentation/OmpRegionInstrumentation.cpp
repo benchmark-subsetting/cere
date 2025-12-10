@@ -28,6 +28,7 @@
 
 #define DEBUG_TYPE "region-instrumentation"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
@@ -346,4 +347,3 @@ bool OmpRegionInstrumentation::insertOmpProbe(Module *mod, Function *currFunc) {
   }
   return true;
 }
-

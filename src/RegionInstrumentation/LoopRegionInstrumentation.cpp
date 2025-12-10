@@ -27,6 +27,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 #include <llvm/IR/Instructions.h>
 #include "llvm/Transforms/Scalar.h"
@@ -307,4 +308,3 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   }
   return true;
 }
-

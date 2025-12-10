@@ -28,6 +28,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
@@ -200,12 +201,12 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
     return false;
 
   // If we want to dump a particular region, look if it's this one
-  int regionIndex = dumpRequested(RegionsToDump, currFunc->getName());
+  int regionIndex = dumpRequested(RegionsToDump, currFunc->getName().str());
   if (!GlobalDump && regionIndex == -1) {
     return false;
   } else if (ReadFromFile) {
     if (!(std::find(RegionsToDump.begin(), RegionsToDump.end(),
-                    currFunc->getName()) != RegionsToDump.end()))
+                    currFunc->getName().str()) != RegionsToDump.end()))
       return false;
   }
 

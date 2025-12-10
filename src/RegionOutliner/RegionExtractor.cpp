@@ -469,7 +469,7 @@ std::string RegionExtractor::createFunctionName(Function *oldFunction,
 ///
 Function *RegionExtractor::constructFunction(
     const ValueSet &inputs, const ValueSet &outputs, BasicBlock *header,
-    BasicBlock *newRootNode, BasicBlock *newHeader, Twine newFunctionName,
+    BasicBlock *&newRootNode, BasicBlock *newHeader, Twine newFunctionName,
     Function *oldFunction, Module *M) {
   LLVM_DEBUG(dbgs() << "inputs: " << inputs.size() << "\n");
   LLVM_DEBUG(dbgs() << "outputs: " << outputs.size() << "\n");
@@ -538,7 +538,9 @@ Function *RegionExtractor::constructFunction(
   if (oldFunction->doesNotThrow())
     newFunction->setDoesNotThrow();
 
-  newFunction->getBasicBlockList().push_back(newRootNode);
+  newRootNode =
+      BasicBlock::Create(header->getContext(), "newFuncRoot", newFunction);
+  BranchInst::Create(header, newRootNode);
 
   // Create an iterator to name all of the arguments we inserted.
   Function::arg_iterator AI = newFunction->arg_begin();
@@ -775,24 +777,17 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
       Value *Idx[2];
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(Context), i);
-      GetElementPtrInst *GEP =
-          GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
-                                    "gep_" + StructValues[i]->getName());
-      codeReplacer->getInstList().push_back(GEP);
-
-#if LLVM_VERSION_MAJOR >= 9
-      StoreInst *SI = new StoreInst(StructValues[i], GEP, codeReplacer);
-#else
-      StoreInst *SI = new StoreInst(StructValues[i], GEP);
-      codeReplacer->getInstList().push_back(SI);
-#endif
+      GetElementPtrInst *GEP = GetElementPtrInst::Create(
+          &*(Struct)->getType(), Idx[0], Idx[1],
+          "gep_" + StructValues[i]->getName(), codeReplacer);
+      new StoreInst(StructValues[i], GEP, codeReplacer);
     }
   }
 
   // Emit the call to the function
   CallInst *call = CallInst::Create(newFunction, params,
-                                    NumExitBlocks > 1 ? "targetBlock" : "");
-  codeReplacer->getInstList().push_back(call);
+                                    NumExitBlocks > 1 ? "targetBlock" : "",
+                                    codeReplacer);
 
   Function::arg_iterator OutputArgBegin = newFunction->arg_begin();
   unsigned FirstOut = inputs.size();
@@ -806,20 +801,21 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
       Value *Idx[2];
       Idx[0] = Constant::getNullValue(Type::getInt32Ty(Context));
       Idx[1] = ConstantInt::get(Type::getInt32Ty(Context), FirstOut + i);
-      GetElementPtrInst *GEP =
-          GetElementPtrInst::Create(&*(Struct)->getType(), Idx[0], Idx[1],
-                                    "gep_reload_" + outputs[i]->getName());
-      codeReplacer->getInstList().push_back(GEP);
+      GetElementPtrInst *GEP = GetElementPtrInst::Create(
+          &*(Struct)->getType(), Idx[0], Idx[1],
+          "gep_reload_" + outputs[i]->getName(), codeReplacer);
       Output = GEP;
     } else {
       Output = ReloadOutputs[i];
     }
 
 #if LLVM_VERSION_MAJOR >= 9
-    LoadInst *load = new LoadInst(&(*(Struct)->getType()), Output, outputs[i]->getName() + ".reload", codeReplacer);
+    LoadInst *load = new LoadInst(
+        &(*(Struct)->getType()), Output,
+        outputs[i]->getName() + ".reload", codeReplacer);
 #else
-    LoadInst *load = new LoadInst(Output, outputs[i]->getName() + ".reload");
-    codeReplacer->getInstList().push_back(load);
+    LoadInst *load =
+        new LoadInst(Output, outputs[i]->getName() + ".reload", codeReplacer);
 #endif
     Reloads.push_back(load);
     std::vector<User *> Users(outputs[i]->user_begin(), outputs[i]->user_end());
@@ -1006,17 +1002,11 @@ void RegionExtractor::emitCallAndSwitchStatement(Function *newFunction,
 
 void RegionExtractor::moveCodeToFunction(Function *newFunction) {
   Function *oldFunc = (*Blocks.begin())->getParent();
-  Function::BasicBlockListType &oldBlocks = oldFunc->getBasicBlockList();
-  Function::BasicBlockListType &newBlocks = newFunction->getBasicBlockList();
-
   for (SetVector<BasicBlock *>::const_iterator i = Blocks.begin(),
                                                e = Blocks.end();
        i != e; ++i) {
-    // Delete the basic block from the old function, and the list of blocks
-    oldBlocks.remove(*i);
-
-    // Insert this basic block into the new function
-    newBlocks.push_back(*i);
+    (*i)->removeFromParent();
+    (*i)->insertInto(newFunction);
   }
 }
 
@@ -1063,9 +1053,7 @@ Function *RegionExtractor::extractCodeRegion() {
 
   // The new function needs a root node because other nodes can branch to the
   // head of the region, but the entry node of a function cannot have preds.
-  BasicBlock *newFuncRoot =
-      BasicBlock::Create(header->getContext(), "newFuncRoot");
-  newFuncRoot->getInstList().push_back(BranchInst::Create(header));
+  BasicBlock *newFuncRoot = nullptr;
 
   // Find inputs to, outputs from the code region.
   findInputsOutputs(inputs, outputs);
@@ -1125,4 +1113,3 @@ Function *RegionExtractor::extractCodeRegion() {
                  report_fatal_error("verifyFunction failed!"));
   return newFunction;
 }
-
