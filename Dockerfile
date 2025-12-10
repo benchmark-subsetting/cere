@@ -22,7 +22,7 @@ RUN apt-get -y install \
   autoconf automake build-essential libtool \
   python3 python3-pip \
   libgoogle-perftools-dev google-perftools numactl dc git \
-  wget opt pkg-config libgmp3-dev \
+  wget opt pkg-config libgmp3-dev cmake \
   llvm-16 llvm-16-dev llvm-16-tools libomp-16-dev clang-16 \
   libc++-16-dev libc++abi-16-dev libunwind-16-dev \
   python3-matplotlib python3-jinja2 python3-sklearn python3-numpy \
