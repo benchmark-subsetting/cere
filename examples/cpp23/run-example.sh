@@ -11,15 +11,16 @@ export PYTHONPATH="${ROOT}/src:/usr/local/lib/python3.12/site-packages"
 export PATH="${ROOT}/src:/usr/local/bin:${PATH}"
 LIBDIR="${CERE_LIBDIR:-/usr/local/lib}"
 export CERE_LIBDIR="${LIBDIR}"
-export LD_LIBRARY_PATH="${LIBDIR}:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/llvm-16/lib:${LIBDIR}:${LD_LIBRARY_PATH:-}"
 
-BUILD_CMD="cerec++ -std=gnu++2b -stdlib=libc++ ${ROOT}/examples/cpp23/example.cpp ${ROOT}/examples/cpp23/rdtsc_support.cpp -o example -lc++ -lc++abi"
+BUILD_CMD="cerec++ -g -std=gnu++20 ${ROOT}/examples/cpp23/example.cpp ${ROOT}/examples/cpp23/rdtsc_support.cpp -o example -lstdc++"
+
 cere configure \
   --build-cmd="${BUILD_CMD}" \
   --run-cmd="./example" \
   --clean-cmd="rm -f example"
 
-cere profile
+cere profile --force
 
 if [[ -n "${CERE_REGION:-}" ]]; then
   CAPTURE_CMD="cere capture --region=${CERE_REGION}"
