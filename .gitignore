@@ -10,7 +10,6 @@
 !.clang-format
 !.clang-tidy
 !.markdownlint.yaml
-!.travis.yml
 !.github
 !.vscode
 **/*~
@@ -33,14 +32,10 @@ m4/ltoptions.m4
 m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
-tests/*/*.log
-tests/*/*.b
 examples/*/*.json
 examples/*/build
 testllvm.c
 src/memory_dump/cere-tracer
 doc/html/*.html
 doc/man1/*.1
-tests/testplan.log
-tests/testplan.trs
 src/cere/vars.py

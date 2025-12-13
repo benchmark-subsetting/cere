@@ -25,8 +25,9 @@ generate the hybrid binary.
   * `--regions-file REGIONS_FILE`:
     Input file that list for each region the choosen compilation flags. This
     file is created with cere-flag(1).
-    You can also create it manually, format and example can be found here:
-    `CERE_PATH/tests/test_UI_Hybrid/.cere/flags/regions_flags.csv`
+    You can also create it manually; a sample layout lives in the `.cere`
+    metadata produced by CERE runs, for example:
+    `/path/to/.cere/flags/regions_flags.csv`
 
   * `[--extraction-lvl {loop,function}]`
     Sometimes extracting the loop alone into a new file does not trigger desired

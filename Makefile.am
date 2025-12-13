@@ -1,4 +1,4 @@
-SUBDIRS=src/ tests/ doc/
+SUBDIRS=src/ doc/
 ACLOCAL_AMFLAGS=-I m4
 EXTRA_DIST=examples/
 dist_bin_SCRIPTS=cere

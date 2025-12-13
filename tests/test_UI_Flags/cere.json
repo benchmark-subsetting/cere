@@ -1,1 +1,0 @@
-{"regions_infos": "/home/cakel/cere/tests/test_UI_Flags/regions.csv", "multiple_trace": false, "run_cmd": "./FT", "clean_cmd": "make clean", "build_cmd": "make CLASS=A", "cere_path": "/home/cakel/cere/tests/test_UI_Flags/.cere"}

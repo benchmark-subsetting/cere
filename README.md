@@ -1,7 +1,5 @@
 # CERE v0.3.1
 
-
-[![Build status](https://github.com/benchmark-subsetting/cere/actions/workflows/test-build.yml/badge.svg)](https://github.com/benchmark-subsetting/cere/actions/workflows/test-build.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5910793.svg)](https://doi.org/10.5281/zenodo.5910793)
 
 

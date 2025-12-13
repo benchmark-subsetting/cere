@@ -150,8 +150,7 @@ AC_CONFIG_FILES([Makefile
                  src/RegionReplay/Makefile
                  src/GlobalRename/Makefile
                  src/rdtsc/Makefile
-                 src/memory_dump/Makefile
-                 tests/Makefile])
+                 src/memory_dump/Makefile])
 
 AC_CONFIG_FILES([src/cere/vars.py.in], [])
 
