@@ -7,9 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
+  whitespace:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -78,16 +77,24 @@ jobs:
             exit 1
           fi
 
-      - name: Install lint dependencies
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format
-          npm install -g markdownlint-cli
-
       - name: clang-format check
         run: |
           git ls-files -z -- '*.c' '*.h' '*.cpp' '*.hpp' \
             | xargs -0 -r clang-format --Werror --dry-run
 
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install markdownlint
+        run: npm install -g markdownlint-cli
       - name: markdownlint
         run: markdownlint "**/*.md"
