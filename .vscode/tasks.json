@@ -1,0 +1,87 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: Configure (Debug, tests ON)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S", ".",
+        "-B", "build",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DBUILD_TESTS=ON"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build: All",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "build", "--parallel"],
+      "group": { "kind": "build", "isDefault": true },
+      "dependsOn": ["CMake: Configure (Debug, tests ON)"],
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Build: grpc_server",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "build", "--target", "grpc_server", "--parallel"],
+      "group": "build",
+      "dependsOn": ["CMake: Configure (Debug, tests ON)"],
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Build: grpc_client_example",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "build",
+        "--target",
+        "grpc_client_example",
+        "--parallel"
+      ],
+      "group": "build",
+      "dependsOn": ["CMake: Configure (Debug, tests ON)"],
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Build: starpu_server",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "build", "--target", "starpu_server", "--parallel"],
+      "group": "build",
+      "dependsOn": ["CMake: Configure (Debug, tests ON)"],
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Test: ctest (output on failure)",
+      "type": "shell",
+      "command": "ctest",
+      "args": ["--test-dir", "build", "--output-on-failure"],
+      "group": "test",
+      "dependsOn": ["Build: All"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: cmake-lint",
+      "type": "shell",
+      "command": "bash",
+      "args": ["scripts/run-cmake-lint.sh", "."],
+      "problemMatcher": []
+    },
+    {
+      "label": "Format: clang-format (all .h/.hpp/.c/.cc/.cpp)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "command -v clang-format >/dev/null 2>&1 && find src tests -type f \\\n+          \( -name '*.h' -o -name '*.hpp' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' \) \\\n+          -print0 | xargs -0 clang-format -i || echo 'clang-format not found'"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
+

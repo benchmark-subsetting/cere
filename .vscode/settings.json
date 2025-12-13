@@ -1,0 +1,150 @@
+{
+  // --- CMake ---
+  "cmake.configureOnOpen": true,
+  "cmake.sourceDirectory": "${workspaceFolder}",
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.buildType": "Debug",
+  "cmake.buildArgs": [
+    "--parallel"
+  ],
+  "cmake.configureSettings": {
+    "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+    "BUILD_TESTS": "ON"
+  },
+  "cmake.ctestArgs": [
+    "--output-on-failure"
+  ],
+  // --- cpptools : indexation + clang-tidy ---
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+  "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+  "C_Cpp.codeAnalysis.clangTidy.useBuildPath": true,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.formatting": "disabled",
+  // --- Clang-Format (Xaver) C/C++ ---
+  "editor.formatOnSave": true,
+  "clang-format.style": "file",
+  // "clang-format.executable": "/usr/bin/clang-format-17"
+  "[cpp]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  "[c]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  // --- Markdown / Markdownlint ---
+  "markdownlint.config": {
+    "default": true,
+    "MD013": false,
+    "MD033": false
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "other": false,
+      "comments": false,
+      "strings": false
+    }
+  },
+  // --- Exclusions build ---
+  "files.exclude": {
+    "build/": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true
+  },
+  "search.exclude": {
+    "build/**": true
+  },
+  // --- Assocs Proto ---
+  "files.associations": {
+    "*.proto": "proto3",
+    "cmath": "cpp",
+    "cstddef": "cpp",
+    "cstdlib": "cpp",
+    "cstring": "cpp",
+    "ctime": "cpp",
+    "atomic": "cpp",
+    "bit": "cpp",
+    "chrono": "cpp",
+    "compare": "cpp",
+    "concepts": "cpp",
+    "cstdint": "cpp",
+    "set": "cpp",
+    "string": "cpp",
+    "vector": "cpp",
+    "exception": "cpp",
+    "algorithm": "cpp",
+    "functional": "cpp",
+    "iterator": "cpp",
+    "memory": "cpp",
+    "memory_resource": "cpp",
+    "random": "cpp",
+    "ratio": "cpp",
+    "system_error": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp",
+    "initializer_list": "cpp",
+    "iomanip": "cpp",
+    "iosfwd": "cpp",
+    "limits": "cpp",
+    "new": "cpp",
+    "ostream": "cpp",
+    "sstream": "cpp",
+    "stdexcept": "cpp",
+    "stop_token": "cpp",
+    "thread": "cpp",
+    "typeinfo": "cpp",
+    "format": "cpp",
+    "array": "cpp",
+    "cctype": "cpp",
+    "charconv": "cpp",
+    "clocale": "cpp",
+    "condition_variable": "cpp",
+    "cstdio": "cpp",
+    "cwchar": "cpp",
+    "cwctype": "cpp",
+    "deque": "cpp",
+    "unordered_map": "cpp",
+    "iostream": "cpp",
+    "istream": "cpp",
+    "mutex": "cpp",
+    "numbers": "cpp",
+    "optional": "cpp",
+    "semaphore": "cpp",
+    "span": "cpp",
+    "streambuf": "cpp",
+    "string_view": "cpp",
+    "text_encoding": "cpp",
+    "variant": "cpp",
+    "__nullptr": "cpp",
+    "__bit_reference": "cpp",
+    "__split_buffer": "cpp",
+    "__threading_support": "cpp",
+    "forward_list": "cpp",
+    "map": "cpp",
+    "unordered_set": "cpp",
+    "future": "cpp",
+    "__hash_table": "cpp",
+    "__node_handle": "cpp",
+    "__tree": "cpp",
+    "__verbose_abort": "cpp",
+    "locale": "cpp",
+    "ranges": "cpp",
+    "fstream": "cpp",
+    "bitset": "cpp",
+    "print": "cpp",
+    "ios": "cpp",
+    "numeric": "cpp",
+    "*.md": "markdown",
+    "any": "cpp",
+    "expected": "cpp",
+    "cinttypes": "cpp"
+  },
+  "[proto3]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true
+}

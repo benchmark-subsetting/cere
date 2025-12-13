@@ -1,0 +1,12 @@
+*~
+.git
+.github
+build/*
+.vscode
+.venv
+venv
+.idea
+cmake-build-*/
+*.pt
+*.pyc
+__pycache__/

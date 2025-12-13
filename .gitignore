@@ -5,6 +5,14 @@
 **/*.pyc
 **/*.mod
 **/.*
+!.gitignore
+!.dockerignore
+!.clang-format
+!.clang-tidy
+!.markdownlint.yaml
+!.travis.yml
+!.github
+!.vscode
 **/*~
 **/#*
 **/.DS_Store
@@ -25,7 +33,6 @@ m4/ltoptions.m4
 m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
-!.github
 tests/*/*.log
 tests/*/*.b
 examples/*/*.json

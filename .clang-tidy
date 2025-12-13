@@ -1,0 +1,11 @@
+Checks: "performance-*,modernize-*,bugprone-*,readability-*,clang-analyzer-*,cppcoreguidelines-*,portability-*,clang-diagnostic-unused-includes"
+HeaderFilterRegex: "^(?!.*external/).*"
+WarningsAsErrors: ""
+ExtraArgs:
+  - "--target=x86_64-pc-linux-gnu"
+  - "--gcc-toolchain=/usr"
+  - "-stdlib=libstdc++"
+  - "-msse"
+  - "-std=c++23"
+  - "-isystem/usr/include/c++/13"
+  - "-isystem/usr/include/x86_64-linux-gnu/c++/13"
