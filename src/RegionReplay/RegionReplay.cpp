@@ -24,44 +24,48 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-replay"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/Statistic.h"
-#include "llvm/Analysis/LoopPass.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Debug.h"
-#include <fstream>
+#include "RegionReplay.h"
+
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+
+#include <fstream>
 #include <set>
 #include <sstream>
 #include <string>
 
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopPass.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
-
-#include "RegionReplay.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Debug.h"
 using namespace llvm;
 
-cl::opt<std::string> RegionName("region", cl::init("all"),
-                                cl::value_desc("String"),
-                                cl::desc("The region to replay"));
-cl::opt<int> Invocation("invocation", cl::init(1), cl::value_desc("Integer"),
-                        cl::desc("Replay the specified invocation"));
+cl::opt<std::string> RegionName(
+    "region", cl::init("all"), cl::value_desc("String"),
+    cl::desc("The region to replay"));
+cl::opt<int> Invocation(
+    "invocation", cl::init(1), cl::value_desc("Integer"),
+    cl::desc("Replay the specified invocation"));
 
 namespace llvm {
 
 /// Create signature for the load function:
 /// void dump(char*, int, int, void* args[])
-FunctionType *createLoadFunctionType(Module *mod) {
-  PointerType *PointerTy_4 =
+FunctionType*
+createLoadFunctionType(Module* mod)
+{
+  PointerType* PointerTy_4 =
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
-  PointerType *PointerTy_3 = PointerType::get(PointerTy_4, 0);
+  PointerType* PointerTy_3 = PointerType::get(PointerTy_4, 0);
 
-  std::vector<Type *> FuncTy_10_args;
+  std::vector<Type*> FuncTy_10_args;
   // Pointer for loop name
   FuncTy_10_args.push_back(PointerTy_4);
   // Int for the invocation to replay
@@ -70,7 +74,7 @@ FunctionType *createLoadFunctionType(Module *mod) {
   FuncTy_10_args.push_back(IntegerType::get(mod->getContext(), 32));
   // Pointer on the pointer array
   FuncTy_10_args.push_back(PointerTy_3);
-  FunctionType *tmp = FunctionType::get(
+  FunctionType* tmp = FunctionType::get(
       /*Result=*/Type::getVoidTy(mod->getContext()),
       /*Params=*/FuncTy_10_args,
       /*isVarArg=*/false);
@@ -83,19 +87,20 @@ FunctionType *createLoadFunctionType(Module *mod) {
 /// int InvocationToReplay
 /// int number of variable arguments
 /// void** array of adresses filled by the load lib
-std::vector<Value *> createLoadFunctionParameters(Module *mod,
-                                                  Function *currFunc,
-                                                  BasicBlock *B, int N) {
-  PointerType *PointerTy_4 =
+std::vector<Value*>
+createLoadFunctionParameters(
+    Module* mod, Function* currFunc, BasicBlock* B, int N)
+{
+  PointerType* PointerTy_4 =
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
-  std::vector<Value *> params;
+  std::vector<Value*> params;
 
   // Get name of the loop to load
   IRBuilder<> builder(B);
-  Value *const_ptr_11 = builder.CreateGlobalStringPtr(currFunc->getName());
+  Value* const_ptr_11 = builder.CreateGlobalStringPtr(currFunc->getName());
 
   // The invocation to load
-  ConstantInt *iterToLoad =
+  ConstantInt* iterToLoad =
       ConstantInt::get(mod->getContext(), APInt(32, N, 10));
 
   // Get the number of argument we will have to load
@@ -105,13 +110,13 @@ std::vector<Value *> createLoadFunctionParameters(Module *mod,
     nbArgs++;
 
   // Allocate a "void* args[nbArgs] array"
-  ConstantInt *const_int_nbArgs =
+  ConstantInt* const_int_nbArgs =
       ConstantInt::get(mod->getContext(), APInt(32, nbArgs, 10));
 
-  const DataLayout &DL = mod->getDataLayout();
-  CastInst *int64_0 = new ZExtInst(
+  const DataLayout& DL = mod->getDataLayout();
+  CastInst* int64_0 = new ZExtInst(
       const_int_nbArgs, IntegerType::get(mod->getContext(), 64), "", B);
-  AllocaInst *ptr_vla =
+  AllocaInst* ptr_vla =
       new AllocaInst(PointerTy_4, DL.getAllocaAddrSpace(), int64_0, "vla", B);
 
   // Push loop name + invocation to load + number of params + adresses array to
@@ -125,78 +130,90 @@ std::vector<Value *> createLoadFunctionParameters(Module *mod,
 }
 
 /// \brief Creates the wrapper function signature: void wrapper(void)
-Function *createWrapperFunction(Function *F, Module *M) {
+Function*
+createWrapperFunction(Function* F, Module* M)
+{
   // Create a void type
-  std::vector<Type *> FuncTy_8_args;
-  FunctionType *FuncTy_8 = FunctionType::get(
+  std::vector<Type*> FuncTy_8_args;
+  FunctionType* FuncTy_8 = FunctionType::get(
       /*Result=*/Type::getVoidTy(M->getContext()),
       /*Params=*/FuncTy_8_args,
       /*isVarArg=*/false);
   // Create the wrapper function
-  Function *tmp = Function::Create(FuncTy_8, GlobalValue::ExternalLinkage,
-                                   "run" + F->getName().str(), M);
+  Function* tmp = Function::Create(
+      FuncTy_8, GlobalValue::ExternalLinkage, "run" + F->getName().str(), M);
   return tmp;
 }
 
-std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
-                                          AllocaInst *ptr_vla,
-                                          BasicBlock *label_entry) {
-  std::vector<Value *> params;
+std::vector<Value*>
+createLoopParameters(
+    Function* currFunc, Module* mod, AllocaInst* ptr_vla,
+    BasicBlock* label_entry)
+{
+  std::vector<Value*> params;
   IRBuilder<> builder(label_entry);
-  const DataLayout &DL = mod->getDataLayout();
+  const DataLayout& DL = mod->getDataLayout();
 
   // get back adresses of loop parameters from the array filled by load
   int i = 0;
   for (Function::arg_iterator args = currFunc->arg_begin();
        args != currFunc->arg_end(); args++) {
-    UnaryInstruction *ptr;
-    Type *vlaElementType = ptr_vla->getType()->getPointerElementType();
+    UnaryInstruction* ptr;
+#if LLVM_VERSION_MAJOR >= 9
+    Type* vlaElementType = ptr_vla->getAllocatedType();
+#else
+    Type* vlaElementType = ptr_vla->getType()->getPointerElementType();
+#endif
 
-    Value *ptr_arrayidx =
+    Value* ptr_arrayidx =
         builder.CreateConstGEP1_32(vlaElementType, ptr_vla, i, "arrayidx");
 
-    LoadInst *ptr_69 = builder.CreateLoad(vlaElementType, ptr_arrayidx, "");
-    LLVM_DEBUG(dbgs() << "Casting " << *ptr_69->getType() << " to "
-                      << *args->getType() << "\n");
+    LoadInst* ptr_69 = builder.CreateLoad(vlaElementType, ptr_arrayidx, "");
+    LLVM_DEBUG(
+        dbgs() << "Casting " << *ptr_69->getType() << " to " << *args->getType()
+               << "\n");
 
-     if (args->getType()->isPointerTy()) {
+    if (args->getType()->isPointerTy()) {
+      ptr = new BitCastInst(ptr_69, args->getType(), "", label_entry);  // cast
 
-      ptr = new BitCastInst(ptr_69, args->getType(), "", label_entry); // cast
-
+#if LLVM_VERSION_MAJOR < 14
       // if args is a scalar, make a copy and give the copy adress to the func
-      PointerType *pointerType = dyn_cast<PointerType>(args->getType());
-      Type *elementType = pointerType->getPointerElementType();
+      // This optimization is only possible with non-opaque pointers (LLVM < 14)
+      PointerType* pointerType = dyn_cast<PointerType>(args->getType());
+      Type* elementType = pointerType->getPointerElementType();
 
       if (!elementType->isArrayTy() && !elementType->isStructTy()) {
-
-        AllocaInst *ptr_a_addr =
-            new AllocaInst(args->getType(), DL.getAllocaAddrSpace(), "a", label_entry);
-        AllocaInst *ptr_tmp = new AllocaInst(
-            args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "b", label_entry);
-        AllocaInst *ptr_tmp2 = new AllocaInst(
-            args->getType()->getPointerElementType(), DL.getAllocaAddrSpace(), "c", label_entry);
+        AllocaInst* ptr_a_addr = new AllocaInst(
+            args->getType(), DL.getAllocaAddrSpace(), "a", label_entry);
+        AllocaInst* ptr_tmp = new AllocaInst(
+            elementType, DL.getAllocaAddrSpace(), "b", label_entry);
+        AllocaInst* ptr_tmp2 = new AllocaInst(
+            elementType, DL.getAllocaAddrSpace(), "c", label_entry);
 
         // Store ptr adress
         new StoreInst(ptr, ptr_a_addr, false, label_entry);
 
 #if LLVM_VERSION_MAJOR >= 9
-        LoadInst *ptr_5 = new LoadInst(pointerType, ptr_a_addr, "", false, label_entry);
+        LoadInst* ptr_5 =
+            new LoadInst(pointerType, ptr_a_addr, "", false, label_entry);
 #else
-        LoadInst *ptr_5 = new LoadInst(ptr_a_addr, "", false, label_entry);
+        LoadInst* ptr_5 = new LoadInst(ptr_a_addr, "", false, label_entry);
 #endif
 
 #if LLVM_VERSION_MAJOR >= 9
-        LoadInst *int32_6 = new LoadInst(elementType, ptr_5, "", false, label_entry);
+        LoadInst* int32_6 =
+            new LoadInst(elementType, ptr_5, "", false, label_entry);
 #else
-        LoadInst *int32_6 = new LoadInst(ptr_5, "", false, label_entry);
+        LoadInst* int32_6 = new LoadInst(ptr_5, "", false, label_entry);
 #endif
 
         new StoreInst(int32_6, ptr_tmp, false, label_entry);
 
 #if LLVM_VERSION_MAJOR >= 9
-        LoadInst *int32_9 = new LoadInst(elementType, ptr_tmp, "", false, label_entry);
+        LoadInst* int32_9 =
+            new LoadInst(elementType, ptr_tmp, "", false, label_entry);
 #else
-        LoadInst *int32_9 = new LoadInst(ptr_tmp, "", false, label_entry);
+        LoadInst* int32_9 = new LoadInst(ptr_tmp, "", false, label_entry);
 #endif
 
         new StoreInst(int32_9, ptr_tmp2, false, label_entry);
@@ -207,11 +224,16 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
         ptr->setName(args->getName());
         params.push_back(ptr);
       }
+#else
+      // LLVM 14+ with opaque pointers - we can't do the scalar optimization
+      ptr->setName(args->getName());
+      params.push_back(ptr);
+#endif
 
     } else {
-      PointerType *PointerTy_3 = PointerType::get(args->getType(), 0);
-      CastInst *ptr_70 =
-          new BitCastInst(ptr_69, PointerTy_3, "", label_entry); // cast
+      PointerType* PointerTy_3 = PointerType::get(args->getType(), 0);
+      CastInst* ptr_70 =
+          new BitCastInst(ptr_69, PointerTy_3, "", label_entry);  // cast
 #if LLVM_VERSION_MAJOR >= 9
       ptr = new LoadInst(PointerTy_3, ptr_70, "", false, label_entry);
 #else
@@ -225,4 +247,4 @@ std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
   }
   return params;
 }
-} // namespace llvm
+}  // namespace llvm
