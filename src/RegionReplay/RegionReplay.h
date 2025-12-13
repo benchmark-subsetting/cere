@@ -23,25 +23,32 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
+
+#include <vector>
+
 namespace llvm {
 
 /// Create signature for the load function:
 /// void dump(char*, int, int, void* args[])
-FunctionType *createLoadFunctionType(Module *mod);
+FunctionType* createLoadFunctionType(Module* mod);
 
 /// Creates arguments for the load function:
 /// char* loopName
 /// int InvocationToReplay
 /// int number of variable arguments
 /// void** array of adresses filled by the load lib
-std::vector<Value *> createLoadFunctionParameters(Module *mod,
-                                                  Function *currFunc,
-                                                  BasicBlock *B, int N);
+std::vector<Value*> createLoadFunctionParameters(
+    Module* mod, Function* currFunc, BasicBlock* B, int N);
 
 /// \brief Creates the wrapper function signature: void wrapper(void)
-Function *createWrapperFunction(Function *F, Module *M);
+Function* createWrapperFunction(Function* F, Module* M);
 
-std::vector<Value *> createLoopParameters(Function *currFunc, Module *mod,
-                                          AllocaInst *ptr_vla,
-                                          BasicBlock *label_entry);
-}
+std::vector<Value*> createLoopParameters(
+    Function* currFunc, Module* mod, AllocaInst* ptr_vla,
+    BasicBlock* label_entry);
+}  // namespace llvm

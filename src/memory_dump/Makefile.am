@@ -1,8 +1,9 @@
 lib_LTLIBRARIES = libcere_dump.la libcere_load.la
 
-libcere_dump_la_LDFLAGS = -fPIC -ldl
+libcere_dump_la_LDFLAGS = -fPIC -ldl -lstdc++
 libcere_dump_la_CFLAGS = -g --std=gnu99
-libcere_dump_la_SOURCES = tracee.c tracee_hooks.c tracee_interface.c tracee.h tracee_interface.h pages.h types.h err.h
+libcere_dump_la_CXXFLAGS = -g
+libcere_dump_la_SOURCES = tracee.c tracee_hooks.c tracee_interface.c cpp_fork_helper.cpp tracee.h tracee_interface.h pages.h types.h err.h
 
 libcere_load_la_CFLAGS = -g --std=gnu99 -Wl,-z,now
 libcere_load_la_SOURCES = replay.c pages.h
