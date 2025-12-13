@@ -1,0 +1,93 @@
+name: lint
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute excluded paths
+        run: |
+          EXCLUDES=(external)
+          if [ -f .gitmodules ]; then
+            while read -r _ path; do
+              EXCLUDES+=("$path")
+            done < <(git config --file .gitmodules --get-regexp path || true)
+          fi
+          mapfile -t UNIQUE < <(printf '%s\n' "${EXCLUDES[@]}" | sort -u)
+          printf 'EXCLUDED_PATHS=%s\n' "$(printf '%s\n' "${UNIQUE[@]}" | tr '\n' ' ')" >> "$GITHUB_ENV"
+
+      - name: Check trailing whitespace
+        run: |
+          EXCLUDE_DIRS=(--exclude-dir=.git --exclude-dir=build --exclude-dir=.venv --exclude-dir=_deps --exclude-dir=Install --exclude-dir=env)
+          for path in $EXCLUDED_PATHS; do
+            EXCLUDE_DIRS+=("--exclude-dir=$path")
+          done
+
+          if grep -rI --line-number "${EXCLUDE_DIRS[@]}" \
+              --exclude='*.png' --exclude='*.jpg' --exclude='*.jpeg' \
+              --exclude='*.gif' --exclude='*.pdf' --exclude='*.zip' \
+              --exclude='*.tar' --exclude='*.tar.*' --exclude='*.7z' \
+              --exclude='*.bin' --exclude='*.exe' --exclude='*.dll' \
+              --exclude='*.so' --exclude='*.a' --exclude='*.o' \
+              -P '[ \t]+$' .; then
+            echo "Trailing whitespace found"
+            exit 1
+          fi
+
+      - name: Check final newline at EOF
+        shell: bash
+        run: |
+          fail=0
+          PRUNE_ARGS=(-path './.git' -o -path './build' -o -path './.venv' -o -path './_deps' -o -path './Install' -o -path './env')
+          for path in $EXCLUDED_PATHS; do
+            PRUNE_ARGS+=(-o -path "./${path}")
+          done
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              *.png|*.jpg|*.jpeg|*.gif|*.pdf|*.zip|*.tar|*.tar.*|*.7z|*.bin|*.exe|*.dll|*.so|*.a|*.o) continue;;
+            esac
+            if [ -s "$f" ]; then
+              if ! tail -c1 "$f" | od -An -t x1 | grep -q "0a"; then
+                echo "::error file=$f::Missing final newline"
+                fail=1
+              fi
+            fi
+          done < <(find . \( "${PRUNE_ARGS[@]}" \) -prune -o -type f -print0)
+          exit $fail
+
+      - name: Check for CRLF line endings
+        run: |
+          EXCLUDE_SPECS=()
+          for path in $EXCLUDED_PATHS; do
+            EXCLUDE_SPECS+=(":!$path/**")
+          done
+          EXCLUDE_SPECS+=(":!build/**" ":!.venv/**" ":!_deps/**" ":!Install/**" ":!env/**")
+
+          CRLF_FILES=$(git ls-files -z -- "${EXCLUDE_SPECS[@]}" | xargs -0 -r grep -Il $'\r' || true)
+          if [ -n "$CRLF_FILES" ]; then
+            echo "$CRLF_FILES"
+            echo "CRLF line endings detected (use LF)"
+            exit 1
+          fi
+
+      - name: Install lint dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          npm install -g markdownlint-cli
+
+      - name: clang-format check
+        run: |
+          git ls-files -z -- '*.c' '*.h' '*.cpp' '*.hpp' \
+            | xargs -0 -r clang-format --Werror --dry-run
+
+      - name: markdownlint
+        run: markdownlint "**/*.md"
