@@ -82,11 +82,6 @@ ENV CPPFLAGS="-fcommon"
 RUN libtoolize && ./autogen.sh && ./configure --with-flang CFLAGS="${CFLAGS}" CPPFLAGS="${CPPFLAGS}"
 RUN make && make install && make clean
 RUN ldconfig /usr/local/lib
-RUN ln -sf /usr/local/lib/libcere_regionoutliner.so /usr/local/lib/libcere_regionoutliner.so
-RUN ln -sf /usr/local/lib/libcere_regiondump.so /usr/local/lib/libcere_regiondump.so
-RUN ln -sf /usr/local/lib/libcere_regioninstrumentation.so /usr/local/lib/libcere_regioninstrumentation.so
-RUN ln -sf /usr/local/lib/libcere_regionreplay.so /usr/local/lib/libcere_regionreplay.so
-RUN ldconfig /usr/local/lib
 
 
 # Set up workdir
