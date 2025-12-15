@@ -26,6 +26,19 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-replay"
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+
+#include <fstream>
+#include <set>
+#include <sstream>
+#include <string>
+
+#include "RegionReplay.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -35,18 +48,6 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <fstream>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-#include <set>
-#include <sstream>
-#include <string>
-
-#include "RegionReplay.h"
 
 using namespace llvm;
 
@@ -62,85 +63,94 @@ struct LoopRegionReplay : public FunctionPass {
 
   explicit LoopRegionReplay(unsigned numLoops = ~0)
       : FunctionPass(ID), NumLoops(numLoops), RegionToReplay(RegionName),
-        InvocationToReplay(Invocation) {}
+        InvocationToReplay(Invocation)
+  {
+  }
 
-  virtual bool runOnFunction(Function &F);
-  bool visitLoop(Loop *L, Module *mod);
+  virtual bool runOnFunction(Function& F);
+  bool visitLoop(Loop* L, Module* mod);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-} // namespace
+}  // namespace
 
 char LoopRegionReplay::ID = 0;
 static RegisterPass<LoopRegionReplay> X("region-replay", "Replay regions");
 
 /**Called on each function int the current Module**/
-bool LoopRegionReplay::runOnFunction(Function &F) {
-  Module *mod = F.getParent();
+bool
+LoopRegionReplay::runOnFunction(Function& F)
+{
+  Module* mod = F.getParent();
 
   // No main, no instrumentation!
-  Function *Main = mod->getFunction("main");
+  Function* Main = mod->getFunction("main");
 
   // Using fortran? ... this kind of works
   if (!Main)
     Main = mod->getFunction("MAIN__");
 
-  if (Main) { // We are in the module with the main function
+  if (Main) {  // We are in the module with the main function
     IRBuilder<> builder(&(Main->front().front()));
     std::string funcName = "real_main";
 
-    Function *mainFunction = mod->getFunction(funcName);
+    Function* mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
-      std::vector<Type *> FuncTy_8_args;
-      FunctionType *FuncTy_8 = FunctionType::get(
+      std::vector<Type*> FuncTy_8_args;
+      FunctionType* FuncTy_8 = FunctionType::get(
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
 
-      Function *mainFunction = Function::Create(
+      Function* mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
-      std::vector<Value *> void_16_params;
+      std::vector<Value*> void_16_params;
       builder.CreateCall(mainFunction, void_16_params);
     }
   }
 
-  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
   // Get all loops int the current function and visit them
-  std::vector<Loop *> SubLoops(LI.begin(), LI.end());
+  std::vector<Loop*> SubLoops(LI.begin(), LI.end());
   for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
     visitLoop(SubLoops[i], mod);
   return true;
 }
 
-bool LoopRegionReplay::visitLoop(Loop *L, Module *mod) {
+bool
+LoopRegionReplay::visitLoop(Loop* L, Module* mod)
+{
   // Ensure we are working only on outermost loops
   if (L->getLoopDepth() > 1)
     return false;
 
   // Get the function we are in
-  Function *currFunc = L->getHeader()->getParent();
+  Function* currFunc = L->getHeader()->getParent();
 
   // If we want to replay a particular region, look if it's this one
-  if (RegionToReplay != currFunc->getName()) {
-
+  std::string funcName = currFunc->getName().str();
+  // Accept mangled/internal names that contain the requested region name
+  if (RegionToReplay != funcName &&
+      funcName.find(RegionToReplay) == std::string::npos) {
     return false;
   }
 
   // Create the wrapper function and add a basicBlock in it
-  Function *wrapperFunction = createWrapperFunction(currFunc, mod);
-  BasicBlock *label_entry =
+  Function* wrapperFunction = createWrapperFunction(currFunc, mod);
+  BasicBlock* label_entry =
       BasicBlock::Create(mod->getContext(), "entry", wrapperFunction, 0);
 
   // Now we create the load function and add a call in the wrapper function
 
   // Create the signature of the load function
-  FunctionType *LoadFuncTy = createLoadFunctionType(mod);
+  FunctionType* LoadFuncTy = createLoadFunctionType(mod);
   // Create the function load
-  Function *func_load = mod->getFunction("load");
+  Function* func_load = mod->getFunction("load");
   if (!func_load) {
     func_load = Function::Create(
         /*Type=*/LoadFuncTy,
@@ -149,7 +159,7 @@ bool LoopRegionReplay::visitLoop(Loop *L, Module *mod) {
   }
 
   // Params for the load function
-  std::vector<Value *> loadParams = createLoadFunctionParameters(
+  std::vector<Value*> loadParams = createLoadFunctionParameters(
       mod, currFunc, label_entry, InvocationToReplay);
 
   // Add call to load
@@ -157,28 +167,28 @@ bool LoopRegionReplay::visitLoop(Loop *L, Module *mod) {
 
   // Ok now we have adresses of variables used by the loop in ptr_vla array,
   // so we have to read it, and create parameters for the loop
-  std::vector<Value *> loopParams = createLoopParameters(
+  std::vector<Value*> loopParams = createLoopParameters(
       currFunc, mod, cast<AllocaInst>(loadParams.back()), label_entry);
 
   // Call the function with the extracted loop
   CallInst::Create(currFunc, loopParams, "", label_entry);
 
   // We must add an anti dead code function
-  std::vector<Type *> FuncADCE_args;
+  std::vector<Type*> FuncADCE_args;
   // Signature: void anti_dead_code_elimination(int, ...);
   FuncADCE_args.push_back(IntegerType::get(mod->getContext(), 32));
-  FunctionType *FuncADCE_type = FunctionType::get(
+  FunctionType* FuncADCE_type = FunctionType::get(
       /*Result=*/Type::getVoidTy(mod->getContext()),
       /*Params=*/FuncADCE_args,
       /*isVarArg=*/true);
   // create antiDCE function
-  Function *antiDeadCodeFunction =
-      Function::Create(FuncADCE_type, GlobalValue::ExternalLinkage,
-                       "anti_dead_code_elimination", mod);
+  Function* antiDeadCodeFunction = Function::Create(
+      FuncADCE_type, GlobalValue::ExternalLinkage, "anti_dead_code_elimination",
+      mod);
   antiDeadCodeFunction->addFnAttr(Attribute::NoInline);
   // AntiDCE function takes exactly the same parameters then the loop
   // + the number of parameters as we pass them as variable argument
-  ConstantInt *nbParam =
+  ConstantInt* nbParam =
       ConstantInt::get(mod->getContext(), APInt(32, loopParams.size(), 10));
   loopParams.insert(loopParams.begin(), nbParam);
   // Add the call

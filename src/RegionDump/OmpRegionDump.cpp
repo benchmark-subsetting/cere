@@ -26,6 +26,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+
+#include <fstream>
+#include <set>
+#include <sstream>
+#include <string>
+
+#include "RegionDump.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -35,18 +48,6 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <fstream>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-#include <set>
-#include <sstream>
-#include <string>
-
-#include "RegionDump.h"
 
 #define DEBUG_TYPE "region-dump"
 
@@ -75,28 +76,30 @@ struct OmpRegionDump : public FunctionPass {
 
   explicit OmpRegionDump(unsigned numLoops = ~0)
       : FunctionPass(ID), NumLoops(numLoops), RegionString(RegionName),
-        InvocationString(Invocations), GlobalDump(false), ReadFromFile(false) {
+        InvocationString(Invocations), GlobalDump(false), ReadFromFile(false)
+  {
     if (RegionToDump == "all")
       GlobalDump = true;
 
     // If regions are specified in CLI, take precedence over regions file
-    if(!RegionName.empty()) {
+    if (!RegionName.empty()) {
       /* Parse regions list */
       std::vector<std::string> tmp_Regions = split(RegionName, ';');
-      RegionsToDump.insert(RegionsToDump.end(), tmp_Regions.begin(), tmp_Regions.end());
+      RegionsToDump.insert(
+          RegionsToDump.end(), tmp_Regions.begin(), tmp_Regions.end());
 
       /* Parse invocations list */
       // If not empty, read invocation string
-      if(!InvocationString.empty()) {
+      if (!InvocationString.empty()) {
         // Parse all region substrings
         std::vector<std::string> tmp_Strings = split(InvocationString, ';');
-        for(std::string i : tmp_Strings) {
+        for (std::string i : tmp_Strings) {
           InvocationsToDump.push_back(i);
         }
       }
       // Else, capture every first invocation by default
       else {
-        for(int i=0; i<RegionsToDump.size(); i++) {
+        for (int i = 0; i < RegionsToDump.size(); i++) {
           InvocationsToDump.push_back("1");
         }
       }
@@ -107,30 +110,31 @@ struct OmpRegionDump : public FunctionPass {
         std::string line;
         std::ifstream loopstream(RegionsFilename.c_str(), std::ios::in);
         if (loopstream.is_open()) {
-          while (getline(loopstream, line))
-            RegionsToDump.push_back(line);
+          while (getline(loopstream, line)) RegionsToDump.push_back(line);
           ReadFromFile = true;
         }
       }
-
     }
   }
 
-  virtual bool runOnFunction(Function &F);
+  virtual bool runOnFunction(Function& F);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-} // namespace
+}  // namespace
 
 char OmpRegionDump::ID = 0;
-static RegisterPass<OmpRegionDump> X("omp-region-dump",
-                                     "Dump parallel regions");
+static RegisterPass<OmpRegionDump> X(
+    "omp-region-dump", "Dump parallel regions");
 
 // Specify if the function call has to be wrapped
-bool choosePutMarkerOnFunction(std::string functionCall) {
+bool
+choosePutMarkerOnFunction(std::string functionCall)
+{
   if (functionCall.find("__kmpc_fork_call") != std::string::npos)
     return true;
   else
@@ -138,53 +142,55 @@ bool choosePutMarkerOnFunction(std::string functionCall) {
 }
 
 /// \brief Called on each function int the current Module
-bool OmpRegionDump::runOnFunction(Function &F) {
-  Module *mod = F.getParent();
+bool
+OmpRegionDump::runOnFunction(Function& F)
+{
+  Module* mod = F.getParent();
 
   // On Fortran code instrument on MAIN__ (after libgfortran init)
   // On other code instrument on main
-  Function *Main = mod->getFunction("MAIN__");
+  Function* Main = mod->getFunction("MAIN__");
   if (!Main) {
     Main = mod->getFunction("main");
   }
-  if (Main) { // We are in the module with the main function
+  if (Main) {  // We are in the module with the main function
     IRBuilder<> builder(&(Main->front().front()));
 
-    ConstantInt *const_int1_11;
+    ConstantInt* const_int1_11;
     std::string funcName;
-    if(split(Invocations, ',').size() > 1 || split(RegionName, ';').size() > 1) {
+    if (split(Invocations, ',').size() > 1 ||
+        split(RegionName, ';').size() > 1) {
       funcName = "multi_dump_init";
-    }
-    else {
+    } else {
       funcName = "dump_init";
     }
 
     if (GlobalDump)
-      const_int1_11 = ConstantInt::get(mod->getContext(),
-                                       APInt(1, StringRef("-1"), 10)); // true
+      const_int1_11 = ConstantInt::get(
+          mod->getContext(), APInt(1, StringRef("-1"), 10));  // true
     else
-      const_int1_11 = ConstantInt::get(mod->getContext(),
-                                       APInt(1, StringRef("0"), 10)); // false
+      const_int1_11 = ConstantInt::get(
+          mod->getContext(), APInt(1, StringRef("0"), 10));  // false
 
-    Function *mainFunction = mod->getFunction(funcName);
+    Function* mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
       // Create signature: void func(int)
-      std::vector<Type *> FuncTy_8_args;
+      std::vector<Type*> FuncTy_8_args;
       FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
-      FunctionType *FuncTy_8 = FunctionType::get(
+      FunctionType* FuncTy_8 = FunctionType::get(
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
 
-      Function *mainFunction = Function::Create(
+      Function* mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
-      std::vector<Value *> void_16_params;
+      std::vector<Value*> void_16_params;
       void_16_params.push_back(const_int1_11);
       builder.CreateCall(mainFunction, void_16_params);
     }
   }
 
-  Function *currFunc = &F;
+  Function* currFunc = &F;
 
   // Are we in an isolated Region
   std::size_t found = currFunc->getName().find("__cere__");
@@ -196,40 +202,44 @@ bool OmpRegionDump::runOnFunction(Function &F) {
   if (!GlobalDump && regionIndex == -1) {
     return false;
   } else if (ReadFromFile) {
-    if (!(std::find(RegionsToDump.begin(), RegionsToDump.end(),
-                    currFunc->getName().str()) != RegionsToDump.end()))
+    if (!(std::find(
+              RegionsToDump.begin(), RegionsToDump.end(),
+              currFunc->getName().str()) != RegionsToDump.end()))
       return false;
   }
 
   // Create dump function
-  Function *func_dump = mod->getFunction("dump");
-  if (!func_dump) { // If function "dump" not found, creates it
-    FunctionType *DumpFuncTy = createDumpFunctionType(mod);
+  Function* func_dump = mod->getFunction("dump");
+  if (!func_dump) {  // If function "dump" not found, creates it
+    FunctionType* DumpFuncTy = createDumpFunctionType(mod);
     func_dump =
         Function::Create(DumpFuncTy, GlobalValue::ExternalLinkage, "dump", mod);
   }
 
   // Create after_dump function
-  Function *func_after_dump = mod->getFunction("after_dump");
-  if (!func_after_dump) { // If function "after_dump" not found, creates it
+  Function* func_after_dump = mod->getFunction("after_dump");
+  if (!func_after_dump) {  // If function "after_dump" not found, creates it
     // Create a void type
-    std::vector<Type *> FuncTy_12_args;
-    FuncTy_12_args.push_back(PointerType::get(IntegerType::get(mod->getContext(), 8), 0));
-    FunctionType *AfterDumpFuncTy = FunctionType::get(
+    std::vector<Type*> FuncTy_12_args;
+    FuncTy_12_args.push_back(
+        PointerType::get(IntegerType::get(mod->getContext(), 8), 0));
+    FunctionType* AfterDumpFuncTy = FunctionType::get(
         /*Result=*/Type::getVoidTy(mod->getContext()),
         /*Params=*/FuncTy_12_args,
         /*isVarArg=*/false);
     func_after_dump = Function::Create(
         AfterDumpFuncTy, GlobalValue::ExternalLinkage, "after_dump", mod);
   }
-  BasicBlock *PredBB = &currFunc->front();
+  BasicBlock* PredBB = &currFunc->front();
 
   ++RegionCounter;
 
   /* Insert dump calls (one for each invocation) */
   // Create arguments for the dump function
-  std::vector<Value *> funcParameter =
-  createDumpFunctionParameters(mod, currFunc, PredBB, InvocationsToDump[regionIndex]);
+  std::string loopName =
+      regionIndex >= 0 ? RegionsToDump[regionIndex] : currFunc->getName().str();
+  std::vector<Value*> funcParameter = createDumpFunctionParameters(
+      mod, currFunc, PredBB, InvocationsToDump[regionIndex], loopName);
 
   // Insert dump call just before the region
   CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
@@ -238,20 +248,22 @@ bool OmpRegionDump::runOnFunction(Function &F) {
   bool insertMarker = false;
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     if (insertMarker) {
-      Instruction *pinst = dyn_cast<Instruction>(&*I);
+      Instruction* pinst = dyn_cast<Instruction>(&*I);
 
       // Build after_dump params
       IRBuilder<> builder(pinst->getParent());
-      std::vector<Value *> ad_funcParameter;
-      ad_funcParameter.push_back(builder.CreateGlobalStringPtr(currFunc->getName()));
+      std::vector<Value*> ad_funcParameter;
+      ad_funcParameter.push_back(
+          builder.CreateGlobalStringPtr(currFunc->getName()));
 
       CallInst::Create(func_after_dump, ad_funcParameter, "", pinst);
       insertMarker = false;
     }
 
-    if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
+    if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
-        std::string functionCall = callInst->getCalledFunction()->getName().data();
+        std::string functionCall =
+            callInst->getCalledFunction()->getName().data();
         if (choosePutMarkerOnFunction(functionCall)) {
           insertMarker = true;
         }

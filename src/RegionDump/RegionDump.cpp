@@ -24,6 +24,21 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-dump"
+#include "RegionDump.h"
+
+#include <llvm/Demangle/Demangle.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+
+#include <fstream>
+#include <set>
+#include <sstream>
+#include <string>
+
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -31,53 +46,57 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <fstream>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-#include <set>
-#include <sstream>
-#include <string>
-
-#include "RegionDump.h"
 
 using namespace llvm;
 
-cl::opt<std::string> RegionName("region", cl::init("all"),
-                                cl::value_desc("String"),
-                                cl::desc("The region(s) to dump"));
-cl::opt<std::string> RegionsFilename("regions-file", cl::init(""),
-                                     cl::value_desc("File"),
-                                     cl::desc("File with regions to dump"));
+cl::opt<std::string> RegionName(
+    "region", cl::init("all"), cl::value_desc("String"),
+    cl::desc("The region(s) to dump"));
+cl::opt<std::string> RegionsFilename(
+    "regions-file", cl::init(""), cl::value_desc("File"),
+    cl::desc("File with regions to dump"));
 
-cl::opt<std::string> Invocations("invocation", cl::init("1"), cl::value_desc("String"),
-                        cl::desc("The invocation(s) to dump"));
+cl::opt<std::string> Invocations(
+    "invocation", cl::init("1"), cl::value_desc("String"),
+    cl::desc("The invocation(s) to dump"));
 
 /* Basic utility funcs */
 
 /* Used to split the different regions/invocations from args */
-std::vector<std::string> split (std::string &str, char delim) {
+std::vector<std::string>
+split(std::string& str, char delim)
+{
   std::vector<std::string> vec;
-    std::stringstream str_stream(str);
-    std::string item;
+  std::stringstream str_stream(str);
+  std::string item;
 
-    while (getline(str_stream, item, delim)) {
-        vec.push_back(item);
-    }
+  while (getline(str_stream, item, delim)) {
+    vec.push_back(item);
+  }
 
-    return vec;
+  return vec;
 }
 
 /*
-* Iterates over RegionsToDump looking for Region. If it's found, return at which index.
-* Otherwise, return -1
-*/
-int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region) {
-  for(int i=0; i<RegionsToDump.size(); i++) {
-    if(Region.compare(RegionsToDump[i]) == 0) {
+ * Iterates over RegionsToDump looking for Region. If it's found, return at
+ * which index. Otherwise, return -1
+ */
+int
+dumpRequested(std::vector<std::string> RegionsToDump, std::string Region)
+{
+  // Region can be mangled (C++) while the user often provides the demangled
+  // name (e.g. "__cere__compute_region"). Try a few matching strategies to
+  // make capture work with either representation.
+  std::string demangled = llvm::demangle(Region);
+  for (int i = 0; i < RegionsToDump.size(); i++) {
+    const std::string& requested = RegionsToDump[i];
+    if (Region.compare(requested) == 0) {
+      return i;
+    }
+    if (Region.find(requested) != std::string::npos) {
+      return i;
+    }
+    if (!demangled.empty() && demangled.find(requested) != std::string::npos) {
       return i;
     }
   }
@@ -90,11 +109,13 @@ namespace llvm {
 
 /// Create signature for the dump function
 /// void dump(char*, int, int*, int, ...)
-FunctionType *createDumpFunctionType(Module *mod) {
-  PointerType *PointerTy_0 =
+FunctionType*
+createDumpFunctionType(Module* mod)
+{
+  PointerType* PointerTy_0 =
       PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
 
-  std::vector<Type *> FuncTy_args;
+  std::vector<Type*> FuncTy_args;
 
   // Char* for the region name
   FuncTy_args.push_back(PointerTy_0);
@@ -103,7 +124,7 @@ FunctionType *createDumpFunctionType(Module *mod) {
   // Integer for the number of va args
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
 
-  FunctionType *tmp = FunctionType::get(
+  FunctionType* tmp = FunctionType::get(
       /*Result=*/Type::getVoidTy(mod->getContext()),
       /*Params=*/FuncTy_args,
       /*isVarArg=*/true);
@@ -111,7 +132,9 @@ FunctionType *createDumpFunctionType(Module *mod) {
 }
 
 /// \brief Create a pointer to string \p s
-Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
+Value*
+createStringValue(Module* mod, IRBuilder<>* b, StringRef s)
+{
   errs() << mod->getModuleIdentifier() << "\n";
   return b->CreateGlobalStringPtr(s);
 }
@@ -121,24 +144,23 @@ Value *createStringValue(Module *mod, IRBuilder<> *b, StringRef s) {
 /// char* invocations
 /// int arg_count
 /// ... variables used by the original region
-std::vector<Value *> createDumpFunctionParameters(Module *mod,
-                                                  Function *currFunc,
-                                                  BasicBlock *PredBB,
-                                                  std::string invocations) {
-
+std::vector<Value*>
+createDumpFunctionParameters(
+    Module* mod, Function* currFunc, BasicBlock* PredBB,
+    std::string invocations, const std::string& loopName)
+{
   // Position builder before the terminator of PredBB
   IRBuilder<> builder(PredBB->getTerminator());
 
   /* Push VLA from outlining function */
   // The requested region has been outlined into a function.
   // Give adresses of its arguments to the dump function.
-  std::vector<Value *> params;
+  std::vector<Value*> params;
   for (Function::arg_iterator args = currFunc->arg_begin();
        args != currFunc->arg_end(); args++) {
-
     // If argument is a value get its address
     if (args->getType()->isPointerTy() == false) {
-      AllocaInst *ptr_args =
+      AllocaInst* ptr_args =
           builder.CreateAlloca(args->getType(), nullptr, args->getName());
 
       builder.CreateStore(args, ptr_args);
@@ -153,7 +175,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
 
     // If argument is already a pointer, just give the adress
     else {
-      Argument *ptr_args = args;
+      Argument* ptr_args = args;
       if ((ptr_args->getName().str()).empty()) {
         std::ostringstream ss;
         ss << params.size();
@@ -165,7 +187,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
 
   /* Push first arguments */
   // 3. arg_count
-  ConstantInt *nbParam =
+  ConstantInt* nbParam =
       ConstantInt::get(mod->getContext(), APInt(32, params.size(), 10));
   params.insert(params.begin(), nbParam);
 
@@ -173,9 +195,9 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
   params.insert(params.begin(), createStringValue(mod, &builder, invocations));
 
   // 1.loop_name
-  std::string tmp = currFunc->getName().str(); // Convert the regionName as a C type string
+  std::string tmp = loopName.empty() ? currFunc->getName().str() : loopName;
   params.insert(params.begin(), createStringValue(mod, &builder, tmp));
 
   return params;
 }
-} // namespace llvm
+}  // namespace llvm

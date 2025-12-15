@@ -26,31 +26,30 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <errno.h>
+#include <llvm/IR/Instructions.h>
+
+#include <fstream>
+#include <sstream>
+
+#include "RegionInstrumentation.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
-#include <llvm/IR/Instructions.h>
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <fstream>
-#include <sstream>
-#include <errno.h>
-#include "RegionInstrumentation.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 
 #undef LLVM_BINDIR
 #include "config.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/Dominators.h"
 
 using namespace llvm;
-enum {
-  VIVO,
-  VITRO
-};
+enum { VIVO, VITRO };
 
 #define DEBUG_TYPE "region-instrumentation"
 STATISTIC(LoopCounter, "Counts number of regions instrumented");
@@ -73,13 +72,14 @@ struct LoopRegionInstrumentation : public FunctionPass {
   bool ReadFromFile;
   bool MeasureAppli;
   std::vector<std::string> LoopsToInstrument;
-  LoopInfo *LI; // The current loop information
+  LoopInfo* LI;  // The current loop information
 
-  explicit LoopRegionInstrumentation(unsigned numLoops = ~0,
-                                     const std::string &regionName = "")
+  explicit LoopRegionInstrumentation(
+      unsigned numLoops = ~0, const std::string& regionName = "")
       : FunctionPass(ID), NumLoops(numLoops), RegionName(regionName),
         Mode(VIVO), Separator("_"), RegionFile(LoopsFilename),
-        RequestedInvoc(Invocation), MeasureAppli(AppMeasure) {
+        RequestedInvoc(Invocation), MeasureAppli(AppMeasure)
+  {
     if (Replay)
       Mode = VITRO;
     if (regionName.empty())
@@ -107,45 +107,61 @@ struct LoopRegionInstrumentation : public FunctionPass {
     }
   }
 
-  virtual bool runOnFunction(Function &F);
-  std::string createFunctionName(Loop *L, Function *oldFunction);
-  bool visitLoop(Loop *L, Module *mod);
+  virtual bool runOnFunction(Function& F);
+  std::string createFunctionName(Loop* L, Function* oldFunction);
+  bool visitLoop(Loop* L, Module* mod);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-}
+}  // namespace
 
 char LoopRegionInstrumentation::ID = 0;
-static RegisterPass<LoopRegionInstrumentation>
-X("region-instrumentation", "Instrument regions with probes", false, false);
+static RegisterPass<LoopRegionInstrumentation> X(
+    "region-instrumentation", "Instrument regions with probes", false, false);
 
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
 std::string
-LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
+LoopRegionInstrumentation::createFunctionName(Loop* L, Function* oldFunction)
+{
   // Get current module
-  Module *mod = oldFunction->getParent();
+  Module* mod = oldFunction->getParent();
   std::string module_name = mod->getModuleIdentifier();
 
   std::string newFunctionName;
   std::ostringstream oss;
-  BasicBlock *firstBB = L->getBlocks()[0];
+  BasicBlock* firstBB = L->getBlocks()[0];
 
-  if (MDNode *firstN = firstBB->front().getMetadata("dbg")) {
-    DILocation * firstLoc = (DILocation*) firstN;
-    oss << firstLoc->getLine();
-    std::string firstLine = oss.str();
-    std::string Original_location = firstLoc->getFilename().str();
-    std::string File = module_name;
-    std::string path = firstLoc->getDirectory().data();
+  if (MDNode* firstN = firstBB->front().getMetadata("dbg")) {
+    auto* firstLoc = dyn_cast<DILocation>(firstN);
+    if (firstLoc) {
+      oss << firstLoc->getLine();
+      std::string firstLine = oss.str();
+      // Use filename if available, else fallback to module name
+      StringRef filenameRef = firstLoc->getFilename();
+      // Some debug infos provide a non-empty length with a null data pointer;
+      // fall back to the module identifier in that case to avoid
+      // std::string(nullptr) crashes.
+      std::string fileName =
+          filenameRef.empty() || filenameRef.data() == nullptr
+              ? module_name
+              : filenameRef.str();
 
-    newFunctionName = "__cere__" + removeExtension(File) + Separator +
-                      oldFunction->getName().str() + Separator + firstLine;
-    newFunctionName = updateFileFormat(newFunctionName);
+      newFunctionName = "__cere__" + removeExtension(fileName) + Separator +
+                        oldFunction->getName().str() + Separator + firstLine;
+      newFunctionName = updateFileFormat(newFunctionName);
+    }
+  }
+
+  // If no debug info, fallback to a simple stable name
+  if (newFunctionName.empty()) {
+    newFunctionName =
+        "__cere__" + oldFunction->getName().str();  // still unique per func
   }
 
   return newFunctionName;
@@ -153,14 +169,16 @@ LoopRegionInstrumentation::createFunctionName(Loop *L, Function *oldFunction) {
 
 /// \brief This function find if the string \p newFunctionName is present in
 /// the regions file
-bool LoopRegionInstrumentation::runOnFunction(Function &F) {
+bool
+LoopRegionInstrumentation::runOnFunction(Function& F)
+{
   prepareInstrumentation(F, RegionFile, MeasureAppli, Mode, RequestedInvoc);
 
-  Module *mod = F.getParent();
+  Module* mod = F.getParent();
   // If we want to instrument a region, visit every loops.
   if (!MeasureAppli) {
-    LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    std::vector<Loop *> SubLoops(LI.begin(), LI.end());
+    LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    std::vector<Loop*> SubLoops(LI.begin(), LI.end());
     for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
       visitLoop(SubLoops[i], mod);
   }
@@ -168,9 +186,11 @@ bool LoopRegionInstrumentation::runOnFunction(Function &F) {
 }
 
 /// \brief Runs on each loop and inserts probes around the requested ones
-bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
+bool
+LoopRegionInstrumentation::visitLoop(Loop* L, Module* mod)
+{
   // Get current function
-  Function *currFunc = L->getHeader()->getParent();
+  Function* currFunc = L->getHeader()->getParent();
 
   // Ensure that we are working on outermost loops
   if (L->getLoopDepth() > 1)
@@ -214,38 +234,41 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
 
   ++LoopCounter;
   // Create start and stop functions signatures
-  FunctionType *FuncTy = createFunctionType(mod);
-  Function *func_start = createFunction(FuncTy, mod, "cere_markerStartRegion");
-  Function *func_stop = createFunction(FuncTy, mod, "cere_markerStopRegion");
+  FunctionType* FuncTy = createFunctionType(mod);
+  Function* func_start = createFunction(FuncTy, mod, "cere_markerStartRegion");
+  Function* func_stop = createFunction(FuncTy, mod, "cere_markerStopRegion");
 
   // Get predecessor and exit basic blocks of the current loop
-  BasicBlock *PredBB = L->getLoopPredecessor();
-  SmallVector<BasicBlock *, 8> exitblocks;
+  BasicBlock* PredBB = L->getLoopPredecessor();
+  SmallVector<BasicBlock*, 8> exitblocks;
   L->getExitBlocks(exitblocks);
   if (PredBB == NULL || exitblocks.size() == 0) {
     errs() << "Can't find Prdecessor or successor basick block for region "
            << RegionName << "\n";
-    LLVM_DEBUG(dbgs() << "Can't find predecessor or successor basick block for \
-                    region " << RegionName << "\n");
+    LLVM_DEBUG(
+        dbgs() << "Can't find predecessor or successor basick block for \
+                    region "
+               << RegionName << "\n");
     return false;
   }
-  std::vector<Value *> funcParameter;
+  std::vector<Value*> funcParameter;
 
   // If requested invocation to measure is different than 0. It means we want
   // to record a particular invocation. We must then create a counter to count
   // the current invocation of the region
   if (RequestedInvoc != 0) {
     // Create invocation counter
-    GlobalVariable *gvar_int32_count = create_invocation_counter(mod);
+    GlobalVariable* gvar_int32_count = create_invocation_counter(mod);
 
 
-     // Load the invocation counter
+    // Load the invocation counter
 #if LLVM_VERSION_MAJOR >= 9
-     // Its type is int32 as per the definition of create_invocation_counter
-    LoadInst *int32_0 =
-        new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, &PredBB->back());
+    // Its type is int32 as per the definition of create_invocation_counter
+    LoadInst* int32_0 = new LoadInst(
+        IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false,
+        &PredBB->back());
 #else
-    LoadInst *int32_0 =
+    LoadInst* int32_0 =
         new LoadInst(gvar_int32_count, "", false, &PredBB->back());
 #endif
 
@@ -255,12 +278,12 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
     int32_0->setAlignment(4);
 #endif
     // Increments it
-    ConstantInt *const_int32_1 =
+    ConstantInt* const_int32_1 =
         ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
-    BinaryOperator *int32_inc = BinaryOperator::Create(
+    BinaryOperator* int32_inc = BinaryOperator::Create(
         Instruction::Add, int32_0, const_int32_1, "inc", &PredBB->back());
     // Save the value
-    StoreInst *void_0 =
+    StoreInst* void_0 =
         new StoreInst(int32_inc, gvar_int32_count, false, &PredBB->back());
 #if LLVM_VERSION_MAJOR >= 10
     int32_0->setAlignment(llvm::Align(4));
@@ -270,11 +293,12 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
 
     // Load the updated invocation counter
 #if LLVM_VERSION_MAJOR >= 9
-     // Its type is int32 as per the definition of create_invocation_counter
-    LoadInst *int32_1 =
-        new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, &PredBB->back());
+    // Its type is int32 as per the definition of create_invocation_counter
+    LoadInst* int32_1 = new LoadInst(
+        IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false,
+        &PredBB->back());
 #else
-    LoadInst *int32_1 =
+    LoadInst* int32_1 =
         new LoadInst(gvar_int32_count, "", false, &PredBB->back());
 #endif
 
@@ -285,14 +309,13 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
 #endif
 
 
-
     // Create function parameters
-    funcParameter = createFunctionParameters(mod, newFunctionName, Mode,
-                                             RequestedInvoc, PredBB, int32_1);
+    funcParameter = createFunctionParameters(
+        mod, newFunctionName, Mode, RequestedInvoc, PredBB, int32_1);
   } else {
     // Create function parameters
-    funcParameter =
-        createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, PredBB);
+    funcParameter = createFunctionParameters(
+        mod, newFunctionName, Mode, RequestedInvoc, PredBB);
   }
 
 
@@ -301,8 +324,8 @@ bool LoopRegionInstrumentation::visitLoop(Loop *L, Module *mod) {
   CallInst::Create(func_start, funcParameter, "", &PredBB->back());
   // Add the call of cere stop probe as the last instruction of all exit
   // basic block
-  for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
-                                               E = exitblocks.end();
+  for (SmallVectorImpl<BasicBlock*>::iterator I = exitblocks.begin(),
+                                              E = exitblocks.end();
        I != E; ++I) {
     CallInst::Create(func_stop, funcParameter, "", &((*I)->back()));
   }

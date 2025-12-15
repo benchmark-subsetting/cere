@@ -25,6 +25,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+
+#include <fstream>
+#include <set>
+#include <sstream>
+#include <string>
+
+#include "RegionDump.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -34,18 +47,6 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <fstream>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-#include <set>
-#include <sstream>
-#include <string>
-
-#include "RegionDump.h"
 
 #define DEBUG_TYPE "region-dump"
 
@@ -77,27 +78,28 @@ struct LoopRegionDump : public FunctionPass {
 
   explicit LoopRegionDump(unsigned numLoops = ~0)
       : FunctionPass(ID), NumLoops(numLoops), RegionString(RegionName),
-        InvocationString(Invocations), GlobalDump(false), ReadFromFile(false) {
+        InvocationString(Invocations), GlobalDump(false), ReadFromFile(false)
+  {
     if (RegionToDump == "all")
       GlobalDump = true;
 
     // If regions are specified in CLI, take precedence over regions file
-    if(!RegionName.empty()) {
+    if (!RegionName.empty()) {
       /* Parse regions list */
       RegionsToDump = split(RegionName, ';');
 
       /* Parse invocations list */
       // If not empty, read invocation string
-      if(!InvocationString.empty()) {
+      if (!InvocationString.empty()) {
         // Parse all region substrings
         std::vector<std::string> tmp_Strings = split(InvocationString, ';');
-        for(std::string i : tmp_Strings) {
+        for (std::string i : tmp_Strings) {
           InvocationsToDump.push_back(i);
         }
       }
       // Else, capture every first invocation by default
       else {
-        for(int i=0; i<RegionsToDump.size(); i++) {
+        for (int i = 0; i < RegionsToDump.size(); i++) {
           InvocationsToDump.push_back("1");
         }
       }
@@ -109,58 +111,60 @@ struct LoopRegionDump : public FunctionPass {
         std::string line;
         std::ifstream loopstream(RegionsFilename.c_str(), std::ios::in);
         if (loopstream.is_open()) {
-          while (getline(loopstream, line))
-            RegionsToDump.push_back(line);
+          while (getline(loopstream, line)) RegionsToDump.push_back(line);
           ReadFromFile = true;
         }
       }
-
     }
   }
 
-  virtual bool runOnFunction(Function &F);
-  bool visitLoop(Loop *L, Module *mod);
+  virtual bool runOnFunction(Function& F);
+  bool visitLoop(Loop* L, Module* mod);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-} // namespace
+}  // namespace
 
 char LoopRegionDump::ID = 0;
 bool LoopRegionDump::dump_init_inserted = false;
 static RegisterPass<LoopRegionDump> X("region-dump", "Dump regions");
 
 /// \brief Called on each function int the current Module
-bool LoopRegionDump::runOnFunction(Function &F) {
-  Module *mod = F.getParent();
+bool
+LoopRegionDump::runOnFunction(Function& F)
+{
+  Module* mod = F.getParent();
 
   // On Fortran code instrument on MAIN__ (after libgfortran init)
   // On other code instrument on main
-  Function *Main = mod->getFunction("MAIN__");
+  Function* Main = mod->getFunction("MAIN__");
   if (!Main) {
     Main = mod->getFunction("main");
   }
-  // Only insert dump_init call once, even if runOnFunction is called multiple times
+  // Only insert dump_init call once, even if runOnFunction is called multiple
+  // times
   if (Main && !dump_init_inserted) {
     dump_init_inserted = true;  // Mark as inserted
     IRBuilder<> builder(&(Main->front().front()));
 
     std::string funcName;
-    if(split(Invocations, ',').size() > 1 || split(RegionName, ';').size() > 1) {
+    if (split(Invocations, ',').size() > 1 ||
+        split(RegionName, ';').size() > 1) {
       funcName = "multi_dump_init";
-    }
-    else {
+    } else {
       funcName = "dump_init";
     }
 
-    Function *mainFunction = mod->getFunction(funcName);
+    Function* mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
       // Create signature: void func(void)
-      std::vector<Type *> FuncTy_8_args;
+      std::vector<Type*> FuncTy_8_args;
       // dump_init and multi_dump_init take no parameters
-      FunctionType *FuncTy_8 = FunctionType::get(
+      FunctionType* FuncTy_8 = FunctionType::get(
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
@@ -169,26 +173,29 @@ bool LoopRegionDump::runOnFunction(Function &F) {
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
     }
 
-    // Always create the call to dump_init, whether the function already existed or not
-    std::vector<Value *> void_16_params;
+    // Always create the call to dump_init, whether the function already existed
+    // or not
+    std::vector<Value*> void_16_params;
     builder.CreateCall(mainFunction, void_16_params);
   }
 
-  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   // Get all loops int the current function and visit them
-  std::vector<Loop *> SubLoops(LI.begin(), LI.end());
+  std::vector<Loop*> SubLoops(LI.begin(), LI.end());
   for (unsigned i = 0, e = SubLoops.size(); i != e; ++i)
     visitLoop(SubLoops[i], mod);
   return true;
 }
 
-bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
+bool
+LoopRegionDump::visitLoop(Loop* L, Module* mod)
+{
   // Ensure we are working only on outermost loops
   if (L->getLoopDepth() > 1)
     return false;
 
   // Get the function we are in
-  Function *currFunc = L->getHeader()->getParent();
+  Function* currFunc = L->getHeader()->getParent();
 
   // Are we in an isolated Region
   std::size_t found = currFunc->getName().find("__cere__");
@@ -200,26 +207,28 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   if (!GlobalDump && regionIndex == -1) {
     return false;
   } else if (ReadFromFile) {
-    if (!(std::find(RegionsToDump.begin(), RegionsToDump.end(),
-                    currFunc->getName().str()) != RegionsToDump.end()))
+    if (!(std::find(
+              RegionsToDump.begin(), RegionsToDump.end(),
+              currFunc->getName().str()) != RegionsToDump.end()))
       return false;
   }
 
   /* Create dump function */
-  Function *func_dump = mod->getFunction("dump");
-  if (!func_dump) { // If function "dump" not found, creates it
-    FunctionType *DumpFuncTy = createDumpFunctionType(mod);
+  Function* func_dump = mod->getFunction("dump");
+  if (!func_dump) {  // If function "dump" not found, creates it
+    FunctionType* DumpFuncTy = createDumpFunctionType(mod);
     func_dump =
         Function::Create(DumpFuncTy, GlobalValue::ExternalLinkage, "dump", mod);
   }
 
   /* Create after_dump function */
-  Function *func_after_dump = mod->getFunction("after_dump");
-  if (!func_after_dump) { // If function "after_dump" not found, creates it
+  Function* func_after_dump = mod->getFunction("after_dump");
+  if (!func_after_dump) {  // If function "after_dump" not found, creates it
     // Create a params vector (char *)
-    std::vector<Type *> FuncTy_12_args;
-    FuncTy_12_args.push_back(PointerType::get(IntegerType::get(mod->getContext(), 8), 0));
-    FunctionType *AfterDumpFuncTy = FunctionType::get(
+    std::vector<Type*> FuncTy_12_args;
+    FuncTy_12_args.push_back(
+        PointerType::get(IntegerType::get(mod->getContext(), 8), 0));
+    FunctionType* AfterDumpFuncTy = FunctionType::get(
         /*Result=*/Type::getVoidTy(mod->getContext()),
         /*Params=*/FuncTy_12_args,
         /*isVarArg=*/false);
@@ -227,35 +236,39 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
         AfterDumpFuncTy, GlobalValue::ExternalLinkage, "after_dump", mod);
   }
   // Get predecessor loop basic block
-  BasicBlock *PredBB = L->getLoopPredecessor();
+  BasicBlock* PredBB = L->getLoopPredecessor();
   // Get all exit blocks
-  SmallVector<BasicBlock *, 8> exitblocks;
+  SmallVector<BasicBlock*, 8> exitblocks;
   L->getExitBlocks(exitblocks);
 
   if (PredBB == NULL || exitblocks.size() == 0)
     return false;
 
-   ++RegionCounter;
+  ++RegionCounter;
 
   /* Insert dump calls (one for each invocation) */
   // Create arguments for the dump function
-  std::vector<Value *> funcParameter =
-  createDumpFunctionParameters(mod, currFunc, PredBB, InvocationsToDump[regionIndex]);
+  std::string loopName =
+      regionIndex >= 0 ? RegionsToDump[regionIndex] : currFunc->getName().str();
+  std::vector<Value*> funcParameter = createDumpFunctionParameters(
+      mod, currFunc, PredBB, InvocationsToDump[regionIndex], loopName);
 
   // Insert dump call just before the region (before the terminator)
   CallInst::Create(func_dump, funcParameter, "", PredBB->getTerminator());
 
   /* Insert after_dump calls (once) in each exit blocks */
-  for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
-                                               E = exitblocks.end();
+  for (SmallVectorImpl<BasicBlock*>::iterator I = exitblocks.begin(),
+                                              E = exitblocks.end();
        I != E; ++I) {
     // Build after_dump params
     IRBuilder<> builder(*I);
-    std::vector<Value *> ad_funcParameter;
-    ad_funcParameter.push_back(builder.CreateGlobalStringPtr(currFunc->getName()));
+    std::vector<Value*> ad_funcParameter;
+    ad_funcParameter.push_back(
+        builder.CreateGlobalStringPtr(currFunc->getName()));
 
     // Insert call before the terminator to preserve basic block structure
-    CallInst::Create(func_after_dump, ad_funcParameter, "", (*I)->getTerminator());
+    CallInst::Create(
+        func_after_dump, ad_funcParameter, "", (*I)->getTerminator());
   }
 
   return true;

@@ -19,6 +19,7 @@
 import argparse
 import os
 import sys
+import shlex
 from cere.vars import *
 import cere.lec as lec
 import cere.lel as lel
@@ -144,7 +145,7 @@ def run(lang, argv):
     # for instance where build systems such as CMake and autotools build a bunch of test
     # programs to validate the compiler.
     try:
-      cere_args = os.environ["CERE_MODE"].split()
+      cere_args = shlex.split(os.environ["CERE_MODE"])
     except KeyError:
       print("Compiling in normal mode (CERE_MODE undefined)")
       argv = " ".join(argv[1:])
@@ -162,7 +163,12 @@ def run(lang, argv):
     #Parse args
     args = parser.parse_known_args(cere_args + sys.argv[1:])
     args2 = incl_parser.parse_known_args(args[1])
-    if args[0].c:
+
+    has_sources = any(os.path.splitext(arg)[1] in SOURCE_EXTENSIONS for arg in args2[1])
+
+    # Always compile when we have source files to ensure LLVM passes run,
+    # even if the user did not pass -c (compile + link in one command).
+    if args[0].c or has_sources:
         lec.compile(args, args2, COMPILER)
-    else:
+    if not args[0].c:
         lel.link(args, COMPILER)

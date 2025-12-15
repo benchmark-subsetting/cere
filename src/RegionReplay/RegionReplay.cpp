@@ -32,6 +32,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 
+#include <cctype>
 #include <fstream>
 #include <set>
 #include <sstream>
@@ -97,7 +98,11 @@ createLoadFunctionParameters(
 
   // Get name of the loop to load
   IRBuilder<> builder(B);
-  Value* const_ptr_11 = builder.CreateGlobalStringPtr(currFunc->getName());
+  std::string loopName = RegionName;
+  if (loopName.empty() || loopName == "all") {
+    loopName = currFunc->getName().str();
+  }
+  Value* const_ptr_11 = builder.CreateGlobalStringPtr(loopName);
 
   // The invocation to load
   ConstantInt* iterToLoad =
@@ -133,6 +138,19 @@ createLoadFunctionParameters(
 Function*
 createWrapperFunction(Function* F, Module* M)
 {
+  // Prefer the requested region name to avoid C++ mangled wrappers
+  std::string baseName = RegionName;
+  if (baseName.empty() || baseName == "all") {
+    baseName = F->getName().str();
+  }
+  // Sanitize to a C-friendly symbol; realmain.c expects run<region>
+  for (char& c : baseName) {
+    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+      c = '_';
+    }
+  }
+  std::string wrapperName = "run" + baseName;
+
   // Create a void type
   std::vector<Type*> FuncTy_8_args;
   FunctionType* FuncTy_8 = FunctionType::get(
@@ -140,8 +158,8 @@ createWrapperFunction(Function* F, Module* M)
       /*Params=*/FuncTy_8_args,
       /*isVarArg=*/false);
   // Create the wrapper function
-  Function* tmp = Function::Create(
-      FuncTy_8, GlobalValue::ExternalLinkage, "run" + F->getName().str(), M);
+  Function* tmp =
+      Function::Create(FuncTy_8, GlobalValue::ExternalLinkage, wrapperName, M);
   return tmp;
 }
 

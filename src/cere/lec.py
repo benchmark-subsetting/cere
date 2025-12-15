@@ -483,7 +483,8 @@ def compile(args, args2, new_compiler):
 
     for SOURCE in SOURCES:
         BASE, ext = os.path.splitext(SOURCE)
-        OBJECT = args[0].o if args[0].o else BASE + ".o"
+        use_custom_output = args[0].c and args[0].o
+        OBJECT = args[0].o if use_custom_output else BASE + ".o"
 
         # call mode_function
         first_compil(INCLUDES, SOURCE, BASE, ext, COMPIL_OPT)

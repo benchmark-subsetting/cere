@@ -2,10 +2,15 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-BUILD="$ROOT/examples/cpp23/build"
+# Allow overriding the build directory to avoid permission issues
+BUILD="${CERE_BUILD_DIR:-$ROOT/examples/cpp23/build}"
 
 mkdir -p "${BUILD}"
 cd "${BUILD}"
+
+# Work on local copies to avoid permissions issues in mounted volumes
+cp -f "${ROOT}/examples/cpp23/example.cpp" .
+cp -f "${ROOT}/examples/cpp23/rdtsc_support.cpp" .
 
 export PYTHONPATH="${ROOT}/src:/usr/local/lib/python3.12/site-packages"
 export PATH="${ROOT}/src:/usr/local/bin:${PATH}"
@@ -13,7 +18,8 @@ LIBDIR="${CERE_LIBDIR:-/usr/local/lib}"
 export CERE_LIBDIR="${LIBDIR}"
 export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/llvm-16/lib:${LIBDIR}:${LD_LIBRARY_PATH:-}"
 
-BUILD_CMD="cerec++ -g -std=gnu++20 ${ROOT}/examples/cpp23/example.cpp ${ROOT}/examples/cpp23/rdtsc_support.cpp -o example -lstdc++"
+# Avoid PIE so the replay linker can consume the captured symbol file
+BUILD_CMD="cerec++ -g -std=gnu++20 -fno-pie -no-pie ${BUILD}/example.cpp ${BUILD}/rdtsc_support.cpp -o example -lstdc++"
 
 cere configure \
   --build-cmd="${BUILD_CMD}" \
