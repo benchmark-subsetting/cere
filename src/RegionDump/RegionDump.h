@@ -23,6 +23,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <string>
+#include <vector>
 
 /* Utility funcs */
 std::vector<std::string> split(std::string& str, char delim);
@@ -30,6 +32,13 @@ int dumpRequested(std::vector<std::string> RegionsToDump, std::string Region);
 
 /* LLVM related funcs */
 namespace llvm {
+
+class Module;
+class Function;
+class BasicBlock;
+class Value;
+class Constant;
+class FunctionType;
 
 /// Creates parameters for the dump function
 /// char* loop_name
