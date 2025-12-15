@@ -93,7 +93,8 @@ def dump_fun(mode_opt, BINARY, COMPIL_OPT):
     Dump mode
     Call the linker and copy the original binary
     '''
-    safe_system(("{link} {opts} -o {binary} {libdir} " +
+    # Force -O0 to prevent linker from removing dump calls
+    safe_system(("{link} -O0 {opts} -o {binary} {libdir} " +
                  "-Wl,-z,now -lcere_dump -ldl"
     ).format(link=COMPILER, binary=BINARY,
              opts=COMPIL_OPT, Root=PROJECT_ROOT,libdir=LIBDIR_FLAGS))

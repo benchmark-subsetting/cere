@@ -166,8 +166,11 @@ void tracer_lock_mem(pid_t pid) {
   bool first_pages = true;
   char *tmpstr = NULL;
   char *executable = NULL;
+  char *executable_basename = NULL;
   void *protect_offset = NULL;
   long long unsigned int permissions;
+  int total_protected = 0;
+  int total_skipped = 0;
 
   while (fgets(buf, BUFSIZ, maps)) {
     void *start, *end;
@@ -191,6 +194,11 @@ void tracer_lock_mem(pid_t pid) {
       executable = malloc(strlen(tmpstr-1)*sizeof(char));
       memcpy(executable, tmpstr, strlen(tmpstr-1)*sizeof(char));
       executable[strlen(executable)-1] = 0;
+
+      // Keep a copy of the executable name to skip it later
+      executable_basename = strdup(executable);
+      debug_print("Main executable: %s\n", executable_basename);
+
       // ... and inspect the ELF to determine where to start protecting pages
       protect_offset = get_protect_offset(executable);
       if(protect_offset == NULL)
@@ -203,42 +211,88 @@ void tracer_lock_mem(pid_t pid) {
     if(start < protect_offset)
         continue;
 
-    /* Ignore libdump mem zones  */
-    if (strstr(buf, "libcere_dump.so") != NULL)
+    /* CRITICAL: Ignore main executable to avoid protecting code that needs to run after TRAP_LOCK_MEM */
+    if (executable_basename && strstr(buf, executable_basename) != NULL) {
+      debug_print("SKIP main executable: %s", buf);
+      total_skipped++;
       continue;
+    }
+
+    /* Ignore libdump mem zones  */
+    if (strstr(buf, "libcere_dump.so") != NULL) {
+      debug_print("SKIP libcere_dump.so: %s", buf);
+      total_skipped++;
+      continue;
+    }
 
     /* Ignore libc pages  */
-    if (strstr(buf, "linux-gnu") != NULL)
+    if (strstr(buf, "linux-gnu") != NULL) {
+      debug_print("SKIP libc (linux-gnu): %s", buf);
+      total_skipped++;
       continue;
+    }
 
     /* Ignore vsyscall special mem zones  */
-    if (strstr(buf, "vsyscall") != NULL)
+    if (strstr(buf, "vsyscall") != NULL) {
+      debug_print("SKIP vsyscall: %s", buf);
+      total_skipped++;
       continue;
+    }
 
     /* Ignore libdump vdso zones  */
-    if (strstr(buf, "vdso") != NULL)
+    if (strstr(buf, "vdso") != NULL) {
+      debug_print("SKIP vdso: %s", buf);
+      total_skipped++;
       continue;
+    }
 
     /* Ignore vvar zone (cf. https://lkml.org/lkml/2015/3/12/602) */
-    if (strstr(buf, "vvar") != NULL)
+    if (strstr(buf, "vvar") != NULL) {
+      debug_print("SKIP vvar: %s", buf);
+      total_skipped++;
       continue;
+    }
+
+    /* Ignore stack - CRITICAL: stack must remain accessible for function returns! */
+    if (strstr(buf, "[stack]") != NULL) {
+      debug_print("SKIP stack: %s", buf);
+      total_skipped++;
+      continue;
+    }
 
     /* Ignore alreay protected pages */
     if (strstr(buf, "---p") != NULL) {
       // Already protected pages are a special case, as we don't want to unprotect
       // them after the codelet
+      debug_print("SKIP already protected: %s", buf);
+      total_skipped++;
       assert(addrs_counter < 65536);
+      continue;
+    }
+
+    /* CRITICAL: Skip anonymous memory regions - they often contain GOT/PLT and other critical data */
+    /* Anonymous regions are those with " 00:00 0 " and no path */
+    if (strstr(buf, " 00:00 0 ") != NULL && strchr(buf, '/') == NULL &&
+        strstr(buf, "[heap]") == NULL && strstr(buf, "[stack]") == NULL &&
+        strstr(buf, "[vvar]") == NULL && strstr(buf, "[vdso]") == NULL &&
+        strstr(buf, "[vsyscall]") == NULL) {
+      debug_print("SKIP anonymous region (likely GOT/PLT): %s", buf);
+      total_skipped++;
       continue;
     }
 
     assert(addrs_counter < 65536);
 
     /* This will be protected : save adddresses/permissions to unprotect later */
+    debug_print("PROTECT: %s", buf);
+    total_protected++;
     debug_print("round_to_page=%p\n", round_to_page(start));
     get_permissions_from_buf(&(buf[0]), addrs_permissions+addrs_counter);
     addresses[addrs_counter++] = round_to_page(start);
     addresses[addrs_counter++] = end;
   }
+
+  debug_print("LOCK MEM SUMMARY: protected=%d, skipped=%d\n", total_protected, total_skipped);
 
   /* Protect all pages in addresses */
   int tmp_counter = addrs_counter;

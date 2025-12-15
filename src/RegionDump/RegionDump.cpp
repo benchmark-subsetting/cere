@@ -126,7 +126,8 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
                                                   BasicBlock *PredBB,
                                                   std::string invocations) {
 
-  IRBuilder<> builder(PredBB);
+  // Position builder before the terminator of PredBB
+  IRBuilder<> builder(PredBB->getTerminator());
 
   /* Push VLA from outlining function */
   // The requested region has been outlined into a function.
@@ -140,7 +141,7 @@ std::vector<Value *> createDumpFunctionParameters(Module *mod,
       AllocaInst *ptr_args =
           builder.CreateAlloca(args->getType(), nullptr, args->getName());
 
-      new StoreInst(args, ptr_args, false, &PredBB->back());
+      builder.CreateStore(args, ptr_args);
       // If this argument does not have a name, create one
       if ((ptr_args->getName().str()).empty()) {
         std::ostringstream ss;

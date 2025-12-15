@@ -54,5 +54,6 @@ void unfollow_threads(pid_t pid);
 event_t wait_event(pid_t wait_for);
 void stop_all_except(pid_t pid);
 void continue_all(void);
+void continue_all_cont(void);
 
 #endif /* __PTRACE__H */

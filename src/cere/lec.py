@@ -96,6 +96,11 @@ def dump_fun(mode_opt, BASE, regions):
     by passing options like --invocation
     In link mode: Call the linker and copy the original binary
     """
+    # In dump mode, we must disable optimizations to preserve dump calls
+    global BACKEND_FLAGS
+    if not BACKEND_FLAGS or "-O" not in BACKEND_FLAGS:
+        BACKEND_FLAGS = "-O0"
+
     temp = ""
     print("Compiling dump mode")
     if mode_opt.region:

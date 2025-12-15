@@ -200,6 +200,13 @@ void continue_all(void) {
   }
 }
 
+void continue_all_cont(void) {
+  for (int i=0; i< ntids; i++) {
+    if (!pending[i])
+      ptrace_cont(tids[i]);
+  }
+}
+
 void stop_all_except(pid_t pid) {
   for (int i=0; i<ntids; i++) {
     if (tids[i] == pid) continue;

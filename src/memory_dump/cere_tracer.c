@@ -222,6 +222,16 @@ static void dump_page(pid_t pid, void *start) {
 static void dump_handler(int pid, void *start_of_page) {
   debug_print("Dump handler detected access at %p\n", start_of_page);
 
+  // If NULL pointer dereference, print instruction pointer to debug
+  if (start_of_page == NULL) {
+    struct user_regs_struct regs;
+    ptrace_getregs(pid, &regs);
+    fprintf(stderr, "[TRACER ERROR] NULL pointer dereference at RIP=%p\n", (void*)regs.rip);
+    fflush(stderr);
+    // Cannot unprotect NULL page, program will loop forever
+    errx(EXIT_FAILURE, "NULL pointer dereference detected, aborting");
+  }
+
   /* Unprotect Page */
   unprotect_i(pid, start_of_page, PAGESIZE);
   dump_page(pid, start_of_page);
@@ -337,21 +347,78 @@ static void handle_syscall(pid_t child) {
 pid_t handle_events_until_dump_trap(pid_t wait_for) {
   while (true) {
     event_t e = wait_event(wait_for);
+    fprintf(stderr, "[TRACER DEBUG] handle_events_until_dump_trap: received signal %d from tid %d, tracer_state=%d\n",
+            e.signo, e.tid, tracer_state);
     if (e.signo == SIGTRAP) {
       if (is_dump_sigtrap(e.tid)) {
+        fprintf(stderr, "[TRACER DEBUG] Got dump SIGTRAP!\n");
         clear_trap(e.tid);
         return e.tid;
       } else if (is_hook_sigtrap(e.tid)) {
+        fprintf(stderr, "[TRACER DEBUG] Got hook SIGTRAP\n");
         assert(tracer_state == TRACER_LOCKED || tracer_state == TRACER_FIRSTTOUCH);
         clear_trap(e.tid);
         tracer_lock_range(e.tid);
         continue;
       } else { // If we arrive here, it is a syscall
         handle_syscall(e.tid);
-        ptrace_syscall(e.tid);
+        // In UNLOCKED and LOCKED modes, use ptrace_cont to run freely until SIGTRAP
+        // In DUMPING and FIRSTTOUCH, use ptrace_syscall for memory tracking
+        if (tracer_state == TRACER_UNLOCKED || tracer_state == TRACER_LOCKED)
+          ptrace_cont(e.tid);
+        else
+          ptrace_syscall(e.tid);
         continue;
       }
     } else if (e.signo == SIGSEGV) {
+      // Debug NULL pointer dereference
+      static int null_deref_count = 0;
+      if (e.sigaddr == NULL || e.sigaddr < (void*)0x1000) {
+        if (null_deref_count++ < 5) {
+          struct user_regs_struct regs;
+          ptrace_getregs(e.tid, &regs);
+          fprintf(stderr, "[TRACER ERROR] NULL/low pointer dereference #%d: sigaddr=%p, RIP=%p, RSP=%p\n",
+                  null_deref_count, e.sigaddr, (void*)regs.rip, (void*)regs.rsp);
+          fprintf(stderr, "[TRACER ERROR] RAX=%p, RBX=%p, RCX=%p, RDX=%p\n",
+                  (void*)regs.rax, (void*)regs.rbx, (void*)regs.rcx, (void*)regs.rdx);
+          fprintf(stderr, "[TRACER ERROR] RSI=%p, RDI=%p, RBP=%p\n",
+                  (void*)regs.rsi, (void*)regs.rdi, (void*)regs.rbp);
+
+          // Read and display the instruction bytes at RIP and before
+          unsigned char instr_before[16];
+          unsigned char instr_at[16];
+          ptrace_getdata(e.tid, (long)regs.rip - 16, (char*)instr_before, 16);
+          ptrace_getdata(e.tid, (long)regs.rip, (char*)instr_at, 16);
+          fprintf(stderr, "[TRACER ERROR] 16 bytes BEFORE RIP: ");
+          for (int i = 0; i < 16; i++) {
+            fprintf(stderr, "%02x ", instr_before[i]);
+          }
+          fprintf(stderr, "\n");
+          fprintf(stderr, "[TRACER ERROR] 16 bytes AT RIP:     ");
+          for (int i = 0; i < 16; i++) {
+            fprintf(stderr, "%02x ", instr_at[i]);
+          }
+          fprintf(stderr, "\n");
+
+          // Try to read from RSP to see if it's accessible
+          unsigned char stack_data[8];
+          errno = 0;
+          long rsp_value = ptrace(PTRACE_PEEKDATA, e.tid, (void*)regs.rsp, NULL);
+          if (errno == 0) {
+            fprintf(stderr, "[TRACER ERROR] Value at [RSP=0x%lx]: 0x%lx\n", regs.rsp, rsp_value);
+          } else {
+            fprintf(stderr, "[TRACER ERROR] Cannot read [RSP=0x%lx]: %s\n", regs.rsp, strerror(errno));
+          }
+          fflush(stderr);
+        }
+        if (null_deref_count > 100) {
+          errx(EXIT_FAILURE, "Too many NULL pointer dereferences (>100), aborting");
+        }
+        // Skip the faulting instruction by advancing RIP
+        // This is a hack to see what happens - in reality we can't fix a NULL deref this way
+        // But it might give us more information
+      }
+
       void *addr = round_to_page(e.sigaddr);
       switch (tracer_state) {
       case TRACER_UNLOCKED:
@@ -371,7 +438,15 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
       default:
         assert(false); /* we should never be here */
       }
-      ptrace_syscall(e.tid);
+      // In UNLOCKED and LOCKED modes, use ptrace_cont to run freely until SIGTRAP
+      // In DUMPING and FIRSTTOUCH, use ptrace_syscall for memory tracking
+      fprintf(stderr, "[TRACER DEBUG] After handling SIGSEGV at %p, continuing with ptrace_%s\n",
+              addr, (tracer_state == TRACER_UNLOCKED || tracer_state == TRACER_LOCKED) ? "cont" : "syscall");
+      if (tracer_state == TRACER_UNLOCKED || tracer_state == TRACER_LOCKED)
+        ptrace_cont(e.tid);
+      else
+        ptrace_syscall(e.tid);
+      continue;  // Continue the while loop, don't fall through
     }
     else if (e.signo == SIGSTOP) {
       /* A new thread is starting, ignore this event, next wait_event call will
@@ -379,7 +454,12 @@ pid_t handle_events_until_dump_trap(pid_t wait_for) {
     }
     else if (e.signo == SIGWINCH) {
       /* Ignore signal SIGWINCH, tty resize */
-      ptrace_syscall(e.tid);
+      // In UNLOCKED and LOCKED modes, use ptrace_cont to run freely until SIGTRAP
+      // In DUMPING and FIRSTTOUCH, use ptrace_syscall for memory tracking
+      if (tracer_state == TRACER_UNLOCKED || tracer_state == TRACER_LOCKED)
+        ptrace_cont(e.tid);
+      else
+        ptrace_syscall(e.tid);
       continue;
     }
     else if (e.signo == SIGABRT) {
@@ -514,13 +594,13 @@ static void tracer_dump(pid_t pid) {
 
   debug_print("receive string from tracee %d\n", pid);
   ptrace_getdata(pid, (long) tracer_buff->str_tmp, loop_name, SIZE_LOOP);
-  ptrace_syscall(pid);
+  ptrace_cont(pid);  // Use ptrace_cont to reach next send_to_tracer()
 
   invocation = (int)receive_from_tracee(pid);
-  ptrace_syscall(pid);
+  ptrace_cont(pid);  // Use ptrace_cont to reach next send_to_tracer()
 
   int arg_count = (int)receive_from_tracee(pid);
-  ptrace_syscall(pid);
+  ptrace_cont(pid);  // Use ptrace_cont to reach next send_to_tracer()
 
   printf("DUMP( %s %d count = %d) \n", loop_name, invocation, arg_count);
 
@@ -540,7 +620,7 @@ static void tracer_dump(pid_t pid) {
   void *addresses[arg_count];
   for (i = 0; i < arg_count; i++) {
     addresses[i] = (void *)receive_from_tracee(pid);
-    ptrace_syscall(pid);
+    ptrace_cont(pid);  // Use ptrace_cont to reach next send_to_tracer()
   }
 
   /* Wait for end of arguments sigtrap */
@@ -632,12 +712,13 @@ static void tracer_init(pid_t pid) {
     tracer_lock_mem(pid);
     debug_print("%s\n", "******* TRACER_FIRSTTOUCH");
     tracer_state = TRACER_FIRSTTOUCH;
+    continue_all();
   } else {
     debug_print("%s\n", "******* TRACER_UNLOCKED");
     tracer_state = TRACER_UNLOCKED;
+    // In UNLOCKED mode, use ptrace_cont to run freely until first SIGTRAP
+    continue_all_cont();
   }
-
-  continue_all();
 }
 
 int main(int argc, char *argv[]) {
@@ -676,17 +757,30 @@ int main(int argc, char *argv[]) {
 
   /* Wait for lock_mem trap */
   pid_t tid = handle_events_until_dump_trap(-1);
+  fprintf(stderr, "[TRACER DEBUG] After handle_events_until_dump_trap, tid=%d\n", tid);
   register_t ret = get_arg_from_regs(tid);
+  fprintf(stderr, "[TRACER DEBUG] get_arg_from_regs returned: 0x%llx (decimal: %lld), TRAP_LOCK_MEM=%d\n",
+          (unsigned long long)ret, (long long)ret, TRAP_LOCK_MEM);
+  if (ret != TRAP_LOCK_MEM) {
+    errx(EXIT_FAILURE, "Expected TRAP_LOCK_MEM (%d) but got %lld\n", TRAP_LOCK_MEM, (long long)ret);
+  }
   assert(ret == TRAP_LOCK_MEM);
 
+  fprintf(stderr, "[TRACER DEBUG] Before stop_all_except\n");
   stop_all_except(tid);
+  fprintf(stderr, "[TRACER DEBUG] Before tracer_lock_mem\n");
   tracer_lock_mem(tid);
+  fprintf(stderr, "[TRACER DEBUG] After tracer_lock_mem\n");
   debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;
-  continue_all();
+  // Continue the tracee so it can send TRAP_START_ARGS
+  fprintf(stderr, "[TRACER DEBUG] Continuing tracee with ptrace_cont before tracer_dump\n");
+  ptrace_cont(tid);
 
   /* Dump arguments */
+  fprintf(stderr, "[TRACER DEBUG] Before tracer_dump\n");
   tracer_dump(tid);
+  fprintf(stderr, "[TRACER DEBUG] After tracer_dump\n");
 
   debug_print("%s\n", "******* TRACER_DUMPING");
   tracer_state = TRACER_DUMPING;

@@ -70,6 +70,7 @@ struct LoopRegionDump : public FunctionPass {
 
   bool GlobalDump;
   bool ReadFromFile;
+  static bool dump_init_inserted;  // Track if dump_init call has been inserted
 
   std::vector<std::string> RegionsToDump;
   std::vector<std::string> InvocationsToDump;
@@ -96,7 +97,6 @@ struct LoopRegionDump : public FunctionPass {
       }
       // Else, capture every first invocation by default
       else {
-        std::vector<std::string> InvocationsToDump;
         for(int i=0; i<RegionsToDump.size(); i++) {
           InvocationsToDump.push_back("1");
         }
@@ -129,6 +129,7 @@ struct LoopRegionDump : public FunctionPass {
 } // namespace
 
 char LoopRegionDump::ID = 0;
+bool LoopRegionDump::dump_init_inserted = false;
 static RegisterPass<LoopRegionDump> X("region-dump", "Dump regions");
 
 /// \brief Called on each function int the current Module
@@ -141,10 +142,11 @@ bool LoopRegionDump::runOnFunction(Function &F) {
   if (!Main) {
     Main = mod->getFunction("main");
   }
-  if (Main) { // We are in the module with the main function
+  // Only insert dump_init call once, even if runOnFunction is called multiple times
+  if (Main && !dump_init_inserted) {
+    dump_init_inserted = true;  // Mark as inserted
     IRBuilder<> builder(&(Main->front().front()));
 
-    ConstantInt *const_int1_11;
     std::string funcName;
     if(split(Invocations, ',').size() > 1 || split(RegionName, ';').size() > 1) {
       funcName = "multi_dump_init";
@@ -153,30 +155,23 @@ bool LoopRegionDump::runOnFunction(Function &F) {
       funcName = "dump_init";
     }
 
-    if (GlobalDump)
-      const_int1_11 = ConstantInt::get(mod->getContext(),
-                                       APInt(1, StringRef("-1"), 10)); // true
-    else
-      const_int1_11 = ConstantInt::get(mod->getContext(),
-                                       APInt(1, StringRef("0"), 10)); // false
-
     Function *mainFunction = mod->getFunction(funcName);
     if (!mainFunction) {
-      // Create signature: void func(int)
+      // Create signature: void func(void)
       std::vector<Type *> FuncTy_8_args;
-      FuncTy_8_args.push_back(IntegerType::get(mod->getContext(), 1));
+      // dump_init and multi_dump_init take no parameters
       FunctionType *FuncTy_8 = FunctionType::get(
           /*Result=*/Type::getVoidTy(mod->getContext()),
           /*Params=*/FuncTy_8_args,
           /*isVarArg=*/false);
 
-      Function *mainFunction = Function::Create(
+      mainFunction = Function::Create(
           FuncTy_8, GlobalValue::ExternalLinkage, funcName, mod);
-
-      std::vector<Value *> void_16_params;
-      void_16_params.push_back(const_int1_11);
-      builder.CreateCall(mainFunction, void_16_params);
     }
+
+    // Always create the call to dump_init, whether the function already existed or not
+    std::vector<Value *> void_16_params;
+    builder.CreateCall(mainFunction, void_16_params);
   }
 
   LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -247,8 +242,8 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
   std::vector<Value *> funcParameter =
   createDumpFunctionParameters(mod, currFunc, PredBB, InvocationsToDump[regionIndex]);
 
-  // Insert dump call just before the region
-  CallInst::Create(func_dump, funcParameter, "", &PredBB->back());
+  // Insert dump call just before the region (before the terminator)
+  CallInst::Create(func_dump, funcParameter, "", PredBB->getTerminator());
 
   /* Insert after_dump calls (once) in each exit blocks */
   for (SmallVectorImpl<BasicBlock *>::iterator I = exitblocks.begin(),
@@ -259,8 +254,8 @@ bool LoopRegionDump::visitLoop(Loop *L, Module *mod) {
     std::vector<Value *> ad_funcParameter;
     ad_funcParameter.push_back(builder.CreateGlobalStringPtr(currFunc->getName()));
 
-    // Insert call
-    CallInst::Create(func_after_dump, ad_funcParameter, "", &(*I)->front());
+    // Insert call before the terminator to preserve basic block structure
+    CallInst::Create(func_after_dump, ad_funcParameter, "", (*I)->getTerminator());
   }
 
   return true;

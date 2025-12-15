@@ -81,6 +81,11 @@ static int in_progress_invocation = -1;
 static InvocsCounter*
 get_counter_internal(const char* codelet_name)
 {
+  fprintf(stderr, "[TRACEE DEBUG] get_counter_internal: codelet_name=%p (%s), invocs_counters.counters=%p, num_counters=%d\n",
+          codelet_name, codelet_name ? codelet_name : "NULL",
+          invocs_counters.counters, invocs_counters.num_counters);
+  fflush(stderr);
+
   for (int i = 0; i < invocs_counters.num_counters; i++) {
     InvocsCounter* counter = &(invocs_counters.counters[i]);
     if (strcmp(counter->codelet_name, codelet_name) == 0) {
@@ -88,13 +93,24 @@ get_counter_internal(const char* codelet_name)
     }
   }
   // New counter
+  fprintf(stderr, "[TRACEE DEBUG] Creating new counter for %s\n", codelet_name);
+  fflush(stderr);
+
   InvocsCounter newCounter;
   newCounter.codelet_name = strdup(codelet_name);
   newCounter.count_value = 0;
 
-  invocs_counters.counters = realloc(
+  fprintf(stderr, "[TRACEE DEBUG] Before realloc: counters=%p, num_counters=%d\n",
+          invocs_counters.counters, invocs_counters.num_counters);
+  fflush(stderr);
+
+  invocs_counters.counters = (InvocsCounter*)realloc(
       invocs_counters.counters,
       (invocs_counters.num_counters + 1) * sizeof(InvocsCounter));
+
+  fprintf(stderr, "[TRACEE DEBUG] After realloc: counters=%p\n", invocs_counters.counters);
+  fflush(stderr);
+
   invocs_counters.counters[invocs_counters.num_counters] = newCounter;
   invocs_counters.num_counters++;
   return &(invocs_counters.counters[invocs_counters.num_counters - 1]);
@@ -114,7 +130,7 @@ get_after_dump_counter_internal(const char* codelet_name)
   newCounter.codelet_name = strdup(codelet_name);
   newCounter.count_value = 0;
 
-  after_dump_invocs_counters.counters = realloc(
+  after_dump_invocs_counters.counters = (InvocsCounter*)realloc(
       after_dump_invocs_counters.counters,
       (after_dump_invocs_counters.num_counters + 1) * sizeof(InvocsCounter));
   after_dump_invocs_counters.counters[after_dump_invocs_counters.num_counters] =
@@ -328,7 +344,7 @@ split(char* str, int** tokens)
   size_t strsize = strlen(str);
 
   // Parse string
-  char* strbak = malloc((strsize + 1) * sizeof(char));
+  char* strbak = (char*)malloc((strsize + 1) * sizeof(char));
   char* token;
   strcpy(strbak, str);
   int ntokens = 0;
@@ -345,7 +361,7 @@ split(char* str, int** tokens)
   if (*tokens != NULL) {
     free(*tokens);
   }
-  *tokens = malloc(ntokens * sizeof(int));
+  *tokens = (int*)malloc(ntokens * sizeof(int));
 
   strcpy(strbak, str);
 
@@ -393,12 +409,25 @@ find_invocation(char* invocations_str, int times_called)
 void
 dump(char* loop_name, char* invocations_str, int arg_count, ...)
 {
+  fprintf(stderr, "[TRACEE DEBUG] dump() called, loop_name=%p (%s), invocations_str=%p (%s), arg_count=%d\n",
+          loop_name, loop_name ? loop_name : "NULL",
+          invocations_str, invocations_str ? invocations_str : "NULL",
+          arg_count);
+  fflush(stderr);
+
   /* Avoid doing something before initializing */
   /* the dump. */
-  if (!dump_initialized)
+  if (!dump_initialized) {
+    fprintf(stderr, "[TRACEE DEBUG] dump_initialized=false, returning early\n");
+    fflush(stderr);
     return;
+  }
 
+  fprintf(stderr, "[TRACEE DEBUG] Before increment_counter\n");
+  fflush(stderr);
   increment_counter(loop_name);
+  fprintf(stderr, "[TRACEE DEBUG] After increment_counter\n");
+  fflush(stderr);
 
   if (in_progress_codelet_name != NULL)
     return;
@@ -414,14 +443,26 @@ dump(char* loop_name, char* invocations_str, int arg_count, ...)
   in_progress_codelet_name = strdup(loop_name);
   in_progress_invocation = times_called;
 
-  mtrace_active = true;
-  send_to_tracer(TRAP_LOCK_MEM);
+  // IMPORTANT: All writes to global variables and buffers must be done BEFORE send_to_tracer(TRAP_LOCK_MEM)
+  // After TRAP_LOCK_MEM, memory (including .got.plt section) will be protected by mprotect!
+  // Even simple variable assignments like "in_codelet = true" can cause SIGSEGV because they access the GOT
 
-  in_codelet = true;
-  mtrace_active = false;
+  // Copy loop_name to tracer_buff BEFORE locking memory
   strcpy(tracer_buff.str_tmp, loop_name);
 
-  /* Send args */
+  // Set in_codelet BEFORE locking memory (accessing globals after lock causes SIGSEGV via GOT)
+  in_codelet = true;
+
+  // Set mtrace_active before the lock
+  mtrace_active = true;
+
+  // Now send TRAP_LOCK_MEM - after this point, ALL memory is protected!
+  send_to_tracer(TRAP_LOCK_MEM);
+
+  // After TRAP_LOCK_MEM, we can ONLY use registers and inline assembly
+  // NO function calls, NO global variable access, NO memory writes!
+
+  /* Send args - this only uses registers via inline asm */
   send_to_tracer(TRAP_START_ARGS);
   send_to_tracer(in_progress_invocation);
   send_to_tracer(arg_count);

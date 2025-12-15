@@ -21,20 +21,7 @@
 #include "types.h"
 
 #if defined(__amd64__)
-static inline void sigtrap(void) {
-  asm volatile("int $3");
-}
-
-void hook_sigtrap(void) {
-  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_hook));
-  sigtrap();
-}
-
-void send_to_tracer(register_t arg) {
-  asm volatile("mov %0,%%rax" : : "r"((register_t)SYS_dump));
-  asm volatile("mov %0,%%rdi" : : "r"(arg));
-  sigtrap();
-}
+// Functions moved to header for inlining
 
 struct tracer_buff_t tracer_buff = {
   .syscall = {0x0f, 0x05,                 /* syscall           */
@@ -48,20 +35,7 @@ struct tracer_buff_t tracer_buff = {
                         0xcc}             /* int $3 (SIGTRAP)  */
 };
 #elif defined(__aarch64__)
-static inline void sigtrap(void) {
-  asm volatile("brk #0");
-}
-
-void hook_sigtrap(void) {
-  asm volatile("mov x8, %0" : : "r"((register_t)SYS_hook) : "x8");
-  sigtrap();
-}
-
-void send_to_tracer(register_t arg) {
-  asm volatile("mov x8, %0" : : "r"((register_t)SYS_dump) : "x8");
-  asm volatile("mov x0, %0" : : "r"((register_t)arg) : "x0");
-  sigtrap();
-}
+// Functions moved to header for inlining
 
 struct tracer_buff_t tracer_buff = {
   .syscall = {0x01, 0x00, 0x00, 0xd4,            /* svc #0 syscall     */
