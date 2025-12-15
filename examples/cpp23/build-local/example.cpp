@@ -8,6 +8,36 @@
 #include <thread>
 #include <vector>
 
+static void
+maybe_log_replay_validation(
+    const char* label, const std::vector<int>& numbers, int work)
+{
+  const char* path = std::getenv("CERE_VALIDATE_LOG");
+  if (!path || path[0] == '\0')
+    return;
+
+  static bool logged_once = false;
+  if (logged_once)
+    return;
+  logged_once = true;
+
+  std::ofstream log(path, std::ios::app);
+  if (!log.is_open())
+    return;
+
+  long long sum = 0;
+  long long xors = 0;
+  for (int v : numbers) {
+    sum += v;
+    xors ^= v;
+  }
+
+  log << (label && label[0] ? label : "run") << " work=" << work
+      << " first=" << (numbers.empty() ? 0 : numbers.front())
+      << " last=" << (numbers.empty() ? 0 : numbers.back()) << " sum=" << sum
+      << " xor=" << xors << "\n";
+}
+
 static int
 __cere__compute_region(std::vector<int>& numbers)
 {
@@ -19,6 +49,8 @@ __cere__compute_region(std::vector<int>& numbers)
       numbers[i] = ((value + passes) * 13) ^ ((int(i) + 7) >> 1);
     }
   }
+  maybe_log_replay_validation(
+      std::getenv("CERE_VALIDATE_LABEL"), numbers, work);
   return work;
 }
 

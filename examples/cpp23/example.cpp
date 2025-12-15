@@ -8,7 +8,39 @@
 #include <thread>
 #include <vector>
 
-static int __cere__compute_region(std::vector<int>& numbers) {
+static void
+maybe_log_replay_validation(
+    const char* label, const std::vector<int>& numbers, int work)
+{
+  const char* path = std::getenv("CERE_VALIDATE_LOG");
+  if (!path || path[0] == '\0')
+    return;
+
+  static bool logged_once = false;
+  if (logged_once)
+    return;
+  logged_once = true;
+
+  std::ofstream log(path, std::ios::app);
+  if (!log.is_open())
+    return;
+
+  long long sum = 0;
+  long long xors = 0;
+  for (int v : numbers) {
+    sum += v;
+    xors ^= v;
+  }
+
+  log << (label && label[0] ? label : "run") << " work=" << work
+      << " first=" << (numbers.empty() ? 0 : numbers.front())
+      << " last=" << (numbers.empty() ? 0 : numbers.back()) << " sum=" << sum
+      << " xor=" << xors << "\n";
+}
+
+static int
+__cere__compute_region(std::vector<int>& numbers)
+{
   int work = 0;
   for (size_t passes = 0; passes < 3; ++passes) {
     for (size_t i = 0; i < numbers.size(); ++i) {
@@ -17,20 +49,27 @@ static int __cere__compute_region(std::vector<int>& numbers) {
       numbers[i] = ((value + passes) * 13) ^ ((int(i) + 7) >> 1);
     }
   }
+  maybe_log_replay_validation(
+      std::getenv("CERE_VALIDATE_LABEL"), numbers, work);
   return work;
 }
 
-static int __cere__combine_region(const std::vector<int>& numbers) {
+static int
+__cere__combine_region(const std::vector<int>& numbers)
+{
   int sum = 0;
   for (size_t window = 1; window < numbers.size(); window += 11) {
-    for (size_t idx = window; idx < std::min(numbers.size(), window + 64); ++idx) {
+    for (size_t idx = window; idx < std::min(numbers.size(), window + 64);
+         ++idx) {
       sum += numbers[idx] * (int(idx) ^ 0x15);
     }
   }
   return sum;
 }
 
-static void __cere__randomize(std::vector<int>& numbers) {
+static void
+__cere__randomize(std::vector<int>& numbers)
+{
   std::mt19937 rng(std::random_device{}());
   std::uniform_int_distribution<int> dist(1, 128);
   for (size_t i = 0; i < numbers.size(); ++i) {
@@ -38,9 +77,12 @@ static void __cere__randomize(std::vector<int>& numbers) {
   }
 }
 
-int main() {
+int
+main()
+{
   std::vector<int> numbers(8192);
-  std::ranges::copy(std::views::iota(0) | std::views::take(numbers.size()), numbers.begin());
+  std::ranges::copy(
+      std::views::iota(0) | std::views::take(numbers.size()), numbers.begin());
   __cere__randomize(numbers);
 
   auto start = std::chrono::steady_clock::now();
@@ -59,14 +101,12 @@ int main() {
     ++rounds;
   }
   auto end = std::chrono::steady_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  std::cout << "max=" << numbers.front()
-            << " min=" << numbers.back()
-            << " work=" << work
-            << " aggregate=" << aggregate
-            << " time=" << elapsed.count()
-            << "\n";
+  std::cout << "max=" << numbers.front() << " min=" << numbers.back()
+            << " work=" << work << " aggregate=" << aggregate
+            << " time=" << elapsed.count() << "\n";
 
   if (std::getenv("CERE_MODE")) {
     std::ofstream main_csv("main.csv");
