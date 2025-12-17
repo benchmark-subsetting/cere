@@ -61,11 +61,11 @@ struct tracer_buff_t {
   char syscall[SIZE_SYSCALL_BIN];
   char unprotect_protect[SIZE_UNPROTECT_PROTECT_BIN];
   char str_tmp[MAX_PATH];
-} __attribute__ ((aligned(8), packed));
+} __attribute__((aligned(8), packed));
 
 typedef struct {
   int signo;
-  void * sigaddr;
+  void* sigaddr;
   pid_t tid;
 } event_t;
 

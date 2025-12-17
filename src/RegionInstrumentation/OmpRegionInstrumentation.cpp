@@ -27,6 +27,13 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-instrumentation"
+#include <errno.h>
+#include <llvm/IR/Instructions.h>
+
+#include <fstream>
+#include <sstream>
+
+#include "RegionInstrumentation.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
@@ -36,11 +43,6 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
-#include <errno.h>
-#include <fstream>
-#include <llvm/IR/Instructions.h>
-#include <sstream>
-#include "RegionInstrumentation.h"
 
 #undef LLVM_BINDIR
 #include "config.h"
@@ -71,13 +73,14 @@ struct OmpRegionInstrumentation : public FunctionPass {
   bool ReadFromFile;
   bool MeasureAppli;
   std::vector<std::string> LoopsToInstrument;
-  LoopInfo *LI; // The current loop information
+  LoopInfo* LI;  // The current loop information
 
-  explicit OmpRegionInstrumentation(unsigned numLoops = ~0,
-                                    const std::string &regionName = "")
+  explicit OmpRegionInstrumentation(
+      unsigned numLoops = ~0, const std::string& regionName = "")
       : FunctionPass(ID), NumLoops(numLoops), RegionName(regionName),
         Mode(VIVO), Separator("_"), RegionFile(LoopsFilename),
-        RequestedInvoc(Invocation), MeasureAppli(AppMeasure) {
+        RequestedInvoc(Invocation), MeasureAppli(AppMeasure)
+  {
     if (Replay)
       Mode = VITRO;
     if (regionName.empty())
@@ -105,34 +108,37 @@ struct OmpRegionInstrumentation : public FunctionPass {
     }
   }
 
-  bool insertOmpProbe(Module *mod, Function *F);
-  bool choosePutMarkerOnFunction(std::string functionCall,
-                                 std::string newFunctionName);
-  virtual bool runOnFunction(Function &F);
-  void insertMarker(Module *mod, Function *F, int place, Function *probe);
-  LoadInst *insertMarkerInvocation(Module *mod, Function *F, int place,
-                                   Function *probe, LoadInst *int32_1);
+  bool insertOmpProbe(Module* mod, Function* F);
+  bool choosePutMarkerOnFunction(
+      std::string functionCall, std::string newFunctionName);
+  virtual bool runOnFunction(Function& F);
+  void insertMarker(Module* mod, Function* F, int place, Function* probe);
+  LoadInst* insertMarkerInvocation(
+      Module* mod, Function* F, int place, Function* probe, LoadInst* int32_1);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
   }
 };
-} // namespace
+}  // namespace
 
 char OmpRegionInstrumentation::ID = 0;
-static RegisterPass<OmpRegionInstrumentation>
-    X("omp-region-instrumentation", "Instrument parallel regions with probes",
-      false, false);
+static RegisterPass<OmpRegionInstrumentation> X(
+    "omp-region-instrumentation", "Instrument parallel regions with probes",
+    false, false);
 
 /// Insert init probes
-bool OmpRegionInstrumentation::runOnFunction(Function &F) {
+bool
+OmpRegionInstrumentation::runOnFunction(Function& F)
+{
   if (F.getName().find(".omp_microtask") != std::string::npos)
     return false;
 
   prepareInstrumentation(F, RegionFile, MeasureAppli, Mode, RequestedInvoc);
-  Module *mod = F.getParent();
+  Module* mod = F.getParent();
 
   insertOmpProbe(mod, &F);
 
@@ -141,8 +147,9 @@ bool OmpRegionInstrumentation::runOnFunction(Function &F) {
 
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
-std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
-
+std::string
+createFunctionName(Function* oldFunction, CallInst* callInst)
+{
   // Handle in vitro codelets
   std::size_t found = oldFunction->getName().find("__cere__");
   if (found != std::string::npos)
@@ -151,14 +158,14 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
   std::string Separator = "_";
 
   // Get current module
-  Module *mod = oldFunction->getParent();
+  Module* mod = oldFunction->getParent();
   std::string newFunctionName;
   std::string File = mod->getModuleIdentifier();
   std::ostringstream oss;
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
-  if (MDNode *firstN = callInst->getMetadata("dbg")) {
-    DILocation *firstLoc = (DILocation *)firstN;
+  if (MDNode* firstN = callInst->getMetadata("dbg")) {
+    DILocation* firstLoc = (DILocation*)firstN;
     oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
@@ -178,9 +185,10 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
 }
 
 /// Specify if the function call has to be wrapped
-bool OmpRegionInstrumentation::choosePutMarkerOnFunction(
-    std::string functionCall, std::string newFunctionName) {
-
+bool
+OmpRegionInstrumentation::choosePutMarkerOnFunction(
+    std::string functionCall, std::string newFunctionName)
+{
   if (functionCall.find("__kmpc_fork_call") != std::string::npos) {
     if (RegionName == "all")
       return true;
@@ -201,31 +209,33 @@ bool OmpRegionInstrumentation::choosePutMarkerOnFunction(
 }
 
 /// Insert current marker to wrapper any call in the function F
-void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
-                                            Function *probe) {
+void
+OmpRegionInstrumentation::insertMarker(
+    Module* mod, Function* F, int place, Function* probe)
+{
   bool insertMarker;
   insertMarker = false;
 
   std::string functionCall;
   std::string probeName;
 
-  std::vector<Value *> funcParameter;
+  std::vector<Value*> funcParameter;
 
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-
     if (insertMarker) {
-      Instruction *pinst = dyn_cast<Instruction>(&*I);
+      Instruction* pinst = dyn_cast<Instruction>(&*I);
       CallInst::Create(probe, funcParameter, "", pinst);
       insertMarker = false;
     }
 
-    if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
+    if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
         functionCall = callInst->getCalledFunction()->getName().data();
         std::string newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
-          funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), NULL);
+          funcParameter = createFunctionParameters(
+              mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), NULL);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -238,43 +248,45 @@ void OmpRegionInstrumentation::insertMarker(Module *mod, Function *F, int place,
 }
 
 /// Insert current marker to wrapper any invocation call in the function F
-LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
-    Module *mod, Function *F, int place, Function *probe, LoadInst *int32_1) {
+LoadInst*
+OmpRegionInstrumentation::insertMarkerInvocation(
+    Module* mod, Function* F, int place, Function* probe, LoadInst* int32_1)
+{
   bool insertMarker;
   insertMarker = false;
 
   std::string functionCall;
   std::string probeName;
   std::string newFunctionName;
-  std::vector<Value *> funcParameter;
+  std::vector<Value*> funcParameter;
 
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-
     if (insertMarker) {
-      Instruction *pinst = dyn_cast<Instruction>(&*I);
+      Instruction* pinst = dyn_cast<Instruction>(&*I);
 
       CallInst::Create(probe, funcParameter, "", pinst);
       insertMarker = false;
     }
 
-    if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
+    if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
         functionCall = callInst->getCalledFunction()->getName().data();
         newFunctionName = createFunctionName(F, callInst);
 
         if (choosePutMarkerOnFunction(functionCall, newFunctionName)) {
-
           if (place == 0) {
             // Create invocation counter
-            GlobalVariable *gvar_int32_count = create_invocation_counter(mod);
+            GlobalVariable* gvar_int32_count = create_invocation_counter(mod);
 
             // Load the invocation counter
 #if LLVM_VERSION_MAJOR >= 9
-            // Its type is int32 as per the definition of create_invocation_counter
-            LoadInst *int32_0 =
-                new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, (&*I));
+            // Its type is int32 as per the definition of
+            // create_invocation_counter
+            LoadInst* int32_0 = new LoadInst(
+                IntegerType::get(mod->getContext(), 32), gvar_int32_count, "",
+                false, (&*I));
 #else
-            LoadInst *int32_0 =
+            LoadInst* int32_0 =
                 new LoadInst(gvar_int32_count, "", false, (&*I));
 #endif
 
@@ -286,12 +298,12 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
 
 
             // Increments it
-            ConstantInt *const_int32_1 = ConstantInt::get(
+            ConstantInt* const_int32_1 = ConstantInt::get(
                 mod->getContext(), APInt(32, StringRef("1"), 10));
-            BinaryOperator *int32_inc = BinaryOperator::Create(
+            BinaryOperator* int32_inc = BinaryOperator::Create(
                 Instruction::Add, int32_0, const_int32_1, "inc", (&*I));
             // Save the value
-            StoreInst *void_0 =
+            StoreInst* void_0 =
                 new StoreInst(int32_inc, gvar_int32_count, false, (&*I));
 #if LLVM_VERSION_MAJOR >= 10
             void_0->setAlignment(llvm::Align(4));
@@ -301,11 +313,13 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
 
             // Load the updated invocation counter
 #if LLVM_VERSION_MAJOR >= 9
-            // Its type is int32 as per the definition of create_invocation_counter
-            LoadInst *int32_1 =
-                new LoadInst(IntegerType::get(mod->getContext(), 32), gvar_int32_count, "", false, (&*I));
+            // Its type is int32 as per the definition of
+            // create_invocation_counter
+            LoadInst* int32_1 = new LoadInst(
+                IntegerType::get(mod->getContext(), 32), gvar_int32_count, "",
+                false, (&*I));
 #else
-            LoadInst *int32_1 =
+            LoadInst* int32_1 =
                 new LoadInst(gvar_int32_count, "", false, (&*I));
 #endif
 
@@ -315,7 +329,9 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
             int32_1->setAlignment(4);
 #endif
           }
-          funcParameter = createFunctionParameters(mod, newFunctionName, Mode, RequestedInvoc, &(F->front()), int32_1);
+          funcParameter = createFunctionParameters(
+              mod, newFunctionName, Mode, RequestedInvoc, &(F->front()),
+              int32_1);
 
           if (place == 0)
             CallInst::Create(probe, funcParameter, "", callInst);
@@ -329,16 +345,18 @@ LoadInst *OmpRegionInstrumentation::insertMarkerInvocation(
 }
 
 /// Insert start stop probes arround the parallel regions
-bool OmpRegionInstrumentation::insertOmpProbe(Module *mod, Function *currFunc) {
-  FunctionType *FuncTy = createFunctionType(mod);
-  Function *func_start = createFunction(FuncTy, mod, "cere_markerStartRegion");
-  Function *func_stop = createFunction(FuncTy, mod, "cere_markerStopRegion");
+bool
+OmpRegionInstrumentation::insertOmpProbe(Module* mod, Function* currFunc)
+{
+  FunctionType* FuncTy = createFunctionType(mod);
+  Function* func_start = createFunction(FuncTy, mod, "cere_markerStartRegion");
+  Function* func_stop = createFunction(FuncTy, mod, "cere_markerStopRegion");
 
   // If requested invocation to measure is different than 0. It means we want
   // to record a particular invocation. We must then create a counter to count
   // the current invocation of the region
   if (RequestedInvoc != 0) {
-    LoadInst *int32_1 =
+    LoadInst* int32_1 =
         insertMarkerInvocation(mod, currFunc, 0, func_start, NULL);
     insertMarkerInvocation(mod, currFunc, 1, func_stop, int32_1);
   } else {

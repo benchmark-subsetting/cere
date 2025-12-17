@@ -18,17 +18,17 @@ informations use **cere regions --static**
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--static`:
+* `--static`:
     With the **static** flag, all regions are outlined and listed but the binary
     is not executed. So keep in mind that a region may not be extractible as it
     is not necessarily executed. Also coverage informations are not available.
 
 ## OUTPUT FILES
 
-  * `regions.csv`:
+* `regions.csv`:
     File containing for each region, the region name, region location, and
     coverage informations.
 

@@ -1,6 +1,8 @@
 #include <cstddef>
 
-extern "C" void serialize(void) {
+extern "C" void
+serialize(void)
+{
 #if defined(__amd64__)
   asm volatile("cpuid" ::: "%rax", "%rbx", "%rcx", "%rdx");
 #elif defined(__aarch64__)
@@ -8,7 +10,9 @@ extern "C" void serialize(void) {
 #endif
 }
 
-extern "C" unsigned long long rdtsc(void) {
+extern "C" unsigned long long
+rdtsc(void)
+{
 #if defined(__amd64__)
   unsigned int high, low;
   asm volatile("rdtsc" : "=a"(low), "=d"(high));

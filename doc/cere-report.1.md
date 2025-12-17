@@ -17,15 +17,15 @@ can be used after calling cere-select-ilp(1) or cere-select-max-cov(1).
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--path PATH`:
+* `--path PATH`:
     The path of the application to report. Default is the current folder.
 
 ## OUTPUT FILES
 
-  * `PATH.html`:
+* `PATH.html`:
     The html report.
 
 ## COPYRIGHT

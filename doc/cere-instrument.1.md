@@ -18,28 +18,28 @@ application with probes around the region. These probes are defined via the
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--region REGION`:
+* `--region REGION`:
     Selects the region to instrument. The list of valid regions can be displayed
     with the cere-regions(1) command.
 
-  * `--regions-file REGIONS_FILE`:
+* `--regions-file REGIONS_FILE`:
     Input file where you can list regions you want to trace.
 
-  * `--plugin-instr PLUGIN_INSTR`:
+* `--plugin-instr PLUGIN_INSTR`:
     Library to instrument the region. For more information on how to use another
     library please refer to cere-plugin-instr(1).
 
-  * `--invocation INVOCATION`:
+* `--invocation INVOCATION`:
     Selects the invocation to instrument. By default, all invocations are
     instrumented.
 
-  * `--norun`:
+* `--norun`:
     Builds the instrumented binary but does not run it automatically.
 
-  * `--force`:
+* `--force`:
     If the region is marked as invalid, the instrumentation stops. The **--force**
     flag forces the instrumentation.
 

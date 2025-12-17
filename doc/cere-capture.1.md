@@ -18,27 +18,27 @@ representative invocations selected by cere-selectinv(1).
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--region REGION`:
+* `--region REGION`:
     Selects the region to capture. The list of valid regions can be displayed with
     the cere-regions(1) command.
 
-  * `--invocation INVOCATION`:
+* `--invocation INVOCATION`:
     Selects the invocation to capture. By default, all the representative
     invocations chosen by cere-selectinv(1) are captured.
 
-  * `--norun`:
+* `--norun`:
     Builds the capture-instrumented binary but does not run it automatically.
 
-  * `--force`:
+* `--force`:
     By default, **cere capture** does not captures a region+invocation pair if a
     previous dump exists. The **--force** flag forces a recapture.
 
 ## OUTPUT FILES
 
-  * `.cere/dumps/REGION/INVOCATION/`:
+* `.cere/dumps/REGION/INVOCATION/`:
     Files needed to restore the memory and the cache state in order to replay
     the region.
 

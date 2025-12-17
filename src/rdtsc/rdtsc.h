@@ -26,46 +26,49 @@ unsigned long long int serialize_overhead;
 static struct htable regionHtab;
 static struct htable call_count_reminder;
 
-bool INITIALIZED=false;
+bool INITIALIZED = false;
 
-typedef struct
-{
-	char *name;
-	unsigned int val;
-}global_region_call_count;
+typedef struct {
+  char* name;
+  unsigned int val;
+} global_region_call_count;
 
-typedef struct
-{
-	char* name;
-	int traced;
-	int invivo;
-	unsigned long long int serialize_overhead;
-	unsigned long long int start;
-	unsigned long long int counter;
-	unsigned int call_count;
-	unsigned long long int trace_counter[TRACE_SIZE];
-	unsigned int global_call_count[TRACE_SIZE];
-	FILE *trace_results;
+typedef struct {
+  char* name;
+  int traced;
+  int invivo;
+  unsigned long long int serialize_overhead;
+  unsigned long long int start;
+  unsigned long long int counter;
+  unsigned int call_count;
+  unsigned long long int trace_counter[TRACE_SIZE];
+  unsigned int global_call_count[TRACE_SIZE];
+  FILE* trace_results;
 } region;
 
-__inline__ void serialize(void) {
-#if defined (__amd64__)
-    __asm__ volatile("cpuid"
-            :::"%eax","%ebx","%ecx","%edx");  // clobbered registers
-#elif defined (__aarch64__)
-    __asm__ volatile("isb" : : : "memory");
+__inline__ void
+serialize(void)
+{
+#if defined(__amd64__)
+  __asm__ volatile("cpuid" ::
+                       : "%eax", "%ebx", "%ecx",
+                         "%edx");  // clobbered registers
+#elif defined(__aarch64__)
+  __asm__ volatile("isb" : : : "memory");
 #endif
 }
 
-__inline__ unsigned long long int rdtsc() {
-    unsigned long long int a, d;
+__inline__ unsigned long long int
+rdtsc()
+{
+  unsigned long long int a, d;
 
 #if defined(__amd64__)
-    __asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
-    return (d<<32) | a;
+  __asm__ volatile("rdtsc" : "=a"(a), "=d"(d));
+  return (d << 32) | a;
 #elif defined(__aarch64__)
-    __asm__ volatile("mrs %0, cntvct_el0" : "=r" (a));
-    return a;
+  __asm__ volatile("mrs %0, cntvct_el0" : "=r"(a));
+  return a;
 #endif
 }
 

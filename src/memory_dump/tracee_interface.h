@@ -22,32 +22,40 @@
 
 extern struct tracer_buff_t tracer_buff;
 
-// These functions MUST be inline to avoid PLT/GOT access after memory is protected
-// Definitions are here in the header to ensure inlining
+// These functions MUST be inline to avoid PLT/GOT access after memory is
+// protected Definitions are here in the header to ensure inlining
 
 #if defined(__amd64__)
-static inline void hook_sigtrap(void) {
+static inline void
+hook_sigtrap(void)
+{
   asm volatile("mov %0,%%rax; int $3"
                :
                : "r"((register_t)SYS_hook)
                : "rax", "memory");
 }
 
-static inline void send_to_tracer(register_t arg) {
+static inline void
+send_to_tracer(register_t arg)
+{
   asm volatile("mov %0,%%rax; mov %1,%%rdi; int $3"
                :
                : "r"((register_t)SYS_dump), "r"(arg)
                : "rax", "rdi", "memory");
 }
 #elif defined(__aarch64__)
-static inline void hook_sigtrap(void) {
+static inline void
+hook_sigtrap(void)
+{
   asm volatile("mov x8, %0; brk #0"
                :
                : "r"((register_t)SYS_hook)
                : "x8", "memory");
 }
 
-static inline void send_to_tracer(register_t arg) {
+static inline void
+send_to_tracer(register_t arg)
+{
   asm volatile("mov x8, %0; mov x0, %1; brk #0"
                :
                : "r"((register_t)SYS_dump), "r"(arg)

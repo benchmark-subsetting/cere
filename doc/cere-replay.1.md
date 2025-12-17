@@ -22,51 +22,51 @@ The warmup type can be selected by setting the environnement variable
 `CERE_WARMUP` to one of the tree values below.  Three warmup modes are
 available,
 
-  * `COLD`, no warmup at all.
+* `COLD`, no warmup at all.
 
-  * `WORKLOAD` (the default mode), optimistic warmup the whole workload is
+* `WORKLOAD` (the default mode), optimistic warmup the whole workload is
      touched before replaying.
 
-  * `PAGETRACE`, the trace of most recently touched pages is replayed before
+* `PAGETRACE`, the trace of most recently touched pages is replayed before
     entering the region of interest.
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--region REGION`:
+* `--region REGION`:
     Selects the region to replay. The list of valid regions can be displayed with
     the cere-regions(1) command.
 
-  * `--invocation INVOCATION`:
+* `--invocation INVOCATION`:
     Selects the invocation to replay. By default, all the representative
     invocations chosen by cere-selectinv(1) are replayed.
 
-  * `--static`:
+* `--static`:
     Produces a statically linked replay binary.
 
-  * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
+* `--invitro-callcount CERE_REPLAY_REPETITIONS`:
     Select the meta-repetition of the replay. By default **cere replay** runs
     the region 10 times.
 
-  * `--plugin-instr PLUGIN_INSTR`:
+* `--plugin-instr PLUGIN_INSTR`:
     Library to instrument the replay. For more information on how to use another
     library please refer to cere-plugin-instr(1).
 
-  * `--norun`:
+* `--norun`:
     Builds the replay binary but does not run it automatically.
 
-  * `--noinstrumentation`:
+* `--noinstrumentation`:
     Disable the instrumentation of the replay. Override **--plugin-instr** flag.
 
-  * `--force`:
+* `--force`:
     By default, **cere replay** does not replay a region+invocation pair if a
     previous replay result exists. The **--force** flag forces the replay.
 
 ## OUTPUT FILE
 
-  * `.cere/replays/REGION_INVOCATION`:
+* `.cere/replays/REGION_INVOCATION`:
     Replay execution time of the region multiplied by CERE_REPLAY_REPETITIONS
 
 ## COPYRIGHT

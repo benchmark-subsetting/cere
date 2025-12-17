@@ -26,44 +26,42 @@
 namespace llvm {
 
 /// \brief Removes extension from \p filename.
-std::string removeExtension(const std::string &filename);
+std::string removeExtension(const std::string& filename);
 
 /// \brief Removes character \p toReplace by \p replacer in \p str.
-std::string removeChar(std::string str, const char toReplace,
-                       const char replacer);
+std::string removeChar(
+    std::string str, const char toReplace, const char replacer);
 
 /// Create The function signature for cere_marker Start and Stop. This function
 /// takes a char*, a boolean and two integers as arguments and returns nothing.
-FunctionType *createFunctionType(Module *mod);
+FunctionType* createFunctionType(Module* mod);
 
 /// Create a function "name" in the
 /// current module. This function
 /// takes \p FuncTy as signature
-Function *createFunction(FunctionType *FuncTy, Module *mod, std::string name);
+Function* createFunction(FunctionType* FuncTy, Module* mod, std::string name);
 
 /// \brief Definition of atexit function
-Function *createAtexit(Module *mod);
+Function* createAtexit(Module* mod);
 
 /// \brief Update file format.
 std::string updateFileFormat(std::string str);
 
 /// \brief Creates a global integer variable
-GlobalVariable *create_invocation_counter(Module *mod);
+GlobalVariable* create_invocation_counter(Module* mod);
 
 /// Create a vector of parameter to fit the signature of cere init and close
 /// probes.
-std::vector<Value *> createInitParameters(std::string regionN, BasicBlock *firstBB);
+std::vector<Value*> createInitParameters(
+    std::string regionN, BasicBlock* firstBB);
 
-void prepareInstrumentation(Function &F, std::string fileN, bool MeasureA,
-                            bool mode, int RequestedI);
+void prepareInstrumentation(
+    Function& F, std::string fileN, bool MeasureA, bool mode, int RequestedI);
 
 /// Create a vector of parameter to fit the signature of cere start and stop
 /// probes.
-std::vector<Value *> createFunctionParameters(Module *mod,
-                                              std::string newFunctionName,
-                                              int mode, int RequestedI,
-                                              BasicBlock *PredBB,
-                                              LoadInst *int32 = NULL);
+std::vector<Value*> createFunctionParameters(
+    Module* mod, std::string newFunctionName, int mode, int RequestedI,
+    BasicBlock* PredBB, LoadInst* int32 = NULL);
 
-}
-
+}  // namespace llvm

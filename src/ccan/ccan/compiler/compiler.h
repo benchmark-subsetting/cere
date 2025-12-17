@@ -55,8 +55,7 @@
  * Example:
  * void PRINTF_FMT(2,3) my_printf(const char *prefix, const char *fmt, ...);
  */
-#define PRINTF_FMT(nfmt, narg) \
-	__attribute__((format(__printf__, nfmt, narg)))
+#define PRINTF_FMT(nfmt, narg) __attribute__((format(__printf__, nfmt, narg)))
 #else
 #define PRINTF_FMT(nfmt, narg)
 #endif

@@ -8,13 +8,13 @@
 # the Free Software Foundation, either version 3 of the License,
 # or (at your option) any later version.
 #
-# CERE is distributed in the hope that it will be useful,  
+# CERE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
+# along with CERE.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
 import subprocess
@@ -23,19 +23,47 @@ from cere import vars as var
 from cere import utils
 from cere import cere_configure
 
-logger = logging.getLogger('Instrument')
+logger = logging.getLogger("Instrument")
+
 
 def init_module(subparsers, cere_plugins):
     cere_plugins["instrument"] = run
-    instrument_parser = subparsers.add_parser("instrument", help="Instrument a region in the application")
-    instrument_parser.add_argument('--region', help="Region to instrument")
-    instrument_parser.add_argument('--regions-file', help="File containing the list of regions to instrument")
-    instrument_parser.add_argument('--plugin-instr', default=var.RDTSC_WRAPPER, help="Plugin to instrument the region")
-    instrument_parser.add_argument('--invocation', type=int, default=0, help="Invocation to measure (Default measures all)")
-    instrument_parser.add_argument('--norun', action='store_true', help="If you don't want to automatically run the measure")
-    instrument_parser.add_argument('--force', '-f', action='store_true', help="Will force the CERE instrumentation")
+    instrument_parser = subparsers.add_parser(
+        "instrument", help="Instrument a region in the application"
+    )
+    instrument_parser.add_argument("--region", help="Region to instrument")
+    instrument_parser.add_argument(
+        "--regions-file", help="File containing the list of regions to instrument"
+    )
+    instrument_parser.add_argument(
+        "--plugin-instr",
+        default=var.RDTSC_WRAPPER,
+        help="Plugin to instrument the region",
+    )
+    instrument_parser.add_argument(
+        "--invocation",
+        type=int,
+        default=0,
+        help="Invocation to measure (Default measures all)",
+    )
+    instrument_parser.add_argument(
+        "--norun",
+        action="store_true",
+        help="If you don't want to automatically run the measure",
+    )
+    instrument_parser.add_argument(
+        "--force", "-f", action="store_true", help="Will force the CERE instrumentation"
+    )
 
-def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=var.RDTSC_WRAPPER, args_invocation=0, args_norun=False, args_force=False):
+
+def run_instrument(
+    args_region=None,
+    args_regions_file=None,
+    args_plugin_instr=var.RDTSC_WRAPPER,
+    args_invocation=0,
+    args_norun=False,
+    args_force=False,
+):
     if not cere_configure.init():
         return False
     if utils.is_invalid(args_region) and not args_force:
@@ -47,24 +75,49 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
     elif args_region:
         region_input = "--region={0}".format(args_region)
     else:
-        logger.error("No region specified, use at least one of the following: --region, --regions-file")
+        logger.error(
+            "No region specified, use at least one of the following: --region, --regions-file"
+        )
         return False
 
-    if (cere_configure.cere_config["omp"]) and ("OMP_NUM_THREADS" not in os.environ) and (not args_norun):
-      logger.error("OMP_NUM_THREADS not set. Export OMP_NUM_THREADS first.")
-      return False
+    if (
+        (cere_configure.cere_config["omp"])
+        and ("OMP_NUM_THREADS" not in os.environ)
+        and (not args_norun)
+    ):
+        logger.error("OMP_NUM_THREADS not set. Export OMP_NUM_THREADS first.")
+        return False
 
-    if args_invocation != 0 :
-        logger.info("Compiling instrumentation mode for {0} invocation {1}".format(region_input, args_invocation))
+    if args_invocation != 0:
+        logger.info(
+            "Compiling instrumentation mode for {0} invocation {1}".format(
+                region_input, args_invocation
+            )
+        )
         mode = " --invocation={0}".format(args_invocation)
     else:
         logger.info("Compiling instrumentation mode for {0}".format(region_input))
         mode = ""
 
     try:
-        env = dict(os.environ, CERE_MODE="original {0} --instrument {1} --wrapper={2}".format(region_input, mode, args_plugin_instr))
-        logger.debug(subprocess.check_output("{0} && {1}".format(cere_configure.cere_config["clean_cmd"], cere_configure.cere_config["build_cmd"]),
-                                             stderr=subprocess.STDOUT, shell=True, env=env, cwd=var.CERE_BUILD_PATH))
+        env = dict(
+            os.environ,
+            CERE_MODE="original {0} --instrument {1} --wrapper={2}".format(
+                region_input, mode, args_plugin_instr
+            ),
+        )
+        logger.debug(
+            subprocess.check_output(
+                "{0} && {1}".format(
+                    cere_configure.cere_config["clean_cmd"],
+                    cere_configure.cere_config["build_cmd"],
+                ),
+                stderr=subprocess.STDOUT,
+                shell=True,
+                env=env,
+                cwd=var.CERE_BUILD_PATH,
+            )
+        )
     except subprocess.CalledProcessError as err:
         logger.error(str(err))
         logger.error(err.output)
@@ -74,8 +127,14 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
     if not args_norun:
         logger.info("Running instrumentation for {0}".format(region_input))
         try:
-            logger.info(subprocess.check_output(cere_configure.cere_config["run_cmd"],
-                                                stderr=subprocess.STDOUT, shell=True, cwd=var.CERE_RUN_PATH))
+            logger.info(
+                subprocess.check_output(
+                    cere_configure.cere_config["run_cmd"],
+                    stderr=subprocess.STDOUT,
+                    shell=True,
+                    cwd=var.CERE_RUN_PATH,
+                )
+            )
         except subprocess.CalledProcessError as err:
             logger.error(str(err))
             logger.error(err.output)
@@ -83,5 +142,13 @@ def run_instrument(args_region=None, args_regions_file=None, args_plugin_instr=v
             return False
     return True
 
+
 def run(args):
-    return run_instrument(args.region, args.regions_file, args.plugin_instr, args.invocation, args.norun, args.force)
+    return run_instrument(
+        args.region,
+        args.regions_file,
+        args.plugin_instr,
+        args.invocation,
+        args.norun,
+        args.force,
+    )

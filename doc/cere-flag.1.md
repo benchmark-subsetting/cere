@@ -21,31 +21,31 @@ predicted based on each region best performance.
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--region REGION`:
+* `--region REGION`:
     Selects the region to replay. The list of valid regions can be displayed with
     the cere-regions(1) command.
 
-  * `--invitro-callcount CERE_REPLAY_REPETITIONS`:
+* `--invitro-callcount CERE_REPLAY_REPETITIONS`:
     Select the meta-repetition of the replay. By default **cere replay** runs
     the region 10 times.
 
-  * `--force`:
+* `--force`:
     **cere flag** keeps any previous results for regions. Use --force if you want
     to measure again or if you changed the input file.
 
-  * `FLAGS_FILE`:
+* `FLAGS_FILE`:
     Csv file where each row is a sequence of compilation flags that the user
     wants to test. An example can be find at CERE_PATH/examples/flags.csv.
 
 ## OUTPUT FILE
 
-  * `.cere/flags/regions_flags.csv`:
+* `.cere/flags/regions_flags.csv`:
     This file contains for each region the best sequence id, the original and
     the best runtime. This file can be used as an input of cere-hybrid(1)
-  * `.cere/flags/REGION.csv`:
+* `.cere/flags/REGION.csv`:
     One file per tested region. This file contains the region execution cycles
     for each sequence of flags.
 

@@ -2,6 +2,7 @@
 #ifndef CCAN_HTABLE_TYPE_H
 #define CCAN_HTABLE_TYPE_H
 #include <ccan/htable/htable.h>
+
 #include "config.h"
 
 /**
@@ -42,62 +43,63 @@
  * You can use HTABLE_INITIALIZER like so:
  *	struct <name> ht = { HTABLE_INITIALIZER(ht.raw, <name>_hash, NULL) };
  */
-#define HTABLE_DEFINE_TYPE(type, keyof, hashfn, eqfn, name)		\
-	struct name { struct htable raw; };				\
-	struct name##_iter { struct htable_iter i; };			\
-	static inline size_t name##_hash(const void *elem, void *priv)	\
-	{								\
-		return hashfn(keyof((const type *)elem));		\
-	}								\
-	static inline void name##_init(struct name *ht)			\
-	{								\
-		htable_init(&ht->raw, name##_hash, NULL);		\
-	}								\
-	static inline void name##_clear(struct name *ht)		\
-	{								\
-		htable_clear(&ht->raw);					\
-	}								\
-	static inline bool name##_add(struct name *ht, const type *elem) \
-	{								\
-		return htable_add(&ht->raw, hashfn(keyof(elem)), elem);	\
-	}								\
-	static inline bool name##_del(struct name *ht, const type *elem) \
-	{								\
-		return htable_del(&ht->raw, hashfn(keyof(elem)), elem);	\
-	}								\
-	static inline type *name##_get(const struct name *ht,		\
-				       const HTABLE_KTYPE(keyof) k)	\
-	{								\
-		/* Typecheck for eqfn */				\
-		(void)sizeof(eqfn((const type *)NULL,			\
-				  keyof((const type *)NULL)));		\
-		return htable_get(&ht->raw,				\
-				  hashfn(k),				\
-				  (bool (*)(const void *, void *))(eqfn), \
-				  k);					\
-	}								\
-	static inline bool name##_delkey(struct name *ht,		\
-					 const HTABLE_KTYPE(keyof) k)	\
-	{								\
-		type *elem = name##_get(ht, k);				\
-		if (elem)						\
-			return name##_del(ht, elem);			\
-		return false;						\
-	}								\
-	static inline type *name##_first(const struct name *ht,		\
-					 struct name##_iter *iter)	\
-	{								\
-		return htable_first(&ht->raw, &iter->i);		\
-	}								\
-	static inline type *name##_next(const struct name *ht,		\
-					struct name##_iter *iter)	\
-	{								\
-		return htable_next(&ht->raw, &iter->i);			\
-	}
+#define HTABLE_DEFINE_TYPE(type, keyof, hashfn, eqfn, name)            \
+  struct name {                                                        \
+    struct htable raw;                                                 \
+  };                                                                   \
+  struct name##_iter {                                                 \
+    struct htable_iter i;                                              \
+  };                                                                   \
+  static inline size_t name##_hash(const void* elem, void* priv)       \
+  {                                                                    \
+    return hashfn(keyof((const type*)elem));                           \
+  }                                                                    \
+  static inline void name##_init(struct name* ht)                      \
+  {                                                                    \
+    htable_init(&ht->raw, name##_hash, NULL);                          \
+  }                                                                    \
+  static inline void name##_clear(struct name* ht)                     \
+  {                                                                    \
+    htable_clear(&ht->raw);                                            \
+  }                                                                    \
+  static inline bool name##_add(struct name* ht, const type* elem)     \
+  {                                                                    \
+    return htable_add(&ht->raw, hashfn(keyof(elem)), elem);            \
+  }                                                                    \
+  static inline bool name##_del(struct name* ht, const type* elem)     \
+  {                                                                    \
+    return htable_del(&ht->raw, hashfn(keyof(elem)), elem);            \
+  }                                                                    \
+  static inline type* name##_get(                                      \
+      const struct name* ht, const HTABLE_KTYPE(keyof) k)              \
+  {                                                                    \
+    /* Typecheck for eqfn */                                           \
+    (void)sizeof(eqfn((const type*)NULL, keyof((const type*)NULL)));   \
+    return htable_get(                                                 \
+        &ht->raw, hashfn(k), (bool (*)(const void*, void*))(eqfn), k); \
+  }                                                                    \
+  static inline bool name##_delkey(                                    \
+      struct name* ht, const HTABLE_KTYPE(keyof) k)                    \
+  {                                                                    \
+    type* elem = name##_get(ht, k);                                    \
+    if (elem)                                                          \
+      return name##_del(ht, elem);                                     \
+    return false;                                                      \
+  }                                                                    \
+  static inline type* name##_first(                                    \
+      const struct name* ht, struct name##_iter* iter)                 \
+  {                                                                    \
+    return htable_first(&ht->raw, &iter->i);                           \
+  }                                                                    \
+  static inline type* name##_next(                                     \
+      const struct name* ht, struct name##_iter* iter)                 \
+  {                                                                    \
+    return htable_next(&ht->raw, &iter->i);                            \
+  }
 
 #if HAVE_TYPEOF
 #define HTABLE_KTYPE(keyof) typeof(keyof(NULL))
 #else
-#define HTABLE_KTYPE(keyof) void *
+#define HTABLE_KTYPE(keyof) void*
 #endif
 #endif /* CCAN_HTABLE_TYPE_H */

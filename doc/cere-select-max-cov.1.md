@@ -17,14 +17,14 @@ then used to visualize the selection summary.
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--max-error MAX_ERROR`:
+* `--max-error MAX_ERROR`:
     If the error between original and replay execution time is lower or equal than
     MAX_ERROR, then the region is matching. The default MAX_ERROR value is 15%
 
-  * `--min-coverage MIN_COVERAGE`:
+* `--min-coverage MIN_COVERAGE`:
     The region minimum coverage value for being selected. By default, this value
     is 1%.
 

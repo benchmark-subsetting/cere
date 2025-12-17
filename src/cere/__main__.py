@@ -8,18 +8,18 @@
 # the Free Software Foundation, either version 3 of the License,
 # or (at your option) any later version.
 #
-# CERE is distributed in the hope that it will be useful,  
+# CERE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
+# along with CERE.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import argparse
 
-#import cere_configure
+# import cere_configure
 from cere import cere_configure
 from cere import cere_profile
 from cere import cere_capture
@@ -39,29 +39,36 @@ from cere import cere_hybrid
 from cere import vars as var
 
 import logging
-logger = logging.getLogger('CERE')
+
+logger = logging.getLogger("CERE")
 
 cere_plugins = {}
 
+
 def start_log():
-    logging.basicConfig(format='%(levelname)s %(asctime)s %(name)s : %(message)s',
-                        datefmt='%m/%d/%Y %H:%M:%S',
-                        level=logging.DEBUG,
-                        filename='cere.log',
-                        filemode='w')
+    logging.basicConfig(
+        format="%(levelname)s %(asctime)s %(name)s : %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        level=logging.DEBUG,
+        filename="cere.log",
+        filemode="w",
+    )
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # set the same format for the console logger
-    formatter = logging.Formatter('%(levelname)s %(asctime)s %(name)s : %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+    formatter = logging.Formatter(
+        "%(levelname)s %(asctime)s %(name)s : %(message)s", datefmt="%m/%d/%Y %H:%M:%S"
+    )
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
-    logging.getLogger('').addHandler(console)
+    logging.getLogger("").addHandler(console)
     logger.info("Start")
 
+
 parser = argparse.ArgumentParser(description="CERE command line", prog="cere")
-parser.add_argument('--version', action='version', version='%(prog)s ' + var.VERSION)
+parser.add_argument("--version", action="version", version="%(prog)s " + var.VERSION)
 subparsers = parser.add_subparsers(help="Call CERE modules", dest="mode")
 
 cere_configure.init_module(subparsers, cere_plugins)

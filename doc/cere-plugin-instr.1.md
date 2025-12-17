@@ -13,22 +13,22 @@ flag. This flag expects a static or dynamic library.
 
 There are 4 functions the user must redefine:
 
- * void cere_markerInit(char*):
+* void cere_markerInit(char*):
     This function is inserted by **CERE** at the beginning of the main function.
     The argument is the name of the file passed through **--regions-file** for
     cere-instrument(1).
 
- * void cere_markerClose():
+* void cere_markerClose():
     This function is called through atexit(3), when the application exits.
 
- * cere_markerStartRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc):
+* cere_markerStartRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc):
     Start probe, inserted just before the region of insterest.
     regName: region name.
     vivo: false if we are in replay mode, otherwise true.
     requested_invoc: **--invocation** flag value from cere-instrument(1)
     curr_invoc: The region current invocation. This value is given by **CERE**
 
- * cere_markerStopRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc)
+* cere_markerStopRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc)
     Stop probe, inserted just after the region.
 
 ## REDEFINING CERE PROBES

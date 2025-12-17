@@ -16,31 +16,41 @@
  * You should have received a copy of the GNU General Public License         *
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 extern void rdtsc_markerInit();
 extern void rdtsc_markerClose();
 extern void rdtsc_markerStartRegion(char*, bool);
 extern void rdtsc_markerStopRegion(char*, bool);
 
-void cere_markerInit() {
-    rdtsc_markerInit();
+void
+cere_markerInit()
+{
+  rdtsc_markerInit();
 }
 
-void cere_markerClose() {
-    rdtsc_markerClose();
+void
+cere_markerClose()
+{
+  rdtsc_markerClose();
 }
 
-void cere_markerStartRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc) {
-    if ( requested_invoc == curr_invoc ) {
-        rdtsc_markerStartRegion(regName, vivo);
-    }
+void
+cere_markerStartRegion(
+    char* regName, bool vivo, int requested_invoc, int curr_invoc)
+{
+  if (requested_invoc == curr_invoc) {
+    rdtsc_markerStartRegion(regName, vivo);
+  }
 }
 
-void cere_markerStopRegion(char* regName, bool vivo, int requested_invoc, int curr_invoc) {
-    if ( requested_invoc == curr_invoc ) {
-        rdtsc_markerStopRegion(regName, vivo);
-    }
+void
+cere_markerStopRegion(
+    char* regName, bool vivo, int requested_invoc, int curr_invoc)
+{
+  if (requested_invoc == curr_invoc) {
+    rdtsc_markerStopRegion(regName, vivo);
+  }
 }

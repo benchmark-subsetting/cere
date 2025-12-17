@@ -16,32 +16,32 @@ and clusterize the invocations. One invocation per cluster is selected to
 represent its cluster. The model needed to retrieve the region execution time
 from these representatives invocations is also outputted. Finally **cere selectinv**
 generates an image of the trace clustering.
- 
+
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--region REGION`:
+* `--region REGION`:
     Selects the region for which you want to select representative invocations.
     The list of valid regions can be displayed with the cere-regions(1) command.
 
-  * `--force`:
+* `--force`:
     By default, **cere selectinv** does not re-select representative invocations
     if a previous selection exists. The **--force** flag forces the selection.
 
-  * `--dump-clusters`:
+* `--dump-clusters`:
     Generate additional files containing all members of each invocation classes.
 
 ## OUTPUT FILES
 
-  * `.cere/traces/REGION.invocations`:
+* `.cere/traces/REGION.invocations`:
     Each row correspond to a cluster with row N stands for the cluster N. Each
     row contains the cluster representative invocation, the invocation execution
     time in cycle and the part of the cluster in the total execution time of the
     region.
 
-  * `.cere/plots/REGION_byPhase.png`:
+* `.cere/plots/REGION_byPhase.png`:
     Image of the trace clustering for the selected region.
 
 ## COPYRIGHT

@@ -24,16 +24,15 @@
 extern long PAGESIZE;
 
 /* round down an address to its page address */
-#define round_to_page(addr)                                                    \
-  ((char *)(((long unsigned)(addr)) & ~( PAGESIZE - 1 )))
+#define round_to_page(addr) ((char*)(((long unsigned)(addr)) & ~(PAGESIZE - 1)))
 
 /* rounds up an address to the upper page address */
-#define round_up_page(addr)                                                    \
-  ((char *)((((long unsigned)(addr)-1) / PAGESIZE + 1) * PAGESIZE ))
+#define round_up_page(addr) \
+  ((char*)((((long unsigned)(addr) - 1) / PAGESIZE + 1) * PAGESIZE))
 
 /* number of memory pages that contain the memory range [from;to] */
-#define nb_pages_in_range(from, to)                                            \
-  (((long unsigned)round_up_page(to) - (long unsigned)round_to_page(from)) /   \
-   PAGESIZE )
+#define nb_pages_in_range(from, to)                                          \
+  (((long unsigned)round_up_page(to) - (long unsigned)round_to_page(from)) / \
+   PAGESIZE)
 
 #endif /* __PAGES__H */

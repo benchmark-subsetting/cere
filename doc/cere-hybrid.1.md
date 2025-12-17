@@ -19,17 +19,17 @@ generate the hybrid binary.
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--regions-file REGIONS_FILE`:
+* `--regions-file REGIONS_FILE`:
     Input file that list for each region the choosen compilation flags. This
     file is created with cere-flag(1).
     You can also create it manually; a sample layout lives in the `.cere`
     metadata produced by CERE runs, for example:
     `/path/to/.cere/flags/regions_flags.csv`
 
-  * `[--extraction-lvl {loop,function}]`
+* `[--extraction-lvl {loop,function}]`
     Sometimes extracting the loop alone into a new file does not trigger desired
     optimizations since we loose the compilation context and therefore the hybrid
     performance will not match what you expected with replays. You can then
@@ -37,7 +37,7 @@ generate the hybrid binary.
     preserve the context. Default is loop level extraction.
     Limitation for function level: Only one region to extract per function.
 
-  * `[--instrumentation]`
+* `[--instrumentation]`
     Measure the hybrid execution cycles. Cycles are dumped into `main.csv` file.
 
 ## COPYRIGHT

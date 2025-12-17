@@ -1,71 +1,72 @@
 #include <assert.h>
-#include <fcntl.h>
+#include <elf.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <syscall.h>
 #include <unistd.h>
-#include <elf.h>
-#include <sys/mman.h>
 
 
 #define _DEBUG 1
 #undef _DEBUG
 
 #include "debug.h"
-
-#include "ptrace.h"
 #include "pages.h"
+#include "ptrace.h"
 #include "tracer_interface.h"
 #include "types.h"
-void *addresses[65536];
+void* addresses[65536];
 long long unsigned int addrs_permissions[32768];
 int addrs_counter = 0;
 
 #if defined(__LP64__)
-#define ElfW(type) Elf64_ ## type
+#define ElfW(type) Elf64_##type
 #else
-#define ElfW(type) Elf32_ ## type
+#define ElfW(type) Elf32_##type
 #endif
 
 
 /*****
-* LOCK
-******/
+ * LOCK
+ ******/
 
 
-void* get_protect_offset(char* executable) {
+void*
+get_protect_offset(char* executable)
+{
   /* Returns the offset at which to start memory protection as to
    * avoid sections overlap errors in replay mode. */
 
-  ElfW(Ehdr) *ehdr;
-  ElfW(Shdr) *shdr;
-  void *data;
-  char *strtab;
+  ElfW(Ehdr) * ehdr;
+  ElfW(Shdr) * shdr;
+  void* data;
+  char* strtab;
   int filesize, file;
 
   file = open(executable, O_RDONLY);
 
-  if(file != -1) {
+  if (file != -1) {
     filesize = lseek(file, 0, SEEK_END);
     data = mmap(NULL, filesize, PROT_READ, MAP_SHARED, file, 0);
     if (data != NULL) {
-      ehdr = (ElfW(Ehdr) *)(data);
-      shdr = (ElfW(Shdr) *)(data + ehdr->e_shoff);
-      strtab = (char *)(data + shdr[ehdr->e_shstrndx].sh_offset);
+      ehdr = (ElfW(Ehdr)*)(data);
+      shdr = (ElfW(Shdr)*)(data + ehdr->e_shoff);
+      strtab = (char*)(data + shdr[ehdr->e_shstrndx].sh_offset);
 
-      for(int i=1; i < ehdr->e_shnum; i++) {
-        char * name = &strtab[shdr[i].sh_name];
-        void * address = (void*) shdr[i].sh_addr;
+      for (int i = 1; i < ehdr->e_shnum; i++) {
+        char* name = &strtab[shdr[i].sh_name];
+        void* address = (void*)shdr[i].sh_addr;
 
-        if(strcmp(name, ".init") == 0) {
+        if (strcmp(name, ".init") == 0) {
           // We will start to protect from this offset
           close(file);
           return address;
@@ -86,76 +87,45 @@ void* get_protect_offset(char* executable) {
   return NULL;
 }
 
-void get_permissions_from_buf(char * buf, long long unsigned int * permissions) {
+void
+get_permissions_from_buf(char* buf, long long unsigned int* permissions)
+{
   /* From a string in "rwx" format, return the corresponding encoded integer
    * ready to use with mprotect */
 
   long long unsigned int new_permissions;
-  if(strstr(buf, "--x") != NULL) {
+  if (strstr(buf, "--x") != NULL) {
     new_permissions = (long long unsigned)(PROT_EXEC);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
-  }
-  else if(strstr(buf, "-w-") != NULL) {
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
+  } else if (strstr(buf, "-w-") != NULL) {
     new_permissions = (long long unsigned)(PROT_WRITE);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
-  }
-  else if(strstr(buf, "-wx") != NULL) {
-    new_permissions = (long long unsigned)(PROT_WRITE|PROT_EXEC);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
-  }
-  else if(strstr(buf, "r--") != NULL) {
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
+  } else if (strstr(buf, "-wx") != NULL) {
+    new_permissions = (long long unsigned)(PROT_WRITE | PROT_EXEC);
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
+  } else if (strstr(buf, "r--") != NULL) {
     new_permissions = (long long unsigned)(PROT_READ);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
-  }
-  else if(strstr(buf, "r-x") != NULL) {
-    new_permissions = (long long unsigned)(PROT_READ|PROT_EXEC);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
-  }
-  else if(strstr(buf, "rw-") != NULL) {
-    new_permissions = (long long unsigned)(PROT_READ|PROT_WRITE);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
-  }
-  else if(strstr(buf, "rwx") != NULL) {
-    new_permissions = (long long unsigned)(PROT_READ|PROT_WRITE|PROT_EXEC);
-    memcpy(
-      permissions,
-      &new_permissions,
-      sizeof(long long unsigned int)
-    );
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
+  } else if (strstr(buf, "r-x") != NULL) {
+    new_permissions = (long long unsigned)(PROT_READ | PROT_EXEC);
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
+  } else if (strstr(buf, "rw-") != NULL) {
+    new_permissions = (long long unsigned)(PROT_READ | PROT_WRITE);
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
+  } else if (strstr(buf, "rwx") != NULL) {
+    new_permissions = (long long unsigned)(PROT_READ | PROT_WRITE | PROT_EXEC);
+    memcpy(permissions, &new_permissions, sizeof(long long unsigned int));
   }
 }
 
-void tracer_lock_mem(pid_t pid) {
-
+void
+tracer_lock_mem(pid_t pid)
+{
   PAGESIZE = sysconf(_SC_PAGESIZE);
 
   char maps_path[MAX_PATH];
   sprintf(maps_path, "/proc/%d/maps", pid);
-  FILE *maps = fopen(maps_path, "r");
+  FILE* maps = fopen(maps_path, "r");
 
   if (!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
@@ -164,10 +134,10 @@ void tracer_lock_mem(pid_t pid) {
 
   char buf[BUFSIZ + 1];
   bool first_pages = true;
-  char *tmpstr = NULL;
-  char *executable = NULL;
-  char *executable_basename = NULL;
-  void *protect_offset = NULL;
+  char* tmpstr = NULL;
+  char* executable = NULL;
+  char* executable_basename = NULL;
+  void* protect_offset = NULL;
   long long unsigned int permissions;
   int total_protected = 0;
   int total_skipped = 0;
@@ -191,9 +161,9 @@ void tracer_lock_mem(pid_t pid) {
 
       // We should be able to get the executable name from buf ...
       tmpstr = strchr(buf, '/');
-      executable = malloc(strlen(tmpstr-1)*sizeof(char));
-      memcpy(executable, tmpstr, strlen(tmpstr-1)*sizeof(char));
-      executable[strlen(executable)-1] = 0;
+      executable = malloc(strlen(tmpstr - 1) * sizeof(char));
+      memcpy(executable, tmpstr, strlen(tmpstr - 1) * sizeof(char));
+      executable[strlen(executable) - 1] = 0;
 
       // Keep a copy of the executable name to skip it later
       executable_basename = strdup(executable);
@@ -201,17 +171,19 @@ void tracer_lock_mem(pid_t pid) {
 
       // ... and inspect the ELF to determine where to start protecting pages
       protect_offset = get_protect_offset(executable);
-      if(protect_offset == NULL)
+      if (protect_offset == NULL)
         exit(1);
-      protect_offset = (void*) ((uint64_t) protect_offset + (uint64_t) getpagesize());
+      protect_offset =
+          (void*)((uint64_t)protect_offset + (uint64_t)getpagesize());
       debug_print("protect_offset=%p\n", protect_offset);
       free(executable);
     }
 
-    if(start < protect_offset)
-        continue;
+    if (start < protect_offset)
+      continue;
 
-    /* CRITICAL: Ignore main executable to avoid protecting code that needs to run after TRAP_LOCK_MEM */
+    /* CRITICAL: Ignore main executable to avoid protecting code that needs to
+     * run after TRAP_LOCK_MEM */
     if (executable_basename && strstr(buf, executable_basename) != NULL) {
       debug_print("SKIP main executable: %s", buf);
       total_skipped++;
@@ -253,7 +225,8 @@ void tracer_lock_mem(pid_t pid) {
       continue;
     }
 
-    /* Ignore stack - CRITICAL: stack must remain accessible for function returns! */
+    /* Ignore stack - CRITICAL: stack must remain accessible for function
+     * returns! */
     if (strstr(buf, "[stack]") != NULL) {
       debug_print("SKIP stack: %s", buf);
       total_skipped++;
@@ -262,15 +235,16 @@ void tracer_lock_mem(pid_t pid) {
 
     /* Ignore alreay protected pages */
     if (strstr(buf, "---p") != NULL) {
-      // Already protected pages are a special case, as we don't want to unprotect
-      // them after the codelet
+      // Already protected pages are a special case, as we don't want to
+      // unprotect them after the codelet
       debug_print("SKIP already protected: %s", buf);
       total_skipped++;
       assert(addrs_counter < 65536);
       continue;
     }
 
-    /* CRITICAL: Skip anonymous memory regions - they often contain GOT/PLT and other critical data */
+    /* CRITICAL: Skip anonymous memory regions - they often contain GOT/PLT and
+     * other critical data */
     /* Anonymous regions are those with " 00:00 0 " and no path */
     if (strstr(buf, " 00:00 0 ") != NULL && strchr(buf, '/') == NULL &&
         strstr(buf, "[heap]") == NULL && strstr(buf, "[stack]") == NULL &&
@@ -283,59 +257,67 @@ void tracer_lock_mem(pid_t pid) {
 
     assert(addrs_counter < 65536);
 
-    /* This will be protected : save adddresses/permissions to unprotect later */
+    /* This will be protected : save adddresses/permissions to unprotect later
+     */
     debug_print("PROTECT: %s", buf);
     total_protected++;
     debug_print("round_to_page=%p\n", round_to_page(start));
-    get_permissions_from_buf(&(buf[0]), addrs_permissions+addrs_counter);
+    get_permissions_from_buf(&(buf[0]), addrs_permissions + addrs_counter);
     addresses[addrs_counter++] = round_to_page(start);
     addresses[addrs_counter++] = end;
   }
 
-  debug_print("LOCK MEM SUMMARY: protected=%d, skipped=%d\n", total_protected, total_skipped);
+  debug_print(
+      "LOCK MEM SUMMARY: protected=%d, skipped=%d\n", total_protected,
+      total_skipped);
 
   /* Protect all pages in addresses */
   int tmp_counter = addrs_counter;
   while (tmp_counter > 0) {
-    void *end = addresses[--tmp_counter];
-    void *start = addresses[--tmp_counter];
+    void* end = addresses[--tmp_counter];
+    void* start = addresses[--tmp_counter];
     protect_i(pid, start, (end - start));
   }
 
   int r = fclose(maps);
   if (r != 0)
-    errx(EXIT_FAILURE, "Error reading the memory using /proc/ %s\n",
-         strerror(errno));
+    errx(
+        EXIT_FAILURE, "Error reading the memory using /proc/ %s\n",
+        strerror(errno));
 
   debug_print("%s\n", "END LOCK MEM");
 }
 
 
-
 /*******
-* UNLOCK
-********/
+ * UNLOCK
+ ********/
 
-bool should_unprotect(void ** start, void ** end, long long unsigned int * permissions) {
+bool
+should_unprotect(void** start, void** end, long long unsigned int* permissions)
+{
   /* For a memory range, check if part (or all) of it has been protected,
-   * and retrieves its previous permissions. If it has been protected, return true. */
+   * and retrieves its previous permissions. If it has been protected, return
+   * true. */
 
   // Iterate over previously protected address ranges to determine
   // if a given range should be unprotected
   int i = addrs_counter;
   while (i > 0) {
-    void *i_end = addresses[--i]  ;
-    void *i_start = addresses[--i];
+    void* i_end = addresses[--i];
+    void* i_start = addresses[--i];
 
     // Overlap between the two memory ranges ?
-    if((*start < i_end) && (*end > i_start)) {
+    if ((*start < i_end) && (*end > i_start)) {
       // In case the memory ranges of the proc maps file have changed,
       // return the intersection of the two ranges
       *start = *start > i_start ? *start : i_start;
       *end = *end < i_end ? *end : i_end;
 
       // Also retrieve the previous permissions
-      memcpy(permissions, addrs_permissions+((i-2)/2), sizeof(long long unsigned int));
+      memcpy(
+          permissions, addrs_permissions + ((i - 2) / 2),
+          sizeof(long long unsigned int));
       return true;
     }
   }
@@ -345,18 +327,19 @@ bool should_unprotect(void ** start, void ** end, long long unsigned int * permi
   return false;
 }
 
-void tracer_unlock_mem(pid_t pid) {
-
+void
+tracer_unlock_mem(pid_t pid)
+{
   char maps_path[MAX_PATH];
   sprintf(maps_path, "/proc/%d/maps", pid);
-  FILE *maps = fopen(maps_path, "r");
+  FILE* maps = fopen(maps_path, "r");
 
   if (!maps)
     errx(EXIT_FAILURE, "Error reading the memory using /proc/ interface");
 
   debug_print("%s\n", "START UNLOCK MEM");
 
-  void *unprotect_addresses[65536];
+  void* unprotect_addresses[65536];
   long long unsigned int unprotect_addrs_permissions[32768];
   long long unsigned int current_permissions;
 
@@ -371,27 +354,29 @@ void tracer_unlock_mem(pid_t pid) {
 
     assert(counter < 65536);
 
-    if(should_unprotect(&start, &end, &current_permissions)) {
-      memcpy(unprotect_addrs_permissions+(counter/2), &current_permissions, sizeof(long long unsigned int));
+    if (should_unprotect(&start, &end, &current_permissions)) {
+      memcpy(
+          unprotect_addrs_permissions + (counter / 2), &current_permissions,
+          sizeof(long long unsigned int));
       unprotect_addresses[counter++] = round_to_page(start);
       unprotect_addresses[counter++] = end;
     }
-
   }
 
 
   /* Unprotect all pages in adresses */
   int i = counter;
   while (i > 0) {
-    void *end = unprotect_addresses[--i];
-    void *start = unprotect_addresses[--i];
+    void* end = unprotect_addresses[--i];
+    void* start = unprotect_addresses[--i];
     unprotect_i(pid, start, (end - start));
   }
 
   int r = fclose(maps);
   if (r != 0)
-    errx(EXIT_FAILURE, "Error reading the memory using /proc/ %s\n",
-         strerror(errno));
+    errx(
+        EXIT_FAILURE, "Error reading the memory using /proc/ %s\n",
+        strerror(errno));
 
   debug_print("%s\n", "END UNLOCK MEM");
 }

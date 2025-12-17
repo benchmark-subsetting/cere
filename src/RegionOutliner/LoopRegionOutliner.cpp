@@ -28,14 +28,11 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
-
-#include "llvm/IR/Dominators.h"
-
-
-#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 
@@ -48,35 +45,39 @@ extern cl::opt<bool> PcereUse;
 
 namespace {
 struct LoopRegionOutliner : public LoopPass {
-  static char ID; // Pass identification, replacement for typeid
+  static char ID;  // Pass identification, replacement for typeid
   unsigned NumLoops;
   bool ProfileApp;
   bool Pcere;
   std::string RegionName;
 
-  explicit LoopRegionOutliner(unsigned numLoops = ~0,
-                              const std::string &regionName = "")
+  explicit LoopRegionOutliner(
+      unsigned numLoops = ~0, const std::string& regionName = "")
       : LoopPass(ID), NumLoops(numLoops), ProfileApp(AppMeasure),
-        Pcere(PcereUse), RegionName(regionName) {
+        Pcere(PcereUse), RegionName(regionName)
+  {
     if (regionName.empty())
       RegionName = IsolateRegion;
   }
 
-  virtual bool runOnLoop(Loop *L, LPPassManager &LPM);
+  virtual bool runOnLoop(Loop* L, LPPassManager& LPM);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequiredID(LoopSimplifyID);
     AU.addRequired<DominatorTreeWrapperPass>();
   }
 };
-} // namespace
+}  // namespace
 
 char LoopRegionOutliner::ID = 0;
-static RegisterPass<LoopRegionOutliner> X("region-outliner",
-                                          "Outline all loops", false, false);
+static RegisterPass<LoopRegionOutliner> X(
+    "region-outliner", "Outline all loops", false, false);
 
-bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
+bool
+LoopRegionOutliner::runOnLoop(Loop* L, LPPassManager& LPM)
+{
   // Only visit top-level loops.
   if (L->getParentLoop())
     return false;
@@ -85,7 +86,7 @@ bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   if (!L->isLoopSimplifyForm())
     return false;
 
-  DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  DominatorTree& DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   bool Changed = false;
 
@@ -93,7 +94,7 @@ bool LoopRegionOutliner::runOnLoop(Loop *L, LPPassManager &LPM) {
   // If this loop is inside a function prefixed with __cere__
   // it means we are looking at an already outlined loop
   bool ShouldExtractLoop = true;
-  Function *function = L->getHeader()->getParent();
+  Function* function = L->getHeader()->getParent();
   std::string name = function->getName().data();
   std::size_t found = name.find("__cere__");
   if (found != std::string::npos) {

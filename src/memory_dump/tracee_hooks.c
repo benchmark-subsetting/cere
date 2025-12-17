@@ -24,25 +24,27 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#include "tracee.h"
 #include "pages.h"
+#include "tracee.h"
 #include "tracee_interface.h"
 #include "types.h"
 
-static void *(*real_malloc)(size_t) = NULL;
-static void *(*real_calloc)(size_t nmemb, size_t size) = NULL;
-static void *(*real_realloc)(void *ptr, size_t size) = NULL;
-static void *(*real_memalign)(size_t alignment, size_t size) = NULL;
-static FILE *(*real_fopen)(const char *path, const char *mode) = NULL;
-static size_t (*real_fread)(void *ptr, size_t size, size_t nmemb, FILE *stream);
-static size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb,
-                             FILE *stream);
+static void* (*real_malloc)(size_t) = NULL;
+static void* (*real_calloc)(size_t nmemb, size_t size) = NULL;
+static void* (*real_realloc)(void* ptr, size_t size) = NULL;
+static void* (*real_memalign)(size_t alignment, size_t size) = NULL;
+static FILE* (*real_fopen)(const char* path, const char* mode) = NULL;
+static size_t (*real_fread)(void* ptr, size_t size, size_t nmemb, FILE* stream);
+static size_t (*real_fwrite)(
+    const void* ptr, size_t size, size_t nmemb, FILE* stream);
 
-static char *calloc_init_mem[CALLOC_INIT];
+static char* calloc_init_mem[CALLOC_INIT];
 static bool mtrace_init_called = false;
 
 /* lock_range: requests protection of the memory range [from; to] */
-static void lock_range(void *from, void *to) {
+static void
+lock_range(void* from, void* to)
+{
   if (mtrace_active) {
     hook_sigtrap();
     send_to_tracer((register_t)from);
@@ -52,8 +54,9 @@ static void lock_range(void *from, void *to) {
 
 /* hooks_init: replace memory allocation functions by our own hooks that
  * protect memory before returning it to the user */
-static void hooks_init(void) {
-
+static void
+hooks_init(void)
+{
   mtrace_init_called = true;
 
   real_malloc = dlsym(RTLD_NEXT, "malloc");
@@ -86,18 +89,21 @@ static void hooks_init(void) {
   }
 }
 
-void *malloc(size_t size) {
+void*
+malloc(size_t size)
+{
   if (real_malloc == NULL)
     hooks_init();
 
-  void *p = NULL;
+  void* p = NULL;
   p = real_malloc(size);
   lock_range(p, p + size);
   return p;
 }
 
-void *calloc(size_t nmemb, size_t size) {
-
+void*
+calloc(size_t nmemb, size_t size)
+{
   /* On certain versions of linux and when linking with pthreads, */
   /* dlsym uses calloc. This can cause an infinite loop when calling */
   /* hooks_init(). To avoid this, we return a statically allocated block of */
@@ -113,45 +119,52 @@ void *calloc(size_t nmemb, size_t size) {
   if (real_calloc == NULL)
     hooks_init();
 
-  void *p = NULL;
+  void* p = NULL;
   p = real_calloc(nmemb, size);
   lock_range(p, p + size);
   return p;
 }
 
-void *realloc(void *ptr, size_t size) {
+void*
+realloc(void* ptr, size_t size)
+{
   if (real_realloc == NULL)
     hooks_init();
 
-  void *p = NULL;
+  void* p = NULL;
   p = real_realloc(ptr, size);
   lock_range(p, p + size);
   return p;
 }
 
-void *memalign(size_t alignment, size_t size) {
+void*
+memalign(size_t alignment, size_t size)
+{
   if (real_memalign == NULL)
     hooks_init();
 
-  void *p = NULL;
+  void* p = NULL;
   p = real_memalign(alignment, size);
   lock_range(p, p + size);
   return p;
 }
 
 /* touch_string: touch all the memory in a char* string */
-static void touch_string(const char *str) {
-  const char *c;
-  for (c = str; *c != '\0'; c++)
-    ;
+static void
+touch_string(const char* str)
+{
+  const char* c;
+  for (c = str; *c != '\0'; c++);
 }
 
 /* touch_mem: touches all the pages in the memory range [mem; mem + size*nmemb]
  */
-static void touch_mem(const void *mem, size_t size, size_t nmemb) {
+static void
+touch_mem(const void* mem, size_t size, size_t nmemb)
+{
   size_t i;
-  char *last = ((char *)mem) + size * nmemb - 1;
-  for (char *c = (char *)mem; c <= last; c += PAGESIZE) {
+  char* last = ((char*)mem) + size * nmemb - 1;
+  for (char* c = (char*)mem; c <= last; c += PAGESIZE) {
     volatile char touched = *c;
   }
   volatile char touched = *last;
@@ -159,7 +172,9 @@ static void touch_mem(const void *mem, size_t size, size_t nmemb) {
 
 /* Before performing standard syscall, we must unlock memory before calling the
  * kernel */
-FILE *fopen(const char *path, const char *mode) {
+FILE*
+fopen(const char* path, const char* mode)
+{
   if (real_fopen == NULL)
     hooks_init();
   touch_string(path);
@@ -167,14 +182,18 @@ FILE *fopen(const char *path, const char *mode) {
   return real_fopen(path, mode);
 }
 
-size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+size_t
+fread(void* ptr, size_t size, size_t nmemb, FILE* stream)
+{
   if (real_fread == NULL)
     hooks_init();
   touch_mem(ptr, size, nmemb);
   return real_fread(ptr, size, nmemb, stream);
 }
 
-size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
+size_t
+fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream)
+{
   if (real_fwrite == NULL)
     hooks_init();
   touch_mem(ptr, size, nmemb);

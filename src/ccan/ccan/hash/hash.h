@@ -1,13 +1,14 @@
 /* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_HASH_H
 #define CCAN_HASH_H
-#include "config.h"
+#include <ccan/build_assert/build_assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <ccan/build_assert/build_assert.h>
+
+#include "config.h"
 
 /* Stolen mostly from: lookup3.c, by Bob Jenkins, May 2006, Public Domain.
- * 
+ *
  * http://burtleburtle.net/bob/c/lookup3.c
  */
 
@@ -50,7 +51,7 @@
  *		return 0;
  *	}
  */
-#define hash(p, num, base) hash_any((p), (num)*sizeof(*(p)), (base))
+#define hash(p, num, base) hash_any((p), (num) * sizeof(*(p)), (base))
 
 /**
  * hash_stable - hash of an array for external use
@@ -91,13 +92,16 @@
  *		return 0;
  *	}
  */
-#define hash_stable(p, num, base)					\
-	(BUILD_ASSERT_OR_ZERO(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
-			      || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) + \
-	 sizeof(*(p)) == 8 ? hash_stable_64((p), (num), (base))		\
-	 : sizeof(*(p)) == 4 ? hash_stable_32((p), (num), (base))	\
-	 : sizeof(*(p)) == 2 ? hash_stable_16((p), (num), (base))	\
-	 : hash_stable_8((p), (num), (base)))
+#define hash_stable(p, num, base)                                     \
+  (BUILD_ASSERT_OR_ZERO(                                              \
+       sizeof(*(p)) == 8 || sizeof(*(p)) == 4 || sizeof(*(p)) == 2 || \
+       sizeof(*(p)) == 1) +                                           \
+               sizeof(*(p)) ==                                        \
+           8                                                          \
+       ? hash_stable_64((p), (num), (base))                           \
+   : sizeof(*(p)) == 4 ? hash_stable_32((p), (num), (base))           \
+   : sizeof(*(p)) == 2 ? hash_stable_16((p), (num), (base))           \
+                       : hash_stable_8((p), (num), (base)))
 
 /**
  * hash_u32 - fast hash an array of 32-bit values for internal use
@@ -113,7 +117,7 @@
  * only useful for internal hashes (ie. not hashes sent across the
  * network or saved to disk).
  */
-uint32_t hash_u32(const uint32_t *key, size_t num, uint32_t base);
+uint32_t hash_u32(const uint32_t* key, size_t num, uint32_t base);
 
 /**
  * hash_string - very fast hash of an ascii string
@@ -127,17 +131,17 @@ uint32_t hash_u32(const uint32_t *key, size_t num, uint32_t base);
  * network or saved to disk).  The results will be different from the
  * other hash functions in this module, too.
  */
-static inline uint32_t hash_string(const char *string)
+static inline uint32_t
+hash_string(const char* string)
 {
-	/* This is Karl Nelson <kenelson@ece.ucdavis.edu>'s X31 hash.
-	 * It's a little faster than the (much better) lookup3 hash(): 56ns vs
-	 * 84ns on my 2GHz Intel Core Duo 2 laptop for a 10 char string. */
-	uint32_t ret;
+  /* This is Karl Nelson <kenelson@ece.ucdavis.edu>'s X31 hash.
+   * It's a little faster than the (much better) lookup3 hash(): 56ns vs
+   * 84ns on my 2GHz Intel Core Duo 2 laptop for a 10 char string. */
+  uint32_t ret;
 
-	for (ret = 0; *string; string++)
-		ret = (ret << 5) - ret + *string;
+  for (ret = 0; *string; string++) ret = (ret << 5) - ret + *string;
 
-	return ret;
+  return ret;
 }
 
 /**
@@ -179,7 +183,7 @@ static inline uint32_t hash_string(const char *string)
  *		return 0;
  *	}
  */
-#define hash64(p, num, base) hash64_any((p), (num)*sizeof(*(p)), (base))
+#define hash64(p, num, base) hash64_any((p), (num) * sizeof(*(p)), (base))
 
 /**
  * hash64_stable - 64 bit hash of an array for external use
@@ -220,13 +224,16 @@ static inline uint32_t hash_string(const char *string)
  *		return 0;
  *	}
  */
-#define hash64_stable(p, num, base)					\
-	(BUILD_ASSERT_OR_ZERO(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
-			      || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) + \
-	 sizeof(*(p)) == 8 ? hash64_stable_64((p), (num), (base))	\
-	 : sizeof(*(p)) == 4 ? hash64_stable_32((p), (num), (base))	\
-	 : sizeof(*(p)) == 2 ? hash64_stable_16((p), (num), (base))	\
-	 : hash64_stable_8((p), (num), (base)))
+#define hash64_stable(p, num, base)                                   \
+  (BUILD_ASSERT_OR_ZERO(                                              \
+       sizeof(*(p)) == 8 || sizeof(*(p)) == 4 || sizeof(*(p)) == 2 || \
+       sizeof(*(p)) == 1) +                                           \
+               sizeof(*(p)) ==                                        \
+           8                                                          \
+       ? hash64_stable_64((p), (num), (base))                         \
+   : sizeof(*(p)) == 4 ? hash64_stable_32((p), (num), (base))         \
+   : sizeof(*(p)) == 2 ? hash64_stable_16((p), (num), (base))         \
+                       : hash64_stable_8((p), (num), (base)))
 
 
 /**
@@ -237,23 +244,23 @@ static inline uint32_t hash_string(const char *string)
  *
  * This is either hash() or hash64(), on 32/64 bit long machines.
  */
-#define hashl(p, num, base)						\
-	(BUILD_ASSERT_OR_ZERO(sizeof(long) == sizeof(uint32_t)		\
-			      || sizeof(long) == sizeof(uint64_t)) +	\
-	(sizeof(long) == sizeof(uint64_t)				\
-	 ? hash64((p), (num), (base)) : hash((p), (num), (base))))
+#define hashl(p, num, base)                                                    \
+  (BUILD_ASSERT_OR_ZERO(                                                       \
+       sizeof(long) == sizeof(uint32_t) || sizeof(long) == sizeof(uint64_t)) + \
+   (sizeof(long) == sizeof(uint64_t) ? hash64((p), (num), (base))              \
+                                     : hash((p), (num), (base))))
 
 /* Our underlying operations. */
-uint32_t hash_any(const void *key, size_t length, uint32_t base);
-uint32_t hash_stable_64(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_32(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_16(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_8(const void *key, size_t n, uint32_t base);
-uint64_t hash64_any(const void *key, size_t length, uint64_t base);
-uint64_t hash64_stable_64(const void *key, size_t n, uint64_t base);
-uint64_t hash64_stable_32(const void *key, size_t n, uint64_t base);
-uint64_t hash64_stable_16(const void *key, size_t n, uint64_t base);
-uint64_t hash64_stable_8(const void *key, size_t n, uint64_t base);
+uint32_t hash_any(const void* key, size_t length, uint32_t base);
+uint32_t hash_stable_64(const void* key, size_t n, uint32_t base);
+uint32_t hash_stable_32(const void* key, size_t n, uint32_t base);
+uint32_t hash_stable_16(const void* key, size_t n, uint32_t base);
+uint32_t hash_stable_8(const void* key, size_t n, uint32_t base);
+uint64_t hash64_any(const void* key, size_t length, uint64_t base);
+uint64_t hash64_stable_64(const void* key, size_t n, uint64_t base);
+uint64_t hash64_stable_32(const void* key, size_t n, uint64_t base);
+uint64_t hash64_stable_16(const void* key, size_t n, uint64_t base);
+uint64_t hash64_stable_8(const void* key, size_t n, uint64_t base);
 
 /**
  * hash_pointer - hash a pointer for internal use
@@ -297,17 +304,18 @@ uint64_t hash64_stable_8(const void *key, size_t n, uint64_t base);
  *		return NULL;
  *	}
  */
-static inline uint32_t hash_pointer(const void *p, uint32_t base)
+static inline uint32_t
+hash_pointer(const void* p, uint32_t base)
 {
-	if (sizeof(p) % sizeof(uint32_t) == 0) {
-		/* This convoluted union is the right way of aliasing. */
-		union {
-			uint32_t a[sizeof(p) / sizeof(uint32_t)];
-			const void *p;
-		} u;
-		u.p = p;
-		return hash_u32(u.a, sizeof(p) / sizeof(uint32_t), base);
-	} else
-		return hash(&p, 1, base);
+  if (sizeof(p) % sizeof(uint32_t) == 0) {
+    /* This convoluted union is the right way of aliasing. */
+    union {
+      uint32_t a[sizeof(p) / sizeof(uint32_t)];
+      const void* p;
+    } u;
+    u.p = p;
+    return hash_u32(u.a, sizeof(p) / sizeof(uint32_t), base);
+  } else
+    return hash(&p, 1, base);
 }
 #endif /* HASH_H */

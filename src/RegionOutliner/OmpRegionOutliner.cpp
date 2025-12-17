@@ -25,6 +25,11 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "region-outliner"
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+
 #include "RegionExtractor.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopPass.h"
@@ -37,10 +42,6 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
 
 using namespace llvm;
 
@@ -50,36 +51,40 @@ extern cl::opt<bool> PcereUse;
 
 namespace {
 struct OmpRegionOutliner : public FunctionPass {
-  static char ID; // Pass identification, replacement for typeid
+  static char ID;  // Pass identification, replacement for typeid
   unsigned NumLoops;
   bool ProfileApp;
   bool Pcere;
   std::string RegionName;
 
-  explicit OmpRegionOutliner(unsigned numLoops = ~0,
-                             const std::string &regionName = "")
+  explicit OmpRegionOutliner(
+      unsigned numLoops = ~0, const std::string& regionName = "")
       : FunctionPass(ID), NumLoops(numLoops), ProfileApp(AppMeasure),
-        Pcere(PcereUse), RegionName(regionName) {
+        Pcere(PcereUse), RegionName(regionName)
+  {
     if (regionName.empty())
       RegionName = IsolateRegion;
   }
 
-  virtual bool runOnFunction(Function &F);
+  virtual bool runOnFunction(Function& F);
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage& AU) const
+  {
     AU.addRequiredID(BreakCriticalEdgesID);
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addPreserved<DominatorTreeWrapperPass>();
   }
 };
-} // namespace
+}  // namespace
 
 char OmpRegionOutliner::ID = 0;
-static RegisterPass<OmpRegionOutliner>
-    X("omp-region-outliner", "Outline parallel regions", false, false);
+static RegisterPass<OmpRegionOutliner> X(
+    "omp-region-outliner", "Outline parallel regions", false, false);
 
 /// \brief Removes extension from \p filename.
-std::string removeExtension(const std::string &filename) {
+std::string
+removeExtension(const std::string& filename)
+{
   size_t lastdot = filename.find_last_of(".");
   if (lastdot == std::string::npos)
     return filename;
@@ -87,14 +92,17 @@ std::string removeExtension(const std::string &filename) {
 }
 
 /// \brief Removes character \p toReplace by \p replacer in \p str.
-std::string removeChar(std::string str, const char toReplace,
-                       const char replacer) {
+std::string
+removeChar(std::string str, const char toReplace, const char replacer)
+{
   replace(str.begin(), str.end(), toReplace, replacer);
   return str;
 }
 
 /// \brief Update file format.
-std::string updateFileFormat(std::string str) {
+std::string
+updateFileFormat(std::string str)
+{
   str = removeChar(str, '-', '_');
   str = removeChar(str, '/', '_');
   str = removeChar(str, '+', '_');
@@ -105,17 +113,19 @@ std::string updateFileFormat(std::string str) {
 /// \brief Creates the CERE formated function name for the outlined region.
 /// The syntax is __cere__filename__functionName__firstLine
 /// Can be merged with the loop version
-std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
+std::string
+createFunctionName(Function* oldFunction, CallInst* callInst)
+{
   std::string Separator = "_";
 
   // Get current module
-  Module *mod = oldFunction->getParent();
+  Module* mod = oldFunction->getParent();
   std::string File = mod->getModuleIdentifier();
   std::string newFunctionName;
   std::ostringstream oss;
   // If the function containing the loop does not have debug
   // information, we can't outline the loop.
-  if (DILocation *firstLoc = callInst->getDebugLoc()) {
+  if (DILocation* firstLoc = callInst->getDebugLoc()) {
     oss << firstLoc->getLine();
     std::string firstLine = oss.str();
     std::string Original_location = firstLoc->getFilename().str();
@@ -134,9 +144,11 @@ std::string createFunctionName(Function *oldFunction, CallInst *callInst) {
 }
 
 /// Specify if the call has to be extracted
-bool ChooseExtract(std::string functionCall, std::string RegionName,
-                   CallInst *callInst, Function *F) {
-
+bool
+ChooseExtract(
+    std::string functionCall, std::string RegionName, CallInst* callInst,
+    Function* F)
+{
   if (RegionName == "all") {
     if (functionCall.find("__kmpc_fork_call") != std::string::npos)
       return true;
@@ -153,7 +165,9 @@ bool ChooseExtract(std::string functionCall, std::string RegionName,
 }
 
 /// Find omp outlined name for the parralel region
-std::string findOutlinedName(CallInst *callInst) {
+std::string
+findOutlinedName(CallInst* callInst)
+{
   std::string str;
   llvm::raw_string_ostream rso(str);
   callInst->print(rso);
@@ -168,22 +182,24 @@ std::string findOutlinedName(CallInst *callInst) {
 }
 
 /// Extract in a new basic block the omp fork call
-int SplitOMPCall(Module *mod, Function *F, DominatorTree &DT,
-                 std::string RegionName) {
+int
+SplitOMPCall(
+    Module* mod, Function* F, DominatorTree& DT, std::string RegionName)
+{
   std::string functionCall;
   int t = 0;
 
-  CallInst *iFirst;
-  Instruction *iSecond;
+  CallInst* iFirst;
+  Instruction* iSecond;
 
   // XXX To optimize with a single run trough the instructions
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     if (t) {
-      Instruction *instru = dyn_cast<Instruction>(&*I);
+      Instruction* instru = dyn_cast<Instruction>(&*I);
       iSecond = instru;
       break;
     }
-    if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
+    if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
         functionCall = callInst->getCalledFunction()->getName().data();
         if (ChooseExtract(functionCall, RegionName, callInst, F)) {
@@ -203,13 +219,16 @@ int SplitOMPCall(Module *mod, Function *F, DominatorTree &DT,
 
 /// \brief Add a new region in the regions file if not already present.
 /// Can be merged with the loop version
-void add_region_to_file(std::string cere_region, std::string omp_region, RegionExtractor Extractor) {
+void
+add_region_to_file(
+    std::string cere_region, std::string omp_region, RegionExtractor Extractor)
+{
   std::string OmpFileInfos = "omp_outlined_to_cere";
-  std::fstream regionstream(OmpFileInfos.c_str(),
-                          std::ios::in | std::ios::out | std::ios::app);
+  std::fstream regionstream(
+      OmpFileInfos.c_str(), std::ios::in | std::ios::out | std::ios::app);
   if (regionstream.is_open()) {
     if (!Extractor.is_region_in_file(cere_region, regionstream)) {
-      regionstream << cere_region + " " + omp_region +"\n";
+      regionstream << cere_region + " " + omp_region + "\n";
     }
     regionstream.close();
   } else {
@@ -218,19 +237,24 @@ void add_region_to_file(std::string cere_region, std::string omp_region, RegionE
 }
 
 /// Extract in a new function the omp fork call basic block
-bool ExtractOMPCall(Module *mod, Function *F, Pass *P, bool ProfileApp,
-                    std::string RegionName) {
+bool
+ExtractOMPCall(
+    Module* mod, Function* F, Pass* P, bool ProfileApp, std::string RegionName)
+{
   std::string functionCall;
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-    if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
+    if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
       if (callInst->getCalledFunction()) {
         functionCall = callInst->getCalledFunction()->getName().data();
         if (ChooseExtract(functionCall, RegionName, callInst, F)) {
           RegionExtractor Extractor = RegionExtractor(
               callInst->getParent(), RegionName, ProfileApp, true);
-          if(ProfileApp) {
-            //We must record wich omp.outlined function is called by this kmpc_fork_call
-            add_region_to_file(createFunctionName(F, callInst), findOutlinedName(callInst), Extractor);
+          if (ProfileApp) {
+            // We must record wich omp.outlined function is called by this
+            // kmpc_fork_call
+            add_region_to_file(
+                createFunctionName(F, callInst), findOutlinedName(callInst),
+                Extractor);
           }
           Extractor.extractCodeRegion();
           break;
@@ -241,15 +265,17 @@ bool ExtractOMPCall(Module *mod, Function *F, Pass *P, bool ProfileApp,
   return true;
 }
 
-bool OmpRegionOutliner::runOnFunction(Function &F) {
-  Module *mod = F.getParent();
+bool
+OmpRegionOutliner::runOnFunction(Function& F)
+{
+  Module* mod = F.getParent();
   if (F.getName().find("__cere__") != std::string::npos)
     return false;
   if (F.getName().find(".omp_outlined") != std::string::npos)
     return false;
 
   int work = 1;
-  DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  DominatorTree& DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   while (work) {
     work = SplitOMPCall(mod, &F, DT, RegionName);
     ExtractOMPCall(mod, &F, this, ProfileApp, RegionName);

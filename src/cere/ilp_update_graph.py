@@ -8,13 +8,13 @@
 # the Free Software Foundation, either version 3 of the License,
 # or (at your option) any later version.
 #
-# CERE is distributed in the hope that it will be useful,  
+# CERE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with CERE.  If not, see <http://www.gnu.org/licenses/>.  
+# along with CERE.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import os
@@ -28,7 +28,8 @@ import logging
 from cere import vars as var
 from cere import utils
 
-logger = logging.getLogger('ILP selector')
+logger = logging.getLogger("ILP selector")
+
 
 def update(args):
     binary_cmd = cere_configure.cere_config["run_cmd"]
@@ -42,17 +43,18 @@ def update(args):
         logger.critical("No graph to load. Did you run cere profile?")
         return False
 
-    while(1):
+    while 1:
         graph = load_graph()
 
         newLoopsToTest = False
-        with open(args.regions_file, 'w') as f:
+        with open(args.regions_file, "w") as f:
             for n, d in graph.nodes(data=True):
-                if d['_coverage'] < args.min_coverage: d['_small'] = True
-                if d['_valid'] and not d['_small'] and not d['_tested']:
+                if d["_coverage"] < args.min_coverage:
+                    d["_small"] = True
+                if d["_valid"] and not d["_small"] and not d["_tested"]:
                     newLoopsToTest = True
-                    d['_to_test']=True
-                    f.write(d['_name']+"\n")
+                    d["_to_test"] = True
+                    f.write(d["_name"] + "\n")
 
         plot(graph)
         save_graph(graph)

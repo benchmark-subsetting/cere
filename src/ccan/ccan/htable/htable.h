@@ -1,10 +1,11 @@
 /* Licensed under LGPLv2+ - see LICENSE file for details */
 #ifndef CCAN_HTABLE_H
 #define CCAN_HTABLE_H
-#include "config.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
+
+#include "config.h"
 
 /**
  * struct htable - private definition of a htable.
@@ -13,14 +14,14 @@
  * supply inline functions.
  */
 struct htable {
-	size_t (*rehash)(const void *elem, void *priv);
-	void *priv;
-	unsigned int bits;
-	size_t elems, deleted, max, max_with_deleted;
-	/* These are the bits which are the same in all pointers. */
-	uintptr_t common_mask, common_bits;
-	uintptr_t perfect_bit;
-	uintptr_t *table;
+  size_t (*rehash)(const void* elem, void* priv);
+  void* priv;
+  unsigned int bits;
+  size_t elems, deleted, max, max_with_deleted;
+  /* These are the bits which are the same in all pointers. */
+  uintptr_t common_mask, common_bits;
+  uintptr_t perfect_bit;
+  uintptr_t* table;
 };
 
 /**
@@ -39,8 +40,10 @@ struct htable {
  *	}
  *	static struct htable ht = HTABLE_INITIALIZER(ht, rehash, NULL);
  */
-#define HTABLE_INITIALIZER(name, rehash, priv)				\
-	{ rehash, priv, 0, 0, 0, 0, 0, -1, 0, 0, &name.perfect_bit }
+#define HTABLE_INITIALIZER(name, rehash, priv)               \
+  {                                                          \
+    rehash, priv, 0, 0, 0, 0, 0, -1, 0, 0, &name.perfect_bit \
+  }
 
 /**
  * htable_init - initialize an empty hash table.
@@ -48,8 +51,9 @@ struct htable {
  * @rehash: hash function to use for rehashing.
  * @priv: private argument to @rehash function.
  */
-void htable_init(struct htable *ht,
-		 size_t (*rehash)(const void *elem, void *priv), void *priv);
+void htable_init(
+    struct htable* ht, size_t (*rehash)(const void* elem, void* priv),
+    void* priv);
 
 /**
  * htable_clear - empty a hash table.
@@ -57,14 +61,14 @@ void htable_init(struct htable *ht,
  *
  * This doesn't do anything to any pointers left in it.
  */
-void htable_clear(struct htable *ht);
+void htable_clear(struct htable* ht);
 
 /**
  * htable_rehash - use a hashtree's rehash function
  * @elem: the argument to rehash()
  *
  */
-size_t htable_rehash(const void *elem);
+size_t htable_rehash(const void* elem);
 
 /**
  * htable_add - add a pointer into a hash table.
@@ -75,7 +79,7 @@ size_t htable_rehash(const void *elem);
  * Also note that this can only fail due to allocation failure.  Otherwise, it
  * returns true.
  */
-bool htable_add(struct htable *ht, size_t hash, const void *p);
+bool htable_add(struct htable* ht, size_t hash, const void* p);
 
 /**
  * htable_del - remove a pointer from a hash table
@@ -85,7 +89,7 @@ bool htable_add(struct htable *ht, size_t hash, const void *p);
  *
  * Returns true if the pointer was found (and deleted).
  */
-bool htable_del(struct htable *ht, size_t hash, const void *p);
+bool htable_del(struct htable* ht, size_t hash, const void* p);
 
 /**
  * struct htable_iter - iterator or htable_first or htable_firstval etc.
@@ -93,7 +97,7 @@ bool htable_del(struct htable *ht, size_t hash, const void *p);
  * This refers to a location inside the hashtable.
  */
 struct htable_iter {
-	size_t off;
+  size_t off;
 };
 
 /**
@@ -106,8 +110,8 @@ struct htable_iter {
  * See Also:
  *	htable_delval()
  */
-void *htable_firstval(const struct htable *htable,
-		      struct htable_iter *i, size_t hash);
+void* htable_firstval(
+    const struct htable* htable, struct htable_iter* i, size_t hash);
 
 /**
  * htable_nextval - find another candidate for a given hash value
@@ -117,8 +121,8 @@ void *htable_firstval(const struct htable *htable,
  *
  * You'll need to check the value is what you want; returns NULL if no more.
  */
-void *htable_nextval(const struct htable *htable,
-		     struct htable_iter *i, size_t hash);
+void* htable_nextval(
+    const struct htable* htable, struct htable_iter* i, size_t hash);
 
 /**
  * htable_get - find an entry in the hash table
@@ -129,19 +133,19 @@ void *htable_nextval(const struct htable *htable,
  *
  * Convenient inline wrapper for htable_firstval/htable_nextval loop.
  */
-static inline void *htable_get(const struct htable *ht,
-			       size_t h,
-			       bool (*cmp)(const void *candidate, void *ptr),
-			       const void *ptr)
+static inline void*
+htable_get(
+    const struct htable* ht, size_t h,
+    bool (*cmp)(const void* candidate, void* ptr), const void* ptr)
 {
-	struct htable_iter i;
-	void *c;
+  struct htable_iter i;
+  void* c;
 
-	for (c = htable_firstval(ht,&i,h); c; c = htable_nextval(ht,&i,h)) {
-		if (cmp(c, (void *)ptr))
-			return c;
-	}
-	return NULL;
+  for (c = htable_firstval(ht, &i, h); c; c = htable_nextval(ht, &i, h)) {
+    if (cmp(c, (void*)ptr))
+      return c;
+  }
+  return NULL;
 }
 
 /**
@@ -151,7 +155,7 @@ static inline void *htable_get(const struct htable *ht,
  *
  * Get an entry in the hashtable; NULL if empty.
  */
-void *htable_first(const struct htable *htable, struct htable_iter *i);
+void* htable_first(const struct htable* htable, struct htable_iter* i);
 
 /**
  * htable_next - find another entry in the hash table
@@ -161,7 +165,7 @@ void *htable_first(const struct htable *htable, struct htable_iter *i);
  * Get another entry in the hashtable; NULL if all done.
  * This is usually used after htable_first or prior non-NULL htable_next.
  */
-void *htable_next(const struct htable *htable, struct htable_iter *i);
+void* htable_next(const struct htable* htable, struct htable_iter* i);
 
 /**
  * htable_delval - remove an iterated pointer from a hash table
@@ -171,6 +175,6 @@ void *htable_next(const struct htable *htable, struct htable_iter *i);
  * Usually used to delete a hash entry after it has been found with
  * htable_firstval etc.
  */
-void htable_delval(struct htable *ht, struct htable_iter *i);
+void htable_delval(struct htable* ht, struct htable_iter* i);
 
 #endif /* CCAN_HTABLE_H */

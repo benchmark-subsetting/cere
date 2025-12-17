@@ -16,4 +16,3 @@ for file in $(find $DIRECTORY/src -name '*.[ch]' -or -name '*.cpp'); do
 done
 
 rm -f $TMPFILE
-

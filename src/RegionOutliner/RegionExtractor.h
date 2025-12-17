@@ -55,30 +55,30 @@ class Value;
 /// 3) Add allocas for any scalar outputs, adding all of the outputs' allocas
 ///    as arguments, and inserting stores to the arguments for any scalars.
 class RegionExtractor {
-  typedef SetVector<Value *> ValueSet;
+  typedef SetVector<Value*> ValueSet;
 
   // Various bits of state computed on construction.
-  DominatorTree *const DT;
+  DominatorTree* const DT;
   const bool AggregateArgs;
   std::string Separator;
   std::string LoopFileInfos;
 
   // Bits of intermediate state computed at various phases of extraction.
-  SetVector<BasicBlock *> Blocks;
+  SetVector<BasicBlock*> Blocks;
   unsigned NumExitBlocks;
   std::string RegionName;
   bool Pcere;
   bool ProfileApp;
-  Type *RetTy;
+  Type* RetTy;
 
-public:
+ public:
   /// \brief Create a code extractor for a single basic block.
   ///
   /// In this formation, we don't require a dominator tree. The given basic
   /// block is set up for extraction.
-  RegionExtractor(BasicBlock *BB, std::string regionName = "",
-                  bool profileApp = false, bool pcere = false,
-                  bool AggregateArgs = false);
+  RegionExtractor(
+      BasicBlock* BB, std::string regionName = "", bool profileApp = false,
+      bool pcere = false, bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a sequence of blocks.
   ///
@@ -86,29 +86,30 @@ public:
   /// dominates the rest, prepare a code extractor object for pulling this
   /// sequence out into its new function. When a DominatorTree is also given,
   /// extra checking and transformations are enabled.
-  RegionExtractor(ArrayRef<BasicBlock *> BBs, DominatorTree *DT = 0,
-                  bool AggregateArgs = false);
+  RegionExtractor(
+      ArrayRef<BasicBlock*> BBs, DominatorTree* DT = 0,
+      bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a loop body.
   ///
   /// Behaves just like the generic code sequence constructor, but uses the
   /// block sequence of the loop.
-  RegionExtractor(DominatorTree &DT, Loop &L, std::string regionName = "",
-                  bool profileApp = false, bool pcere = false,
-                  bool AggregateArgs = false);
+  RegionExtractor(
+      DominatorTree& DT, Loop& L, std::string regionName = "",
+      bool profileApp = false, bool pcere = false, bool AggregateArgs = false);
 
   /// \brief Create a code extractor for a region node.
   ///
   /// Behaves just like the generic code sequence constructor, but uses the
   /// block sequence of the region node passed in.
-  RegionExtractor(DominatorTree &DT, const RegionNode &RN,
-                  bool AggregateArgs = false);
+  RegionExtractor(
+      DominatorTree& DT, const RegionNode& RN, bool AggregateArgs = false);
 
   /// \brief Perform the extraction, returning the new function.
   ///
   /// Returns zero when called on a CodeExtractorAll instance where isEligible
   /// returns false.
-  Function *extractCodeRegion();
+  Function* extractCodeRegion();
 
   /// \brief Test whether this code extractor is eligible.
   ///
@@ -124,32 +125,34 @@ public:
   /// a code sequence, that sequence is modified, including changing these
   /// sets, before extraction occurs. These modifications won't have any
   /// significant impact on the cost however.
-  void findInputsOutputs(ValueSet &Inputs, ValueSet &Outputs) const;
+  void findInputsOutputs(ValueSet& Inputs, ValueSet& Outputs) const;
 
-  void add_region_to_file(std::string, std::string, std::string, std::string,
-                          std::string, std::string = "");
-  bool is_region_in_file(std::string, std::fstream &);
+  void add_region_to_file(
+      std::string, std::string, std::string, std::string, std::string,
+      std::string = "");
+  bool is_region_in_file(std::string, std::fstream&);
 
-private:
-  void severSplitPHINodes(BasicBlock *&Header);
+ private:
+  void severSplitPHINodes(BasicBlock*& Header);
   void splitReturnBlocks();
 
-  std::string createFunctionName(Function *oldFunction, BasicBlock *header);
-  std::string removeExtension(const std::string &);
-  std::string removeChar(std::string str, const char toReplace,
-                         const char replacer);
+  std::string createFunctionName(Function* oldFunction, BasicBlock* header);
+  std::string removeExtension(const std::string&);
+  std::string removeChar(
+      std::string str, const char toReplace, const char replacer);
   std::string updateFileFormat(std::string str);
 
-  Function *constructFunction(const ValueSet &inputs, const ValueSet &outputs,
-                              BasicBlock *header, BasicBlock *&newRootNode,
-                              BasicBlock *newHeader, Twine newFunctionName,
-                              Function *oldFunction, Module *M);
+  Function* constructFunction(
+      const ValueSet& inputs, const ValueSet& outputs, BasicBlock* header,
+      BasicBlock*& newRootNode, BasicBlock* newHeader, Twine newFunctionName,
+      Function* oldFunction, Module* M);
 
-  void moveCodeToFunction(Function *newFunction);
-  void removeWrongMetadata(Function *newFunction);
-  void emitCallAndSwitchStatement(Function *newFunction, BasicBlock *newHeader,
-                                  ValueSet &inputs, ValueSet &outputs);
+  void moveCodeToFunction(Function* newFunction);
+  void removeWrongMetadata(Function* newFunction);
+  void emitCallAndSwitchStatement(
+      Function* newFunction, BasicBlock* newHeader, ValueSet& inputs,
+      ValueSet& outputs);
 };
-}
+}  // namespace llvm
 
 #endif

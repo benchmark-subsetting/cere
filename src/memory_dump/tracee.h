@@ -20,6 +20,7 @@
 #define __TRACEE__H
 
 #include <stdbool.h>
+
 #include "types.h"
 
 /* Public Interface for the memory tracer */
@@ -42,11 +43,11 @@ void dump_close(void);
  *   - arg_count is the number of arguments passed to the outlined function
  *   - ... are the arguments passed to the outlined function
  */
-void dump(char *loop_name, char *invocations_str, int arg_count, ...);
+void dump(char* loop_name, char* invocations_str, int arg_count, ...);
 
 /* after_dump: terminates capture of a region of interest. must be called
    at the end of the function to be captured */
-void after_dump(char *loop_name);
+void after_dump(char* loop_name);
 
 /* mtrace_active: true when the memory protection hooks in hooks.c are
  * active */

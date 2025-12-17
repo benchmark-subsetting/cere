@@ -22,21 +22,21 @@ used to visualize the matching result for tested region(s).
 
 ## OPTIONS
 
-  * `-h`:
+* `-h`:
     Prints a synopsis and a list of the most commonly used options.
 
-  * `--region REGION`:
+* `--region REGION`:
     Selects the region to check. The list of valid regions can be displayed
     with the cere-regions(1) command.
 
-  * `--regions-file REGIONS_FILE`:
+* `--regions-file REGIONS_FILE`:
     Input file where you can list regions you want to check.
 
-  * `--max_error MAX_ERROR`:
+* `--max_error MAX_ERROR`:
     If the error between original and replay execution time is lower or equal than
     MAX_ERROR, then the region is matching. The default MAX_ERROR value is 15%
 
-  * `--force`:
+* `--force`:
     Force all passes to ignore already done jobs and redo everything.
 
 ## COPYRIGHT

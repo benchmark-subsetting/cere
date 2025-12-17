@@ -27,12 +27,12 @@
    unprotect_protect is a special syscall which
    combines two successive mprotect syscalls for performance reasons.
 */
-void protect_i(pid_t pid, char *start, size_t size);
-void unprotect_i(pid_t pid, char *start, size_t size);
-void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
-                         size_t size_p);
-void write_i(pid_t pid, int fd, const void *buf, size_t nbyte);
-int openat_i(pid_t pid, char *pathname);
+void protect_i(pid_t pid, char* start, size_t size);
+void unprotect_i(pid_t pid, char* start, size_t size);
+void unprotect_protect_i(
+    pid_t pid, char* start_u, size_t size_u, char* start_p, size_t size_p);
+void write_i(pid_t pid, int fd, const void* buf, size_t nbyte);
+int openat_i(pid_t pid, char* pathname);
 void close_i(pid_t pid, int fd);
 
 

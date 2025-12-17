@@ -17,27 +17,28 @@
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
 
+#include "ptrace.h"
+
 #include <../ccan/ccan/htable/htable.h>
 #include <assert.h>
 #include <bits/wordsize.h>
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sched.h>
 #include <signal.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
-#include <sys/user.h>
 #include <sys/types.h>
+#include <sys/user.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
-#include "ptrace.h"
 #include "tracer_mem.h"
 #include "types.h"
 
@@ -60,18 +61,24 @@ bool multi_capture = false;
 
 // Sets the multi_capture value, which will be used when exiting codelet
 // Normally called from the cere_tracer's main duting init
-void set_capture_mode(bool capture_mode) {
+void
+set_capture_mode(bool capture_mode)
+{
   multi_capture = capture_mode;
 }
 
-void ptrace_cont(pid_t pid) {
+void
+ptrace_cont(pid_t pid)
+{
   if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
     errx(EXIT_FAILURE, "ptrace_cont : %s\n", strerror(errno));
   }
   debug_print("ptrace_cont %d ...\n\n", pid);
 }
 
-void ptrace_syscall(pid_t pid) {
+void
+ptrace_syscall(pid_t pid)
+{
   if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) != 0) {
     errx(EXIT_FAILURE, "Failed ptrace_syscall %d: %s\n", pid, strerror(errno));
   }
@@ -80,7 +87,9 @@ void ptrace_syscall(pid_t pid) {
 
 
 #if defined(__amd64__)
-void ptrace_setregs(pid_t pid, struct user_regs_struct *regs) {
+void
+ptrace_setregs(pid_t pid, struct user_regs_struct* regs)
+{
   int r = 0;
   do {
     r = ptrace(PTRACE_SETREGS, pid, NULL, regs);
@@ -88,7 +97,9 @@ void ptrace_setregs(pid_t pid, struct user_regs_struct *regs) {
                         errno == ESRCH));
 }
 
-void ptrace_getregs(pid_t pid, struct user_regs_struct *regs) {
+void
+ptrace_getregs(pid_t pid, struct user_regs_struct* regs)
+{
   int r = 0;
   do {
     r = ptrace(PTRACE_GETREGS, pid, NULL, regs);
@@ -98,9 +109,11 @@ void ptrace_getregs(pid_t pid, struct user_regs_struct *regs) {
 #elif defined(__aarch64__)
 #define NT_PRSTATUS 1
 
-void ptrace_getregs(pid_t pid, struct user_pt_regs *regs) {
+void
+ptrace_getregs(pid_t pid, struct user_pt_regs* regs)
+{
   int r = 0;
-  *regs = (struct user_pt_regs) {};
+  *regs = (struct user_pt_regs){};
   struct iovec iovec;
   iovec.iov_base = regs;
   iovec.iov_len = sizeof *regs;
@@ -110,11 +123,13 @@ void ptrace_getregs(pid_t pid, struct user_pt_regs *regs) {
                         errno == ESRCH));
 }
 
-void ptrace_setregs(pid_t pid, struct user_pt_regs *regs) {
+void
+ptrace_setregs(pid_t pid, struct user_pt_regs* regs)
+{
   int r = 0;
   struct iovec iovec;
-    iovec.iov_base = regs;
-    iovec.iov_len = sizeof *regs;
+  iovec.iov_base = regs;
+  iovec.iov_len = sizeof *regs;
   do {
     r = ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iovec);
   } while (r == -1L && (errno == EBUSY || errno == EFAULT || errno == EIO ||
@@ -122,13 +137,15 @@ void ptrace_setregs(pid_t pid, struct user_pt_regs *regs) {
 }
 #endif
 
-void ptrace_getdata(pid_t child, long addr, char *str, int len) {
+void
+ptrace_getdata(pid_t child, long addr, char* str, int len)
+{
   union u {
     long val;
     char chars[WORDSIZE];
   } data;
 
-  char *laddr;
+  char* laddr;
   int i, j;
   i = 0;
   j = len / WORDSIZE;
@@ -152,13 +169,15 @@ void ptrace_getdata(pid_t child, long addr, char *str, int len) {
 }
 
 
-void ptrace_putdata(pid_t child, long addr, char *str, int len) {
+void
+ptrace_putdata(pid_t child, long addr, char* str, int len)
+{
   union u {
     long val;
     char chars[WORDSIZE];
   } data;
 
-  char *laddr;
+  char* laddr;
   int i, j;
   i = 0;
   j = len / WORDSIZE;
@@ -177,7 +196,9 @@ void ptrace_putdata(pid_t child, long addr, char *str, int len) {
   }
 }
 
-static void register_thread(pid_t new_thread) {
+static void
+register_thread(pid_t new_thread)
+{
   debug_print("Following new thread %d.\n", new_thread);
   if (ntids >= MAX_TIDS) {
     errx(EXIT_FAILURE, "Too many threads MAX_TIDS=%d\n", MAX_TIDS);
@@ -185,39 +206,50 @@ static void register_thread(pid_t new_thread) {
   tids[ntids++] = new_thread;
 }
 
-static int find_thread_pos(pid_t tid) {
+static int
+find_thread_pos(pid_t tid)
+{
   int i;
-  for (i=0; i < ntids; i ++) {
-    if (tids[i] == tid) return i;
+  for (i = 0; i < ntids; i++) {
+    if (tids[i] == tid)
+      return i;
   }
   return -1;
 }
 
-void continue_all(void) {
-  for (int i=0; i< ntids; i++) {
+void
+continue_all(void)
+{
+  for (int i = 0; i < ntids; i++) {
     if (!pending[i])
       ptrace_syscall(tids[i]);
   }
 }
 
-void continue_all_cont(void) {
-  for (int i=0; i< ntids; i++) {
+void
+continue_all_cont(void)
+{
+  for (int i = 0; i < ntids; i++) {
     if (!pending[i])
       ptrace_cont(tids[i]);
   }
 }
 
-void stop_all_except(pid_t pid) {
-  for (int i=0; i<ntids; i++) {
-    if (tids[i] == pid) continue;
+void
+stop_all_except(pid_t pid)
+{
+  for (int i = 0; i < ntids; i++) {
+    if (tids[i] == pid)
+      continue;
     debug_print("SEND SIGSTOP to %d\n", tids[i]);
     int r = syscall(SYS_tkill, tids[i], SIGSTOP);
     if (r != 0) {
       errx(EXIT_FAILURE, "tkill failed : %s\n", strerror(errno));
     }
   }
-  for (int i=0; i<ntids; i++) {
-    if (tids[i] == pid) continue;
+  for (int i = 0; i < ntids; i++) {
+    if (tids[i] == pid)
+      continue;
     debug_print("WAITING for SIGSTOP from %d\n", tids[i]);
     event_t e = wait_event(tids[i]);
     if (e.signo != SIGSTOP) {
@@ -229,19 +261,24 @@ void stop_all_except(pid_t pid) {
   }
 }
 
-event_t wait_event(pid_t wait_for) {
+event_t
+wait_event(pid_t wait_for)
+{
   int r, status = 0;
   event_t event;
 
   debug_print("wait_event: %d -> ", wait_for);
 
   /* First check if there are any pending events */
-  for (int i=0; npending > 0 && i < ntids ; i++) {
-    if (wait_for != -1 && tids[i] != wait_for) continue;
+  for (int i = 0; npending > 0 && i < ntids; i++) {
+    if (wait_for != -1 && tids[i] != wait_for)
+      continue;
     if (pending[i]) {
       pending[i] = false;
       npending -= 1;
-      debug_print("return queued signal : %d for %d  -> ", queued[i].signo, queued[i].tid);
+      debug_print(
+          "return queued signal : %d for %d  -> ", queued[i].signo,
+          queued[i].tid);
       return queued[i];
     }
   }
@@ -249,29 +286,29 @@ event_t wait_event(pid_t wait_for) {
   do {
     event.tid = waitpid(wait_for, &status, __WALL);
     sched_yield();
-  } while (event.tid == -1L && (errno == EBUSY || errno == EFAULT || errno == ESRCH ||
-                          errno == EIO));
+  } while (event.tid == -1L && (errno == EBUSY || errno == EFAULT ||
+                                errno == ESRCH || errno == EIO));
 
   if (WIFEXITED(status)) {
     debug_print("tid %d exited\n", event.tid);
-    for (int i=0; i < ntids; i++) {
+    for (int i = 0; i < ntids; i++) {
       if (tids[i] == event.tid) {
         ntids--;
         if (ntids == 0) {
           debug_print("%s\n", "Finished capture\n");
           exit(1);
-        }
-        else {
+        } else {
           tids[i] = tids[ntids];
           queued[i] = queued[ntids];
-          if (pending[i]) npending -=1;
+          if (pending[i])
+            npending -= 1;
           pending[i] = pending[ntids];
           cleared[i] = cleared[ntids];
           if (wait_for == event.tid) {
-            errx(EXIT_FAILURE,
-                 "wait_event waiting on an exited process %d\n", event.tid);
-          }
-          else {
+            errx(
+                EXIT_FAILURE, "wait_event waiting on an exited process %d\n",
+                event.tid);
+          } else {
             return wait_event(wait_for);
           }
         }
@@ -290,97 +327,105 @@ event_t wait_event(pid_t wait_for) {
   event.signo = WSTOPSIG(status) & ~0x80;
 
   debug_print("%d received signal : %d %d\n", event.tid, event.signo);
-  switch(event.signo) {
-  case SIGSEGV:
-    /* In case of SEGV we want to retrieve the si_addr */
-    { siginfo_t sig;
-      if (ptrace(PTRACE_GETSIGINFO, event.tid, (void *)0, &sig) == -1) {
-        errx(EXIT_FAILURE, "ptrace(PTRACE_GETSIGINFO) : %s\n", strerror(errno));
+  switch (event.signo) {
+    case SIGSEGV:
+      /* In case of SEGV we want to retrieve the si_addr */
+      {
+        siginfo_t sig;
+        if (ptrace(PTRACE_GETSIGINFO, event.tid, (void*)0, &sig) == -1) {
+          errx(
+              EXIT_FAILURE, "ptrace(PTRACE_GETSIGINFO) : %s\n",
+              strerror(errno));
+        }
+        event.sigaddr = sig.si_addr;
       }
-      event.sigaddr = sig.si_addr;
-    }
-    return event;
-  case SIGTRAP:
-    if (status>>8 == (SIGTRAP | (PTRACE_EVENT_CLONE<<8))) {
-      debug_print("%s\n", "PTRACE_EVENT_CLONE received");
-
-      pid_t new_thread;
-      if (ptrace(PTRACE_GETEVENTMSG, event.tid, NULL, &new_thread) == -1) {
-        errx(EXIT_FAILURE, "Failed to get get tid of "
-             "newly cloned thread: %s\n", strerror(errno));
-      }
-
-      /* Check the thread is already registered (happens if the new child
-         SIGSTOP is received before the parent SIGTRAP) */
-      if (find_thread_pos(new_thread) == -1) {
-        register_thread(new_thread);
-    /* New thread starts with a SIGSTOP, either it was already caught before
-           parent SIGTRAP in that case thread is already registered, either we
-           should catch it now.  */
-    event_t e = wait_event(new_thread);
-    assert(e.signo == SIGSTOP);
-      }
-
-      /* Let both parent and child thread continue */
-      ptrace_syscall(new_thread);
-      ptrace_syscall(event.tid);
-
-      /* Continue waiting */
-      return wait_event(wait_for);
-    }
-    return event;
-  case SIGSTOP:
-    {
-
-    /* A SIGSTOP here is either the SIGSTOP after stopping a thread,
-       the first thread starting
-       or a spawned thread starting before receiving its
-       parent SIGTRAP */
-    int i = find_thread_pos(event.tid);
-
-    /* If it is a new unregistered thread, register it ! */
-    if (i == -1) {
-      register_thread(event.tid);
       return event;
-    }
-    else if (cleared[i] > 0) {
-      /* This can happen if a tid is already stopped when we
-         call stop_all_except. The SIGSTOP is queued and must be
-         cleared */
-      cleared[i] -= 1;
-      debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
-      ptrace_syscall(event.tid);
-      return wait_event(wait_for);
-    } else {
-      return event;
-    }
-    }
-    debug_print("%s\n", "Finished capture\n");
-    exit(0);
-  case SIGABRT:
-    debug_print("%s\n", "Finished single-codelet capture\n");
-    exit(0);
+    case SIGTRAP:
+      if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_CLONE << 8))) {
+        debug_print("%s\n", "PTRACE_EVENT_CLONE received");
 
-  default:
-    /* Return all other events */
-    return event;
+        pid_t new_thread;
+        if (ptrace(PTRACE_GETEVENTMSG, event.tid, NULL, &new_thread) == -1) {
+          errx(
+              EXIT_FAILURE,
+              "Failed to get get tid of "
+              "newly cloned thread: %s\n",
+              strerror(errno));
+        }
+
+        /* Check the thread is already registered (happens if the new child
+           SIGSTOP is received before the parent SIGTRAP) */
+        if (find_thread_pos(new_thread) == -1) {
+          register_thread(new_thread);
+          /* New thread starts with a SIGSTOP, either it was already caught
+             before parent SIGTRAP in that case thread is already registered,
+             either we should catch it now.  */
+          event_t e = wait_event(new_thread);
+          assert(e.signo == SIGSTOP);
+        }
+
+        /* Let both parent and child thread continue */
+        ptrace_syscall(new_thread);
+        ptrace_syscall(event.tid);
+
+        /* Continue waiting */
+        return wait_event(wait_for);
+      }
+      return event;
+    case SIGSTOP: {
+      /* A SIGSTOP here is either the SIGSTOP after stopping a thread,
+         the first thread starting
+         or a spawned thread starting before receiving its
+         parent SIGTRAP */
+      int i = find_thread_pos(event.tid);
+
+      /* If it is a new unregistered thread, register it ! */
+      if (i == -1) {
+        register_thread(event.tid);
+        return event;
+      } else if (cleared[i] > 0) {
+        /* This can happen if a tid is already stopped when we
+           call stop_all_except. The SIGSTOP is queued and must be
+           cleared */
+        cleared[i] -= 1;
+        debug_print("%s\n", "Cleared queued SIGSTOP from tracee");
+        ptrace_syscall(event.tid);
+        return wait_event(wait_for);
+      } else {
+        return event;
+      }
+    }
+      debug_print("%s\n", "Finished capture\n");
+      exit(0);
+    case SIGABRT:
+      debug_print("%s\n", "Finished single-codelet capture\n");
+      exit(0);
+
+    default:
+      /* Return all other events */
+      return event;
   }
 }
 
-static void parse_proc_task(pid_t pid) {
-  DIR *proc_dir;
+static void
+parse_proc_task(pid_t pid)
+{
+  DIR* proc_dir;
   char dirname[BUFSIZ];
-  struct dirent *entry;
+  struct dirent* entry;
 
   snprintf(dirname, sizeof dirname, "/proc/%d/task", pid);
   if (!(proc_dir = opendir(dirname))) {
-    errx(EXIT_FAILURE, "Error opening "
-         "/proc/%d/task : %s\n", pid, strerror(errno));
+    errx(
+        EXIT_FAILURE,
+        "Error opening "
+        "/proc/%d/task : %s\n",
+        pid, strerror(errno));
   }
 
   while ((entry = readdir(proc_dir)) != NULL) {
     // ignore . and ..
-    if(entry->d_name[0] == '.')
+    if (entry->d_name[0] == '.')
       continue;
 
     int tid = atoi(entry->d_name);
@@ -392,8 +437,9 @@ static void parse_proc_task(pid_t pid) {
   closedir(proc_dir);
 }
 
-void follow_threads(pid_t pid) {
-
+void
+follow_threads(pid_t pid)
+{
   parse_proc_task(pid);
 
   /* Attach all tids except main one which requested TRACEME in dump.c */
@@ -401,12 +447,13 @@ void follow_threads(pid_t pid) {
     int r;
     if (tids[t] != pid) {
       do {
-        r = ptrace(PTRACE_ATTACH, tids[t], (void *)0, 0);
+        r = ptrace(PTRACE_ATTACH, tids[t], (void*)0, 0);
       } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
                             errno == ESRCH));
       if (r == -1L) {
-        errx(EXIT_FAILURE, "Cannot attach thread %d: %s\n",
-             tids[t], strerror(errno));
+        errx(
+            EXIT_FAILURE, "Cannot attach thread %d: %s\n", tids[t],
+            strerror(errno));
       }
 
       /* Wait for SIGSTOP */
@@ -414,15 +461,17 @@ void follow_threads(pid_t pid) {
       assert(e.signo == SIGSTOP);
     }
 
-    ptrace(PTRACE_SETOPTIONS, tids[t], NULL,
-           PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
+    ptrace(
+        PTRACE_SETOPTIONS, tids[t], NULL,
+        PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE);
     debug_print("Attached to %d\n", tids[t]);
     debug_print("[tracer %d] Attached to %d\n", getpid(), tids[t]);
   }
 }
 
-void unfollow_threads(pid_t pid) {
-
+void
+unfollow_threads(pid_t pid)
+{
   parse_proc_task(pid);
 
   /* Detach from all tids
@@ -431,13 +480,14 @@ void unfollow_threads(pid_t pid) {
   for (int t = 0; t < ntids; t++) {
     int r;
     do {
-      r = ptrace(PTRACE_CONT, tids[t], (void *)0, 0);
-      r = ptrace(PTRACE_DETACH, tids[t], (void *)0, 0);
+      r = ptrace(PTRACE_CONT, tids[t], (void*)0, 0);
+      r = ptrace(PTRACE_DETACH, tids[t], (void*)0, 0);
     } while (r == -1L && (errno == EBUSY || errno == EIO || errno == EFAULT ||
-                            errno == ESRCH));
+                          errno == ESRCH));
     if (r == -1L) {
-      errx(EXIT_FAILURE, "Cannot detach thread %d: %s\n",
-        tids[t], strerror(errno));
+      errx(
+          EXIT_FAILURE, "Cannot detach thread %d: %s\n", tids[t],
+          strerror(errno));
     }
 
     debug_print("Detached from %d\n", tids[t]);

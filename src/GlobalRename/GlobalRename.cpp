@@ -24,32 +24,36 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "global-rename"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/IR/GlobalValue.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 
 namespace {
-  struct GlobalRename : public ModulePass {
-    bool changed;
-    static char ID; // Pass identification, replacement for typeid
-    GlobalRename() : ModulePass(ID), changed(false) {}
-    virtual bool runOnModule(Module &M);
-  };
-}
+struct GlobalRename : public ModulePass {
+  bool changed;
+  static char ID;  // Pass identification, replacement for typeid
+  GlobalRename() : ModulePass(ID), changed(false) {}
+  virtual bool runOnModule(Module& M);
+};
+}  // namespace
 
 char GlobalRename::ID = 0;
-static RegisterPass<GlobalRename> X("global-rename", "Rename global variables", false, false);
+static RegisterPass<GlobalRename> X(
+    "global-rename", "Rename global variables", false, false);
 
-bool GlobalRename::runOnModule(Module &M) {
-  //Iterate over global variables
-  for (Module::global_iterator I = M.global_begin(), E = M.global_end();
-                                                      I != E; ++I) {
-    //If this variable is private or internal rename it
-    if ( (I->getLinkage() ==  GlobalValue::PrivateLinkage) || (I->getLinkage() == GlobalValue::InternalLinkage) ) {
-      //Give the module name as variable name, setName handle collisions
+bool
+GlobalRename::runOnModule(Module& M)
+{
+  // Iterate over global variables
+  for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E;
+       ++I) {
+    // If this variable is private or internal rename it
+    if ((I->getLinkage() == GlobalValue::PrivateLinkage) ||
+        (I->getLinkage() == GlobalValue::InternalLinkage)) {
+      // Give the module name as variable name, setName handle collisions
       I->setName(M.getModuleIdentifier());
       changed = true;
     }
