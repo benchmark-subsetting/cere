@@ -12,7 +12,7 @@ cd "${BUILD}"
 cp -f "${ROOT}/examples/cpp23/example.cpp" .
 cp -f "${ROOT}/examples/cpp23/rdtsc_support.cpp" .
 
-export PYTHONPATH="${ROOT}/src:/usr/local/lib/python3.12/site-packages"
+export PYTHONPATH="${ROOT}/src:${PYTHONPATH:-/usr/local/lib/python3.12/site-packages}"
 export PATH="${ROOT}/src:/usr/local/bin:${PATH}"
 LIBDIR="${CERE_LIBDIR:-/usr/local/lib}"
 export CERE_LIBDIR="${LIBDIR}"
