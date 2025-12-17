@@ -17,8 +17,9 @@
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
 
+#include "tracer_interface.h"
+
 #include <assert.h>
-#include <fcntl.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -33,7 +34,6 @@
 
 #include "ptrace.h"
 #include "tracer_mem.h"
-#include "tracer_interface.h"
 #include "types.h"
 
 #define _DEBUG 1
@@ -42,16 +42,16 @@
 #include "debug.h"
 
 
-extern struct tracer_buff_t * tracer_buff;
+extern struct tracer_buff_t* tracer_buff;
 
 #if defined(__amd64__)
 #define NB_MAX_ARGS 6
 
 /* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
 /* x86_64     rdi    rsi    rdx    r10    r8     r9      -    */
-static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
-                                 ...) {
-
+static register_t
+inject_syscall(pid_t pid, int nb_args, register_t syscallid, ...)
+{
   /* If we have more than 6 arguments, we must put them on the stack */
   /* For the moment, we don't handle this case  */
   assert(NB_MAX_ARGS >= nb_args);
@@ -70,7 +70,7 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   va_list vargs;
   va_start(vargs, syscallid);
 
-  long long unsigned *regs_ptr[NB_MAX_ARGS] = {&(regs.rdi), &(regs.rsi),
+  long long unsigned* regs_ptr[NB_MAX_ARGS] = {&(regs.rdi), &(regs.rsi),
                                                &(regs.rdx), &(regs.r10),
                                                &(regs.r8),  &(regs.r9)};
 
@@ -103,37 +103,41 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   return ret;
 }
 
-register_t get_arg_from_regs(pid_t pid) {
+register_t
+get_arg_from_regs(pid_t pid)
+{
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
   return regs.rdi;
 }
 
-int get_syscallid(pid_t pid) {
+int
+get_syscallid(pid_t pid)
+{
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
   return regs.orig_rax;
 }
 
-bool is_hook_sigtrap(pid_t pid) {
+bool
+is_hook_sigtrap(pid_t pid)
+{
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
   return (regs.rax == SYS_hook);
 }
 
-bool is_dump_sigtrap(pid_t pid) {
+bool
+is_dump_sigtrap(pid_t pid)
+{
   struct user_regs_struct regs;
   ptrace_getregs(pid, &regs);
-  // DEBUG: Print rax to diagnose the issue
-  static int debug_count = 0;
-  if (debug_count++ < 20) {
-    fprintf(stderr, "[TRACER DEBUG] is_dump_sigtrap: pid=%d, rax=0x%llx (decimal: %lld), SYS_dump=0x%x (%d), match=%d\n",
-            pid, (unsigned long long)regs.rax, (long long)regs.rax, SYS_dump, SYS_dump, regs.rax == SYS_dump);
-  }
   return (regs.rax == SYS_dump);
 }
 
-void clear_trap(pid_t pid) {
+void
+clear_trap(pid_t pid)
+{
 }
 
 #elif defined(__aarch64__)
@@ -141,9 +145,9 @@ void clear_trap(pid_t pid) {
 
 /* arch/ABI   arg1   arg2   arg3   arg4   arg5   arg6   arg7  */
 /* aarch64      x0     x1     x2     x3     x4     x5     -  */
-static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
-                                 ...) {
-
+static register_t
+inject_syscall(pid_t pid, int nb_args, register_t syscallid, ...)
+{
   /* For the moment, we don't handle this case  */
   assert(NB_MAX_ARGS >= nb_args);
 
@@ -161,10 +165,10 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   va_list vargs;
   va_start(vargs, syscallid);
 
-  long long unsigned *regs_ptr[NB_MAX_ARGS] = {&(regs.regs[0]), &(regs.regs[1]),
-                                               &(regs.regs[2]), &(regs.regs[3]),
-                                               &(regs.regs[4]), &(regs.regs[5]),
-                                              };
+  long long unsigned* regs_ptr[NB_MAX_ARGS] = {
+      &(regs.regs[0]), &(regs.regs[1]), &(regs.regs[2]),
+      &(regs.regs[3]), &(regs.regs[4]), &(regs.regs[5]),
+  };
 
   if (syscallid == SYS_unprotect_protect) {
     regs.pc = (register_t)tracer_buff->unprotect_protect;
@@ -203,38 +207,50 @@ static register_t inject_syscall(pid_t pid, int nb_args, register_t syscallid,
   return ret;
 }
 
-register_t get_arg_from_regs(pid_t pid) {
+register_t
+get_arg_from_regs(pid_t pid)
+{
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
   return regs.regs[0];
 }
 
-int get_syscallid(pid_t pid) {
+int
+get_syscallid(pid_t pid)
+{
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
   return regs.regs[8];
 }
 
-bool is_hook_sigtrap(pid_t pid) {
+bool
+is_hook_sigtrap(pid_t pid)
+{
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
   return (regs.regs[8] == SYS_hook);
 }
 
-bool is_dump_sigtrap(pid_t pid) {
+bool
+is_dump_sigtrap(pid_t pid)
+{
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
   return (regs.regs[8] == SYS_dump);
 }
 
-void clear_trap(pid_t pid) {
+void
+clear_trap(pid_t pid)
+{
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
-  regs.pc +=4;
+  regs.pc += 4;
   ptrace_setregs(pid, &regs);
 }
 
-void debug_regs(pid_t pid) {
+void
+debug_regs(pid_t pid)
+{
   struct user_pt_regs regs;
   ptrace_getregs(pid, &regs);
   debug_print("register [pc] = %llx\n", regs.pc);
@@ -245,78 +261,104 @@ void debug_regs(pid_t pid) {
 
 #endif
 
-void protect_i(pid_t pid, char *start, size_t size) {
+void
+protect_i(pid_t pid, char* start, size_t size)
+{
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start, size);
-  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
-          (long long unsigned) PROT_NONE);
+  register_t ret = inject_syscall(
+      pid, 3, SYS_mprotect, start, size, (long long unsigned)PROT_NONE);
   /* We can try to protect a page that has been removed from memory */
   /* beetween the lock_mem() and dumping args */
   if (tracer_state == TRACER_LOCKED && ret == -ENOMEM)
     return;
 
-  /* Ignore permission errors - some pages cannot be protected (e.g., shared pages) */
+  /* Ignore permission errors - some pages cannot be protected (e.g., shared
+   * pages) */
   /* Also ignore EINVAL which can occur with certain page alignments */
   /* ECHILD can occur if the traced process has terminated or is unreachable */
   /* Check both positive and negative error codes */
   int abs_ret = (ret < 0) ? -ret : ret;
-  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM && abs_ret != ECHILD) {
-    errx(EXIT_FAILURE, "Failed to protect page at %p with error %d\n",
-         start, (int) ret);
+  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM &&
+      abs_ret != ECHILD) {
+    errx(
+        EXIT_FAILURE, "Failed to protect page at %p with error %d\n", start,
+        (int)ret);
   } else if (ret != 0) {
-    debug_print("Warning: Could not protect page at %p (error %d), continuing\n",
-                start, (int) ret);
+    debug_print(
+        "Warning: Could not protect page at %p (error %d), continuing\n", start,
+        (int)ret);
   }
 }
 
-void unprotect_i(pid_t pid, char *start, size_t size) {
+void
+unprotect_i(pid_t pid, char* start, size_t size)
+{
   debug_print("TO BE UNPROTECTED :  %p (%lu)\n", start, size);
-  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size,
-                  (long long unsigned) (PROT_READ | PROT_WRITE | PROT_EXEC));
+  register_t ret = inject_syscall(
+      pid, 3, SYS_mprotect, start, size,
+      (long long unsigned)(PROT_READ | PROT_WRITE | PROT_EXEC));
   /* Ignore permission errors - some pages cannot be unprotected */
   int abs_ret = (ret < 0) ? -ret : ret;
-  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM && abs_ret != ECHILD) {
-    errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
-         start, (int) ret);
+  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM &&
+      abs_ret != ECHILD) {
+    errx(
+        EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n", start,
+        (int)ret);
   } else if (ret != 0) {
-    debug_print("Warning: Could not unprotect page at %p (error %d), continuing\n",
-                start, (int) ret);
+    debug_print(
+        "Warning: Could not unprotect page at %p (error %d), continuing\n",
+        start, (int)ret);
   }
 }
 
-void unprotect_i_with_permissions(pid_t pid, char *start, size_t size, char * permissions) {
-  debug_print("TO BE UNPROTECTED :  %p (%lu) with permissions %s\n", start, size, permissions);
+void
+unprotect_i_with_permissions(
+    pid_t pid, char* start, size_t size, char* permissions)
+{
+  debug_print(
+      "TO BE UNPROTECTED :  %p (%lu) with permissions %s\n", start, size,
+      permissions);
 
-  register_t ret = inject_syscall(pid, 3, SYS_mprotect, start, size, permissions);
+  register_t ret =
+      inject_syscall(pid, 3, SYS_mprotect, start, size, permissions);
   /* Ignore permission errors */
   int abs_ret = (ret < 0) ? -ret : ret;
-  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM && abs_ret != ECHILD) {
-    errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
-         start, (int) ret);
+  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM &&
+      abs_ret != ECHILD) {
+    errx(
+        EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n", start,
+        (int)ret);
   } else if (ret != 0) {
-    debug_print("Warning: Could not unprotect page at %p (error %d), continuing\n",
-                start, (int) ret);
+    debug_print(
+        "Warning: Could not unprotect page at %p (error %d), continuing\n",
+        start, (int)ret);
   }
 }
 
 
-void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
-                       size_t size_p) {
+void
+unprotect_protect_i(
+    pid_t pid, char* start_u, size_t size_u, char* start_p, size_t size_p)
+{
   debug_print("TO BE UNPROTECTED :  %p (%lu) ... ", start_u, size_u);
   debug_print("TO BE PROTECTED :  %p (%lu)\n", start_p, size_p);
-  register_t ret = inject_syscall(pid, 6, SYS_unprotect_protect,
-                  start_p, size_p,
-                  (long long unsigned) PROT_NONE,
-                  start_u, size_u,
-                  (long long unsigned) (PROT_READ | PROT_WRITE | PROT_EXEC));
+  register_t ret = inject_syscall(
+      pid, 6, SYS_unprotect_protect, start_p, size_p,
+      (long long unsigned)PROT_NONE, start_u, size_u,
+      (long long unsigned)(PROT_READ | PROT_WRITE | PROT_EXEC));
 
   /* Ignore permission errors */
   int abs_ret = (ret < 0) ? -ret : ret;
-  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM && abs_ret != ECHILD) {
-    errx(EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n",
-         start_u, (int)ret);
+  if (ret != 0 && abs_ret != EACCES && abs_ret != EINVAL && abs_ret != ENOMEM &&
+      abs_ret != ECHILD) {
+    errx(
+        EXIT_FAILURE, "Failed to unprotect page at %p with error %d\n", start_u,
+        (int)ret);
   } else if (ret != 0) {
-    debug_print("Warning: unprotect_protect failed for page at %p (error %d), continuing\n",
-                start_u, (int) ret);
+    debug_print(
+        "Warning: unprotect_protect failed for page at %p (error %d), "
+        "continuing\n",
+        start_u, (int)ret);
   }
 
   /* it is ok here for reprotect to fail, when we reprotect a page that has
@@ -326,19 +368,26 @@ void unprotect_protect_i(pid_t pid, char *start_u, size_t size_u, char *start_p,
    */
 }
 
-void write_i(pid_t pid, int fd, const void *buf, size_t nbyte) {
+void
+write_i(pid_t pid, int fd, const void* buf, size_t nbyte)
+{
   register_t ret = inject_syscall(pid, 3, SYS_write, fd, buf, nbyte);
   assert((int)ret >= 0);
 }
 
-int openat_i(pid_t pid, char *pathname) {
-  register_t ret = inject_syscall(pid, 4, SYS_openat, AT_FDCWD, pathname,
-                 (long long unsigned) (O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
+int
+openat_i(pid_t pid, char* pathname)
+{
+  register_t ret = inject_syscall(
+      pid, 4, SYS_openat, AT_FDCWD, pathname,
+      (long long unsigned)(O_WRONLY | O_CREAT | O_EXCL), S_IRWXU);
   assert((int)ret > 0);
   return ret;
 }
 
-void close_i(pid_t pid, int fd) {
+void
+close_i(pid_t pid, int fd)
+{
   register_t ret = inject_syscall(pid, 1, SYS_close, fd);
   assert(ret != -1L);
 }

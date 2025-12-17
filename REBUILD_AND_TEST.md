@@ -18,6 +18,7 @@ docker build --no-cache -t cere-dev .
 ```
 
 Cette étape prend quelques minutes car elle :
+
 - Installe toutes les dépendances (LLVM 16, Python, etc.)
 - Compile CERE avec toutes les corrections
 - Installe les bibliothèques dans `/usr/local/lib`
@@ -34,6 +35,7 @@ docker run --rm -it \
 ```
 
 Les options importantes :
+
 - `--cap-add=SYS_PTRACE` : Autorise ptrace pour le tracer
 - `--security-opt seccomp=unconfined` : Désactive les restrictions seccomp
 - `-v "$PWD":/workspace` : Monte le répertoire actuel dans le conteneur
@@ -45,6 +47,7 @@ Les options importantes :
 ```
 
 Ce script :
+
 - Compile `test_loop.c` vers LLVM IR
 - Applique les passes region-outliner et region-dump
 - Compile l'exécutable instrumenté
@@ -80,7 +83,6 @@ Step 5: Compilation vers exécutable
 Step 6: Exécution du programme instrumenté
   (timeout de 10 secondes)
 
-[TRACER DEBUG] ...
 DUMP( __cere__loop_region 1 count = 2)
 Result: 55
 
@@ -105,7 +107,7 @@ Si le test échoue, vérifier :
 2. **No dump directory** : Le dump n'est pas créé → Problème de tracer
 3. **Multiple dump_init** : Plus d'un appel à dump_init → Problème de passe LLVM
 
-Consulter les logs de debug `[TRACER DEBUG]` pour identifier le point de blocage.
+Consulter les logs du tracer pour identifier le point de blocage.
 
 ## Nettoyage
 

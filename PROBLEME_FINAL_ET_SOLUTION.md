@@ -3,6 +3,7 @@
 ## État actuel : ÉNORME PROGRÈS ✅
 
 ### Ce qui fonctionne maintenant
+
 1. ✅ **Le système ptrace est réparé** - Communication tracer/tracee opérationnelle
 2. ✅ **Les passes LLVM sont corrigées** - Instrumentation correcte sans casser les basic blocks
 3. ✅ **Le programme n'est plus bloqué** - Il exécute maintenant et génère des événements
@@ -13,8 +14,8 @@
 Le tracee génère des SIGSEGV répétés en essayant d'accéder à l'adresse `0x0` (NULL).
 
 ```
-[TRACER DEBUG] handle_events_until_dump_trap: received signal 11 from tid 175, tracer_state=3
-[TRACER DEBUG] After handling SIGSEGV at (nil), continuing with ptrace_cont
+handle_events_until_dump_trap: received signal 11 from tid 175, tracer_state=3
+After handling SIGSEGV at (nil), continuing with ptrace_cont
 ```
 
 ## Analyse détaillée du problème
@@ -22,12 +23,14 @@ Le tracee génère des SIGSEGV répétés en essayant d'accéder à l'adresse `0
 ### Flux d'exécution actuel
 
 1. **Profiling** ✅ Fonctionne correctement
+
    ```
    INFO Profile : b'PROFILE: interrupts/evictions/bytes = 279/138/9560\n...'
    INFO Profile : Instrumentation success
    ```
 
 2. **Capture** ❌ Échoue avec boucle SIGSEGV
+
    ```
    INFO Capture : Capturing invocation(s) 1 for region(s) __cere__compute_region
    ERROR Capture : Capture failed for region __cere__compute_region invocation 1
@@ -38,6 +41,7 @@ Le tracee génère des SIGSEGV répétés en essayant d'accéder à l'adresse `0
 #### Hypothèse 1 : Problème dans get_counter_internal() [PROBABLE]
 
 Le code dans `tracee.c` ligne 82-97 :
+
 ```c
 static InvocsCounter* get_counter_internal(const char* codelet_name)
 {
@@ -56,6 +60,7 @@ static InvocsCounter* get_counter_internal(const char* codelet_name)
 ```
 
 **Scénario probable** :
+
 - `codelet_name` (paramètre de `dump()`) est NULL ou invalide
 - OU `invocs_counters.counters` est corrompu
 - OU `counter->codelet_name` dans la boucle est NULL
@@ -79,20 +84,20 @@ Modifiez `src/memory_dump/tracee.c` ligne 394 :
 ```c
 void dump(char* loop_name, char* invocations_str, int arg_count, ...)
 {
-  fprintf(stderr, "[TRACEE DEBUG] dump() called, loop_name=%p (%s), invocations_str=%p\n",
+  fprintf(stderr, "dump() called, loop_name=%p (%s), invocations_str=%p\n",
           loop_name, loop_name ? loop_name : "NULL", invocations_str);
   fflush(stderr);
 
   if (!dump_initialized) {
-    fprintf(stderr, "[TRACEE DEBUG] dump_initialized = false, returning\n");
+    fprintf(stderr, "dump_initialized = false, returning\n");
     fflush(stderr);
     return;
   }
 
-  fprintf(stderr, "[TRACEE DEBUG] About to call increment_counter\n");
+  fprintf(stderr, "About to call increment_counter\n");
   fflush(stderr);
   increment_counter(loop_name);
-  fprintf(stderr, "[TRACEE DEBUG] After increment_counter\n");
+  fprintf(stderr, "After increment_counter\n");
   fflush(stderr);
 
   // ... reste du code
@@ -104,21 +109,21 @@ Et dans `get_counter_internal()` ligne 82 :
 ```c
 static InvocsCounter* get_counter_internal(const char* codelet_name)
 {
-  fprintf(stderr, "[TRACEE DEBUG] get_counter_internal: codelet_name=%p, num_counters=%d, counters=%p\n",
+  fprintf(stderr, "get_counter_internal: codelet_name=%p, num_counters=%d, counters=%p\n",
           codelet_name, invocs_counters.num_counters, invocs_counters.counters);
   fflush(stderr);
 
   for (int i = 0; i < invocs_counters.num_counters; i++) {
-    fprintf(stderr, "[TRACEE DEBUG] Checking counter %d\n", i);
+    fprintf(stderr, "Checking counter %d\n", i);
     fflush(stderr);
     InvocsCounter* counter = &(invocs_counters.counters[i]);
-    fprintf(stderr, "[TRACEE DEBUG] counter=%p, codelet_name=%p\n", counter, counter->codelet_name);
+    fprintf(stderr, "counter=%p, codelet_name=%p\n", counter, counter->codelet_name);
     fflush(stderr);
     if (strcmp(counter->codelet_name, codelet_name) == 0) {
       return counter;
     }
   }
-  fprintf(stderr, "[TRACEE DEBUG] Creating new counter\n");
+  fprintf(stderr, "Creating new counter\n");
   fflush(stderr);
   // ... reste
 }
@@ -199,11 +204,13 @@ void dump(char* loop_name, char* invocations_str, int arg_count, ...)
 ## Comment tester les corrections
 
 1. **Reconstruire l'image Docker** :
+
    ```bash
    docker build --no-cache -t cere-dev .
    ```
 
 2. **Lancer le conteneur** :
+
    ```bash
    docker run --rm -it \
      --cap-add=SYS_PTRACE \
@@ -214,14 +221,15 @@ void dump(char* loop_name, char* invocations_str, int arg_count, ...)
    ```
 
 3. **Tester l'exemple C++** :
+
    ```bash
    cd /workspace/examples/cpp23
    CERE_REGION=__cere__compute_region CERE_INVOCATION=1 ./run-example.sh
    ```
 
 4. **Regarder les logs de debug** :
-   - Cherchez `[TRACEE DEBUG]` pour voir où le tracee s'arrête
-   - Cherchez `[TRACER DEBUG]` pour voir les événements reçus
+   - Cherchez les messages du tracee pour voir où il s'arrête
+   - Cherchez les messages du tracer pour voir les événements reçus
    - Si vous voyez "About to call increment_counter" mais pas "After increment_counter", c'est qu'il crash dans `increment_counter()`
 
 ## Fichiers modifiés et fonctionnels
@@ -236,6 +244,7 @@ Tous ces fichiers contiennent des corrections FONCTIONNELLES :
 ## Conclusion
 
 🎉 **80% du travail est fait** ! Le système de base fonctionne :
+
 - Ptrace opérationnel
 - Passes LLVM correctes
 - Communication tracer/tracee

@@ -379,18 +379,11 @@ handle_events_until_dump_trap(pid_t wait_for)
 {
   while (true) {
     event_t e = wait_event(wait_for);
-    fprintf(
-        stderr,
-        "[TRACER DEBUG] handle_events_until_dump_trap: received signal %d from "
-        "tid %d, tracer_state=%d\n",
-        e.signo, e.tid, tracer_state);
     if (e.signo == SIGTRAP) {
       if (is_dump_sigtrap(e.tid)) {
-        fprintf(stderr, "[TRACER DEBUG] Got dump SIGTRAP!\n");
         clear_trap(e.tid);
         return e.tid;
       } else if (is_hook_sigtrap(e.tid)) {
-        fprintf(stderr, "[TRACER DEBUG] Got hook SIGTRAP\n");
         assert(
             tracer_state == TRACER_LOCKED ||
             tracer_state == TRACER_FIRSTTOUCH ||
@@ -494,14 +487,6 @@ handle_events_until_dump_trap(pid_t wait_for)
       // In UNLOCKED and LOCKED modes, use ptrace_cont to run freely until
       // SIGTRAP In DUMPING and FIRSTTOUCH, use ptrace_syscall for memory
       // tracking
-      fprintf(
-          stderr,
-          "[TRACER DEBUG] After handling SIGSEGV at %p, continuing with "
-          "ptrace_%s\n",
-          addr,
-          (tracer_state == TRACER_UNLOCKED || tracer_state == TRACER_LOCKED)
-              ? "cont"
-              : "syscall");
       if (tracer_state == TRACER_UNLOCKED || tracer_state == TRACER_LOCKED)
         ptrace_cont(e.tid);
       else
@@ -838,15 +823,7 @@ main(int argc, char* argv[])
 
   /* Wait for lock_mem trap */
   pid_t tid = handle_events_until_dump_trap(-1);
-  fprintf(
-      stderr, "[TRACER DEBUG] After handle_events_until_dump_trap, tid=%d\n",
-      tid);
   register_t ret = get_arg_from_regs(tid);
-  fprintf(
-      stderr,
-      "[TRACER DEBUG] get_arg_from_regs returned: 0x%llx (decimal: %lld), "
-      "TRAP_LOCK_MEM=%d\n",
-      (unsigned long long)ret, (long long)ret, TRAP_LOCK_MEM);
   if (ret != TRAP_LOCK_MEM) {
     errx(
         EXIT_FAILURE, "Expected TRAP_LOCK_MEM (%d) but got %lld\n",
@@ -854,23 +831,15 @@ main(int argc, char* argv[])
   }
   assert(ret == TRAP_LOCK_MEM);
 
-  fprintf(stderr, "[TRACER DEBUG] Before stop_all_except\n");
   stop_all_except(tid);
-  fprintf(stderr, "[TRACER DEBUG] Before tracer_lock_mem\n");
   tracer_lock_mem(tid);
-  fprintf(stderr, "[TRACER DEBUG] After tracer_lock_mem\n");
   debug_print("%s\n", "******* TRACER_LOCKED");
   tracer_state = TRACER_LOCKED;
   // Continue the tracee so it can send TRAP_START_ARGS
-  fprintf(
-      stderr,
-      "[TRACER DEBUG] Continuing tracee with ptrace_cont before tracer_dump\n");
   ptrace_cont(tid);
 
   /* Dump arguments */
-  fprintf(stderr, "[TRACER DEBUG] Before tracer_dump\n");
   tracer_dump(tid);
-  fprintf(stderr, "[TRACER DEBUG] After tracer_dump\n");
 
   debug_print("%s\n", "******* TRACER_DUMPING");
   tracer_state = TRACER_DUMPING;
