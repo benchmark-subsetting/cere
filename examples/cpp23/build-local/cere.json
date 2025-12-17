@@ -1,8 +1,0 @@
-{
-    "build_cmd": "cerec++ -g -std=gnu++20 -fno-pie -no-pie /local/home/jd258565/cere/examples/cpp23/build-local/example.cpp /local/home/jd258565/cere/examples/cpp23/build-local/rdtsc_support.cpp -o example -lstdc++",
-    "run_cmd": "./example",
-    "clean_cmd": "rm -f example",
-    "multiple_trace": false,
-    "omp": false,
-    "regions_infos": "regions.csv"
-}
