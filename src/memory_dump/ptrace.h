@@ -19,7 +19,6 @@
 #ifndef __PTRACE__H
 #define __PTRACE__H
 
-#include <asm/ptrace.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -28,6 +27,10 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/user.h>
+
+#if defined(__aarch64__)
+#include <asm/ptrace.h>
+#endif
 
 #include "types.h"
 

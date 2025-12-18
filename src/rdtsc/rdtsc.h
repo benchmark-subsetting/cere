@@ -17,6 +17,7 @@
  * along with CERE.  If not, see <http://www.gnu.org/licenses/>.             *
  *****************************************************************************/
 #include <ccan/htable/htable.h>
+#include <stdio.h>
 #define CALL_STACK_SIZE 8192
 #define TRACE_SIZE 100000
 

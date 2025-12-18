@@ -63,6 +63,12 @@ def user_main(FILE, LOOP, mode_opt):
     TEMPLATE = open("{root}/template_realmain.c".format(root=ROOT), "r")
     template = TEMPLATE.read()
     TEMPLATE.close()
+    # Escape every brace, then restore the placeholders we really want to
+    # format. The template itself contains many C blocks with braces, which
+    # would otherwise be interpreted by str.format and raise.
+    template = template.replace("{", "{{").replace("}", "}}")
+    for placeholder in ("time_out", "in_vitro_call_count", "loop"):
+        template = template.replace(f"{{{{{placeholder}}}}}", f"{{{placeholder}}}")
     FILE.write(
         template.format(
             time_out=TIMEOUT_SECONDS,

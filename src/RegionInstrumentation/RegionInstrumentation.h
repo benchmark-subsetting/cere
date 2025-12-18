@@ -23,7 +23,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <string>
+#include <vector>
+
 namespace llvm {
+
+class BasicBlock;
+class Function;
+class FunctionType;
+class GlobalVariable;
+class LoadInst;
+class Module;
+class Value;
 
 /// \brief Removes extension from \p filename.
 std::string removeExtension(const std::string& filename);
