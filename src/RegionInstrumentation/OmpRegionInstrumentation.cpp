@@ -28,6 +28,7 @@
 
 #define DEBUG_TYPE "region-instrumentation"
 #include <errno.h>
+#include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Instructions.h>
 
 #include <fstream>
@@ -62,6 +63,21 @@ extern cl::opt<bool> Replay;
 extern cl::opt<int> Invocation;
 
 namespace {
+static bool
+regionMatches(const std::string& requested, const std::string& region)
+{
+  if (requested.empty())
+    return false;
+  if (region == requested)
+    return true;
+  if (region.find(requested) != std::string::npos)
+    return true;
+  std::string demangled = llvm::demangle(region);
+  if (!demangled.empty() && demangled.find(requested) != std::string::npos)
+    return true;
+  return false;
+}
+
 struct OmpRegionInstrumentation : public FunctionPass {
   static char ID;
   unsigned NumLoops;
@@ -193,14 +209,13 @@ OmpRegionInstrumentation::choosePutMarkerOnFunction(
     if (RegionName == "all")
       return true;
 
-    if (RegionName.compare(newFunctionName) == 0)
+    if (regionMatches(RegionName, newFunctionName))
       return true;
 
     for (std::vector<std::string>::iterator it = LoopsToInstrument.begin(),
                                             et = LoopsToInstrument.end();
          it != et; it++) {
-      std::size_t pos = it->find(newFunctionName);
-      if (pos != std::string::npos) {
+      if (regionMatches(*it, newFunctionName)) {
         return true;
       }
     }

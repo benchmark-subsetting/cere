@@ -1,0 +1,4 @@
+INFO 01/12/2026 10:25:56 CERE : Start
+ERROR 01/12/2026 10:25:56 Replay : Memory dump is missing for __cere__compute_region invocation 1.
+                    Run cere capture --region=__cere__compute_region [--invocation=1]
+INFO 01/12/2026 10:25:56 CERE : Stop

@@ -27,6 +27,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <errno.h>
+#include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Instructions.h>
 
 #include <fstream>
@@ -61,6 +62,21 @@ extern cl::opt<bool> Replay;
 extern cl::opt<int> Invocation;
 
 namespace {
+static bool
+regionMatches(const std::string& requested, const std::string& region)
+{
+  if (requested.empty())
+    return false;
+  if (region == requested)
+    return true;
+  if (region.find(requested) != std::string::npos)
+    return true;
+  std::string demangled = llvm::demangle(region);
+  if (!demangled.empty() && demangled.find(requested) != std::string::npos)
+    return true;
+  return false;
+}
+
 struct LoopRegionInstrumentation : public FunctionPass {
   static char ID;
   unsigned NumLoops;
@@ -212,7 +228,8 @@ LoopRegionInstrumentation::visitLoop(Loop* L, Module* mod)
     return false;
 
   // If it's not the requested region, and we don't read regions from a file
-  if (RegionName != "all" && RegionName != newFunctionName && !ReadFromFile) {
+  if (RegionName != "all" && !ReadFromFile &&
+      !regionMatches(RegionName, newFunctionName)) {
     return false;
   }
   // If we read regions to instrument from a file, check if the current region
@@ -222,8 +239,7 @@ LoopRegionInstrumentation::visitLoop(Loop* L, Module* mod)
     for (std::vector<std::string>::iterator it = LoopsToInstrument.begin(),
                                             et = LoopsToInstrument.end();
          it != et; it++) {
-      std::size_t pos = it->find(newFunctionName);
-      if (pos != std::string::npos) {
+      if (regionMatches(*it, newFunctionName)) {
         found = true;
         break;
       }

@@ -1,0 +1,3 @@
+INFO 01/12/2026 08:36:19 CERE : Start
+CRITICAL 01/12/2026 08:36:19 Configure : No configuration file found. Run: cere configure or run this command from where cere.json is.
+INFO 01/12/2026 08:36:19 CERE : Stop
