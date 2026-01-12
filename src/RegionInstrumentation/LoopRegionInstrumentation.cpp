@@ -77,6 +77,30 @@ regionMatches(const std::string& requested, const std::string& region)
   return false;
 }
 
+static std::string
+readableCereRegionName(const std::string& symbol)
+{
+  std::string demangled = llvm::demangle(symbol);
+  std::size_t pos = demangled.find("__cere__");
+  if (pos == std::string::npos)
+    return symbol;
+
+  std::size_t end = pos;
+  while (end < demangled.size()) {
+    char c = demangled[end];
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9') || c == '_') {
+      ++end;
+      continue;
+    }
+    break;
+  }
+  std::string extracted = demangled.substr(pos, end - pos);
+  if (!extracted.empty())
+    return extracted;
+  return symbol;
+}
+
 struct LoopRegionInstrumentation : public FunctionPass {
   static char ID;
   unsigned NumLoops;
@@ -223,7 +247,7 @@ LoopRegionInstrumentation::visitLoop(Loop* L, Module* mod)
   if (found == std::string::npos)
     newFunctionName = createFunctionName(L, currFunc);
   else
-    newFunctionName = currFunc->getName().data();
+    newFunctionName = readableCereRegionName(currFunc->getName().str());
   if (newFunctionName.empty())
     return false;
 

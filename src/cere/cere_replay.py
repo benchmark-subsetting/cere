@@ -139,6 +139,18 @@ def dump_result(region, predicted_cycles):
     result_file.close()
 
 
+def move_replay_csv(region, invocation):
+    src_candidates = [
+        os.path.join(var.CERE_RUN_PATH, "{0}.csv".format(region)),
+        "{0}.csv".format(region),
+    ]
+    src = next((path for path in src_candidates if os.path.isfile(path)), None)
+    if not src:
+        raise IOError("No results file. Maybe replay failed")
+    dst = "{0}/{1}_{2}.csv".format(var.CERE_REPLAY_PATH, region, invocation)
+    shutil.move(src, dst)
+
+
 def run(args):
     if not cere_configure.init():
         return False
@@ -256,14 +268,9 @@ def run(args):
                 utils.mark_invalid(args.region, cere_error.EREPLAY)
                 return False
             # Save replay measures files
-            if PREDICTION_MODE:
+            if not args.noinstrumentation:
                 try:
-                    shutil.move(
-                        "{0}.csv".format(args.region),
-                        "{0}/{1}_{2}.csv".format(
-                            var.CERE_REPLAY_PATH, args.region, invocation
-                        ),
-                    )
+                    move_replay_csv(args.region, invocation)
                 except IOError as err:
                     logger.error(str(err))
                     logger.error(
