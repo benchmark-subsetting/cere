@@ -1,9 +1,6 @@
 SUBDIRS=ccan rdtsc memory_dump RegionOutliner RegionInstrumentation RegionReplay RegionDump GlobalRename
 
-dist_bin_SCRIPTS = cerec cerec++
-if WITH_FLANG
-	dist_bin_SCRIPTS += ceref
-endif
+dist_bin_SCRIPTS = cerec++
 
 pkgpython_PYTHON= \
 	cere/compiler_frontend.py \
