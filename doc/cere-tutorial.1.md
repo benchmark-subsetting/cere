@@ -15,7 +15,6 @@ To orchestrate CERE operations one uses the `cere` command-line program.
 Try executing the `cere --help` command. As the output shows, `cere` includes
 a number of sub commands that will be used during this tutorial:
 
-
     user@ix:~/cere/$ cere --help
     INFO 06/10/2015 10:31:59 CERE : Start
     usage: cere [-h]
@@ -48,7 +47,6 @@ a number of sub commands that will be used during this tutorial:
     optional arguments:
       -h, --help            show this help message and exit
 
-
 In this tutorial we will use CERE to replay the most important regions of the
 discrete 3D fast Fourier Transform (FT) solver from the
 [NAS-SER 3.0 benchmarks](http://www.nas.nasa.gov/).
@@ -57,29 +55,25 @@ discrete 3D fast Fourier Transform (FT) solver from the
 
 First enter the FT benchmark directory:
 
-    $ cd ~/cere/examples/NPB3.0-SER/FT/
+    cd ~/cere/examples/NPB3.0-SER/FT/
 
 CERE capture and replay require specific LLVM compiler passes. To easily
-compile an application, CERE includes a compiler wrapper, `cerec`.  You can
-either use `cerec` directly to compile and link a program, or modify the
-`Makefile` so it uses `cerec`.
+compile an application, CERE includes a compiler wrapper for C++, `cerec++`.
+You can either use `cerec++` directly to compile and link a program, or modify
+the `Makefile` so it uses `cerec++`.
 
-For FT the `Makefile` has already been configured to use `cerec`. The file
-`~cere/example/NPB3.0-SER/config/make.def` contains the following definitions:
+If you are using a C++ project, ensure your `Makefile` uses the wrapper for
+C++ compilation and linking, for example:
 
-
-    F77 = cerec
-    FLINK = cerec
-    CC = cerec
-    CLINK = cerec
-
+    CXX = cerec++
+    CXXLINK = cerec++
 
 ## CONFIGURATION OF CERE
 
 Now we have to tell CERE which commands must be used to build and run the
 application. For this we use cere-configure(1) with the following arguments
 
-    $ cere configure --build-cmd="make CLASS=A" --clean-cmd="make clean" --run-cmd="../bin/ft.A"
+    cere configure --build-cmd="make CLASS=A" --clean-cmd="make clean" --run-cmd="../bin/ft.A"
 
 cere-configure(1) saves the project configuration in the file `cere.json`.
 This file is read by most of CERE passes. You can manually edit this file if you
@@ -99,7 +93,7 @@ To measure the application runtime, probes are inserted at the very beginning of
 the main function and at the application exit. RDTSC is used to count CPU cycles
 between these two probes. To only run the application runtime measure, type:
 
-    $ cere profile --app
+    cere profile --app
 
 The application runtime is saved in the file `.cere/profile/app_cycles.csv`.
 
@@ -116,7 +110,7 @@ profiles using
 output is then parsed with *pprof* and converted to CERE internal callgraph
 representation.
 
-    $ cere profile --regions
+    cere profile --regions
 
 This command generates the following output files:
 
@@ -133,14 +127,14 @@ This command generates the following output files:
 The previous two profiling steps (application and regions) can be combined in a
 single cere command:
 
-    $ cere profile
+    cere profile
 
 ## LISTING EXTRACTIBLE REGIONS
 
 At any moment one can list the extractible regions, their source code location,
 and their contribution to the total running time with the following command:
 
-    $ cere regions
+    cere regions
 
 This command outputs the file `regions.csv` containing for each region, the region
 name, region location, and coverage informations. If no profile information is
@@ -166,7 +160,7 @@ selected to represent its cluster.
 
 To trace invocations execution time run:
 
-    $ cere trace --region=__cere__fft3d_swarztrauber__27
+    cere trace --region=__cere__fft3d_swarztrauber__27
 
 This command generates the following output files:
 
@@ -177,7 +171,7 @@ This command generates the following output files:
 
 To select representative invocations run:
 
-    $ cere selectinv --region=__cere__fft3d_swarztrauber__27
+    cere selectinv --region=__cere__fft3d_swarztrauber__27
 
 This command generates the following output file:
 
@@ -201,7 +195,7 @@ Last step before replaying `__cere__fft3d_swarztrauber__27` region, is to captur
 using cere-capture(1), the memory and cache state for the 2 invocations we need
 to replay. This is done with the following command:
 
-    $ cere capture --region=__cere__fft3d_swarztrauber__27
+    cere capture --region=__cere__fft3d_swarztrauber__27
 
 This command generates a set of files in
 `.cere/dumps/__cere__fft3d_swarztrauber__27/INVOCATIONS/` which is needed to
@@ -212,7 +206,7 @@ restore the memory and the cache state in order to replay the region.
 Finally we can replay with cere-replay(1) the region of interest. Only the 2
 selected invocations are replayed, and are used to simulate the region total runtime.
 
-    $ cere replay --region=__cere__fft3d_swarztrauber__27
+    cere replay --region=__cere__fft3d_swarztrauber__27
 
 This command generates the file
 `.cere/replays/__cere__fft3d_swarztrauber__27_INVOCATION` which contains the
@@ -296,8 +290,8 @@ configurable.
 
 You can try both selectors by running one (or all) of the following commands:
 
-    $ cere select-max-cov
-    $ cere select-ilp
+    cere select-max-cov
+    cere select-ilp
 
 You can find more information in the manual pages for cere-select-max-cov(1) and
 cere-select-ilp(1).
@@ -309,7 +303,7 @@ about the extraction process of your application. You can call cere-report(1)
 after any cere command.
 To generate the report you can use the following command:
 
-    $ cere report
+    cere report
 
 An example of report generated for the FT class A serial benchmark can be found
 [here](https://benchmark-subsetting.github.io/cere/reports/NAS3.0-SER/FT.html).
